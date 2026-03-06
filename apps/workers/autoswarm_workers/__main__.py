@@ -9,11 +9,14 @@ import signal
 import sys
 
 import redis.asyncio as aioredis
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import Command
 
 from .config import get_settings
 from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
 from .graphs.research import build_research_graph
+from .interrupt_handler import InterruptHandler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,12 +31,93 @@ GRAPH_BUILDERS = {
     "crm": build_crm_graph,
 }
 
+checkpointer = MemorySaver()
+
 _shutdown = asyncio.Event()
 
 
 def _handle_signal(sig: signal.Signals) -> None:
     logger.info("Received %s, shutting down...", sig.name)
     _shutdown.set()
+
+
+async def run_graph_with_interrupts(
+    compiled,  # noqa: ANN001 -- compiled LangGraph
+    initial_state: dict,
+    task_id: str,
+    agent_id: str,
+    handler: InterruptHandler,
+) -> dict:
+    """Invoke a compiled graph, handling any LangGraph interrupt() pauses.
+
+    The loop:
+    1. Invoke the graph (or resume it).
+    2. Check ``graph.get_state(config).next`` for pending nodes.
+    3. If there are pending nodes, inspect ``state.tasks[0].interrupts`` for
+       the interrupt payload, create an approval request, wait for a decision,
+       and resume with a ``Command(resume=...)``.
+    4. Repeat until the graph finishes (``state.next`` is empty).
+
+    Returns:
+        The final graph state dict.
+    """
+    config = {"configurable": {"thread_id": task_id}}
+
+    # First invocation.
+    result = await asyncio.to_thread(compiled.invoke, initial_state, config)
+
+    while True:
+        snapshot = compiled.get_state(config)
+        if not snapshot.next:
+            break
+
+        # There are pending nodes -- look for interrupt payloads.
+        interrupt_value = None
+        if snapshot.tasks and snapshot.tasks[0].interrupts:
+            interrupt_value = snapshot.tasks[0].interrupts[0].value
+
+        logger.info(
+            "Task %s interrupted at node(s) %s with payload: %s",
+            task_id,
+            snapshot.next,
+            interrupt_value,
+        )
+
+        # Build approval context from the interrupt payload.
+        action_category = "api_call"
+        payload: dict = {"task_id": task_id}
+        reasoning = f"Agent {agent_id} requires approval during task {task_id}."
+
+        if isinstance(interrupt_value, dict):
+            action_category = interrupt_value.get("action_category", action_category)
+            payload.update(interrupt_value)
+            reasoning = interrupt_value.get("reasoning", reasoning)
+
+        request_id = await handler.create_approval_request(
+            agent_id=agent_id,
+            action_category=action_category,
+            payload=payload,
+            reasoning=reasoning,
+        )
+
+        approval = await handler.wait_for_approval(request_id)
+
+        resume_value = {
+            "approved": approval.result == "approved",
+            "feedback": approval.feedback,
+        }
+        logger.info(
+            "Resuming task %s after approval %s (approved=%s)",
+            task_id,
+            request_id,
+            resume_value["approved"],
+        )
+
+        result = await asyncio.to_thread(
+            compiled.invoke, Command(resume=resume_value), config
+        )
+
+    return result
 
 
 async def process_task(task_data: dict) -> None:
@@ -49,16 +133,18 @@ async def process_task(task_data: dict) -> None:
     logger.info("Processing task %s with %s graph", task_id, graph_type)
 
     graph = builder()
-    compiled = graph.compile()
+    compiled = graph.compile(checkpointer=checkpointer)
+
+    agent_id = (
+        task_data.get("assigned_agent_ids", ["unknown"])[0]
+        if task_data.get("assigned_agent_ids")
+        else "unknown"
+    )
 
     initial_state: dict = {
         "messages": [],
         "task_id": task_id,
-        "agent_id": (
-            task_data.get("assigned_agent_ids", ["unknown"])[0]
-            if task_data.get("assigned_agent_ids")
-            else "unknown"
-        ),
+        "agent_id": agent_id,
         "status": "running",
         "result": None,
         "requires_approval": False,
@@ -77,11 +163,21 @@ async def process_task(task_data: dict) -> None:
         initial_state["recipient"] = payload.get("recipient", "unknown@example.com")
         initial_state["crm_action"] = payload.get("crm_action", "email")
 
+    settings = get_settings()
+    handler = InterruptHandler(
+        nexus_api_url=settings.nexus_api_url,
+        redis_url=settings.redis_url,
+    )
+
     try:
-        result = await asyncio.to_thread(compiled.invoke, initial_state)
+        result = await run_graph_with_interrupts(
+            compiled, initial_state, task_id, agent_id, handler
+        )
         logger.info("Task %s completed with status: %s", task_id, result.get("status"))
     except Exception:
         logger.exception("Task %s failed", task_id)
+    finally:
+        await handler.close()
 
 
 async def main() -> None:

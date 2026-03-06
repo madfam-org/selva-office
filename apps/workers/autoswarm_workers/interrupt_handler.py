@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
+import redis.asyncio as aioredis
 from pydantic import BaseModel
 
 from .graphs.base import BaseGraphState
@@ -37,6 +39,7 @@ class InterruptHandler:
     """
 
     nexus_api_url: str
+    redis_url: str = "redis://localhost:6379"
     client: httpx.AsyncClient = field(default_factory=lambda: httpx.AsyncClient(timeout=30.0))
 
     async def create_approval_request(
@@ -89,26 +92,40 @@ class InterruptHandler:
         )
         return request_id
 
-    async def wait_for_approval(
-        self,
-        request_id: str,
-        timeout: int = 300,
-        poll_interval: float = 2.0,
-    ) -> ApprovalResponse:
-        """Poll the Nexus API until the approval request is resolved.
+    async def _wait_via_redis(self, request_id: str, timeout: int) -> ApprovalResponse:
+        """Subscribe to the Redis pub/sub channel and wait for the decision.
 
-        Args:
-            request_id: UUID of the approval request to monitor.
-            timeout: Maximum seconds to wait before timing out.
-            poll_interval: Seconds between poll attempts.
-
-        Returns:
-            The resolved ``ApprovalResponse``.
-
-        Raises:
-            TimeoutError: If no decision is made within *timeout* seconds.
-            httpx.HTTPStatusError: If the API returns an error status.
+        This is the preferred path -- no polling, instant notification.
         """
+        channel_name = f"autoswarm:approval:{request_id}"
+        redis_client = aioredis.from_url(self.redis_url, decode_responses=True)
+
+        try:
+            pubsub = redis_client.pubsub()
+            await pubsub.subscribe(channel_name)
+
+            async def _get_message() -> ApprovalResponse:
+                while True:
+                    msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                    if msg is not None and msg["type"] == "message":
+                        data = json.loads(msg["data"])
+                        return ApprovalResponse(
+                            request_id=data["request_id"],
+                            result=data["result"],
+                            feedback=data.get("feedback"),
+                        )
+
+            result = await asyncio.wait_for(_get_message(), timeout=timeout)
+            logger.info("Approval request %s resolved via Redis pub/sub: %s", request_id, result.result)
+            return result
+        finally:
+            await pubsub.unsubscribe(channel_name)
+            await redis_client.aclose()
+
+    async def _wait_via_polling(
+        self, request_id: str, timeout: int, poll_interval: float
+    ) -> ApprovalResponse:
+        """Fallback: poll the Nexus API until the approval request is resolved."""
         url = f"{self.nexus_api_url.rstrip('/')}/api/v1/approvals/{request_id}"
         elapsed = 0.0
 
@@ -127,7 +144,7 @@ class InterruptHandler:
                     responded_at=data.get("responded_at"),
                 )
                 logger.info(
-                    "Approval request %s resolved: %s", request_id, approval.result
+                    "Approval request %s resolved via polling: %s", request_id, approval.result
                 )
                 return approval
 
@@ -137,6 +154,38 @@ class InterruptHandler:
         raise TimeoutError(
             f"Approval request {request_id} was not resolved within {timeout} seconds"
         )
+
+    async def wait_for_approval(
+        self,
+        request_id: str,
+        timeout: int = 300,
+        poll_interval: float = 2.0,
+    ) -> ApprovalResponse:
+        """Wait for an approval decision, preferring Redis pub/sub with polling fallback.
+
+        Args:
+            request_id: UUID of the approval request to monitor.
+            timeout: Maximum seconds to wait before timing out.
+            poll_interval: Seconds between poll attempts (used only in fallback).
+
+        Returns:
+            The resolved ``ApprovalResponse``.
+
+        Raises:
+            TimeoutError: If no decision is made within *timeout* seconds.
+            httpx.HTTPStatusError: If the API returns an error status during polling.
+        """
+        try:
+            return await self._wait_via_redis(request_id, timeout)
+        except Exception as exc:
+            if isinstance(exc, TimeoutError):
+                raise
+            logger.warning(
+                "Redis subscribe failed for %s (%s), falling back to polling",
+                request_id,
+                exc,
+            )
+            return await self._wait_via_polling(request_id, timeout, poll_interval)
 
     async def handle_interrupt(self, state: BaseGraphState) -> BaseGraphState:
         """Full interrupt handling flow: create request, wait, update state.

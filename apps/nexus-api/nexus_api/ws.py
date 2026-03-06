@@ -61,11 +61,11 @@ class ConnectionManager:
 
     async def send_approval_request(self, request: dict[str, Any]) -> None:
         """Broadcast an approval request notification to all connected clients."""
-        await self.broadcast({"type": "approval_request", "data": request})
+        await self.broadcast({"type": "approval_request", "payload": request})
 
     async def send_approval_response(self, response: dict[str, Any]) -> None:
         """Broadcast an approval response notification to all connected clients."""
-        await self.broadcast({"type": "approval_response", "data": response})
+        await self.broadcast({"type": "approval_resolved", "payload": response})
 
 
 # Singleton instance shared across the application.

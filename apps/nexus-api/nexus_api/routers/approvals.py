@@ -11,8 +11,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..approval_notifier import notify_approval_decision
 from ..auth import get_current_user
-from ..database import get_db
+from ..database import async_session_factory, get_db
 from ..models import ApprovalRequest
 from ..ws import manager
 
@@ -115,6 +116,9 @@ async def _respond_to_request(
 
     # Broadcast the decision to all connected WebSocket clients.
     await manager.send_approval_response(response_data.model_dump(mode="json"))
+
+    # Notify workers waiting on Redis pub/sub for this decision.
+    await notify_approval_decision(request_id, decision, feedback)
 
     return response_data
 
@@ -223,11 +227,36 @@ async def approval_websocket(websocket: WebSocket) -> None:
     """Real-time approval event stream.
 
     Clients connect and receive JSON messages with ``type`` set to either
-    ``approval_request`` or ``approval_response`` as events occur.
+    ``approval_request`` or ``approval_resolved`` as events occur.
+
+    On initial connection the server sends an ``approval_batch`` message
+    containing all currently pending requests so the client is immediately
+    up-to-date.
     """
     # Use a simple incrementing ID if no query param is provided.
     client_id = websocket.query_params.get("client_id", str(uuid.uuid4()))
     await manager.connect(websocket, client_id)
+
+    # Send all pending approval requests as an initial batch.
+    try:
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(ApprovalRequest)
+                .where(ApprovalRequest.status == "pending")
+                .order_by(ApprovalRequest.created_at.desc())
+            )
+            pending = result.scalars().all()
+            batch = [_approval_to_response(r).model_dump(mode="json") for r in pending]
+            await websocket.send_json({"type": "approval_batch", "payload": batch})
+    except Exception:
+        # If fetching the batch fails, log and continue -- the WS is still useful
+        # for real-time events.
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Failed to send initial approval batch to client %s", client_id
+        )
+
     try:
         while True:
             # Keep the connection alive; the client can send pings or commands.
