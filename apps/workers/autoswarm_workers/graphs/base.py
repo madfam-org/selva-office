@@ -8,7 +8,15 @@ from typing import Any, TypedDict
 
 from langchain_core.messages import BaseMessage
 
-from autoswarm_permissions import ActionClassifier, PermissionEngine, DEFAULT_PERMISSION_MATRIX
+from autoswarm_permissions import (
+    ActionClassifier,
+    DEFAULT_CONTEXT_RULES,
+    DEFAULT_PERMISSION_MATRIX,
+    PermissionContext,
+    PermissionEngine,
+    ROLE_PERMISSION_MATRICES,
+    RoleMatrixRule,
+)
 from autoswarm_permissions.types import ActionCategory, PermissionLevel
 
 from ..tools.bash_tool import BashTool
@@ -20,7 +28,12 @@ logger = logging.getLogger(__name__)
 # -- Real permission engine and classifier ------------------------------------
 
 _classifier = ActionClassifier()
-_engine = PermissionEngine(matrix=DEFAULT_PERMISSION_MATRIX)
+_role_matrix_rule = RoleMatrixRule(ROLE_PERMISSION_MATRICES)
+_default_context_rules = [*DEFAULT_CONTEXT_RULES, _role_matrix_rule]
+_engine = PermissionEngine(
+    matrix=DEFAULT_PERMISSION_MATRIX,
+    context_rules=_default_context_rules,
+)
 
 
 # -- Shared graph state -------------------------------------------------------
@@ -94,13 +107,23 @@ def permission_check(state: BaseGraphState) -> BaseGraphState:
     last_message = messages[-1]
     engine = _build_engine_for_state(state)
 
+    # Build permission context from agent metadata.
+    from datetime import datetime, timezone
+
+    perm_context = PermissionContext(
+        time_utc=datetime.now(timezone.utc),
+        agent_level=state.get("agent_level"),  # type: ignore[arg-type]
+        risk_score=state.get("risk_score"),  # type: ignore[arg-type]
+        agent_role=state.get("agent_role"),  # type: ignore[arg-type]
+    )
+
     # -- Classify from tool_calls if present ----------------------------------
     tool_calls = getattr(last_message, "tool_calls", None)
     if tool_calls:
         for call in tool_calls:
             tool_name = call.get("name", "unknown")
             category = _classifier.classify(tool_name)
-            result = engine.evaluate(category)
+            result = engine.evaluate(category, context=perm_context)
 
             if result.level == PermissionLevel.DENY:
                 logger.warning(
@@ -138,7 +161,7 @@ def permission_check(state: BaseGraphState) -> BaseGraphState:
         )
         category = ActionCategory.API_CALL
 
-    result = engine.evaluate(category)
+    result = engine.evaluate(category, context=perm_context)
 
     if result.level == PermissionLevel.DENY:
         logger.warning(

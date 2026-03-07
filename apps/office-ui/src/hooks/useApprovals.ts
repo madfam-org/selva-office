@@ -7,8 +7,7 @@ const WS_URL =
   process.env.NEXT_PUBLIC_APPROVALS_WS_URL ?? 'ws://localhost:4300/api/v1/approvals/ws';
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
-const RECONNECT_DELAY_MS = 2000;
-const MAX_RECONNECT_ATTEMPTS = 15;
+const MAX_RECONNECT_DELAY_MS = 30000;
 
 interface ApprovalsState {
   pendingApprovals: ApprovalRequest[];
@@ -90,9 +89,10 @@ export function useApprovals(): ApprovalsState {
         setConnected(false);
         wsRef.current = null;
 
-        if (event.code !== 1000 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+        if (event.code !== 1000) {
           reconnectAttempts.current++;
-          reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
+          const delay = Math.min(MAX_RECONNECT_DELAY_MS, 1000 * Math.pow(2, reconnectAttempts.current)) + Math.random() * 1000;
+          reconnectTimer.current = setTimeout(connect, delay);
         }
       };
 
@@ -102,10 +102,9 @@ export function useApprovals(): ApprovalsState {
       };
     } catch {
       setConnected(false);
-      if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts.current++;
-        reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
-      }
+      reconnectAttempts.current++;
+      const delay = Math.min(MAX_RECONNECT_DELAY_MS, 1000 * Math.pow(2, reconnectAttempts.current)) + Math.random() * 1000;
+      reconnectTimer.current = setTimeout(connect, delay);
     }
   }, []);
 

@@ -11,8 +11,7 @@ import type {
 
 const COLYSEUS_URL = process.env.NEXT_PUBLIC_COLYSEUS_URL ?? 'ws://localhost:4303';
 const ROOM_NAME = 'office';
-const RECONNECT_DELAY_MS = 3000;
-const MAX_RECONNECT_ATTEMPTS = 10;
+const MAX_RECONNECT_DELAY_MS = 30000;
 
 export interface PlayerEmoteEvent {
   sessionId: string;
@@ -195,9 +194,10 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
         roomRef.current = null;
         setSessionId(null);
 
-        if (code !== 1000 && reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+        if (code !== 1000) {
           reconnectAttempts.current++;
-          reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
+          const delay = Math.min(MAX_RECONNECT_DELAY_MS, 1000 * Math.pow(2, reconnectAttempts.current)) + Math.random() * 1000;
+          reconnectTimer.current = setTimeout(connect, delay);
         }
       });
 
@@ -209,10 +209,9 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
       setError(message);
       setConnected(false);
 
-      if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts.current++;
-        reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
-      }
+      reconnectAttempts.current++;
+      const delay = Math.min(MAX_RECONNECT_DELAY_MS, 1000 * Math.pow(2, reconnectAttempts.current)) + Math.random() * 1000;
+      reconnectTimer.current = setTimeout(connect, delay);
     }
   }, []);
 

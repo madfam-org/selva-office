@@ -395,9 +395,9 @@ describe('useApprovals', () => {
     // Timer should be scheduled but no new instance yet
     expect(MockWebSocket.instances).toHaveLength(initialInstanceCount);
 
-    // Advance timer by RECONNECT_DELAY_MS (2000ms)
+    // Advance timer past max backoff delay (exponential + jitter)
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(5000);
     });
 
     // A new WebSocket instance should have been created
