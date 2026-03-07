@@ -9,4 +9,21 @@ export interface SpriteTemplate {
 }
 
 /** Re-export palette and color resolver */
-export { resolveColorMap, darken, lighten } from './resolve-colors';
+export {
+  resolveColorMap,
+  resolveRoleColorMap,
+  resolveEnvironmentColorMap,
+  resolveThemeColorMap,
+  darken,
+  lighten,
+  saturate,
+  hueShift,
+  tint,
+} from './resolve-colors';
+
+/** Re-export palette presets */
+export {
+  PALETTE_PRESETS,
+  type PalettePreset,
+  type PalettePresetName,
+} from './palette-presets';

@@ -32,14 +32,17 @@ make docker-dev       # Start Postgres + Redis
 make db-migrate       # Run Alembic migrations
 make db-seed          # Seed departments and agents
 make generate-assets  # Regenerate pixel-art sprite PNGs
+make generate-variants # Generate palette-themed sprite/tile variants
+make generate-map     # Procedurally generate office map (WFC)
+make post-process     # Optional ImageMagick upscale/WebP conversion
 
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (250 tests across 22 suites)
+pnpm test             # TypeScript tests (343 tests across 24 suites)
 pnpm typecheck        # TypeScript type checking
 
-uv run pytest         # Python tests (238 tests)
+uv run pytest         # Python tests (231 tests)
 uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```
@@ -375,3 +378,68 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `OfficeScene.ts` plays walk animations for the Tactician (4 dirs x 3 frames) and
   idle/working animations for agents. Post-FX, particles, and ambient effects are
   gated behind `ENABLE_POST_FX` and `ENABLE_PARTICLES` constants.
+
+### Palette Presets & Color Utilities
+
+- **Palette presets** (`packages/shared-types/src/sprite-data/palette-presets.ts`):
+  10 named presets (default, cyberpunk, forest, desert, arctic, ocean, volcano,
+  neon, monochrome, pastel). Each defines environment colors (floor, wall, dept
+  zones, review station), optional `avatarTint`, and optional `outfitOverrides`.
+- **Color utilities** in `resolve-colors.ts`: `darken()`, `lighten()`,
+  `saturate()`, `hueShift()`, `tint()` — all pure hex-in/hex-out.
+- `resolveEnvironmentColorMap(presetName)` returns environment colors for a preset.
+- `resolveThemeColorMap(presetName, avatarConfig)` applies the preset's avatarTint
+  over standard avatar colors (15% tint factor, 7.5% on skin).
+- All presets tested for minimum contrast ratios (review station vs floor >= 3:1,
+  wall vs floor >= 1.2:1).
+
+### Sprite Variant Generator
+
+- `scripts/generate-variants.js` — generates themed sprite sheets per
+  role × palette preset. CLI: `--presets`, `--roles`, `--output`.
+- `scripts/generate-tile-variants.js` — generates themed tilesets per preset.
+- `scripts/sprite-data/variation-combiner.js` — shared layer composition logic
+  with tint support for variant generation.
+- `scripts/post-process-assets.sh` — optional ImageMagick 2x/4x upscale + WebP.
+  Gracefully skips if ImageMagick not installed.
+- `generate-assets.js` extended with `--variants` (all presets) and
+  `--preset <name>` (single themed tileset) flags.
+- Output: `apps/office-ui/public/assets/sprites/variants/<preset>/` and
+  `apps/office-ui/public/assets/tilesets/variants/`.
+
+### WFC Procedural Map Generation
+
+- **Package**: `packages/map-gen/` (`@autoswarm/map-gen`)
+  - `src/wfc.ts` — core WFC with `WFCGrid.run()`, `observe()`, `collapse()`,
+    `propagate()`, backtracking retries, seeded PRNG (`createRng()`).
+  - `src/rules.ts` — adjacency rules for office meta-tiles (wall, corridor,
+    dept_N, dept_wall_N). `metaTileToTileId()` maps to tileset indices.
+  - `src/constraints.ts` — department region detection, object placement
+    (review stations, dispatch stations, spawn points), map validation.
+  - `src/tmj-writer.ts` — outputs valid `.tmj` matching `TiledMapLoader.ts`
+    layer contract: floor, departments, review-stations, interactables,
+    spawn-points.
+- **CLI**: `scripts/generate-map.js` — `--seed`, `--departments`, `--width`,
+  `--height`, `--output`. Default: 40x22, 4 depts, seed 42.
+- **BootScene integration**: `?map=<name>` URL parameter loads
+  `/assets/maps/<name>.tmj`. Default: `office-default`.
+- Existing `loadTiledMap()` fallback handles any schema issues with generated maps.
+
+### Pixelact UI Components
+
+- **Scoped namespace**: `.pixelact` class in `globals.css` defines CSS variables
+  (`--pixelact-bg`, `--pixelact-fg`, etc.) and `.pxa-btn`/`.pxa-input` styles
+  with 3D pixel press effects. Avoids collision with `.retro-btn`/`.pixel-border`.
+- **Pixelact colors** in `tailwind.config.ts`: `pixelact-bg`, `pixelact-fg`,
+  `pixelact-border`, `pixelact-primary`, etc. Map to CSS variables.
+- **Pixelact shadows**: `shadow-pixelact-raised` (3D raised) and
+  `shadow-pixelact-pressed` (inset pressed).
+- **PixelButton** (`packages/ui/src/pixelact/pixel-button.tsx`): CVA variants
+  (default/secondary/destructive/success/ghost) × sizes (default/sm/lg).
+- **PixelInput** (`packages/ui/src/pixelact/pixel-input.tsx`): styled input with
+  inset shadow and focus border.
+- **shadcn config**: `packages/ui/components.json` configures shadcn with
+  Pixelact registry URL for future `npx shadcn@latest add` usage.
+- Exported from `packages/ui/src/index.ts`.
+- **Preview tool**: `scripts/preview-tileset.js` generates an HTML catalog of
+  all tiles across all presets at 4x scale.

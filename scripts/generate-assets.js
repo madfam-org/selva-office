@@ -5,7 +5,10 @@
  * Uses @napi-rs/canvas to render templates defined in
  * packages/shared-types/src/sprite-data/*.json
  *
- * Usage:  node scripts/generate-assets.js
+ * Usage:
+ *   node scripts/generate-assets.js              # base assets only
+ *   node scripts/generate-assets.js --variants   # base + all variant presets
+ *   node scripts/generate-assets.js --preset cyberpunk  # base + themed tileset
  */
 
 const { createCanvas } = require('@napi-rs/canvas');
@@ -249,7 +252,23 @@ function generateIcon(name, filename) {
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// CLI flags
+// ---------------------------------------------------------------------------
+function parseFlags() {
+  const args = process.argv.slice(2);
+  let generateVariants = false;
+  let presetName = null;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--variants') generateVariants = true;
+    if (args[i] === '--preset' && args[i + 1]) presetName = args[++i];
+  }
+  return { generateVariants, presetName };
+}
+
 async function main() {
+  const flags = parseFlags();
+
   for (const dir of Object.values(DIRS)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -298,7 +317,23 @@ async function main() {
     console.log(`  wrote ${path.relative(process.cwd(), filepath)} (${buffer.length} bytes)`);
   }
 
-  console.log(`\nGenerated ${assets.length} assets.`);
+  console.log(`\nGenerated ${assets.length} base assets.`);
+
+  // Variant generation (if requested)
+  if (flags.generateVariants) {
+    const { execSync } = require('node:child_process');
+    console.log('\nGenerating sprite variants...');
+    execSync('node scripts/generate-variants.js', { stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
+    console.log('Generating tileset variants...');
+    execSync('node scripts/generate-tile-variants.js', { stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
+  }
+
+  // Single preset tileset (if requested)
+  if (flags.presetName) {
+    const { execSync } = require('node:child_process');
+    console.log(`\nGenerating tileset for preset "${flags.presetName}"...`);
+    execSync(`node scripts/generate-tile-variants.js --presets ${flags.presetName}`, { stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
+  }
 }
 
 main().catch(console.error);

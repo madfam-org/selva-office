@@ -19,7 +19,9 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "clean": "turbo clean && rm -rf node_modules",
     "prepare": "husky",
-    "generate-assets": "node scripts/generate-assets.js"
+    "generate-assets": "node scripts/generate-assets.js",
+    "generate-variants": "node scripts/generate-variants.js && node scripts/generate-tile-variants.js",
+    "generate-map": "node scripts/generate-map.js"
   },
   "pnpm": {
     "overrides": {
