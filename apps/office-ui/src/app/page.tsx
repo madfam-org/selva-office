@@ -8,10 +8,13 @@ import { EmotePicker } from '@/components/EmotePicker';
 import { AvatarEditor } from '@/components/AvatarEditor';
 import { CoWebsitePanel } from '@/components/CoWebsitePanel';
 import { PopupOverlay } from '@/components/PopupOverlay';
+import { VideoOverlay } from '@/components/VideoOverlay';
+import { MediaControls } from '@/components/MediaControls';
 import { useApprovals } from '@/hooks/useApprovals';
 import { useColyseus } from '@/hooks/useColyseus';
-import type { PlayerEmoteEvent } from '@/hooks/useColyseus';
+import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal } from '@/hooks/useColyseus';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
+import { useProximityVideo } from '@/hooks/useProximityVideo';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
 import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
@@ -44,6 +47,18 @@ export default function HomePage() {
     gameEventBusRef.current?.emit('player-emote', event);
   }, []);
 
+  // Refs for bridging proximity video callbacks (breaks circular dep between hooks)
+  const proximityUpdateRef = useRef<(update: ProximityUpdate) => void>(() => {});
+  const webrtcSignalRef = useRef<(signal: WebRTCSignal) => void>(() => {});
+
+  const handleProximityUpdate = useCallback((update: ProximityUpdate) => {
+    proximityUpdateRef.current(update);
+  }, []);
+
+  const handleWebRTCSignal = useCallback((signal: WebRTCSignal) => {
+    webrtcSignalRef.current(signal);
+  }, []);
+
   const {
     officeState,
     connected: colyseusConnected,
@@ -52,7 +67,32 @@ export default function HomePage() {
     sendChat,
     sendEmote,
     sendAvatarConfig,
-  } = useColyseus({ playerName: 'Tactician', onPlayerEmote: handlePlayerEmote });
+    sendSignal,
+  } = useColyseus({
+    playerName: 'Tactician',
+    onPlayerEmote: handlePlayerEmote,
+    onProximityUpdate: handleProximityUpdate,
+    onWebRTCSignal: handleWebRTCSignal,
+  });
+
+  const {
+    peers,
+    localStream,
+    audioEnabled,
+    videoEnabled,
+    toggleAudio,
+    toggleVideo,
+    handleProximityUpdate: videoHandleProximity,
+    handleWebRTCSignal: videoHandleSignal,
+  } = useProximityVideo({
+    localSessionId: sessionId,
+    sendSignal,
+    enabled: colyseusConnected,
+  });
+
+  // Wire up the refs now that both hooks are initialized
+  proximityUpdateRef.current = videoHandleProximity;
+  webrtcSignalRef.current = videoHandleSignal;
   const {
     pendingApprovals,
     approve,
@@ -178,6 +218,15 @@ export default function HomePage() {
         messages={officeState?.chatMessages ?? []}
         onSend={sendChat}
         localSessionId={sessionId ?? ''}
+      />
+
+      <VideoOverlay peers={peers} localStream={localStream} />
+      <MediaControls
+        audioEnabled={audioEnabled}
+        videoEnabled={videoEnabled}
+        onToggleAudio={toggleAudio}
+        onToggleVideo={toggleVideo}
+        visible={peers.length > 0 || !!localStream}
       />
 
       <EmotePicker onEmote={handleEmote} />
