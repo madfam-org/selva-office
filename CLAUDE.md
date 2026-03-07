@@ -183,6 +183,22 @@ The `packages/skills/` package implements the AgentSkills standard.
 - Remote players' avatar textures are applied during `reconcileRemotePlayers()`
   based on their `avatarConfig` schema field.
 
+### Proximity Video/Audio (WebRTC)
+
+- **Server-side**: `proximity.ts` runs a 5Hz loop calculating which players are
+  within 200px. It sends `proximity_players` messages to each client listing
+  nearby session IDs. `signaling.ts` relays `webrtc_signal` messages between
+  clients (SDP offers/answers, ICE candidates) — pure pass-through.
+- **Client-side**: `useProximityVideo` hook manages peer connections using
+  `simple-peer` (25KB). On receiving `proximity_players`, the client with the
+  lexicographically lower sessionId initiates offers (deterministic, no races).
+  Max 6 peers per group.
+- **UI**: `VideoOverlay.tsx` renders 64px circular `<video>` bubbles (React DOM
+  over Phaser canvas). `MediaControls.tsx` provides M (mute) and V (camera)
+  toggle buttons.
+- **STUN**: Google free STUN servers for dev. Add coturn for production.
+- **Dependency**: `simple-peer@^9.11.1`, `@types/simple-peer@^9.11.8`.
+
 ### Interactive Map Objects
 
 - `InteractableManager` (`apps/office-ui/src/game/InteractableManager.ts`) parses

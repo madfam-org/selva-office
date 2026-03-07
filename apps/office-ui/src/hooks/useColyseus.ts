@@ -19,9 +19,20 @@ export interface PlayerEmoteEvent {
   emoteType: string;
 }
 
+export interface ProximityUpdate {
+  nearbySessionIds: string[];
+}
+
+export interface WebRTCSignal {
+  fromSessionId: string;
+  signal: unknown;
+}
+
 interface ColyseusOptions {
   playerName?: string;
   onPlayerEmote?: (event: PlayerEmoteEvent) => void;
+  onProximityUpdate?: (update: ProximityUpdate) => void;
+  onWebRTCSignal?: (signal: WebRTCSignal) => void;
 }
 
 interface ColyseusState {
@@ -34,6 +45,7 @@ interface ColyseusState {
   sendChat: (content: string) => void;
   sendEmote: (type: string) => void;
   sendAvatarConfig: (config: string) => void;
+  sendSignal: (targetSessionId: string, signal: unknown) => void;
 }
 
 interface RoomLike {
@@ -90,6 +102,10 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
   playerNameRef.current = opts.playerName;
   const onPlayerEmoteRef = useRef(opts.onPlayerEmote);
   onPlayerEmoteRef.current = opts.onPlayerEmote;
+  const onProximityUpdateRef = useRef(opts.onProximityUpdate);
+  onProximityUpdateRef.current = opts.onProximityUpdate;
+  const onWebRTCSignalRef = useRef(opts.onWebRTCSignal);
+  onWebRTCSignalRef.current = opts.onWebRTCSignal;
 
   const sendMove = useCallback((x: number, y: number) => {
     roomRef.current?.send('move', { x, y });
@@ -105,6 +121,10 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
 
   const sendAvatarConfig = useCallback((config: string) => {
     roomRef.current?.send('avatar', { config });
+  }, []);
+
+  const sendSignal = useCallback((targetSessionId: string, signal: unknown) => {
+    roomRef.current?.send('webrtc_signal', { targetSessionId, signal });
   }, []);
 
   const connect = useCallback(async () => {
@@ -159,6 +179,16 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
         onPlayerEmoteRef.current?.(event);
       });
 
+      // Listen for proximity updates (for WebRTC peer management)
+      (room as unknown as RoomLike).onMessage('proximity_players', (message: unknown) => {
+        onProximityUpdateRef.current?.(message as ProximityUpdate);
+      });
+
+      // Listen for WebRTC signaling messages
+      (room as unknown as RoomLike).onMessage('webrtc_signal', (message: unknown) => {
+        onWebRTCSignalRef.current?.(message as WebRTCSignal);
+      });
+
       room.onLeave((code: number) => {
         setConnected(false);
         roomRef.current = null;
@@ -207,5 +237,6 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
     sendChat,
     sendEmote,
     sendAvatarConfig,
+    sendSignal,
   };
 }

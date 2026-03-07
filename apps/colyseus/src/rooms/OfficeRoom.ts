@@ -10,6 +10,9 @@ import { handleInteraction, handleApproval } from "../handlers/interaction";
 import { handleChat, addSystemMessage } from "../handlers/chat";
 import { handleEmote } from "../handlers/emotes";
 import { handleAvatar } from "../handlers/avatar";
+import { startProximityLoop } from "../handlers/proximity";
+import { handleSignaling } from "../handlers/signaling";
+import type { WebRTCSignalMessage } from "../handlers/signaling";
 
 interface MoveMessage {
   x: number;
@@ -87,6 +90,7 @@ const DEFAULT_DEPARTMENTS: Array<{
 
 export class OfficeRoom extends Room<OfficeStateSchema> {
   private nexusApiUrl: string = "http://localhost:4300";
+  private stopProximityLoop: (() => void) | null = null;
 
   onCreate(options: RoomOptions): void {
     console.log("[OfficeRoom] Room created");
@@ -146,6 +150,20 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       handleAvatar(this.state, client, message);
     });
 
+    this.onMessage(
+      "webrtc_signal",
+      (client: Client, message: WebRTCSignalMessage) => {
+        handleSignaling(client, message, () => this.clients);
+      }
+    );
+
+    // Start proximity detection loop at 5Hz for WebRTC peer management
+    this.stopProximityLoop = startProximityLoop(
+      this.state,
+      () => this.clients,
+      5
+    );
+
     console.log(
       `[OfficeRoom] Initialized with ${DEFAULT_DEPARTMENTS.length} departments`
     );
@@ -194,6 +212,10 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
   onDispose(): void {
     console.log("[OfficeRoom] Room disposed");
+    if (this.stopProximityLoop) {
+      this.stopProximityLoop();
+      this.stopProximityLoop = null;
+    }
     if (this.redisSubscriber) {
       this.redisSubscriber.quit().catch(() => {});
     }
