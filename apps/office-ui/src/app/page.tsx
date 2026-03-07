@@ -19,10 +19,11 @@ import { useColyseus } from '@/hooks/useColyseus';
 import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal } from '@/hooks/useColyseus';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
 import { useProximityVideo } from '@/hooks/useProximityVideo';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
 import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
 import type { ApprovalRequest, AvatarConfig } from '@autoswarm/shared-types';
+import { getSessionUser } from '@/lib/api';
 
 const PhaserGame = dynamic(() => import('@/game/PhaserGame'), {
   ssr: false,
@@ -63,6 +64,8 @@ export default function HomePage() {
     webrtcSignalRef.current(signal);
   }, []);
 
+  const sessionUser = useMemo(() => getSessionUser(), []);
+
   const {
     officeState,
     connected: colyseusConnected,
@@ -73,7 +76,7 @@ export default function HomePage() {
     sendAvatarConfig,
     sendSignal,
   } = useColyseus({
-    playerName: 'Tactician',
+    playerName: sessionUser?.name ?? sessionUser?.email ?? 'Tactician',
     onPlayerEmote: handlePlayerEmote,
     onProximityUpdate: handleProximityUpdate,
     onWebRTCSignal: handleWebRTCSignal,
@@ -234,6 +237,7 @@ export default function HomePage() {
         approvalsConnected={approvalsConnected}
         departments={officeState?.departments ?? []}
         playerPosition={playerPosition}
+        userName={sessionUser?.name ?? sessionUser?.email ?? null}
       />
 
       <DashboardPanel

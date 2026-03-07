@@ -36,7 +36,9 @@ function deriveTasksFromAgents(departments: Department[]): KanbanTask[] {
 
   departments.forEach((dept) => {
     dept.agents.forEach((agent: Agent) => {
-      if (!agent.currentTaskId) return;
+      // currentTaskId may be null (from API) or empty string (from Colyseus)
+      const taskId = agent.currentTaskId;
+      if (!taskId) return;
 
       let status: TaskStatus = 'backlog';
       switch (agent.status) {
@@ -47,7 +49,7 @@ function deriveTasksFromAgents(departments: Department[]): KanbanTask[] {
           status = 'review';
           break;
         case 'idle':
-          status = agent.currentTaskId ? 'done' : 'backlog';
+          status = taskId ? 'done' : 'backlog';
           break;
         case 'paused':
         case 'error':
@@ -56,9 +58,9 @@ function deriveTasksFromAgents(departments: Department[]): KanbanTask[] {
       }
 
       tasks.push({
-        id: agent.currentTaskId,
+        id: taskId,
         agentName: agent.name,
-        title: `Task ${agent.currentTaskId.substring(0, 8)}`,
+        title: `Task ${taskId.substring(0, 8)}`,
         status,
         departmentSlug: dept.slug,
       });
@@ -176,7 +178,7 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
                     (a) => a.currentTaskId,
                   ).length;
                   const synergyCount = dept.agents.reduce(
-                    (sum, a) => sum + a.synergyBonuses.length,
+                    (sum, a) => sum + (a.synergyBonuses?.length ?? 0),
                     0,
                   );
 

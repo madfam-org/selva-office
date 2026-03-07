@@ -121,9 +121,20 @@ The `packages/skills/` package implements the AgentSkills standard.
 - Agents have `skill_ids` (JSON column) and `effective_skills` (computed from
   `skill_ids` or `DEFAULT_ROLE_SKILLS` fallback). Skills flow from DB → API →
   Colyseus schema → Phaser UI badges.
-- The gateway `HeartbeatService` scrapes GitHub events and dispatches enemy waves
-  via WebSocket to the approvals endpoint, which converts them into `SwarmTask`
-  records enqueued on Redis.
+- The gateway `HeartbeatService` (cron-based, `apps/gateway/`) scrapes GitHub
+  events and dispatches enemy waves via WebSocket to the approvals endpoint,
+  which converts them into `SwarmTask` records enqueued on Redis.
+- **GitHub webhook endpoint**: `POST /api/v1/gateway/github` receives push-based
+  webhooks from GitHub (PR opened/synced, issues opened, CI failures). Verifies
+  `x-hub-signature-256` via `GITHUB_WEBHOOK_SECRET` env var. Maps events to
+  SwarmTasks and enqueues on Redis.
+- **Agent movement**: `AgentBehavior` (`apps/office-ui/src/game/AgentBehavior.ts`)
+  drives agent patrol within department zones (idle), walk-to-review-station
+  (waiting_approval), and freeze (working/error). 30px/s patrol, 60px/s to station.
+- **Auth flow**: Next.js middleware checks `janua-session` cookie. Login page
+  supports both dev bypass (dummy JWT) and Janua SSO redirect (when
+  `NEXT_PUBLIC_JANUA_ISSUER_URL` is set). `apiFetch()` in `src/lib/api.ts`
+  attaches Bearer token from cookie to all API calls.
 - Worker graph nodes (`plan`, `implement`, `review`) use `call_llm()` from
   `autoswarm_workers.inference` with a `ModelRouter` that auto-discovers providers
   from env vars. Graphs fall back to static logic when no LLM is configured.

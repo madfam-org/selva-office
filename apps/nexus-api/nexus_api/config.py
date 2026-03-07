@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     dhanam_api_url: str = "https://api.dhan.am"
     dhanam_webhook_secret: str = ""
 
+    # -- Gateway (GitHub webhooks) ---------------------------------------------
+    github_webhook_secret: str = ""
+
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None

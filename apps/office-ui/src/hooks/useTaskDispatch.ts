@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
+import { apiFetch } from '@/lib/api';
 
 export interface DispatchRequest {
   description: string;
@@ -40,11 +38,9 @@ export function useTaskDispatch(): {
     setError(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/swarms/dispatch`, {
+      const res = await apiFetch('/api/v1/swarms/dispatch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
-        credentials: 'include',
       });
 
       if (!res.ok) {

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI
@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .database import engine
-from .routers import agents, approvals, billing, departments, health, skills, swarms
+from .routers import agents, approvals, billing, departments, gateway, health, skills, swarms
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(swarms.router, prefix="/api/v1/swarms")
     app.include_router(billing.router, prefix="/api/v1/billing")
     app.include_router(skills.router, prefix="/api/v1/skills")
+    app.include_router(gateway.router, prefix="/api/v1/gateway")
 
     return app
 

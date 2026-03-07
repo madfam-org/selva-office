@@ -8,6 +8,7 @@ import { VirtualJoystick } from '../VirtualJoystick';
 import { TouchActionButtons } from '../TouchActionButtons';
 import { InteractableManager } from '../InteractableManager';
 import { ScriptBridge } from '../scripting/ScriptBridge';
+import { AgentBehavior } from '../AgentBehavior';
 import type {
   OfficeState,
   Department,
@@ -109,6 +110,7 @@ export class OfficeScene extends Phaser.Scene {
   private worldHeight: number = 720;
   private dustEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ambientEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private agentBehavior: AgentBehavior = new AgentBehavior();
 
   constructor() {
     super({ key: 'OfficeScene' });
@@ -409,6 +411,32 @@ export class OfficeScene extends Phaser.Scene {
         this.handleProximityInteraction('inspect');
       }
     }
+
+    // Update agent movement behavior
+    const delta = this.game.loop.delta;
+    this.agentSprites.forEach((agentSprite) => {
+      const deptSlug = this.findAgentDepartmentSlug(agentSprite.agentId);
+      const layout = deptSlug ? this.departmentLayouts.get(deptSlug) : null;
+      const zoneBounds = layout ? { x: layout.x, y: layout.y, width: 192, height: 160 } : null;
+
+      const stationSprite = deptSlug ? this.reviewStations.get(deptSlug) : null;
+      const reviewStation = stationSprite ? { x: stationSprite.x, y: stationSprite.y } : null;
+
+      const result = this.agentBehavior.update(
+        agentSprite.agentId,
+        agentSprite.sprite.x,
+        agentSprite.sprite.y,
+        delta,
+        zoneBounds,
+        reviewStation,
+      );
+
+      if (result) {
+        agentSprite.sprite.setPosition(result.x, result.y);
+        agentSprite.statusHalo.setPosition(result.x, result.y + 4);
+        agentSprite.nameBackground.setPosition(result.x, result.y + 23);
+      }
+    });
 
     // Animate alert icons + agent status particles
     const updateTime = this.time.now;
@@ -766,6 +794,7 @@ export class OfficeScene extends Phaser.Scene {
         agentSprite.nameBackground.destroy();
         if (agentSprite.breathingTween) agentSprite.breathingTween.stop();
         if (agentSprite.haloTween) agentSprite.haloTween.stop();
+        this.agentBehavior.removeAgent(agentId);
         this.agentSprites.delete(agentId);
       }
     });
@@ -888,6 +917,8 @@ export class OfficeScene extends Phaser.Scene {
       // Update status halo color + pulse
       if (existing.agentStatus !== agent.status) {
         existing.agentStatus = agent.status;
+        // Notify behavior system of status change
+        this.agentBehavior.initAgent(agent.id, existing.sprite.x, existing.sprite.y, agent.status);
         const haloStyle = this.getHaloStyle(agent.status);
         existing.statusHalo.setFillStyle(haloStyle.color, haloStyle.alpha);
 
@@ -1026,6 +1057,9 @@ export class OfficeScene extends Phaser.Scene {
       haloTween,
       lastParticleTime: 0,
     });
+
+    // Initialize movement behavior
+    this.agentBehavior.initAgent(agent.id, spriteX, spriteY, agent.status);
   }
 
   private getHaloStyle(status: string): { color: number; alpha: number } {
@@ -1035,6 +1069,16 @@ export class OfficeScene extends Phaser.Scene {
       case 'error': return { color: 0xef4444, alpha: 0.3 };
       default: return { color: 0x64748b, alpha: 0.2 };
     }
+  }
+
+  private findAgentDepartmentSlug(agentId: string): string | null {
+    if (!this.officeState) return null;
+    for (const dept of this.officeState.departments) {
+      if (dept.agents?.some((a: Agent) => a.id === agentId)) {
+        return dept.slug;
+      }
+    }
+    return null;
   }
 
   private updateLocalAvatarTexture(): void {
