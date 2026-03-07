@@ -227,10 +227,39 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   private redisSubscriber: import("redis").RedisClientType | null = null;
 
   private async fetchAgentsFromApi(): Promise<void> {
-    for (const [deptId, dept] of this.state.departments) {
+    // Build a slug->colyseus-dept map for matching API departments to state.
+    const slugToDept = new Map<string, { stateKey: string; dept: DepartmentSchema }>();
+    this.state.departments.forEach((dept, key) => {
+      slugToDept.set(dept.slug, { stateKey: key, dept });
+    });
+
+    // Fetch the department list from the API (which uses real UUID IDs).
+    let apiDepts: Array<Record<string, any>>;
+    try {
+      const listResp = await fetch(
+        `${this.nexusApiUrl}/api/v1/departments/`,
+        { headers: { Authorization: "Bearer dev-token" } }
+      );
+      if (!listResp.ok) {
+        console.error("[OfficeRoom] Failed to fetch department list:", listResp.status);
+        return;
+      }
+      apiDepts = (await listResp.json()) as Array<Record<string, any>>;
+    } catch (err) {
+      console.error("[OfficeRoom] Failed to fetch department list:", err);
+      return;
+    }
+
+    // For each API department, fetch its detail (with agents) and populate state.
+    for (const apiDept of apiDepts) {
+      const match = slugToDept.get(apiDept.slug as string);
+      if (!match) continue;
+      const { stateKey, dept } = match;
+
       try {
         const resp = await fetch(
-          `${this.nexusApiUrl}/api/v1/departments/${deptId}`
+          `${this.nexusApiUrl}/api/v1/departments/${apiDept.id}`,
+          { headers: { Authorization: "Bearer dev-token" } }
         );
         if (!resp.ok) continue;
         const detail = (await resp.json()) as Record<string, any>;
@@ -247,7 +276,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
           agent.y = dept.y + 48 + Math.floor(i / 3) * 48;
           agent.currentTaskId = a.current_task_id ?? "";
           agent.currentTaskDescription = "";
-          agent.departmentId = deptId;
+          agent.departmentId = stateKey;
           const skills = (a.effective_skills ?? []) as string[];
           for (const skill of skills) {
             agent.skills.push(skill);
@@ -255,16 +284,16 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
           dept.agents.push(agent);
         }
         console.log(
-          `[OfficeRoom] Loaded ${agents.length} agents into ${deptId}`
+          `[OfficeRoom] Loaded ${agents.length} agents into ${dept.slug} (${stateKey})`
         );
-        this.rebuildAgentIndex();
       } catch (err) {
         console.error(
-          `[OfficeRoom] Failed to fetch agents for ${deptId}:`,
+          `[OfficeRoom] Failed to fetch agents for ${dept.slug}:`,
           err
         );
       }
     }
+    this.rebuildAgentIndex();
   }
 
   private async subscribeToAgentUpdates(): Promise<void> {

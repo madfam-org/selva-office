@@ -14,7 +14,10 @@ app.get("/health", (_req, res) => {
 });
 
 const server = new Server({
-  transport: new WebSocketTransport({ server: app.listen(PORT) }),
+  transport: new WebSocketTransport({
+    server: app.listen(PORT),
+    maxPayload: 1024 * 1024, // 1 MB — default is too small for state with agents
+  }),
 });
 
 server.define("office", OfficeRoom, { nexusApiUrl: NEXUS_API_URL });

@@ -33,13 +33,14 @@ function makeAgent(overrides: {
 function makeDepartment(
   id: string,
   agents: any[],
+  slug?: string,
   x = 100,
   y = 100
 ) {
   return {
     id,
     name: id,
-    slug: id,
+    slug: slug ?? id.replace("dept-", ""),
     maxAgents: 6,
     x,
     y,
@@ -52,86 +53,42 @@ function makeState(departments: Map<string, any>, pendingApprovalCount = 0) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Simulates the slug-based fetchAgentsFromApi logic from OfficeRoom.ts:
+//   1. Build slug→dept map from Colyseus state
+//   2. Fetch department list from API (UUIDs + slugs)
+//   3. Match by slug
+//   4. Fetch detail by API UUID for each matched department
 // ---------------------------------------------------------------------------
-
-describe("fetchAgentsFromApi", () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    mockFetch = vi.fn();
-    vi.stubGlobal("fetch", mockFetch);
+async function simulateFetchAgentsFromApi(
+  state: any,
+  nexusApiUrl: string
+): Promise<void> {
+  const slugToDept = new Map<string, { stateKey: string; dept: any }>();
+  state.departments.forEach((dept: any, key: string) => {
+    slugToDept.set(dept.slug, { stateKey: key, dept });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("populates agents into departments from API response", async () => {
-    const dept = makeDepartment("dept-engineering", []);
-    const departments = new Map([["dept-engineering", dept]]);
-
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        agents: [
-          { id: "a1", name: "Ada", role: "coder", status: "idle", level: 2 },
-          { id: "a2", name: "Bob", role: "reviewer", status: "working", level: 3 },
-        ],
-      }),
+  let apiDepts: Array<Record<string, any>>;
+  try {
+    const listResp = await fetch(`${nexusApiUrl}/api/v1/departments/`, {
+      headers: { Authorization: "Bearer dev-token" },
     });
+    if (!listResp.ok) return;
+    apiDepts = (await listResp.json()) as Array<Record<string, any>>;
+  } catch {
+    return;
+  }
 
-    // Simulate fetchAgentsFromApi logic
-    for (const [deptId, d] of departments) {
-      const resp = await fetch(`http://localhost:4300/api/v1/departments/${deptId}`);
-      if (!resp.ok) continue;
-      const detail = (await resp.json()) as Record<string, any>;
-      const agents = (detail.agents ?? []) as Array<Record<string, any>>;
-      for (let i = 0; i < agents.length; i++) {
-        const a = agents[i];
-        d.agents.push({
-          id: a.id,
-          name: a.name,
-          role: a.role,
-          status: a.status ?? "idle",
-          level: a.level ?? 1,
-          x: d.x + 48 + (i % 3) * 48,
-          y: d.y + 48 + Math.floor(i / 3) * 48,
-        });
-      }
-    }
+  for (const apiDept of apiDepts) {
+    const match = slugToDept.get(apiDept.slug as string);
+    if (!match) continue;
+    const { stateKey, dept } = match;
 
-    expect(dept.agents).toHaveLength(2);
-    expect(dept.agents[0].id).toBe("a1");
-    expect(dept.agents[0].name).toBe("Ada");
-    expect(dept.agents[1].role).toBe("reviewer");
-    // Verify positioning
-    expect(dept.agents[0].x).toBe(148); // 100 + 48 + (0 % 3) * 48
-    expect(dept.agents[1].x).toBe(196); // 100 + 48 + (1 % 3) * 48
-  });
-
-  it("populates skills array from effective_skills", async () => {
-    const dept = makeDepartment("dept-engineering", []);
-    const departments = new Map([["dept-engineering", dept]]);
-
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        agents: [
-          {
-            id: "a1",
-            name: "Ada",
-            role: "coder",
-            status: "idle",
-            level: 2,
-            effective_skills: ["coding", "webapp-testing"],
-          },
-        ],
-      }),
-    });
-
-    for (const [deptId, d] of departments) {
-      const resp = await fetch(`http://localhost:4300/api/v1/departments/${deptId}`);
+    try {
+      const resp = await fetch(
+        `${nexusApiUrl}/api/v1/departments/${apiDept.id}`,
+        { headers: { Authorization: "Bearer dev-token" } }
+      );
       if (!resp.ok) continue;
       const detail = (await resp.json()) as Record<string, any>;
       const agents = (detail.agents ?? []) as Array<Record<string, any>>;
@@ -143,83 +100,251 @@ describe("fetchAgentsFromApi", () => {
           role: a.role,
           status: a.status ?? "idle",
           level: a.level ?? 1,
-          x: d.x + 48 + (i % 3) * 48,
-          y: d.y + 48 + Math.floor(i / 3) * 48,
+          x: dept.x + 48 + (i % 3) * 48,
+          y: dept.y + 48 + Math.floor(i / 3) * 48,
+          currentTaskId: a.current_task_id ?? "",
+          currentTaskDescription: "",
+          departmentId: stateKey,
           skills: [] as string[],
         };
         const skills = (a.effective_skills ?? []) as string[];
         for (const skill of skills) {
           agentObj.skills.push(skill);
         }
-        d.agents.push(agentObj);
+        dept.agents.push(agentObj);
       }
+    } catch {
+      // skip failed department
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("fetchAgentsFromApi (slug-based matching)", () => {
+  const NEXUS_URL = "http://localhost:4300";
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("populates agents into departments matched by slug", async () => {
+    const dept = makeDepartment("dept-engineering", [], "engineering");
+    const state = makeState(new Map([["dept-engineering", dept]]));
+
+    // First call: department list (returns API UUIDs + slugs)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        { id: "uuid-eng-123", slug: "engineering", name: "Engineering" },
+      ],
+    });
+
+    // Second call: department detail (returns agents)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        agents: [
+          { id: "a1", name: "Ada", role: "coder", status: "idle", level: 2 },
+          { id: "a2", name: "Bob", role: "reviewer", status: "working", level: 3 },
+        ],
+      }),
+    });
+
+    await simulateFetchAgentsFromApi(state, NEXUS_URL);
+
+    expect(dept.agents).toHaveLength(2);
+    expect(dept.agents[0].id).toBe("a1");
+    expect(dept.agents[0].name).toBe("Ada");
+    expect(dept.agents[1].role).toBe("reviewer");
+    // Verify positioning
+    expect(dept.agents[0].x).toBe(148); // 100 + 48 + (0 % 3) * 48
+    expect(dept.agents[1].x).toBe(196); // 100 + 48 + (1 % 3) * 48
+
+    // Verify fetch was called with API UUID, not Colyseus dept ID
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      `${NEXUS_URL}/api/v1/departments/`,
+      expect.objectContaining({ headers: { Authorization: "Bearer dev-token" } })
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      `${NEXUS_URL}/api/v1/departments/uuid-eng-123`,
+      expect.objectContaining({ headers: { Authorization: "Bearer dev-token" } })
+    );
+  });
+
+  it("populates skills array from effective_skills", async () => {
+    const dept = makeDepartment("dept-engineering", [], "engineering");
+    const state = makeState(new Map([["dept-engineering", dept]]));
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: "uuid-eng", slug: "engineering" }],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          agents: [
+            {
+              id: "a1",
+              name: "Ada",
+              role: "coder",
+              status: "idle",
+              level: 2,
+              effective_skills: ["coding", "webapp-testing"],
+            },
+          ],
+        }),
+      });
+
+    await simulateFetchAgentsFromApi(state, NEXUS_URL);
 
     expect(dept.agents).toHaveLength(1);
     expect(dept.agents[0].skills).toEqual(["coding", "webapp-testing"]);
   });
 
-  it("handles API failure gracefully (department stays empty)", async () => {
-    const dept = makeDepartment("dept-research", []);
-    const departments = new Map([["dept-research", dept]]);
+  it("handles department list API failure gracefully", async () => {
+    const dept = makeDepartment("dept-research", [], "research");
+    const state = makeState(new Map([["dept-research", dept]]));
 
-    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
 
-    for (const [deptId, d] of departments) {
-      const resp = await fetch(`http://localhost:4300/api/v1/departments/${deptId}`);
-      if (!resp.ok) continue;
-    }
+    await simulateFetchAgentsFromApi(state, NEXUS_URL);
 
+    // Only the list call should have been made
+    expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(dept.agents).toHaveLength(0);
   });
 
-  it("populates currentTaskId and departmentId from API response", async () => {
-    const dept = makeDepartment("dept-engineering", []);
-    const departments = new Map([["dept-engineering", dept]]);
+  it("handles department detail API failure gracefully", async () => {
+    const dept = makeDepartment("dept-research", [], "research");
+    const state = makeState(new Map([["dept-research", dept]]));
 
-    mockFetch.mockResolvedValue({
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: "uuid-res", slug: "research" }],
+      })
+      .mockResolvedValueOnce({ ok: false, status: 404 });
+
+    await simulateFetchAgentsFromApi(state, NEXUS_URL);
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(dept.agents).toHaveLength(0);
+  });
+
+  it("skips API departments that don't match any Colyseus department slug", async () => {
+    const dept = makeDepartment("dept-engineering", [], "engineering");
+    const state = makeState(new Map([["dept-engineering", dept]]));
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        { id: "uuid-eng", slug: "engineering" },
+        { id: "uuid-marketing", slug: "marketing" }, // no match in Colyseus
+      ],
+    });
+
+    // Only the engineering detail call should happen
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        agents: [
-          {
-            id: "a1",
-            name: "Ada",
-            role: "coder",
-            status: "working",
-            level: 2,
-            current_task_id: "task-abc",
-            effective_skills: [],
-          },
-        ],
+        agents: [{ id: "a1", name: "Ada", role: "coder" }],
       }),
     });
 
-    for (const [deptId, d] of departments) {
-      const resp = await fetch(`http://localhost:4300/api/v1/departments/${deptId}`);
-      if (!resp.ok) continue;
-      const detail = (await resp.json()) as Record<string, any>;
-      const agents = (detail.agents ?? []) as Array<Record<string, any>>;
-      for (let i = 0; i < agents.length; i++) {
-        const a = agents[i];
-        d.agents.push({
-          id: a.id,
-          name: a.name,
-          role: a.role,
-          status: a.status ?? "idle",
-          level: a.level ?? 1,
-          x: d.x + 48 + (i % 3) * 48,
-          y: d.y + 48 + Math.floor(i / 3) * 48,
-          currentTaskId: a.current_task_id ?? "",
-          currentTaskDescription: "",
-          departmentId: deptId,
-        });
-      }
-    }
+    await simulateFetchAgentsFromApi(state, NEXUS_URL);
+
+    // 1 list call + 1 detail call (marketing skipped)
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(dept.agents).toHaveLength(1);
+  });
+
+  it("populates currentTaskId and departmentId from API response", async () => {
+    const dept = makeDepartment("dept-engineering", [], "engineering");
+    const state = makeState(new Map([["dept-engineering", dept]]));
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: "uuid-eng", slug: "engineering" }],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          agents: [
+            {
+              id: "a1",
+              name: "Ada",
+              role: "coder",
+              status: "working",
+              level: 2,
+              current_task_id: "task-abc",
+              effective_skills: [],
+            },
+          ],
+        }),
+      });
+
+    await simulateFetchAgentsFromApi(state, NEXUS_URL);
 
     expect(dept.agents).toHaveLength(1);
     expect(dept.agents[0].currentTaskId).toBe("task-abc");
     expect(dept.agents[0].departmentId).toBe("dept-engineering");
     expect(dept.agents[0].currentTaskDescription).toBe("");
+  });
+
+  it("populates multiple departments in a single pass", async () => {
+    const engDept = makeDepartment("dept-engineering", [], "engineering", 100, 100);
+    const resDept = makeDepartment("dept-research", [], "research", 600, 100);
+    const state = makeState(
+      new Map([
+        ["dept-engineering", engDept],
+        ["dept-research", resDept],
+      ])
+    );
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { id: "uuid-eng", slug: "engineering" },
+          { id: "uuid-res", slug: "research" },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          agents: [{ id: "a1", name: "Ada", role: "coder" }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          agents: [{ id: "a2", name: "Bob", role: "researcher" }],
+        }),
+      });
+
+    await simulateFetchAgentsFromApi(state, NEXUS_URL);
+
+    expect(engDept.agents).toHaveLength(1);
+    expect(engDept.agents[0].id).toBe("a1");
+    expect(resDept.agents).toHaveLength(1);
+    expect(resDept.agents[0].id).toBe("a2");
+    // Verify each agent got its own department's position
+    expect(engDept.agents[0].x).toBe(148); // 100 + 48
+    expect(resDept.agents[0].x).toBe(648); // 600 + 48
   });
 });
 

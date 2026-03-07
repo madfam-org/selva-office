@@ -144,6 +144,7 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       room.onStateChange((rawState: any) => {
         const state = rawState as Record<string, unknown>;
+
         const departments = parseMapSchema<Department>(state.departments);
         const reviewStations = (state.reviewStations ?? []) as ReviewStation[];
         const players = parseMapSchema<Player>(state.players);

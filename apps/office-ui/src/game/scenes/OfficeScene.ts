@@ -69,7 +69,7 @@ interface RemotePlayerSprite {
 /** Department zone layout positions on the office grid (procedural fallback) */
 const DEPARTMENT_LAYOUT: Record<string, { x: number; y: number; label: string }> = {
   engineering: { x: 96, y: 80, label: 'ENGINEERING' },
-  sales: { x: 480, y: 80, label: 'SALES' },
+  crm: { x: 480, y: 80, label: 'CRM' },
   support: { x: 96, y: 400, label: 'SUPPORT' },
   research: { x: 480, y: 400, label: 'RESEARCH' },
 };

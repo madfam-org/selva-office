@@ -39,7 +39,7 @@ make post-process     # Optional ImageMagick upscale/WebP conversion
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (343 tests across 24 suites)
+pnpm test             # TypeScript tests (351 tests across 25 suites)
 pnpm typecheck        # TypeScript type checking
 
 uv run pytest         # Python tests (231 tests)
@@ -140,6 +140,22 @@ The `packages/skills/` package implements the AgentSkills standard.
   from env vars. Graphs fall back to static logic when no LLM is configured.
 - The permission matrix is evaluated by `packages/permissions/src/engine.py` before
   every tool invocation in the worker.
+- **Colyseus tsconfig**: `apps/colyseus/tsconfig.json` MUST have
+  `"useDefineForClassFields": false` alongside `"experimentalDecorators": true`.
+  Without this, ES2022+ class field semantics override `@type` decorator
+  getter/setters, causing `encodeAll()` to emit 0 bytes and clients to receive
+  empty state. This is a hard requirement for `@colyseus/schema` decorators.
+- **WebSocket payload**: `WebSocketTransport` is configured with
+  `maxPayload: 1024 * 1024` (1 MB) because the default ws limit is too small
+  when state includes 12+ agents.
+- **GameEventBus caching**: `PhaserGame.tsx`'s `GameEventBus` caches the last
+  emitted value per event key and replays it to late subscribers. This fixes a
+  timing race where Colyseus state arrives before the Phaser `OfficeScene` is
+  created.
+- **Slug-based department matching**: `OfficeRoom.fetchAgentsFromApi()` matches
+  API departments (which use UUID IDs) to Colyseus departments (which use
+  hardcoded string IDs like `dept-engineering`) by slug. It first fetches the
+  department list, then fetches detail by API UUID for each slug match.
 
 ### Multi-Player & Chat
 
