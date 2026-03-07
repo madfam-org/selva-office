@@ -9,6 +9,9 @@ export class AgentSchema extends Schema {
   @type("number") x: number = 0;
   @type("number") y: number = 0;
   @type(["string"]) skills = new ArraySchema<string>();
+  @type("string") currentTaskId: string = "";
+  @type("string") currentTaskDescription: string = "";
+  @type("string") departmentId: string = "";
 }
 
 export class DepartmentSchema extends Schema {

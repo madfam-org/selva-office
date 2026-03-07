@@ -12,6 +12,9 @@ function makeAgent(overrides: {
   level?: number;
   x?: number;
   y?: number;
+  currentTaskId?: string;
+  currentTaskDescription?: string;
+  departmentId?: string;
 }) {
   return {
     id: overrides.id,
@@ -21,6 +24,9 @@ function makeAgent(overrides: {
     level: overrides.level ?? 1,
     x: overrides.x ?? 0,
     y: overrides.y ?? 0,
+    currentTaskId: overrides.currentTaskId ?? "",
+    currentTaskDescription: overrides.currentTaskDescription ?? "",
+    departmentId: overrides.departmentId ?? "",
   } as any;
 }
 
@@ -166,6 +172,55 @@ describe("fetchAgentsFromApi", () => {
 
     expect(dept.agents).toHaveLength(0);
   });
+
+  it("populates currentTaskId and departmentId from API response", async () => {
+    const dept = makeDepartment("dept-engineering", []);
+    const departments = new Map([["dept-engineering", dept]]);
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        agents: [
+          {
+            id: "a1",
+            name: "Ada",
+            role: "coder",
+            status: "working",
+            level: 2,
+            current_task_id: "task-abc",
+            effective_skills: [],
+          },
+        ],
+      }),
+    });
+
+    for (const [deptId, d] of departments) {
+      const resp = await fetch(`http://localhost:4300/api/v1/departments/${deptId}`);
+      if (!resp.ok) continue;
+      const detail = (await resp.json()) as Record<string, any>;
+      const agents = (detail.agents ?? []) as Array<Record<string, any>>;
+      for (let i = 0; i < agents.length; i++) {
+        const a = agents[i];
+        d.agents.push({
+          id: a.id,
+          name: a.name,
+          role: a.role,
+          status: a.status ?? "idle",
+          level: a.level ?? 1,
+          x: d.x + 48 + (i % 3) * 48,
+          y: d.y + 48 + Math.floor(i / 3) * 48,
+          currentTaskId: a.current_task_id ?? "",
+          currentTaskDescription: "",
+          departmentId: deptId,
+        });
+      }
+    }
+
+    expect(dept.agents).toHaveLength(1);
+    expect(dept.agents[0].currentTaskId).toBe("task-abc");
+    expect(dept.agents[0].departmentId).toBe("dept-engineering");
+    expect(dept.agents[0].currentTaskDescription).toBe("");
+  });
 });
 
 describe("updateAgentInState", () => {
@@ -253,5 +308,60 @@ describe("updateAgentInState", () => {
     expect(agent.status).toBe("idle");
 
     warnSpy.mockRestore();
+  });
+
+  it("sets currentTaskId and currentTaskDescription on status update", () => {
+    const agent = makeAgent({
+      id: "a1",
+      name: "Ada",
+      role: "coder",
+      status: "idle",
+    });
+    const dept = makeDepartment("engineering", [agent]);
+    const state = makeState(new Map([["engineering", dept]]));
+
+    // Simulate updateAgentInState with task fields
+    state.departments.forEach((d: any) => {
+      for (let i = 0; i < d.agents.length; i++) {
+        if (d.agents[i].id === "a1") {
+          d.agents[i].status = "working";
+          d.agents[i].currentTaskId = "task-xyz";
+          d.agents[i].currentTaskDescription = "Fix login bug";
+        }
+      }
+    });
+
+    expect(agent.status).toBe("working");
+    expect(agent.currentTaskId).toBe("task-xyz");
+    expect(agent.currentTaskDescription).toBe("Fix login bug");
+  });
+
+  it("clears task fields when agent returns to idle without explicit task_id", () => {
+    const agent = makeAgent({
+      id: "a1",
+      name: "Ada",
+      role: "coder",
+      status: "working",
+      currentTaskId: "task-old",
+      currentTaskDescription: "Previous task",
+    });
+    const dept = makeDepartment("engineering", [agent]);
+    const state = makeState(new Map([["engineering", dept]]));
+
+    // Simulate updateAgentInState transition to idle (no taskId provided)
+    state.departments.forEach((d: any) => {
+      for (let i = 0; i < d.agents.length; i++) {
+        if (d.agents[i].id === "a1") {
+          d.agents[i].status = "idle";
+          // When taskId is undefined, clear task fields
+          d.agents[i].currentTaskId = "";
+          d.agents[i].currentTaskDescription = "";
+        }
+      }
+    });
+
+    expect(agent.status).toBe("idle");
+    expect(agent.currentTaskId).toBe("");
+    expect(agent.currentTaskDescription).toBe("");
   });
 });

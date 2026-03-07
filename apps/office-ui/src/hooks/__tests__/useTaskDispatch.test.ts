@@ -178,7 +178,6 @@ describe('useTaskDispatch', () => {
       'http://localhost:4300/api/v1/swarms/dispatch',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           description: 'Test body',
           graph_type: 'research',
@@ -186,6 +185,7 @@ describe('useTaskDispatch', () => {
           required_skills: ['coding'],
           payload: { key: 'value' },
         }),
+        credentials: 'include',
       }),
     );
   });

@@ -44,6 +44,8 @@ class AgentSummary(BaseModel):
     role: str
     status: str
     level: int
+    current_task_id: str | None = None
+    effective_skills: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -101,6 +103,8 @@ def _dept_to_detail(dept: Department) -> DepartmentDetailResponse:
                 role=a.role,
                 status=a.status,
                 level=a.level,
+                current_task_id=str(a.current_task_id) if a.current_task_id else None,
+                effective_skills=a.skill_ids or [],
             )
             for a in dept.agents
         ],

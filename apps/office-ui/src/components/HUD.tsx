@@ -11,6 +11,7 @@ interface HUDProps {
   approvalsConnected: boolean;
   departments?: Department[];
   playerPosition?: { x: number; y: number } | null;
+  userName?: string | null;
 }
 
 const WORLD_WIDTH = 1280;
@@ -113,6 +114,7 @@ export const HUD: FC<HUDProps> = ({
   approvalsConnected,
   departments = [],
   playerPosition = null,
+  userName = null,
 }) => {
   const tokenPercent = computeTokens
     ? Math.min((computeTokens.used / computeTokens.limit) * 100, 100)
@@ -131,28 +133,35 @@ export const HUD: FC<HUDProps> = ({
       role="status"
       aria-label="Game HUD"
     >
-      {/* Left: Compute Token Bar */}
-      <div className="pointer-events-auto retro-panel px-4 py-3 font-mono">
-        <div className="mb-1 flex items-center gap-2">
-          <span className="pixel-text text-[8px] uppercase text-slate-400">
-            Compute Tokens
-          </span>
+      {/* Left: Compute Token Bar + User Identity */}
+      <div className="pointer-events-auto flex flex-col gap-2">
+        <div className="retro-panel px-4 py-3 font-mono">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="pixel-text text-[8px] uppercase text-slate-400">
+              Compute Tokens
+            </span>
+          </div>
+          <div className="mb-1 h-3 w-48 bg-slate-900 pixel-border">
+            <div
+              className={`h-full transition-all duration-300 ${tokenBarColor}`}
+              style={{ width: `${tokenPercent}%` }}
+              role="progressbar"
+              aria-valuenow={computeTokens?.used ?? 0}
+              aria-valuemin={0}
+              aria-valuemax={computeTokens?.limit ?? 10000}
+              aria-label="Compute token usage"
+            />
+          </div>
+          <div className="flex justify-between text-[9px] text-slate-500">
+            <span>{computeTokens?.used.toLocaleString() ?? 0}</span>
+            <span>{computeTokens?.limit.toLocaleString() ?? 10000}</span>
+          </div>
         </div>
-        <div className="mb-1 h-3 w-48 bg-slate-900 pixel-border">
-          <div
-            className={`h-full transition-all duration-300 ${tokenBarColor}`}
-            style={{ width: `${tokenPercent}%` }}
-            role="progressbar"
-            aria-valuenow={computeTokens?.used ?? 0}
-            aria-valuemin={0}
-            aria-valuemax={computeTokens?.limit ?? 10000}
-            aria-label="Compute token usage"
-          />
-        </div>
-        <div className="flex justify-between text-[9px] text-slate-500">
-          <span>{computeTokens?.used.toLocaleString() ?? 0}</span>
-          <span>{computeTokens?.limit.toLocaleString() ?? 10000}</span>
-        </div>
+        {userName && (
+          <div className="retro-panel px-3 py-1.5 font-mono text-[8px] text-slate-400">
+            <span className="text-indigo-400">{userName}</span>
+          </div>
+        )}
       </div>
 
       {/* Center: Agent Count */}

@@ -245,6 +245,9 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
           agent.level = a.level ?? 1;
           agent.x = dept.x + 48 + (i % 3) * 48;
           agent.y = dept.y + 48 + Math.floor(i / 3) * 48;
+          agent.currentTaskId = a.current_task_id ?? "";
+          agent.currentTaskDescription = "";
+          agent.departmentId = deptId;
           const skills = (a.effective_skills ?? []) as string[];
           for (const skill of skills) {
             agent.skills.push(skill);
@@ -294,8 +297,15 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
           const update = JSON.parse(message) as {
             agent_id: string;
             status: string;
+            task_id?: string;
+            task_description?: string;
           };
-          this.updateAgentInState(update.agent_id, update.status);
+          this.updateAgentInState(
+            update.agent_id,
+            update.status,
+            update.task_id,
+            update.task_description
+          );
         } catch (err) {
           console.error("[OfficeRoom] Bad agent-status message:", err);
         }
@@ -316,20 +326,40 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     });
   }
 
-  private updateAgentInState(agentId: string, status: string): void {
+  private updateAgentInState(
+    agentId: string,
+    status: string,
+    taskId?: string,
+    taskDescription?: string
+  ): void {
+    const applyUpdate = (agent: AgentSchema): void => {
+      agent.status = status;
+      if (taskId !== undefined) {
+        agent.currentTaskId = taskId;
+      }
+      if (taskDescription !== undefined) {
+        agent.currentTaskDescription = taskDescription;
+      }
+      // Clear task fields when agent returns to idle
+      if (status === "idle" && taskId === undefined) {
+        agent.currentTaskId = "";
+        agent.currentTaskDescription = "";
+      }
+      if (status === "waiting_approval") {
+        this.state.pendingApprovalCount += 1;
+        addSystemMessage(
+          this.state,
+          `Agent ${agent.name} is waiting for approval`
+        );
+      }
+    };
+
     const entry = this.agentIndex.get(agentId);
     if (entry) {
       const dept = this.state.departments.get(entry.deptId);
       const agent = dept?.agents.at(entry.agentIndex);
       if (agent && agent.id === agentId) {
-        agent.status = status;
-        if (status === "waiting_approval") {
-          this.state.pendingApprovalCount += 1;
-          addSystemMessage(
-            this.state,
-            `Agent ${agent.name} is waiting for approval`
-          );
-        }
+        applyUpdate(agent);
         return;
       }
     }
@@ -341,14 +371,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       for (let i = 0; i < dept.agents.length; i++) {
         const agent = dept.agents.at(i);
         if (agent && agent.id === agentId) {
-          agent.status = status;
-          if (status === "waiting_approval") {
-            this.state.pendingApprovalCount += 1;
-            addSystemMessage(
-              this.state,
-              `Agent ${agent.name} is waiting for approval`
-            );
-          }
+          applyUpdate(agent);
           found = true;
           return;
         }
