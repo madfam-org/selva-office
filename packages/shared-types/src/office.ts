@@ -29,6 +29,7 @@ export interface Player {
   x: number;
   y: number;
   direction: 'up' | 'down' | 'left' | 'right';
+  avatarConfig?: string;
 }
 
 export interface ChatMessage {

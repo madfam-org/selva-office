@@ -3,18 +3,34 @@ import { GamepadManager } from '../GamepadManager';
 import { gameEventBus } from '../PhaserGame';
 import { loadTiledMap } from '../TiledMapLoader';
 import type { DepartmentZone } from '../TiledMapLoader';
+import { compositeAvatar } from '../AvatarCompositor';
 import type {
   OfficeState,
   Department,
   ReviewStation,
   Agent,
   Player,
+  AvatarConfig,
 } from '@autoswarm/shared-types';
 
 const TILE_SIZE = 32;
 const TACTICIAN_SPEED = 200;
 const PROXIMITY_THRESHOLD = 64;
 const MOVE_THROTTLE_MS = 66; // ~15fps
+const EMOTE_DURATION_MS = 3000;
+
+/** Maps emote type to spritesheet frame index */
+const EMOTE_FRAME_MAP: Record<string, number> = {
+  wave: 0,
+  thumbsup: 1,
+  heart: 2,
+  laugh: 3,
+  think: 4,
+  clap: 5,
+  fire: 6,
+  sparkle: 7,
+  coffee: 8,
+};
 
 interface AgentSprite {
   sprite: Phaser.GameObjects.Sprite;
@@ -54,6 +70,10 @@ export class OfficeScene extends Phaser.Scene {
   private localSessionId: string = '';
   private stateCleanup: (() => void) | null = null;
   private sessionIdCleanup: (() => void) | null = null;
+  private emoteCleanup: (() => void) | null = null;
+  private emotePickerCleanup: (() => void) | null = null;
+  private avatarConfigCleanup: (() => void) | null = null;
+  private localAvatarConfig: AvatarConfig | null = null;
   private helpOverlay!: Phaser.GameObjects.Container;
   private lastDirection: string = 'down';
   private lastMoveTime: number = 0;
@@ -97,9 +117,26 @@ export class OfficeScene extends Phaser.Scene {
       this.gamepadManager.setChatFocused(detail as boolean);
     });
 
+    // Listen for emote picker focus
+    this.emotePickerCleanup = gameEventBus.on('emote-picker-focus', (detail) => {
+      this.gamepadManager.setEmotePickerFocused(detail as boolean);
+    });
+
+    // Listen for emote broadcasts from server (via PhaserGame bridge)
+    this.emoteCleanup = gameEventBus.on('player-emote', (detail) => {
+      const { sessionId, emoteType } = detail as { sessionId: string; emoteType: string };
+      this.showEmoteBubble(sessionId, emoteType);
+    });
+
+    // Listen for avatar config updates from React
+    this.avatarConfigCleanup = gameEventBus.on('avatar-config', (detail) => {
+      this.localAvatarConfig = detail as AvatarConfig;
+      this.updateLocalAvatarTexture();
+    });
+
     // Add keyboard instructions text
     this.add
-      .text(this.worldWidth / 2, this.worldHeight - 8, 'WASD: Move | ENTER: Approve | ESC: Deny | E: Inspect | T: Chat | ?: Help', {
+      .text(this.worldWidth / 2, this.worldHeight - 8, 'WASD: Move | ENTER: Approve | ESC: Deny | E: Inspect | T: Chat | R: Emote | ?: Help', {
         fontFamily: '"Press Start 2P", monospace',
         fontSize: '8px',
         color: '#64748b',
@@ -243,6 +280,18 @@ export class OfficeScene extends Phaser.Scene {
     if (this.sessionIdCleanup) {
       this.sessionIdCleanup();
       this.sessionIdCleanup = null;
+    }
+    if (this.emoteCleanup) {
+      this.emoteCleanup();
+      this.emoteCleanup = null;
+    }
+    if (this.emotePickerCleanup) {
+      this.emotePickerCleanup();
+      this.emotePickerCleanup = null;
+    }
+    if (this.avatarConfigCleanup) {
+      this.avatarConfigCleanup();
+      this.avatarConfigCleanup = null;
     }
   }
 
@@ -403,6 +452,8 @@ export class OfficeScene extends Phaser.Scene {
       'ENTER / A      -  Approve',
       'ESC / B        -  Deny',
       'E / X          -  Inspect',
+      'T or /         -  Chat',
+      'R              -  Emotes (1-9)',
       'TAB            -  Menu',
       '?              -  Toggle Help',
     ];
@@ -479,9 +530,26 @@ export class OfficeScene extends Phaser.Scene {
         existing.targetY = player.y;
         existing.direction = player.direction;
         existing.label.setText(player.name);
+        // Update avatar texture if config changed
+        if (player.avatarConfig) {
+          try {
+            const cfg = JSON.parse(player.avatarConfig) as AvatarConfig;
+            const key = compositeAvatar(this, cfg);
+            if (existing.sprite.texture.key !== key) {
+              existing.sprite.setTexture(key);
+            }
+          } catch { /* ignore bad config */ }
+        }
       } else {
-        // Create new remote player sprite
-        const sprite = this.add.sprite(player.x, player.y, 'tactician').setDepth(9).setAlpha(0.85);
+        // Create new remote player sprite (use avatar texture if available)
+        let remoteTexture = 'tactician';
+        if (player.avatarConfig) {
+          try {
+            const cfg = JSON.parse(player.avatarConfig) as AvatarConfig;
+            remoteTexture = compositeAvatar(this, cfg);
+          } catch { /* ignore */ }
+        }
+        const sprite = this.add.sprite(player.x, player.y, remoteTexture).setDepth(9).setAlpha(0.85);
         if (this.anims.exists('tactician-idle-down')) {
           sprite.play('tactician-idle-down');
         }
@@ -589,6 +657,71 @@ export class OfficeScene extends Phaser.Scene {
       agentId: agent.id,
       hasPendingApproval: hasPending,
     });
+  }
+
+  private updateLocalAvatarTexture(): void {
+    if (!this.localAvatarConfig || !this.tactician) return;
+    const textureKey = compositeAvatar(this, this.localAvatarConfig);
+    this.tactician.setTexture(textureKey);
+  }
+
+  private showEmoteBubble(sessionId: string, emoteType: string): void {
+    const frameIndex = EMOTE_FRAME_MAP[emoteType];
+    if (frameIndex === undefined) return;
+
+    // Find the sprite to attach the emote to
+    let targetX: number;
+    let targetY: number;
+
+    if (sessionId === this.localSessionId) {
+      targetX = this.tactician.x;
+      targetY = this.tactician.y;
+    } else {
+      const remote = this.remotePlayers.get(sessionId);
+      if (!remote) return;
+      targetX = remote.sprite.x;
+      targetY = remote.sprite.y;
+    }
+
+    const hasEmoteSheet = this.textures.exists('emotes') &&
+      this.textures.get('emotes').frameTotal > 1;
+
+    if (hasEmoteSheet) {
+      const emoteSprite = this.add.sprite(targetX, targetY - 32, 'emotes', frameIndex)
+        .setDepth(20)
+        .setScale(0.3);
+
+      // Scale-up + float-up + fade-out tween
+      this.tweens.add({
+        targets: emoteSprite,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        y: targetY - 56,
+        alpha: { from: 1, to: 0 },
+        duration: EMOTE_DURATION_MS,
+        ease: 'Cubic.easeOut',
+        onComplete: () => emoteSprite.destroy(),
+      });
+    } else {
+      // Fallback: text-based emote
+      const EMOTE_TEXT: Record<string, string> = {
+        wave: '\u{1F44B}', thumbsup: '\u{1F44D}', heart: '\u{2764}',
+        laugh: '\u{1F602}', think: '\u{1F914}', clap: '\u{1F44F}',
+        fire: '\u{1F525}', sparkle: '\u{2728}', coffee: '\u{2615}',
+      };
+      const emoteText = this.add.text(targetX, targetY - 32, EMOTE_TEXT[emoteType] ?? '?', {
+        fontSize: '20px',
+      }).setOrigin(0.5).setDepth(20);
+
+      this.tweens.add({
+        targets: emoteText,
+        y: targetY - 56,
+        alpha: { from: 1, to: 0 },
+        duration: EMOTE_DURATION_MS,
+        ease: 'Cubic.easeOut',
+        onComplete: () => emoteText.destroy(),
+      });
+    }
   }
 
   private handleProximityInteraction(action: 'approve' | 'inspect'): void {

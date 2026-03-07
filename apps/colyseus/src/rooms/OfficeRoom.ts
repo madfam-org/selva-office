@@ -8,6 +8,8 @@ import {
 import { handleMovement } from "../handlers/movement";
 import { handleInteraction, handleApproval } from "../handlers/interaction";
 import { handleChat, addSystemMessage } from "../handlers/chat";
+import { handleEmote } from "../handlers/emotes";
+import { handleAvatar } from "../handlers/avatar";
 
 interface MoveMessage {
   x: number;
@@ -26,6 +28,14 @@ interface ApproveMessage {
 
 interface ChatMessage {
   content: string;
+}
+
+interface EmoteMessage {
+  type: string;
+}
+
+interface AvatarMessage {
+  config: string;
 }
 
 interface RoomOptions {
@@ -124,6 +134,16 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
     this.onMessage("chat", (client: Client, message: ChatMessage) => {
       handleChat(this.state, client, message);
+    });
+
+    this.onMessage("emote", (client: Client, message: EmoteMessage) => {
+      handleEmote(this.state, client, message, (type, payload) =>
+        this.broadcast(type, payload)
+      );
+    });
+
+    this.onMessage("avatar", (client: Client, message: AvatarMessage) => {
+      handleAvatar(this.state, client, message);
     });
 
     console.log(

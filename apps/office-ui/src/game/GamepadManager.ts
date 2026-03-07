@@ -26,6 +26,7 @@ export class GamepadManager {
   private keysPressedThisFrame: Set<string> = new Set();
   private prevKeysDown: Set<string> = new Set();
   private chatFocused: boolean = false;
+  private emotePickerFocused: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -36,6 +37,10 @@ export class GamepadManager {
 
   setChatFocused(focused: boolean): void {
     this.chatFocused = focused;
+  }
+
+  setEmotePickerFocused(focused: boolean): void {
+    this.emotePickerFocused = focused;
   }
 
   destroy(): void {
@@ -65,8 +70,8 @@ export class GamepadManager {
 
   /** Returns the current input state, merging gamepad and keyboard. */
   getInput(): GamepadInput {
-    // When chat is focused, suppress all keyboard input to avoid moving while typing
-    if (this.chatFocused) {
+    // When chat or emote picker is focused, suppress keyboard movement
+    if (this.chatFocused || this.emotePickerFocused) {
       const gp = this.gamepad;
       return {
         leftStickX: gp ? this.applyDeadzone(gp.axes[0] ?? 0) : 0,

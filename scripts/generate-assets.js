@@ -496,6 +496,66 @@ function generateOfficeTileset() {
 }
 
 // ---------------------------------------------------------------------------
+// Emote spritesheet — 288x32, 9 frames (9 emotes x 32px each)
+// ---------------------------------------------------------------------------
+
+function generateEmoteSpritesheet() {
+  const frameCount = 9;
+  const width = frameCount * 32;
+  const height = 32;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, width, height);
+
+  // Each emote: 32x32 cell with a colored speech bubble and a symbol
+  const emotes = [
+    { symbol: '~', color: '#60a5fa', label: 'wave' },       // 0: wave
+    { symbol: '+', color: '#34d399', label: 'thumbsup' },    // 1: thumbsup
+    { symbol: '<3', color: '#f87171', label: 'heart' },      // 2: heart
+    { symbol: ':D', color: '#fbbf24', label: 'laugh' },      // 3: laugh
+    { symbol: '?', color: '#a78bfa', label: 'think' },       // 4: think
+    { symbol: '!!', color: '#fb923c', label: 'clap' },       // 5: clap
+    { symbol: '^', color: '#ef4444', label: 'fire' },        // 6: fire
+    { symbol: '*', color: '#e879f9', label: 'sparkle' },     // 7: sparkle
+    { symbol: 'c', color: '#a3866a', label: 'coffee' },      // 8: coffee
+  ];
+
+  for (let i = 0; i < emotes.length; i++) {
+    const ox = i * 32;
+    const emote = emotes[i];
+
+    // Speech bubble background (rounded rectangle approximation)
+    drawPixelRect(ctx, ox + 2, 2, 28, 22, '#ffffff');
+    drawOutline(ctx, ox + 2, 2, 28, 22);
+
+    // Bubble tail (small triangle at bottom center)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(ox + 13, 24);
+    ctx.lineTo(ox + 16, 30);
+    ctx.lineTo(ox + 19, 24);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ox + 13, 24);
+    ctx.lineTo(ox + 16, 30);
+    ctx.lineTo(ox + 19, 24);
+    ctx.stroke();
+
+    // Emote symbol inside the bubble
+    ctx.fillStyle = emote.color;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emote.symbol, ox + 16, 13);
+  }
+
+  return { canvas, filename: 'emotes.png', dir: DIRS.sprites };
+}
+
+// ---------------------------------------------------------------------------
 // UI Icons — 4 separate 16x16 canvases
 // ---------------------------------------------------------------------------
 
@@ -637,6 +697,9 @@ async function main() {
 
   // Office tileset
   assets.push(generateOfficeTileset());
+
+  // Emote spritesheet
+  assets.push(generateEmoteSpritesheet());
 
   // UI icons
   assets.push(generateIconApprove());
