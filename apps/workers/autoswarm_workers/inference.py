@@ -54,12 +54,18 @@ async def call_llm(
     messages: list[dict[str, str]],
     system_prompt: str = "",
     sensitivity: Sensitivity = Sensitivity.INTERNAL,
+    agent_id: str | None = None,
+    task_id: str | None = None,
+    org_id: str = "default",
 ) -> str:
     """Convenience wrapper that calls the LLM and returns content.
 
     Falls back to a placeholder response if no provider is available or
     the inference call fails for any reason.  This ensures that worker
     graph nodes degrade gracefully when no API keys are configured.
+
+    When a response is received, token usage is metered to the billing
+    ledger via the nexus-api internal endpoint.
     """
     try:
         request = InferenceRequest(
@@ -68,6 +74,20 @@ async def call_llm(
             policy=RoutingPolicy(sensitivity=sensitivity),
         )
         response: InferenceResponse = await router.complete(request)
+
+        # Meter the inference call to the billing ledger.
+        if response.usage:
+            from .metering import meter_inference_call
+
+            await meter_inference_call(
+                usage=response.usage,
+                provider=response.provider,
+                model=response.model,
+                agent_id=agent_id,
+                task_id=task_id,
+                org_id=org_id,
+            )
+
         return response.content
     except Exception as exc:
         logger.warning("LLM call failed: %s. Using placeholder response.", exc)

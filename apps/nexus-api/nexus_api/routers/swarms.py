@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user
@@ -112,6 +112,24 @@ async def dispatch_task(
 
     # -- Compute token budget check -------------------------------------------
     dispatch_cost = 10  # matches ComputeTokenManager.COST_TABLE["dispatch_task"]
+
+    # Check remaining budget before dispatching.
+    today_start = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    budget_result = await db.execute(
+        select(func.coalesce(func.sum(ComputeTokenLedger.amount), 0)).where(
+            ComputeTokenLedger.created_at >= today_start,
+            ComputeTokenLedger.org_id == tenant.org_id,
+        )
+    )
+    used: int = budget_result.scalar_one()
+    daily_limit = 1000  # Default; production reads from Redis tier cache
+    if used + dispatch_cost > daily_limit:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Compute token budget exceeded for today",
+        )
 
     # Record the debit in the ledger (the in-memory ComputeTokenManager lives
     # in the orchestrator package; the ledger is the durable record).

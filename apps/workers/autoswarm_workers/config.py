@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # -- Infrastructure -------------------------------------------------------
     redis_url: str = "redis://localhost:6379"
     nexus_api_url: str = "http://localhost:4300"
+    database_url: str | None = None
 
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None

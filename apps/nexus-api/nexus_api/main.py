@@ -17,7 +17,17 @@ from .middleware.csrf import CSRFMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.request_id import RequestIdMiddleware
 from .middleware.security import SecurityHeadersMiddleware
-from .routers import agents, approvals, billing, departments, gateway, health, skills, swarms
+from .routers import (
+    agents,
+    approvals,
+    billing,
+    billing_internal,
+    departments,
+    gateway,
+    health,
+    skills,
+    swarms,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +105,7 @@ def create_app() -> FastAPI:
     app.include_router(approvals.router, prefix="/api/v1/approvals")
     app.include_router(swarms.router, prefix="/api/v1/swarms")
     app.include_router(billing.router, prefix="/api/v1/billing")
+    app.include_router(billing_internal.router, prefix="/api/v1/billing")
     app.include_router(skills.router, prefix="/api/v1/skills")
     app.include_router(gateway.router, prefix="/api/v1/gateway")
 

@@ -10,9 +10,9 @@ import sys
 
 import httpx
 import redis.asyncio as aioredis
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
+from .checkpointer import create_checkpointer
 from .config import get_settings
 from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
@@ -33,7 +33,7 @@ GRAPH_BUILDERS = {
     "crm": build_crm_graph,
 }
 
-checkpointer = MemorySaver()
+checkpointer = create_checkpointer()
 
 _shutdown = asyncio.Event()
 

@@ -154,6 +154,8 @@ class ComputeTokenLedger(Base):
     task_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("swarm_tasks.id"), nullable=True
     )
+    provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(100), nullable=True)
     org_id: Mapped[str] = mapped_column(
         String(255), nullable=False, default="default", index=True
     )

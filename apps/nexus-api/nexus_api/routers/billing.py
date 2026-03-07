@@ -103,9 +103,19 @@ async def compute_token_status(
     )
     used: int = result.scalar_one()
 
-    # Default daily limit for the starter tier.  In production this would
-    # come from the Dhanam subscription capabilities.
+    # Look up cached tier limit from Redis; fall back to default.
     daily_limit = 1000
+    try:
+        import redis.asyncio as aioredis
+
+        settings = get_settings()
+        redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
+        cached = await redis_client.get(f"autoswarm:tier:{tenant.org_id}")
+        await redis_client.aclose()
+        if cached:
+            daily_limit = int(cached)
+    except Exception:
+        pass
 
     return {
         "daily_limit": daily_limit,
@@ -161,5 +171,34 @@ async def dhanam_webhook(request: Request) -> dict[str, str]:
     payload = json.loads(body)
     event_type = payload.get("type", "unknown")
     logger.info("Received Dhanam webhook event: %s", event_type)
+
+    # Handle subscription tier changes by caching the daily limit in Redis.
+    if event_type == "subscription.updated":
+        tier = payload.get("data", {}).get("tier", "starter")
+        org_id = payload.get("data", {}).get("org_id", "default")
+        tier_limits = {
+            "starter": 1000,
+            "professional": 5000,
+            "enterprise": 25000,
+        }
+        daily_limit = tier_limits.get(tier, 1000)
+        try:
+            import redis.asyncio as aioredis
+
+            redis_client = aioredis.from_url(
+                settings.redis_url, decode_responses=True
+            )
+            await redis_client.set(
+                f"autoswarm:tier:{org_id}", str(daily_limit), ex=86400
+            )
+            await redis_client.aclose()
+            logger.info(
+                "Updated tier limit for org %s: %s -> %d",
+                org_id,
+                tier,
+                daily_limit,
+            )
+        except Exception:
+            logger.warning("Failed to cache tier limit in Redis")
 
     return {"status": "ok"}
