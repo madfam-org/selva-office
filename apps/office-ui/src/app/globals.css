@@ -149,6 +149,74 @@
   }
 }
 
+/* Pixelact UI scoped styles — avoids collision with .retro-btn/.pixel-border */
+.pixelact {
+  --pixelact-bg: #1e293b;
+  --pixelact-fg: #f8fafc;
+  --pixelact-border: #475569;
+  --pixelact-primary: #6366f1;
+  --pixelact-primary-fg: #ffffff;
+  --pixelact-muted: #334155;
+  --pixelact-muted-fg: #94a3b8;
+  --pixelact-accent: #818cf8;
+  /* Uses the same pixel font already loaded via next/font/google */
+  font-family: var(--font-pixel, 'Press Start 2P'), monospace;
+}
+
+.pixelact .pxa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 8px;
+  line-height: 14px;
+  letter-spacing: 0.05em;
+  padding: 6px 12px;
+  border: 2px solid #000;
+  cursor: pointer;
+  image-rendering: pixelated;
+  transition: transform 50ms, box-shadow 50ms;
+  box-shadow:
+    2px 2px 0px 0px #000,
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.3),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.15);
+}
+
+.pixelact .pxa-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    3px 3px 0px 0px #000,
+    inset -1px -1px 0px 0px rgba(0, 0, 0, 0.3),
+    inset 1px 1px 0px 0px rgba(255, 255, 255, 0.2);
+}
+
+.pixelact .pxa-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 2px 2px 0px 0px rgba(0, 0, 0, 0.3),
+    inset -1px -1px 0px 0px rgba(255, 255, 255, 0.1);
+}
+
+.pixelact .pxa-input {
+  font-family: inherit;
+  font-size: 8px;
+  line-height: 14px;
+  padding: 6px 8px;
+  border: 2px solid #000;
+  background: var(--pixelact-bg);
+  color: var(--pixelact-fg);
+  box-shadow: inset 1px 1px 0px 0px rgba(0, 0, 0, 0.4);
+  image-rendering: pixelated;
+}
+
+.pixelact .pxa-input:focus {
+  outline: none;
+  border-color: var(--pixelact-primary);
+  box-shadow:
+    inset 1px 1px 0px 0px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--pixelact-primary);
+}
+
 /* CRT scanline overlay */
 .scanline-overlay::after {
   content: '';

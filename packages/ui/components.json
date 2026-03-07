@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "../../apps/office-ui/tailwind.config.ts",
+    "css": "../../apps/office-ui/src/app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": false
+  },
+  "aliases": {
+    "components": "@autoswarm/ui",
+    "utils": "@autoswarm/ui/utils"
+  },
+  "registries": [
+    {
+      "name": "pixelact",
+      "url": "https://pixelactui.com/r"
+    }
+  ]
+}

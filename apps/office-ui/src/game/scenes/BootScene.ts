@@ -120,7 +120,11 @@ export class BootScene extends Phaser.Scene {
     });
 
     // Tiled map (optional — graceful fallback if missing)
-    this.load.tilemapTiledJSON('office-map', '/assets/maps/office-default.tmj');
+    // Supports ?map=<name> URL parameter for loading generated maps
+    const mapName = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('map') ?? 'office-default'
+      : 'office-default';
+    this.load.tilemapTiledJSON('office-map', `/assets/maps/${mapName}.tmj`);
     this.load.image('office-tiles', '/assets/tilesets/office-tileset.png');
 
     // Emote spritesheet (9 frames at 32x32)

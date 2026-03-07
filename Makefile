@@ -1,4 +1,4 @@
-.PHONY: dev build test lint clean docker-up docker-down db-migrate setup generate-assets
+.PHONY: dev build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map
 
 # ── Development ─────────────────────────────────────
 dev:
@@ -52,6 +52,16 @@ db-seed:
 # ── Assets ─────────────────────────────────────────
 generate-assets:
 	node scripts/generate-assets.js
+
+generate-variants:
+	node scripts/generate-variants.js
+	node scripts/generate-tile-variants.js
+
+post-process:
+	bash scripts/post-process-assets.sh
+
+generate-map:
+	node scripts/generate-map.js
 
 # ── Setup ───────────────────────────────────────────
 setup:

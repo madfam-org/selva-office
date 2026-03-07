@@ -236,6 +236,18 @@ importers:
 
   packages/janua-stub: {}
 
+  packages/map-gen:
+    devDependencies:
+      '@autoswarm/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@25.3.5)(jsdom@25.0.1)
+
   packages/shared-types:
     devDependencies:
       '@autoswarm/config':
