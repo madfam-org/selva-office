@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { gameEventBus } from './PhaserGame';
 
-export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone';
+export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch';
 
 export interface InteractableDef {
   id: string;
@@ -24,7 +24,7 @@ interface ActiveZone {
   isOverlapping: boolean;
 }
 
-const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone'];
+const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch'];
 
 /**
  * Manages interactive map objects parsed from Tiled object layer 'interactables'.
@@ -37,6 +37,7 @@ export class InteractableManager {
   private playerSprite: Phaser.GameObjects.Sprite;
   private currentOverlap: ActiveZone | null = null;
   private inSilentZone: boolean = false;
+  private overlappingZoneIds: Set<string> = new Set();
 
   constructor(scene: Phaser.Scene, playerSprite: Phaser.GameObjects.Sprite) {
     this.scene = scene;
@@ -135,6 +136,26 @@ export class InteractableManager {
       );
     }
 
+    // Track zone enter/leave for scripting API
+    const currentIds = new Set<string>();
+    for (const az of this.zones) {
+      if (az.isOverlapping) {
+        currentIds.add(az.def.id);
+        if (!this.overlappingZoneIds.has(az.def.id)) {
+          gameEventBus.emit('zone_enter', { areaName: az.def.name });
+        }
+      }
+    }
+    for (const prevId of this.overlappingZoneIds) {
+      if (!currentIds.has(prevId)) {
+        const az = this.zones.find((z) => z.def.id === prevId);
+        if (az) {
+          gameEventBus.emit('zone_leave', { areaName: az.def.name });
+        }
+      }
+    }
+    this.overlappingZoneIds = currentIds;
+
     this.currentOverlap = closestZone;
   }
 
@@ -163,6 +184,11 @@ export class InteractableManager {
         gameEventBus.emit('open_cowebsite', {
           url: def.content,
           title: def.label ?? 'Video Meeting',
+        });
+        break;
+      case 'dispatch':
+        gameEventBus.emit('open_dispatch', {
+          title: def.label ?? 'Dispatch Station',
         });
         break;
       // silent-zone handled in update() via enter/exit events

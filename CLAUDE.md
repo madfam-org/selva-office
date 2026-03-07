@@ -36,7 +36,7 @@ make generate-assets  # Regenerate pixel-art sprite PNGs
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (182 tests across 14 suites)
+pnpm test             # TypeScript tests (230 tests across 18 suites)
 pnpm typecheck        # TypeScript type checking
 
 uv run pytest         # Python tests (238 tests)
@@ -204,7 +204,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `InteractableManager` (`apps/office-ui/src/game/InteractableManager.ts`) parses
   the `interactables` Tiled object layer and creates Phaser zones with overlap
   detection. Each object has an `interactType` property: `url`, `popup`,
-  `jitsi-zone`, or `silent-zone`.
+  `jitsi-zone`, `silent-zone`, or `dispatch`.
 - When the player overlaps an interactable zone, a `[E] label` prompt appears.
   Pressing E (buttonX) triggers the action.
 - `url` and `jitsi-zone` types emit `open_cowebsite` → `CoWebsitePanel.tsx`
@@ -212,6 +212,8 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `popup` type emits `show_popup` → `PopupOverlay.tsx` renders a centered modal.
 - `silent-zone` emits `silent_zone_enter`/`silent_zone_exit` events for
   muting proximity audio (Feature 4).
+- `dispatch` type emits `open_dispatch` → `TaskDispatchPanel.tsx` renders a
+  sliding form panel for dispatching swarm tasks.
 
 ### Mobile Support
 
@@ -224,6 +226,34 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `useTouchDetection` hook detects touch capability and orientation.
 - OfficeScene applies 1.5x camera zoom on touch devices for better visibility.
 - Joystick input merges with gamepad/keyboard in the update loop.
+
+### Task Dispatch UI
+
+- `useTaskDispatch` hook (`apps/office-ui/src/hooks/useTaskDispatch.ts`) POSTs to
+  `POST /api/v1/swarms/dispatch`. State machine: idle → submitting → success | error.
+- `TaskDispatchPanel` (`apps/office-ui/src/components/TaskDispatchPanel.tsx`) is a
+  sliding panel (right side, w-80) with description, graph type selector, optional
+  agent assignment, and optional skill requirements.
+- Entry points: (1) walk to a dispatch station on the map → press E, (2) click
+  "+ New Task" button in the DashboardPanel header.
+- Dispatch stations are `interactables` objects in `office-default.tmj` with
+  `interactType: "dispatch"` at (304,296) and (544,296) in the central corridor.
+- Mutual exclusion: opening dispatch panel closes the dashboard panel.
+- Uses `chat-focus` gameEventBus event to suppress keyboard game input while typing.
+
+### Map Scripting API (Feature 9)
+
+- `ScriptBridge` (`apps/office-ui/src/game/scripting/ScriptBridge.ts`) manages
+  hidden sandboxed iframes for map scripts. Scripts defined via `scriptUrl`
+  property on the Tiled map. Communication via `postMessage` with command whitelist.
+- `ScriptAPI` (`apps/office-ui/src/game/scripting/ScriptAPI.ts`) defines the
+  `AS.*` namespace injected into script iframes: `AS.chat.sendMessage()`,
+  `AS.camera.moveTo()`, `AS.player.moveTo()`, `AS.ui.openPopup()`,
+  `AS.ui.openCoWebsite()`, `AS.onPlayerEntersArea()`, `AS.onPlayerLeavesArea()`.
+- `InteractableManager` emits `zone_enter`/`zone_leave` events on the gameEventBus;
+  `OfficeScene` forwards these to `ScriptBridge.notifyAreaEvent()`.
+- Lifecycle: created on map load if `scriptUrl` property exists, destroyed on
+  scene shutdown.
 
 ## Sprite Assets
 

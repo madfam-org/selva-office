@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { HUD } from '@/components/HUD';
 import { DashboardPanel } from '@/components/DashboardPanel';
+import { TaskDispatchPanel } from '@/components/TaskDispatchPanel';
 import { ChatPanel } from '@/components/ChatPanel';
 import { EmotePicker } from '@/components/EmotePicker';
 import { AvatarEditor } from '@/components/AvatarEditor';
@@ -11,6 +12,7 @@ import { PopupOverlay } from '@/components/PopupOverlay';
 import { VideoOverlay } from '@/components/VideoOverlay';
 import { MediaControls } from '@/components/MediaControls';
 import { useApprovals } from '@/hooks/useApprovals';
+import { useTaskDispatch } from '@/hooks/useTaskDispatch';
 import { useColyseus } from '@/hooks/useColyseus';
 import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal } from '@/hooks/useColyseus';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
@@ -99,9 +101,17 @@ export default function HomePage() {
     deny,
     connected: approvalsConnected,
   } = useApprovals();
+  const {
+    dispatch: dispatchTask,
+    status: dispatchStatus,
+    error: dispatchError,
+    lastDispatchedTask,
+    reset: resetDispatch,
+  } = useTaskDispatch();
   const { config: avatarConfig, saveConfig: saveAvatarConfig, isFirstVisit } = useAvatarConfig();
   const [avatarEditorOpen, setAvatarEditorOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [dispatchPanelOpen, setDispatchPanelOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -162,6 +172,15 @@ export default function HomePage() {
     [],
   );
 
+  const handleDispatchOpen = useCallback(() => {
+    setDashboardOpen(false);
+    setDispatchPanelOpen(true);
+  }, []);
+
+  const handleDispatchClose = useCallback(() => {
+    setDispatchPanelOpen(false);
+  }, []);
+
   const handleAvatarSave = useCallback(
     (config: AvatarConfig) => {
       saveAvatarConfig(config);
@@ -198,6 +217,7 @@ export default function HomePage() {
         onEmote={handleEmote}
         onCoWebsite={handleCoWebsite}
         onPopup={handlePopup}
+        onDispatchOpen={handleDispatchOpen}
       />
 
       <HUD
@@ -212,6 +232,18 @@ export default function HomePage() {
         open={dashboardOpen}
         onToggle={() => setDashboardOpen((prev) => !prev)}
         departments={officeState?.departments ?? []}
+        onNewTask={handleDispatchOpen}
+      />
+
+      <TaskDispatchPanel
+        open={dispatchPanelOpen}
+        onClose={handleDispatchClose}
+        onDispatch={dispatchTask}
+        status={dispatchStatus}
+        error={dispatchError}
+        lastDispatchedTask={lastDispatchedTask}
+        departments={officeState?.departments ?? []}
+        onReset={resetDispatch}
       />
 
       <ChatPanel

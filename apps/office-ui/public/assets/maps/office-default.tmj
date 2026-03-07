@@ -186,6 +186,48 @@
     },
     {
       "draworder": "topdown",
+      "id": 13,
+      "name": "interactables",
+      "objects": [
+        {
+          "height": 48,
+          "id": 30,
+          "name": "Dispatch Station 1",
+          "properties": [
+            { "name": "interactType", "type": "string", "value": "dispatch" },
+            { "name": "label", "type": "string", "value": "Dispatch Station" }
+          ],
+          "rotation": 0,
+          "type": "",
+          "visible": true,
+          "width": 48,
+          "x": 304,
+          "y": 296
+        },
+        {
+          "height": 48,
+          "id": 31,
+          "name": "Dispatch Station 2",
+          "properties": [
+            { "name": "interactType", "type": "string", "value": "dispatch" },
+            { "name": "label", "type": "string", "value": "Dispatch Station" }
+          ],
+          "rotation": 0,
+          "type": "",
+          "visible": true,
+          "width": 48,
+          "x": 544,
+          "y": 296
+        }
+      ],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "draworder": "topdown",
       "id": 12,
       "name": "spawn-points",
       "objects": [
@@ -219,8 +261,8 @@
       "y": 0
     }
   ],
-  "nextlayerid": 13,
-  "nextobjectid": 30,
+  "nextlayerid": 14,
+  "nextobjectid": 32,
   "orientation": "orthogonal",
   "renderorder": "right-down",
   "tiledversion": "1.10.2",

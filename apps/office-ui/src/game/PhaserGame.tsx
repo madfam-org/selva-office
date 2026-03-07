@@ -33,6 +33,10 @@ export interface PopupEvent {
   content: string;
 }
 
+export interface DispatchEvent {
+  title: string;
+}
+
 interface PhaserGameProps {
   onApprovalOpen?: (agentId: string) => void;
   officeState?: OfficeState | null;
@@ -41,6 +45,7 @@ interface PhaserGameProps {
   onEmote?: (type: string) => void;
   onCoWebsite?: (event: CoWebsiteEvent) => void;
   onPopup?: (event: PopupEvent) => void;
+  onDispatchOpen?: () => void;
 }
 
 export default function PhaserGame({
@@ -51,6 +56,7 @@ export default function PhaserGame({
   onEmote,
   onCoWebsite,
   onPopup,
+  onDispatchOpen,
 }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -97,6 +103,14 @@ export default function PhaserGame({
       onPopup(detail as PopupEvent);
     });
   }, [onPopup]);
+
+  // Listen for dispatch events from InteractableManager
+  useEffect(() => {
+    if (!onDispatchOpen) return;
+    return gameEventBus.on('open_dispatch', () => {
+      onDispatchOpen();
+    });
+  }, [onDispatchOpen]);
 
   // Forward session ID into Phaser via event bus
   useEffect(() => {

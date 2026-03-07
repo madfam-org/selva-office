@@ -7,6 +7,7 @@ import { compositeAvatar } from '../AvatarCompositor';
 import { VirtualJoystick } from '../VirtualJoystick';
 import { TouchActionButtons } from '../TouchActionButtons';
 import { InteractableManager } from '../InteractableManager';
+import { ScriptBridge } from '../scripting/ScriptBridge';
 import type {
   OfficeState,
   Department,
@@ -76,10 +77,13 @@ export class OfficeScene extends Phaser.Scene {
   private emoteCleanup: (() => void) | null = null;
   private emotePickerCleanup: (() => void) | null = null;
   private avatarConfigCleanup: (() => void) | null = null;
+  private zoneEnterCleanup: (() => void) | null = null;
+  private zoneLeaveCleanup: (() => void) | null = null;
   private localAvatarConfig: AvatarConfig | null = null;
   private virtualJoystick: VirtualJoystick | null = null;
   private touchButtons: TouchActionButtons | null = null;
   private interactableManager: InteractableManager | null = null;
+  private scriptBridge: ScriptBridge | null = null;
   private isTouchDevice: boolean = false;
   private helpOverlay!: Phaser.GameObjects.Container;
   private lastDirection: string = 'down';
@@ -145,8 +149,19 @@ export class OfficeScene extends Phaser.Scene {
     this.interactableManager = new InteractableManager(this, this.tactician);
     if (this._pendingTilemap) {
       this.interactableManager.loadFromTilemap(this._pendingTilemap);
+      this.loadMapScripts(this._pendingTilemap);
       this._pendingTilemap = null;
     }
+
+    // Forward zone enter/leave events to script bridge
+    this.zoneEnterCleanup = gameEventBus.on('zone_enter', (detail) => {
+      const { areaName } = detail as { areaName: string };
+      this.scriptBridge?.notifyAreaEvent(areaName, 'enter');
+    });
+    this.zoneLeaveCleanup = gameEventBus.on('zone_leave', (detail) => {
+      const { areaName } = detail as { areaName: string };
+      this.scriptBridge?.notifyAreaEvent(areaName, 'leave');
+    });
 
     // Add keyboard instructions text
     this.add
@@ -203,6 +218,22 @@ export class OfficeScene extends Phaser.Scene {
 
   /** Tilemap reference for deferred interactable loading */
   private _pendingTilemap: Phaser.Tilemaps.Tilemap | null = null;
+
+  /**
+   * Check for scriptUrl properties on the tilemap and load them via ScriptBridge.
+   */
+  private loadMapScripts(tilemap: Phaser.Tilemaps.Tilemap): void {
+    const mapProps = tilemap.properties as
+      | Array<{ name: string; value: string | number | boolean }>
+      | undefined;
+    if (!mapProps) return;
+
+    const scriptProp = mapProps.find((p) => p.name === 'scriptUrl');
+    if (!scriptProp || typeof scriptProp.value !== 'string') return;
+
+    this.scriptBridge = new ScriptBridge(this);
+    this.scriptBridge.loadScript(scriptProp.value);
+  }
 
   private initProceduralMap(): void {
     // Populate layouts from hardcoded defaults
@@ -346,9 +377,21 @@ export class OfficeScene extends Phaser.Scene {
       this.avatarConfigCleanup();
       this.avatarConfigCleanup = null;
     }
+    if (this.zoneEnterCleanup) {
+      this.zoneEnterCleanup();
+      this.zoneEnterCleanup = null;
+    }
+    if (this.zoneLeaveCleanup) {
+      this.zoneLeaveCleanup();
+      this.zoneLeaveCleanup = null;
+    }
     if (this.interactableManager) {
       this.interactableManager.destroy();
       this.interactableManager = null;
+    }
+    if (this.scriptBridge) {
+      this.scriptBridge.destroy();
+      this.scriptBridge = null;
     }
     if (this.virtualJoystick) {
       this.virtualJoystick.destroy();

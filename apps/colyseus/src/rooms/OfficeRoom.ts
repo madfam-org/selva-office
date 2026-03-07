@@ -91,6 +91,7 @@ const DEFAULT_DEPARTMENTS: Array<{
 export class OfficeRoom extends Room<OfficeStateSchema> {
   private nexusApiUrl: string = "http://localhost:4300";
   private stopProximityLoop: (() => void) | null = null;
+  private agentIndex = new Map<string, { deptId: string; agentIndex: number }>();
 
   onCreate(options: RoomOptions): void {
     console.log("[OfficeRoom] Room created");
@@ -253,6 +254,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
         console.log(
           `[OfficeRoom] Loaded ${agents.length} agents into ${deptId}`
         );
+        this.rebuildAgentIndex();
       } catch (err) {
         console.error(
           `[OfficeRoom] Failed to fetch agents for ${deptId}:`,
@@ -266,7 +268,25 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     const { createClient } = await import("redis");
     const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
     this.redisSubscriber = createClient({ url: redisUrl });
-    await this.redisSubscriber.connect();
+
+    this.redisSubscriber.on("error", (err) => {
+      console.error("[OfficeRoom] Redis subscriber error:", err);
+    });
+
+    this.redisSubscriber.on("reconnecting", () => {
+      console.log("[OfficeRoom] Redis subscriber reconnecting...");
+    });
+
+    try {
+      await this.redisSubscriber.connect();
+    } catch (err) {
+      console.error(
+        "[OfficeRoom] Redis subscriber failed to connect (room will work without real-time agent updates):",
+        err
+      );
+      return;
+    }
+
     await this.redisSubscriber.subscribe(
       "autoswarm:agent-status",
       (message: string) => {
@@ -284,8 +304,40 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     console.log("[OfficeRoom] Subscribed to autoswarm:agent-status channel");
   }
 
+  private rebuildAgentIndex(): void {
+    this.agentIndex.clear();
+    this.state.departments.forEach((dept, deptId) => {
+      for (let i = 0; i < dept.agents.length; i++) {
+        const agent = dept.agents.at(i);
+        if (agent) {
+          this.agentIndex.set(agent.id, { deptId, agentIndex: i });
+        }
+      }
+    });
+  }
+
   private updateAgentInState(agentId: string, status: string): void {
+    const entry = this.agentIndex.get(agentId);
+    if (entry) {
+      const dept = this.state.departments.get(entry.deptId);
+      const agent = dept?.agents.at(entry.agentIndex);
+      if (agent && agent.id === agentId) {
+        agent.status = status;
+        if (status === "waiting_approval") {
+          this.state.pendingApprovalCount += 1;
+          addSystemMessage(
+            this.state,
+            `Agent ${agent.name} is waiting for approval`
+          );
+        }
+        return;
+      }
+    }
+
+    // Fallback: linear scan (index may be stale)
+    let found = false;
     this.state.departments.forEach((dept) => {
+      if (found) return;
       for (let i = 0; i < dept.agents.length; i++) {
         const agent = dept.agents.at(i);
         if (agent && agent.id === agentId) {
@@ -297,9 +349,16 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
               `Agent ${agent.name} is waiting for approval`
             );
           }
+          found = true;
           return;
         }
       }
     });
+
+    if (!found) {
+      console.warn(
+        `[OfficeRoom] Agent ${agentId} not found in any department`
+      );
+    }
   }
 }
