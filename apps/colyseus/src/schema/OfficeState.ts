@@ -28,6 +28,7 @@ export class TacticianSchema extends Schema {
   @type("number") x: number = 400;
   @type("number") y: number = 300;
   @type("string") direction: string = "down";
+  @type("string") avatarConfig: string = "";
 }
 
 export class ChatMessageSchema extends Schema {

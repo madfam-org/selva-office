@@ -57,6 +57,12 @@ export class BootScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('office-map', '/assets/maps/office-default.tmj');
     this.load.image('office-tiles', '/assets/tilesets/office-tileset.png');
 
+    // Emote spritesheet (9 frames at 32x32)
+    this.load.spritesheet('emotes', '/assets/sprites/emotes.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+
     // UI icons
     this.load.image('icon-approve', '/assets/ui/icon-approve.png');
     this.load.image('icon-deny', '/assets/ui/icon-deny.png');
@@ -96,6 +102,11 @@ export class BootScene extends Phaser.Scene {
       if (this.failedKeys.has(key)) {
         this.createRectTexture(key, SPRITE_SIZE, SPRITE_SIZE, COLORS[role]);
       }
+    }
+
+    // Emotes fallback
+    if (this.failedKeys.has('emotes')) {
+      this.createRectTexture('emotes', 32, 32, 0xfbbf24);
     }
 
     // UI icon fallbacks

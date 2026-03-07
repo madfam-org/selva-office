@@ -18,11 +18,17 @@ class GameEventBus extends EventTarget {
 
 export const gameEventBus = new GameEventBus();
 
+interface PlayerEmoteEvent {
+  sessionId: string;
+  emoteType: string;
+}
+
 interface PhaserGameProps {
   onApprovalOpen?: (agentId: string) => void;
   officeState?: OfficeState | null;
   sessionId?: string | null;
   onPlayerMove?: (x: number, y: number) => void;
+  onEmote?: (type: string) => void;
 }
 
 export default function PhaserGame({
@@ -30,6 +36,7 @@ export default function PhaserGame({
   officeState,
   sessionId,
   onPlayerMove,
+  onEmote,
 }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -51,6 +58,15 @@ export default function PhaserGame({
       onPlayerMove(x, y);
     });
   }, [onPlayerMove]);
+
+  // Listen for emote events from React (send to server)
+  useEffect(() => {
+    if (!onEmote) return;
+    return gameEventBus.on('send-emote', (detail) => {
+      const type = detail as string;
+      onEmote(type);
+    });
+  }, [onEmote]);
 
   // Forward session ID into Phaser via event bus
   useEffect(() => {

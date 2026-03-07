@@ -36,7 +36,7 @@ make generate-assets  # Regenerate pixel-art sprite PNGs
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (168 tests across 12 suites)
+pnpm test             # TypeScript tests (182 tests across 14 suites)
 pnpm typecheck        # TypeScript type checking
 
 uv run pytest         # Python tests (238 tests)
@@ -156,6 +156,33 @@ The `packages/skills/` package implements the AgentSkills standard.
   `setCollisionByExclusion([-1])`.
 - The default map lives at `apps/office-ui/public/assets/maps/office-default.tmj`.
 
+### Emotes & Reactions
+
+- Emotes are **ephemeral** — not persisted in the Colyseus schema. The client sends
+  an `emote` message with `{ type }` (one of 9 whitelisted types in
+  `apps/colyseus/src/handlers/emotes.ts`). The server validates and broadcasts
+  `player_emote` to all clients.
+- The client renders a speech-bubble sprite above the player with a 3-second
+  scale-up + fade-out tween (`OfficeScene.showEmoteBubble()`). Falls back to
+  Unicode emoji text if the emotes spritesheet fails to load.
+- `EmotePicker.tsx` provides a 3x3 grid UI toggled with `R`, quick-select `1-9`.
+- `GamepadManager.emotePickerFocused` suppresses keyboard movement while the
+  picker is open.
+
+### Avatar Customization
+
+- `AvatarConfig` (in `packages/shared-types/src/avatar.ts`) defines 5 properties:
+  `skinTone`, `hairStyle`, `hairColor`, `outfitColor`, `accessory`.
+- Config is persisted in `localStorage` via `useAvatarConfig` hook, and sent to
+  the server via `avatar` message → stored as JSON string on
+  `TacticianSchema.avatarConfig`.
+- `AvatarCompositor.ts` generates a composite 32x32 canvas texture at runtime,
+  keyed by config hash for caching. No pre-generated avatar spritesheets needed.
+- `AvatarEditor.tsx` is a full-screen modal shown on first visit. Users can
+  re-open it via the "Avatar" button in the top-right.
+- Remote players' avatar textures are applied during `reconcileRemotePlayers()`
+  based on their `avatarConfig` schema field.
+
 ## Sprite Assets
 
 - Pre-generated pixel-art PNGs live in `apps/office-ui/public/assets/` (sprites,
@@ -163,6 +190,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - Regenerate with `make generate-assets` (runs `scripts/generate-assets.js` using
   `@napi-rs/canvas`).
 - `BootScene.ts` loads sprite files with automatic canvas-rectangle fallback if any
-  PNG fails to load. Department zone overlays are always canvas-generated.
+  PNG fails to load. Department zone overlays are always canvas-generated. The emote
+  spritesheet (`emotes.png`, 9 frames at 32x32) is also loaded here.
 - `OfficeScene.ts` plays walk animations for the Tactician (4 dirs x 3 frames) and
   idle/working animations for agents.
