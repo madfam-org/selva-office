@@ -5,13 +5,22 @@ import type { OfficeState } from '@autoswarm/shared-types';
 
 /** Custom event bus for React <-> Phaser communication */
 class GameEventBus extends EventTarget {
+  /** Cached last value per event key — allows late subscribers to get the current state */
+  private lastValue = new Map<string, unknown>();
+
   emit(event: string, detail?: unknown) {
+    this.lastValue.set(event, detail);
     this.dispatchEvent(new CustomEvent(event, { detail }));
   }
 
   on(event: string, callback: (detail: unknown) => void) {
     const handler = (e: Event) => callback((e as CustomEvent).detail);
     this.addEventListener(event, handler);
+    // Replay last cached value so late subscribers get the current state immediately
+    const cached = this.lastValue.get(event);
+    if (cached !== undefined) {
+      callback(cached);
+    }
     return () => this.removeEventListener(event, handler);
   }
 }
