@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: autoswarm-office
     app.kubernetes.io/component: frontend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: office-ui
@@ -20,6 +20,12 @@ spec:
         app.kubernetes.io/component: frontend
     spec:
       serviceAccountName: autoswarm-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: office-ui
           image: ghcr.io/madfam-org/autoswarm-office-ui:latest
@@ -28,7 +34,7 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 100m
+              cpu: 25m
               memory: 256Mi
             limits:
               cpu: 500m
@@ -49,11 +55,28 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: NEXT_PUBLIC_API_URL
-              value: https://api.autoswarm.madfam.io
+              value: https://agents-api.madfam.io
             - name: NEXT_PUBLIC_COLYSEUS_URL
-              value: wss://colyseus.autoswarm.madfam.io
+              value: wss://agents-ws.madfam.io
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -71,26 +94,3 @@ spec:
     - port: 80
       targetPort: 3000
       protocol: TCP
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: office-ui
-  namespace: autoswarm
-  labels:
-    app.kubernetes.io/name: office-ui
-    app.kubernetes.io/part-of: autoswarm-office
-  annotations:
-    kubernetes.io/ingress.class: nginx
-spec:
-  rules:
-    - host: office.autoswarm.madfam.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: office-ui
-                port:
-                  number: 80

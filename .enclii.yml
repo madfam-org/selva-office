@@ -16,13 +16,13 @@ spec:
         autoDeploy: true
   runtime:
     port: 4300
-    replicas: 2
+    replicas: 1
     resources:
       requests:
-        cpu: "250m"
+        cpu: "50m"
         memory: "512Mi"
       limits:
-        cpu: "1000m"
+        cpu: "500m"
         memory: "1Gi"
     healthCheck: /api/v1/health
     readinessProbe:
@@ -56,18 +56,13 @@ spec:
           name: autoswarm-secrets
           key: janua-client-secret
   domains:
-    - domain: api.autoswarm.madfam.io
+    - domain: agents-api.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
   slo:
     availability: 99.9
     latencyP99Ms: 500
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 6
-    targetCPUUtilizationPercentage: 70
 ---
 apiVersion: enclii.dev/v1
 kind: Service
@@ -81,9 +76,9 @@ spec:
     dockerfile: infra/docker/Dockerfile.office-ui
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://api.autoswarm.madfam.io
+      NEXT_PUBLIC_API_URL: https://agents-api.madfam.io
       NEXT_PUBLIC_JANUA_URL: https://auth.madfam.io
-      NEXT_PUBLIC_COLYSEUS_URL: wss://colyseus.autoswarm.madfam.io
+      NEXT_PUBLIC_COLYSEUS_URL: wss://agents-ws.madfam.io
     source:
       git:
         repository: https://github.com/madfam-org/autoswarm-office
@@ -91,14 +86,14 @@ spec:
         autoDeploy: true
   runtime:
     port: 3000
-    replicas: 2
+    replicas: 1
     resources:
       requests:
-        cpu: "200m"
-        memory: "512Mi"
+        cpu: "25m"
+        memory: "256Mi"
       limits:
-        cpu: "1000m"
-        memory: "1Gi"
+        cpu: "500m"
+        memory: "512Mi"
     healthCheck: /api/health
     readinessProbe:
       path: /api/health
@@ -112,15 +107,10 @@ spec:
     - name: NEXT_PUBLIC_DHANAM_URL
       value: https://billing.madfam.io
   domains:
-    - domain: office.autoswarm.madfam.io
+    - domain: agents.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 8
-    targetCPUUtilizationPercentage: 70
 ---
 apiVersion: enclii.dev/v1
 kind: Service
@@ -143,7 +133,7 @@ spec:
     replicas: 1
     resources:
       requests:
-        cpu: "200m"
+        cpu: "50m"
         memory: "256Mi"
       limits:
         cpu: "500m"
@@ -158,7 +148,7 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: colyseus.autoswarm.madfam.io
+    - domain: agents-ws.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -175,7 +165,7 @@ spec:
     dockerfile: infra/docker/Dockerfile.admin
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://api.autoswarm.madfam.io
+      NEXT_PUBLIC_API_URL: https://agents-api.madfam.io
       NEXT_PUBLIC_JANUA_URL: https://auth.madfam.io
     source:
       git:
@@ -187,11 +177,11 @@ spec:
     replicas: 1
     resources:
       requests:
-        cpu: "200m"
-        memory: "512Mi"
+        cpu: "25m"
+        memory: "256Mi"
       limits:
-        cpu: "1000m"
-        memory: "1Gi"
+        cpu: "500m"
+        memory: "512Mi"
     healthCheck: /api/health
     readinessProbe:
       path: /api/health
@@ -202,15 +192,10 @@ spec:
       initialDelaySeconds: 30
       periodSeconds: 10
   domains:
-    - domain: admin.autoswarm.madfam.io
+    - domain: agents-admin.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
-  autoscaling:
-    enabled: true
-    minReplicas: 1
-    maxReplicas: 4
-    targetCPUUtilizationPercentage: 70
 ---
 apiVersion: enclii.dev/v1
 kind: Service
@@ -233,7 +218,7 @@ spec:
     replicas: 1
     resources:
       requests:
-        cpu: "100m"
+        cpu: "25m"
         memory: "256Mi"
       limits:
         cpu: "500m"
@@ -248,15 +233,10 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: gateway.autoswarm.madfam.io
+    - domain: agents-gw.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
-  autoscaling:
-    enabled: true
-    minReplicas: 1
-    maxReplicas: 2
-    targetCPUUtilizationPercentage: 70
 ---
 apiVersion: enclii.dev/v1
 kind: Service
@@ -275,14 +255,14 @@ spec:
         branch: main
         autoDeploy: true
   runtime:
-    replicas: 2
+    replicas: 1
     resources:
       requests:
-        cpu: "500m"
-        memory: "1Gi"
+        cpu: "100m"
+        memory: "512Mi"
       limits:
-        cpu: "2000m"
-        memory: "2Gi"
+        cpu: "1000m"
+        memory: "1Gi"
   env:
     - name: DATABASE_URL
       valueFrom:
@@ -294,8 +274,3 @@ spec:
         secretKeyRef:
           name: autoswarm-secrets
           key: redis-url
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 8
-    targetCPUUtilizationPercentage: 70

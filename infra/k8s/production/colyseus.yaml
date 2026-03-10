@@ -20,6 +20,12 @@ spec:
         app.kubernetes.io/component: realtime
     spec:
       serviceAccountName: autoswarm-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: colyseus
           image: ghcr.io/madfam-org/autoswarm-colyseus:latest
@@ -28,7 +34,7 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 200m
+              cpu: 50m
               memory: 256Mi
             limits:
               cpu: 500m
@@ -49,6 +55,13 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: autoswarm-config
@@ -57,6 +70,12 @@ spec:
           env:
             - name: ENVIRONMENT
               value: production
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

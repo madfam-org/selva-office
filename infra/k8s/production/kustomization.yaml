@@ -5,11 +5,13 @@ namespace: autoswarm
 
 resources:
   - configmap.yaml
-  - sealed-secret-template.yaml
   - service-account.yaml
   - nexus-api.yaml
   - office-ui.yaml
   - colyseus.yaml
+  - admin.yaml
+  - gateway.yaml
+  - workers.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: autoswarm-office

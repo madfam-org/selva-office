@@ -1,0 +1,268 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "infra/k8s/production/kustomization.yaml"
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: "Force build all services"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/madfam-org
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      nexus-api: ${{ steps.changes.outputs.nexus-api }}
+      office-ui: ${{ steps.changes.outputs.office-ui }}
+      colyseus: ${{ steps.changes.outputs.colyseus }}
+      admin: ${{ steps.changes.outputs.admin }}
+      gateway: ${{ steps.changes.outputs.gateway }}
+      workers: ${{ steps.changes.outputs.workers }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed services
+        id: changes
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_build }}" == "true" ]]; then
+            echo "nexus-api=true" >> "$GITHUB_OUTPUT"
+            echo "office-ui=true" >> "$GITHUB_OUTPUT"
+            echo "colyseus=true" >> "$GITHUB_OUTPUT"
+            echo "admin=true" >> "$GITHUB_OUTPUT"
+            echo "gateway=true" >> "$GITHUB_OUTPUT"
+            echo "workers=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+
+          check_service() {
+            local service=$1
+            shift
+            for pattern in "$@"; do
+              if echo "$CHANGED" | grep -qE "$pattern"; then
+                echo "${service}=true" >> "$GITHUB_OUTPUT"
+                return
+              fi
+            done
+            echo "${service}=false" >> "$GITHUB_OUTPUT"
+          }
+
+          check_service "nexus-api"  "apps/nexus-api/" "packages/(orchestrator|skills|config|permissions|inference)/" "pyproject.toml" "uv.lock" "infra/docker/Dockerfile.nexus-api"
+          check_service "office-ui"  "apps/office-ui/" "packages/(shared-types|ui|config)/" "infra/docker/Dockerfile.office-ui"
+          check_service "colyseus"   "apps/colyseus/" "packages/(shared-types|config)/" "infra/docker/Dockerfile.colyseus"
+          check_service "admin"      "apps/admin/" "packages/(shared-types|ui|config|permissions)/" "infra/docker/Dockerfile.admin"
+          check_service "gateway"    "apps/gateway/" "packages/(shared-types|config)/" "infra/docker/Dockerfile.gateway"
+          check_service "workers"    "apps/workers/" "packages/(orchestrator|skills|config|inference)/" "pyproject.toml" "uv.lock" "infra/docker/Dockerfile.workers"
+
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.nexus-api == 'true' ||
+      needs.detect-changes.outputs.office-ui == 'true' ||
+      needs.detect-changes.outputs.colyseus == 'true' ||
+      needs.detect-changes.outputs.admin == 'true' ||
+      needs.detect-changes.outputs.gateway == 'true' ||
+      needs.detect-changes.outputs.workers == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: nexus-api
+            image: autoswarm-nexus-api
+            dockerfile: infra/docker/Dockerfile.nexus-api
+            changed: nexus-api
+          - service: office-ui
+            image: autoswarm-office-ui
+            dockerfile: infra/docker/Dockerfile.office-ui
+            changed: office-ui
+          - service: colyseus
+            image: autoswarm-colyseus
+            dockerfile: infra/docker/Dockerfile.colyseus
+            changed: colyseus
+          - service: admin
+            image: autoswarm-admin
+            dockerfile: infra/docker/Dockerfile.admin
+            changed: admin
+          - service: gateway
+            image: autoswarm-gateway
+            dockerfile: infra/docker/Dockerfile.gateway
+            changed: gateway
+          - service: workers
+            image: autoswarm-workers
+            dockerfile: infra/docker/Dockerfile.workers
+            changed: workers
+    steps:
+      - name: Skip if unchanged
+        if: needs.detect-changes.outputs[matrix.changed] != 'true'
+        run: echo "No changes for ${{ matrix.service }}, skipping build" && exit 0
+
+      - uses: actions/checkout@v4
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+
+      - name: Set up Docker Buildx
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.MADFAM_BOT_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Set image tag
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+        id: meta
+        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ matrix.image }}:${{ steps.meta.outputs.sha }}
+            ${{ env.REGISTRY }}/${{ matrix.image }}:latest
+
+      - name: Install cosign
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+        run: |
+          cosign sign --yes \
+            ${{ env.REGISTRY }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+
+      - name: Output digest
+        if: needs.detect-changes.outputs[matrix.changed] == 'true'
+        id: digest
+        run: echo "digest=${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      digest: ${{ steps.digest.outputs.digest }}
+
+  commit-digests:
+    name: Commit Digests
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build]
+    if: success() || failure()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MADFAM_BOT_PAT || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Commit digest updates
+        run: |
+          git config user.name "madfam-bot"
+          git config user.email "bot@madfam.io"
+
+          SERVICES=("nexus-api:autoswarm-nexus-api" "office-ui:autoswarm-office-ui" "colyseus:autoswarm-colyseus" "admin:autoswarm-admin" "gateway:autoswarm-gateway" "workers:autoswarm-workers")
+
+          for ATTEMPT in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            CHANGED=false
+            cd infra/k8s/production
+
+            for entry in "${SERVICES[@]}"; do
+              SERVICE="${entry%%:*}"
+              IMAGE="${entry##*:}"
+
+              # Get the digest from the build job - use crane to fetch latest digest
+              DIGEST=$(docker buildx imagetools inspect "${{ env.REGISTRY }}/${IMAGE}:${GITHUB_SHA::7}" --format '{{.Digest}}' 2>/dev/null || true)
+              if [ -n "$DIGEST" ]; then
+                kustomize edit set image "${{ env.REGISTRY }}/${IMAGE}=${{ env.REGISTRY }}/${IMAGE}@${DIGEST}"
+                CHANGED=true
+              fi
+            done
+
+            cd "$GITHUB_WORKSPACE"
+
+            if ! git diff --staged --quiet 2>/dev/null; then
+              CHANGED=true
+            fi
+            git add infra/k8s/production/kustomization.yaml
+
+            if git diff --staged --quiet; then
+              echo "No digest changes to commit"
+              exit 0
+            fi
+
+            git commit -m "chore(deploy): update service digest(s)
+
+          Co-Authored-By: madfam-bot <bot@madfam.io>"
+            git push origin main && exit 0
+            sleep $((ATTEMPT * 10))
+          done
+
+          echo "Failed to push digest commit after 3 attempts"
+          exit 1
+
+  notify-enclii:
+    name: Notify Enclii
+    runs-on: ubuntu-latest
+    needs: [build, commit-digests]
+    if: always()
+    steps:
+      - name: Set image tag
+        id: meta
+        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: POST lifecycle callback
+        run: |
+          STATUS=${{ needs.build.result == 'success' && 'image_pushed' || 'build_failed' }}
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.ENCLII_DEPLOY_TOKEN }}" \
+            https://api.enclii.dev/v1/callbacks/lifecycle-event \
+            -d "{
+              \"repo_full_name\": \"madfam-org/autoswarm-office\",
+              \"event_type\": \"${STATUS}\",
+              \"commit_sha\": \"${{ github.sha }}\",
+              \"short_sha\": \"${{ steps.meta.outputs.sha }}\",
+              \"branch\": \"${{ github.ref_name }}\",
+              \"ref\": \"${{ github.ref }}\",
+              \"source\": \"ci_callback\",
+              \"message\": \"autoswarm-office ${STATUS}\",
+              \"metadata\": {
+                \"services\": [\"nexus-api\", \"office-ui\", \"colyseus\", \"admin\", \"gateway\", \"workers\"],
+                \"workflow\": \"deploy\",
+                \"actor\": \"${{ github.actor }}\"
+              }
+            }" || true
