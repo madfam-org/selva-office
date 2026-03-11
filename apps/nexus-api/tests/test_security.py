@@ -6,7 +6,7 @@ import hashlib
 import hmac as hmac_mod
 import json
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -291,4 +291,123 @@ class TestBillingHeaderFix:
                     "X-CSRF-Token": csrf,
                 },
             )
+            assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Rate Limiting
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_redis(execute_return: list[object] | None = None) -> MagicMock:
+    """Build a mock Redis client matching the ``redis.asyncio`` interface.
+
+    ``redis.asyncio.Redis.pipeline()`` is a **synchronous** method that returns
+    a Pipeline object with **async** ``incr``, ``expire``, and ``execute``.
+    We use ``MagicMock`` for the client itself (so ``pipeline()`` is sync) and
+    ``AsyncMock`` for the async pipeline methods and ``aclose``.
+
+    *execute_return* controls what ``pipeline.execute()`` resolves to.
+    Defaults to ``[1, True]`` (first request, within limit).
+    """
+    if execute_return is None:
+        execute_return = [1, True]
+
+    mock_pipe = MagicMock()
+    mock_pipe.incr = AsyncMock()
+    mock_pipe.expire = AsyncMock()
+    mock_pipe.execute = AsyncMock(return_value=execute_return)
+
+    mock_redis = MagicMock()
+    mock_redis.pipeline.return_value = mock_pipe
+    mock_redis.aclose = AsyncMock()
+
+    return mock_redis
+
+
+class TestRateLimiting:
+    """RateLimitMiddleware enforces per-IP request quotas via Redis."""
+
+    @pytest.mark.asyncio
+    async def test_health_endpoint_exempt(self, client: httpx.AsyncClient) -> None:
+        """Requests to /api/v1/health/* must never receive 429."""
+        mock_redis = _make_mock_redis()
+        with patch(
+            "nexus_api.middleware.rate_limit.aioredis.from_url",
+            return_value=mock_redis,
+        ):
+            for _ in range(100):
+                resp = await client.get("/api/v1/health/health")
+                assert resp.status_code != 429
+
+        # Redis should never have been called for health endpoints.
+        mock_redis.pipeline.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_exceeded_returns_429(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """After exceeding the limit, the middleware returns 429 with Retry-After."""
+        # Simulate a count of 61 (over the 60 req/min default limit).
+        mock_redis = _make_mock_redis(execute_return=[61, True])
+
+        with patch(
+            "nexus_api.middleware.rate_limit.aioredis.from_url",
+            return_value=mock_redis,
+        ):
+            resp = await client.get("/api/v1/agents/", headers=auth_headers)
+            assert resp.status_code == 429
+            assert "Retry-After" in resp.headers
+            assert int(resp.headers["Retry-After"]) > 0
+            body = resp.json()
+            assert body["detail"] == "Rate limit exceeded"
+
+    @pytest.mark.asyncio
+    async def test_redis_failure_allows_request(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """When Redis is unavailable, requests pass through (fail-open)."""
+        with patch(
+            "nexus_api.middleware.rate_limit.aioredis.from_url",
+            side_effect=ConnectionError("Redis unavailable"),
+        ):
+            resp = await client.get("/api/v1/agents/", headers=auth_headers)
+            # Should NOT be 429 -- middleware falls back to allowing the request.
+            assert resp.status_code != 429
+            assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_under_limit_request_passes(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """Requests under the rate limit are forwarded normally."""
+        mock_redis = _make_mock_redis(execute_return=[1, True])
+
+        with patch(
+            "nexus_api.middleware.rate_limit.aioredis.from_url",
+            return_value=mock_redis,
+        ):
+            resp = await client.get("/api/v1/agents/", headers=auth_headers)
+            assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_redis_pipeline_error_allows_request(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """A Redis error during pipeline execution still allows the request."""
+        mock_pipe = MagicMock()
+        mock_pipe.incr = AsyncMock()
+        mock_pipe.expire = AsyncMock()
+        mock_pipe.execute = AsyncMock(side_effect=Exception("pipeline broken"))
+
+        mock_redis = MagicMock()
+        mock_redis.pipeline.return_value = mock_pipe
+        mock_redis.aclose = AsyncMock()
+
+        with patch(
+            "nexus_api.middleware.rate_limit.aioredis.from_url",
+            return_value=mock_redis,
+        ):
+            resp = await client.get("/api/v1/agents/", headers=auth_headers)
+            assert resp.status_code != 429
             assert resp.status_code == 200

@@ -66,6 +66,7 @@ autoswarm-office/
 | 4301 | Office UI |
 | 4302 | Admin Dashboard |
 | 4303 | Colyseus |
+| 4304 | Gateway |
 | 5432 | PostgreSQL |
 | 6379 | Redis |
 

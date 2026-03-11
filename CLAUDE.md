@@ -17,6 +17,7 @@
 | 4301 | office-ui | Next.js frontend |
 | 4302 | admin | Admin dashboard |
 | 4303 | colyseus | Game state server |
+| 4304 | gateway | Heartbeat daemon (background worker) |
 
 These ports do not conflict with Janua (4100-4104) or Enclii (4200-4204).
 

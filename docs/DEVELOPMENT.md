@@ -35,6 +35,7 @@ After startup, these URLs are available:
 | Nexus API | http://localhost:4300 |
 | API docs (Swagger) | http://localhost:4300/docs |
 | Colyseus | ws://localhost:4303 |
+| Gateway | Background worker (no HTTP; port 4304 reserved) |
 
 ## Running Services Individually
 

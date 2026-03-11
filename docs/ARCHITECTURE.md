@@ -130,6 +130,7 @@ All ports are scoped to avoid conflicts with sibling MADFAM services
 | 4301 | office-ui | HTTP |
 | 4302 | admin dashboard | HTTP |
 | 4303 | colyseus | WebSocket |
+| 4304 | gateway | Background worker (no HTTP) |
 | 5432 | PostgreSQL | TCP |
 | 6379 | Redis | TCP |
 

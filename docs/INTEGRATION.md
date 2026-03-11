@@ -143,11 +143,14 @@ The `.enclii.yml` at the project root defines three services:
 Each service exposes health and readiness endpoints that Enclii and Kubernetes use
 for zero-downtime deployments:
 
-| Service | Health | Readiness |
-|---------|--------|-----------|
-| nexus-api | `GET /api/v1/health` | `GET /api/v1/ready` |
-| office-ui | `GET /api/health` | `GET /api/health` |
-| colyseus | `GET /health` | `GET /health` |
+| Service | Health | Readiness | Detail |
+|---------|--------|-----------|--------|
+| nexus-api | `GET /api/v1/health/health` | `GET /api/v1/health/ready` | `GET /api/v1/health/detail` |
+| office-ui | `GET /api/health` | `GET /api/health` | -- |
+| colyseus | `GET /health` | `GET /health` | -- |
+| gateway | K8s exec probe (no HTTP endpoint) | K8s exec probe | -- |
+
+Health endpoints are exempt from rate limiting.
 
 ### Autoscaling
 
