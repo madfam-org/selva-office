@@ -31,14 +31,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
-        key = f"autoswarm:ratelimit:{client_ip}"
+        window = int(time.time()) // 60
+        key = f"autoswarm:ratelimit:{client_ip}:{window}"
 
         try:
             redis_client = aioredis.from_url(self.redis_url, decode_responses=True)
             try:
                 pipe = redis_client.pipeline()
                 await pipe.incr(key)
-                await pipe.expire(key, 60)
+                await pipe.expire(key, 120)  # 2x window so key outlives its minute
                 results = await pipe.execute()
                 current_count: int = results[0]
 
