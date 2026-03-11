@@ -26,6 +26,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.requests_per_minute = requests_per_minute
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        # Exempt health endpoints from rate limiting (K8s probes)
+        if request.url.path.startswith("/api/v1/health"):
+            return await call_next(request)
+
         client_ip = request.client.host if request.client else "unknown"
         key = f"autoswarm:ratelimit:{client_ip}"
 

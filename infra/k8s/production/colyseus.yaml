@@ -68,6 +68,8 @@ spec:
           env:
             - name: ENVIRONMENT
               value: production
+            - name: COLYSEUS_PORT
+              value: "4303"
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
