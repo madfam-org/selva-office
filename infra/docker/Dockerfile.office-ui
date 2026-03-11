@@ -40,9 +40,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=builder /app/apps/office-ui/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/office-ui/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/office-ui/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/office-ui/.next/static ./apps/office-ui/.next/static
+COPY --from=builder /app/apps/office-ui/public ./apps/office-ui/public
 
 EXPOSE 3000
 
@@ -51,4 +51,4 @@ ENV HOSTNAME="0.0.0.0"
 
 USER nextjs
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/office-ui/server.js"]

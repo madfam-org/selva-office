@@ -3,6 +3,8 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "experimentalDecorators": true,
     "useDefineForClassFields": false
   },
