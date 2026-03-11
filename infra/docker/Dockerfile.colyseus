@@ -10,7 +10,7 @@ COPY apps/colyseus/package.json apps/colyseus/
 COPY packages/ packages/
 COPY tsconfig.json ./
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --shamefully-hoist
 
 COPY apps/colyseus/ apps/colyseus/
 
