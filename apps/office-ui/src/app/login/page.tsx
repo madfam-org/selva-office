@@ -1,7 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
+import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
@@ -14,7 +13,7 @@ const DUMMY_JWT = `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.${DUMMY_JWT_PAYLOAD}.`;
 const JANUA_ISSUER_URL = process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ?? '';
 const JANUA_CLIENT_ID = process.env.NEXT_PUBLIC_JANUA_CLIENT_ID ?? 'autoswarm-office';
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const redirect = searchParams.get('redirect') ?? '/';
@@ -82,5 +81,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
