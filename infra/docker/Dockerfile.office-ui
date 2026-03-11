@@ -26,7 +26,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json turbo.json ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN pnpm --filter office-ui build
+RUN pnpm --filter @autoswarm/shared-types build && \
+    pnpm --filter office-ui build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner

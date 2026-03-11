@@ -22,7 +22,8 @@ COPY --from=deps /app/packages/ ./packages/
 COPY apps/gateway/ apps/gateway/
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json turbo.json ./
 
-RUN pnpm --filter gateway build
+RUN pnpm --filter @autoswarm/shared-types build && \
+    pnpm --filter gateway build
 
 FROM node:20-alpine AS runner
 

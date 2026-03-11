@@ -14,7 +14,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY apps/colyseus/ apps/colyseus/
 
-RUN pnpm --filter colyseus build
+RUN pnpm --filter @autoswarm/shared-types build && \
+    pnpm --filter colyseus build
 
 # Stage 2: Runner
 FROM node:20-alpine AS runner
