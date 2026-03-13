@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 import time
 
-import redis.asyncio as aioredis
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+
+from autoswarm_redis_pool import get_redis_pool
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         key = f"autoswarm:ratelimit:{client_ip}:{window}"
 
         try:
-            redis_client = aioredis.from_url(self.redis_url, decode_responses=True)
+            pool = get_redis_pool(url=self.redis_url)
+            client = await pool.client()
             try:
-                pipe = redis_client.pipeline()
+                pipe = client.pipeline()
                 await pipe.incr(key)
                 await pipe.expire(key, 120)  # 2x window so key outlives its minute
                 results = await pipe.execute()
@@ -50,8 +52,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         content={"detail": "Rate limit exceeded"},
                         headers={"Retry-After": str(retry_after)},
                     )
-            finally:
-                await redis_client.aclose()
+            except Exception:
+                logger.debug("Redis pipeline failed for rate limiting; allowing request")
         except Exception:
             logger.debug("Redis unavailable for rate limiting; allowing request")
 

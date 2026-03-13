@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -198,7 +197,7 @@ async def update_department(
     for field_name, value in update_data.items():
         setattr(dept, field_name, value)
 
-    dept.updated_at = datetime.now(timezone.utc)
+    dept.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(dept)
     return _dept_to_response(dept)

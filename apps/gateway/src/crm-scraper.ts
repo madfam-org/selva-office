@@ -5,6 +5,8 @@
  * tRPC API and converts them into ExternalEvent objects for the HeartbeatService.
  */
 
+import type pino from "pino";
+
 interface ExternalEvent {
   source: string;
   type: string;
@@ -38,10 +40,12 @@ interface PhyneActivity {
 export class CRMScraper {
   private readonly baseUrl: string;
   private readonly token: string;
+  private readonly logger: pino.Logger;
 
-  constructor(baseUrl: string, token: string = "") {
+  constructor(baseUrl: string, token: string = "", logger: pino.Logger) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.token = token;
+    this.logger = logger;
   }
 
   async scrape(): Promise<ExternalEvent[]> {
@@ -98,7 +102,7 @@ export class CRMScraper {
         }
       }
     } catch (err) {
-      console.error("[crm-scraper] CRM scrape failed:", err);
+      this.logger.error({ err }, "CRM scrape failed");
     }
 
     return events;
@@ -113,7 +117,7 @@ export class CRMScraper {
     });
 
     if (!response.ok) {
-      console.error(`[crm-scraper] leads.list returned ${response.status}`);
+      this.logger.error({ statusCode: response.status }, "leads.list request failed");
       return [];
     }
 
@@ -129,8 +133,9 @@ export class CRMScraper {
     });
 
     if (!response.ok) {
-      console.error(
-        `[crm-scraper] activities.listForEntity returned ${response.status}`
+      this.logger.error(
+        { statusCode: response.status },
+        "activities.listForEntity request failed"
       );
       return [];
     }

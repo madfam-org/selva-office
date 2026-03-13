@@ -403,14 +403,12 @@ describe("updateAgentInState", () => {
     expect(state.pendingApprovalCount).toBe(0);
   });
 
-  it("logs warning when agent_id not found in any department", () => {
+  it("does not modify agent when agent_id not found in any department", () => {
     const agent = makeAgent({ id: "a1", name: "Ada", role: "coder", status: "idle" });
     const dept = makeDepartment("engineering", [agent]);
     const state = makeState(new Map([["engineering", dept]]));
 
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    // Simulate the updateAgentInState logic with fallback + warning
+    // Simulate the updateAgentInState fallback scan for a nonexistent agent
     const agentId = "nonexistent-agent";
     let found = false;
     state.departments.forEach((d: any) => {
@@ -423,16 +421,9 @@ describe("updateAgentInState", () => {
         }
       }
     });
-    if (!found) {
-      console.warn(`[OfficeRoom] Agent ${agentId} not found in any department`);
-    }
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      "[OfficeRoom] Agent nonexistent-agent not found in any department"
-    );
+    expect(found).toBe(false);
     expect(agent.status).toBe("idle");
-
-    warnSpy.mockRestore();
   });
 
   it("sets currentTaskId and currentTaskDescription on status update", () => {

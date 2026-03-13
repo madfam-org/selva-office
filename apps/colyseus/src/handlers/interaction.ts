@@ -1,5 +1,8 @@
 import { Client } from "@colyseus/core";
 import { OfficeStateSchema, AgentSchema } from "../schema/OfficeState";
+import { createLogger } from "@autoswarm/config/logging";
+
+const logger = createLogger({ service: "colyseus" }).child({ component: "interaction" });
 
 interface InteractData {
   agentId: string;
@@ -62,8 +65,9 @@ export function handleInteraction(
       agentRole: agent.role,
       level: agent.level,
     });
-    console.log(
-      `[interaction] Agent ${agent.name} has pending approval; prompting client ${client.sessionId}`
+    logger.info(
+      { agentName: agent.name, sessionId: client.sessionId },
+      "Agent has pending approval; prompting client"
     );
     return;
   }
@@ -77,8 +81,9 @@ export function handleInteraction(
     x: agent.x,
     y: agent.y,
   });
-  console.log(
-    `[interaction] Showing info for agent ${agent.name} (status: ${agent.status})`
+  logger.info(
+    { agentName: agent.name, agentStatus: agent.status },
+    "Showing agent info"
   );
 }
 
@@ -110,8 +115,9 @@ export async function handleApproval(
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(
-        `[interaction] Nexus API returned ${response.status}: ${errorBody}`
+      logger.error(
+        { requestId, statusCode: response.status, errorBody },
+        "Nexus API returned error for approval"
       );
       client.send("approval_error", {
         requestId,
@@ -141,11 +147,12 @@ export async function handleApproval(
       result,
     });
 
-    console.log(
-      `[interaction] Approval ${requestId} processed: ${result}${feedback ? ` (feedback: ${feedback})` : ""}`
+    logger.info(
+      { requestId, result, feedback: feedback ?? null },
+      "Approval processed"
     );
   } catch (err) {
-    console.error("[interaction] Failed to forward approval to nexus-api:", err);
+    logger.error({ err, requestId }, "Failed to forward approval to nexus-api");
     client.send("approval_error", {
       requestId,
       message: "Failed to communicate with nexus-api",

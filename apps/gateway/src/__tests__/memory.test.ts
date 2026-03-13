@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { MemoryManager } from "../memory";
+import { mockLogger } from "./helpers";
 
 describe("MemoryManager", () => {
   let tmpDir: string;
@@ -12,7 +13,7 @@ describe("MemoryManager", () => {
     // Create a unique temporary directory for each test to avoid cross-test
     // contamination. The directory is cleaned up in afterEach.
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "autoswarm-memory-test-"));
-    manager = new MemoryManager(tmpDir);
+    manager = new MemoryManager(tmpDir, mockLogger());
     manager.ensureDir();
   });
 
@@ -231,7 +232,7 @@ describe("MemoryManager", () => {
   describe("ensureDir", () => {
     it("creates memory directory and logs subdirectory", () => {
       const freshDir = path.join(tmpDir, "fresh-memory");
-      const freshManager = new MemoryManager(freshDir);
+      const freshManager = new MemoryManager(freshDir, mockLogger());
       freshManager.ensureDir();
 
       expect(fs.existsSync(freshDir)).toBe(true);

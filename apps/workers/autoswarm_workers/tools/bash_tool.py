@@ -105,7 +105,7 @@ class BashTool:
                     process.communicate(),
                     timeout=self.timeout_seconds,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 process.kill()
                 await process.wait()
                 logger.warning("Command timed out after %ds: %s", self.timeout_seconds, command)

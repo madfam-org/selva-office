@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nexus-api-netpol
+  namespace: autoswarm
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nexus-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: office-ui
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: colyseus
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: workers
+      ports:
+        - port: 4300
+          protocol: TCP
+  egress:
+    - to: []  # Allow all egress (DB, Redis, external APIs)
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: workers-netpol
+  namespace: autoswarm
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: workers
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - port: 4305
+          protocol: TCP
+  egress:
+    - to: []  # Allow all egress (Redis, nexus-api, LLM providers)

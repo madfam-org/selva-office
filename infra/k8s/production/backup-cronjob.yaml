@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup-pvc
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/component: backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/component: backup
+spec:
+  schedule: "0 2 * * *"  # Daily at 02:00 UTC
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800  # 30 minute timeout
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgres-backup
+            app.kubernetes.io/part-of: autoswarm-office
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: autoswarm-sa
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            fsGroup: 1001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  FILENAME="autoswarm_${TIMESTAMP}.dump"
+                  FILEPATH="/backups/${FILENAME}"
+
+                  echo "[backup] Starting PostgreSQL backup at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+                  pg_dump "${DATABASE_URL}" \
+                    --format=custom \
+                    --compress=9 \
+                    --no-owner \
+                    --no-privileges \
+                    --file="${FILEPATH}"
+
+                  FILESIZE=$(stat -c%s "${FILEPATH}" 2>/dev/null || echo "unknown")
+                  echo "[backup] Backup created: ${FILEPATH} (${FILESIZE} bytes)"
+
+                  if [ "${FILESIZE}" = "0" ]; then
+                    echo "[backup] ERROR: Backup file is empty"
+                    exit 1
+                  fi
+
+                  # Upload to S3 if bucket is configured
+                  if [ -n "${S3_BUCKET:-}" ]; then
+                    DAY_OF_WEEK=$(date +%u)
+                    if [ "${DAY_OF_WEEK}" = "7" ]; then
+                      S3_PREFIX="weekly"
+                    else
+                      S3_PREFIX="daily"
+                    fi
+                    # Use pre-installed aws CLI from init container or base image
+                    if command -v aws >/dev/null 2>&1; then
+                      aws s3 cp "${FILEPATH}" "s3://${S3_BUCKET}/autoswarm/${S3_PREFIX}/${FILENAME}"
+                      echo "[backup] Uploaded to s3://${S3_BUCKET}/autoswarm/${S3_PREFIX}/${FILENAME}"
+                    else
+                      echo "[backup] WARNING: aws CLI not available, skipping S3 upload"
+                    fi
+                  fi
+
+                  # Rotate: keep last 30 daily backups on local PVC
+                  ls -t /backups/autoswarm_*.dump 2>/dev/null | tail -n +31 | xargs -r rm -f
+
+                  echo "[backup] Backup complete at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: autoswarm-secrets
+                      key: database-url
+                - name: S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: autoswarm-config
+                      key: backup-s3-bucket
+                      optional: true
+              volumeMounts:
+                - name: backup-volume
+                  mountPath: /backups
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: backup-volume
+              persistentVolumeClaim:
+                claimName: postgres-backup-pvc
+            - name: tmp
+              emptyDir:
+                sizeLimit: 100Mi

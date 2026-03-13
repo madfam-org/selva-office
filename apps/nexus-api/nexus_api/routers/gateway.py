@@ -12,9 +12,10 @@ import json
 import logging
 from typing import Any
 
-import redis.asyncio as aioredis
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from autoswarm_redis_pool import get_redis_pool
 
 from ..config import get_settings
 from ..database import async_session_factory
@@ -92,6 +93,9 @@ async def github_webhook(
         logger.info("Ignoring GitHub event: %s", event_key)
         return {"status": "ignored", "event": event_key}
 
+    # Extract request_id for cross-service correlation.
+    request_id = getattr(request.state, "request_id", None)
+
     # Build task(s) from the webhook payload.
     tasks_created = 0
 
@@ -104,22 +108,22 @@ async def github_webhook(
 
             # Enqueue to Redis for worker consumption.
             try:
-                redis_client = aioredis.from_url(
-                    settings.redis_url, decode_responses=True
+                pool = get_redis_pool(url=settings.redis_url)
+                task_msg = json.dumps(
+                    {
+                        "task_id": str(task.id),
+                        "graph_type": task.graph_type,
+                        "description": task.description,
+                        "assigned_agent_ids": task.assigned_agent_ids or [],
+                        "payload": task.payload or {},
+                        "request_id": request_id,
+                    }
                 )
-                await redis_client.lpush(
-                    "autoswarm:tasks",
-                    json.dumps(
-                        {
-                            "task_id": str(task.id),
-                            "graph_type": task.graph_type,
-                            "description": task.description,
-                            "assigned_agent_ids": task.assigned_agent_ids or [],
-                            "payload": task.payload or {},
-                        }
-                    ),
+                # Dual-write: LPUSH (legacy) + XADD (stream)
+                await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
+                await pool.execute_with_retry(
+                    "xadd", "autoswarm:task-stream", {"data": task_msg}
                 )
-                await redis_client.aclose()
             except Exception:
                 logger.warning("Redis unavailable; task persisted in DB only")
                 task.status = "pending"

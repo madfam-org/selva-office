@@ -1,4 +1,4 @@
-"""AutoSwarm worker process -- Redis BRPOP consumer for LangGraph execution."""
+"""AutoSwarm worker process -- Redis Streams consumer for LangGraph execution."""
 
 from __future__ import annotations
 
@@ -9,8 +9,16 @@ import signal
 import sys
 
 import httpx
-import redis.asyncio as aioredis
+from cachetools import TTLCache
 from langgraph.types import Command
+
+from autoswarm_observability import bind_task_context, clear_context, configure_logging, init_sentry
+from autoswarm_redis_pool import get_redis_pool
+from autoswarm_redis_pool.task_stream import (
+    MAX_RETRIES,
+    TaskStreamConsumer,
+)
+from autoswarm_redis_pool.timeout import get_task_timeout
 
 from .checkpointer import create_checkpointer
 from .config import get_settings
@@ -19,10 +27,10 @@ from .graphs.crm import build_crm_graph
 from .graphs.research import build_research_graph
 from .interrupt_handler import InterruptHandler
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
-)
+# Use shared observability logging instead of basicConfig.
+configure_logging(service_name="worker")
+init_sentry("worker")
+
 logger = logging.getLogger("autoswarm.worker")
 
 QUEUE_KEY = "autoswarm:tasks"
@@ -36,6 +44,9 @@ GRAPH_BUILDERS = {
 checkpointer = create_checkpointer()
 
 _shutdown = asyncio.Event()
+
+# Agent skill cache: avoids HTTP GET per task (Phase 4.2)
+_skill_cache: TTLCache[str, list[str]] = TTLCache(maxsize=256, ttl=60)
 
 
 def _handle_signal(sig: signal.Signals) -> None:
@@ -103,8 +114,7 @@ async def run_graph_with_interrupts(
         )
 
         # Notify Colyseus that this agent is awaiting human approval.
-        settings = get_settings()
-        await _publish_agent_status(settings.redis_url, agent_id, "waiting_approval")
+        await _publish_agent_status(agent_id, "waiting_approval")
 
         approval = await handler.wait_for_approval(request_id)
 
@@ -126,31 +136,39 @@ async def run_graph_with_interrupts(
     return result
 
 
-async def _publish_agent_status(redis_url: str, agent_id: str, new_status: str) -> None:
+async def _publish_agent_status(agent_id: str, new_status: str) -> None:
     """Publish an agent status change to Redis for Colyseus consumption."""
     if agent_id == "unknown":
         return
     try:
-        client = aioredis.from_url(redis_url, decode_responses=True)
-        await client.publish(
+        pool = get_redis_pool()
+        await pool.execute_with_retry(
+            "publish",
             AGENT_STATUS_CHANNEL,
             json.dumps({"agent_id": agent_id, "status": new_status}),
         )
-        await client.aclose()
     except Exception:
         logger.warning("Failed to publish agent status for %s", agent_id)
 
 
 async def _fetch_agent_skills(nexus_url: str, agent_id: str) -> list[str]:
-    """GET /api/v1/agents/{agent_id} and return effective_skills."""
+    """GET /api/v1/agents/{agent_id} and return effective_skills (cached)."""
     if agent_id == "unknown":
         return []
+
+    # Check cache first
+    cached = _skill_cache.get(agent_id)
+    if cached is not None:
+        return cached
+
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{nexus_url}/api/v1/agents/{agent_id}")
             if resp.status_code == 200:
                 data = resp.json()
-                return data.get("effective_skills", [])
+                skills = data.get("effective_skills", [])
+                _skill_cache[agent_id] = skills
+                return skills
     except Exception:
         logger.warning("Failed to fetch skills for agent %s", agent_id)
     return []
@@ -160,6 +178,10 @@ async def process_task(task_data: dict) -> None:
     """Build and invoke the appropriate LangGraph for a single task."""
     task_id = task_data.get("task_id", "unknown")
     graph_type = task_data.get("graph_type", "coding")
+
+    # Bind task context for structured logging.
+    request_id = task_data.get("request_id")
+    bind_task_context(task_id=task_id, request_id=request_id)
 
     builder = GRAPH_BUILDERS.get(graph_type)
     if builder is None:
@@ -216,64 +238,113 @@ async def process_task(task_data: dict) -> None:
         initial_state["recipient"] = payload.get("recipient", "unknown@example.com")
         initial_state["crm_action"] = payload.get("crm_action", "email")
 
-    settings = get_settings()
     handler = InterruptHandler(
         nexus_api_url=settings.nexus_api_url,
         redis_url=settings.redis_url,
     )
 
     # Notify Colyseus that this agent is now working.
-    await _publish_agent_status(settings.redis_url, agent_id, "working")
+    await _publish_agent_status(agent_id, "working")
 
     try:
-        result = await run_graph_with_interrupts(
-            compiled, initial_state, task_id, agent_id, handler
+        # Apply per-graph-type timeout
+        timeout = get_task_timeout(graph_type)
+        result = await asyncio.wait_for(
+            run_graph_with_interrupts(
+                compiled, initial_state, task_id, agent_id, handler
+            ),
+            timeout=timeout,
         )
         logger.info("Task %s completed with status: %s", task_id, result.get("status"))
-        await _publish_agent_status(settings.redis_url, agent_id, "idle")
+        await _publish_agent_status(agent_id, "idle")
+    except TimeoutError:
+        logger.error("Task %s timed out after %ds", task_id, timeout)
+        await _publish_agent_status(agent_id, "error")
     except Exception:
         logger.exception("Task %s failed", task_id)
-        await _publish_agent_status(settings.redis_url, agent_id, "error")
+        await _publish_agent_status(agent_id, "error")
     finally:
         await handler.close()
+        clear_context()
 
 
 async def main() -> None:
-    """Entry point: connect to Redis and consume the task queue."""
+    """Entry point: connect to Redis and consume the task stream."""
     settings = get_settings()
 
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, _handle_signal, sig)
 
-    redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
+    # Initialize Redis pool
+    pool = get_redis_pool(url=settings.redis_url)
 
-    try:
-        await redis_client.ping()
-        logger.info("Connected to Redis at %s", settings.redis_url)
-    except Exception:
+    if not await pool.ping():
         logger.error("Cannot connect to Redis at %s", settings.redis_url)
         sys.exit(1)
 
-    logger.info("Worker listening on queue '%s'", QUEUE_KEY)
+    logger.info("Connected to Redis at %s", settings.redis_url)
+
+    # Set up Redis Streams consumer
+    consumer = TaskStreamConsumer()
+    await consumer.ensure_group()
+
+    # Claim any stalled messages from crashed workers
+    stalled = await consumer.claim_stalled()
+    for msg_id, task_data in stalled:
+        logger.info("Re-processing stalled task %s (msg_id=%s)", task_data.get("task_id"), msg_id)
+        try:
+            await process_task(task_data)
+            await consumer.ack(msg_id)
+        except Exception:
+            logger.exception("Failed to process stalled task %s", msg_id)
+
+    logger.info("Worker listening on stream '%s'", "autoswarm:task-stream")
+
+    # Exponential backoff state for connection errors
+    backoff_delay = 1.0
+    max_backoff = 60.0
 
     try:
         while not _shutdown.is_set():
+            # Check shutdown before starting new task
+            if _shutdown.is_set():
+                break
+
             try:
-                result = await redis_client.brpop(QUEUE_KEY, timeout=5)
-                if result is None:
+                messages = await consumer.read(count=1, block=5000)
+                if not messages:
                     continue
 
-                _, raw = result
-                task_data = json.loads(raw)
-                await process_task(task_data)
-            except json.JSONDecodeError as exc:
-                logger.error("Invalid JSON in task queue: %s", exc)
-            except aioredis.ConnectionError:
-                logger.warning("Redis connection lost, reconnecting in 5s...")
-                await asyncio.sleep(5)
+                # Reset backoff on successful read
+                backoff_delay = 1.0
+
+                for msg_id, task_data in messages:
+                    # Check shutdown between tasks
+                    if _shutdown.is_set():
+                        break
+
+                    task_id = task_data.get("task_id", "unknown")
+                    try:
+                        await process_task(task_data)
+                        await consumer.ack(msg_id)
+                    except Exception:
+                        logger.exception("Task %s failed (msg_id=%s)", task_id, msg_id)
+                        # Check retry count
+                        retries = await consumer.retry_count(msg_id)
+                        if retries >= MAX_RETRIES:
+                            error_msg = f"Max retries ({MAX_RETRIES}) exceeded"
+                            await consumer.move_to_dlq(msg_id, task_data, error_msg)
+                        # Leave unacked for re-delivery on next claim_stalled
+
+            except ConnectionError:
+                logger.warning(
+                    "Redis connection lost, retrying in %.1fs...", backoff_delay
+                )
+                await asyncio.sleep(backoff_delay)
+                backoff_delay = min(backoff_delay * 2, max_backoff)
     finally:
-        await redis_client.aclose()
+        await pool.close()
         logger.info("Worker shut down")
 
 

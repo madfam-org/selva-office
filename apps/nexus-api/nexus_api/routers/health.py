@@ -8,6 +8,8 @@ import httpx
 from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
+from autoswarm_redis_pool import get_redis_pool
+
 from ..config import get_settings
 from ..database import async_session_factory
 
@@ -47,12 +49,11 @@ async def ready(response: Response) -> dict[str, object]:
 
     # -- Redis check ----------------------------------------------------------
     try:
-        import redis.asyncio as aioredis
-
-        redis_client = aioredis.from_url(_settings.redis_url, decode_responses=True)
-        await redis_client.ping()
-        await redis_client.aclose()
-        checks["redis"] = "ok"
+        pool = get_redis_pool(url=_settings.redis_url)
+        if await pool.ping():
+            checks["redis"] = "ok"
+        else:
+            checks["redis"] = "unavailable"
     except Exception as exc:
         logger.error("Redis readiness check failed: %s", exc)
         checks["redis"] = "unavailable"
@@ -70,7 +71,7 @@ async def ready(response: Response) -> dict[str, object]:
 
 @router.get("/detail")
 async def health_detail(response: Response) -> dict[str, object]:
-    """Detailed health check including Colyseus connectivity."""
+    """Detailed health check including Colyseus connectivity and pool metrics."""
     checks: dict[str, str] = {}
 
     # -- Database check -------------------------------------------------------
@@ -83,13 +84,12 @@ async def health_detail(response: Response) -> dict[str, object]:
         checks["database"] = "unavailable"
 
     # -- Redis check ----------------------------------------------------------
+    pool = get_redis_pool(url=_settings.redis_url)
     try:
-        import redis.asyncio as aioredis
-
-        redis_client = aioredis.from_url(_settings.redis_url, decode_responses=True)
-        await redis_client.ping()
-        await redis_client.aclose()
-        checks["redis"] = "ok"
+        if await pool.ping():
+            checks["redis"] = "ok"
+        else:
+            checks["redis"] = "unavailable"
     except Exception as exc:
         logger.error("Redis health check failed: %s", exc)
         checks["redis"] = "unavailable"
@@ -111,4 +111,55 @@ async def health_detail(response: Response) -> dict[str, object]:
         "version": "0.1.0",
         "service": "nexus-api",
         "checks": checks,
+        "redis_pool": pool.metrics(),
     }
+
+
+@router.get("/queue-stats")
+async def queue_stats() -> dict[str, object]:
+    """Return Redis task stream and queue statistics."""
+    pool = get_redis_pool(url=_settings.redis_url)
+    stats: dict[str, object] = {}
+
+    try:
+        client = await pool.client()
+
+        # Stream length
+        try:
+            stats["stream_length"] = await client.xlen("autoswarm:task-stream")
+        except Exception:
+            stats["stream_length"] = 0
+
+        # DLQ depth
+        try:
+            stats["dlq_depth"] = await client.xlen("autoswarm:task-dlq")
+        except Exception:
+            stats["dlq_depth"] = 0
+
+        # Consumer group info
+        try:
+            groups = await client.xinfo_groups("autoswarm:task-stream")
+            stats["consumer_groups"] = [
+                {
+                    "name": g.get("name", ""),
+                    "consumers": g.get("consumers", 0),
+                    "pending": g.get("pending", 0),
+                    "last_delivered_id": g.get("last-delivered-id", ""),
+                }
+                for g in groups
+            ]
+        except Exception:
+            stats["consumer_groups"] = []
+
+        # Legacy queue depth (for migration period)
+        try:
+            stats["legacy_queue_depth"] = await client.llen("autoswarm:tasks")
+        except Exception:
+            stats["legacy_queue_depth"] = 0
+
+    except Exception as exc:
+        logger.warning("Failed to fetch queue stats: %s", exc)
+        stats["error"] = str(exc)
+
+    stats["redis_pool"] = pool.metrics()
+    return stats

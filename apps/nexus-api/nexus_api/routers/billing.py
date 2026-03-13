@@ -6,7 +6,7 @@ import hashlib
 import hmac as hmac_mod
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -59,7 +59,7 @@ async def compute_usage(
 
     Groups usage by action type for the current UTC day.
     """
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
     result = await db.execute(
         select(
@@ -93,7 +93,7 @@ async def compute_token_status(
     The daily limit is sourced from the subscription tier; usage is
     summed from the ledger for today.
     """
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
     result = await db.execute(
         select(func.coalesce(func.sum(ComputeTokenLedger.amount), 0)).where(

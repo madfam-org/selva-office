@@ -1,6 +1,7 @@
 import { CronJob } from "cron";
 import { Octokit } from "@octokit/rest";
 import WebSocket from "ws";
+import type pino from "pino";
 import { CRMScraper } from "./crm-scraper";
 
 interface ExternalEvent {
@@ -23,47 +24,75 @@ export class HeartbeatService {
   private cronJob: CronJob | null = null;
   private ws: WebSocket | null = null;
   private readonly crmScraper: CRMScraper | null;
+  private readonly logger: pino.Logger;
+
+  private _lastTickTime: string | null = null;
+  private _totalTicks: number = 0;
 
   constructor(
     nexusApiUrl: string,
-    cronExpression: string = "*/30 * * * *"
+    cronExpression: string = "*/30 * * * *",
+    logger: pino.Logger
   ) {
     this.nexusApiUrl = nexusApiUrl;
     this.cronExpression = cronExpression;
+    this.logger = logger;
 
     const phyneCrmUrl = process.env.PHYNE_CRM_URL;
     const phyneCrmToken = process.env.PHYNE_CRM_TOKEN ?? "";
+    const crmLogger = logger.child({ component: "crm-scraper" });
     this.crmScraper = phyneCrmUrl
-      ? new CRMScraper(phyneCrmUrl, phyneCrmToken)
+      ? new CRMScraper(phyneCrmUrl, phyneCrmToken, crmLogger)
       : null;
+  }
+
+  /** ISO timestamp of the last completed tick, or null if no tick has run. */
+  get lastTickTime(): string | null {
+    return this._lastTickTime;
+  }
+
+  /** ISO timestamp of the next scheduled tick, or null if not running. */
+  get nextTickTime(): string | null {
+    if (!this.cronJob) return null;
+    try {
+      const next = this.cronJob.nextDate();
+      return next.toISO();
+    } catch {
+      return null;
+    }
+  }
+
+  /** Total number of ticks executed since the service started. */
+  get totalTicks(): number {
+    return this._totalTicks;
   }
 
   start(): void {
     this.cronJob = new CronJob(this.cronExpression, () => {
       this.tick().catch((err) => {
-        console.error("[heartbeat] Error during tick:", err);
+        this.logger.error({ err }, "Error during tick");
       });
     });
     this.cronJob.start();
-    console.log("[heartbeat] CronJob started");
+    this.logger.info("CronJob started");
   }
 
   stop(): void {
     if (this.cronJob) {
       this.cronJob.stop();
       this.cronJob = null;
-      console.log("[heartbeat] CronJob stopped");
+      this.logger.info("CronJob stopped");
     }
     if (this.ws) {
       this.ws.close();
       this.ws = null;
-      console.log("[heartbeat] WebSocket closed");
+      this.logger.info("WebSocket closed");
     }
   }
 
   async tick(): Promise<void> {
     const timestamp = new Date().toISOString();
-    console.log(`[heartbeat] Tick at ${timestamp}`);
+    this.logger.info({ timestamp }, "Tick started");
 
     const crmEvents = await this.scrapeCRM();
     const githubEvents = await this.scrapeGitHub();
@@ -76,21 +105,24 @@ export class HeartbeatService {
     if (waves.length > 0) {
       await this.dispatch(waves);
     } else {
-      console.log("[heartbeat] No events to dispatch this cycle");
+      this.logger.info("No events to dispatch this cycle");
     }
+
+    this._lastTickTime = timestamp;
+    this._totalTicks += 1;
   }
 
   private async scrapeCRM(): Promise<ExternalEvent[]> {
     if (!this.crmScraper) {
-      console.log("[heartbeat] PHYNE_CRM_URL not set; skipping CRM scrape");
+      this.logger.info("PHYNE_CRM_URL not set; skipping CRM scrape");
       return [];
     }
 
     try {
-      console.log("[heartbeat] Scraping CRM via Phyne-CRM...");
+      this.logger.info("Scraping CRM via Phyne-CRM...");
       return await this.crmScraper.scrape();
     } catch (err) {
-      console.error("[heartbeat] CRM scrape failed:", err);
+      this.logger.error({ err }, "CRM scrape failed");
       return [];
     }
   }
@@ -99,7 +131,7 @@ export class HeartbeatService {
     const token = process.env.GITHUB_TOKEN;
     const reposEnv = process.env.GITHUB_REPOS;
     if (!token || !reposEnv) {
-      console.log("[heartbeat] GITHUB_TOKEN or GITHUB_REPOS not set; skipping GitHub scrape");
+      this.logger.info("GITHUB_TOKEN or GITHUB_REPOS not set; skipping GitHub scrape");
       return [];
     }
 
@@ -192,11 +224,12 @@ export class HeartbeatService {
           });
         }
 
-        console.log(
-          `[heartbeat] GitHub: ${events.length} events from ${repo}`
+        this.logger.info(
+          { eventCount: events.length, repo },
+          "GitHub scrape completed for repo"
         );
       } catch (err) {
-        console.error(`[heartbeat] GitHub scrape failed for ${repo}:`, err);
+        this.logger.error({ err, repo }, "GitHub scrape failed for repo");
       }
     }
 
@@ -205,17 +238,17 @@ export class HeartbeatService {
 
   private async scrapeTickets(): Promise<ExternalEvent[]> {
     if (!this.crmScraper) {
-      console.log("[heartbeat] PHYNE_CRM_URL not set; skipping ticket scrape");
+      this.logger.info("PHYNE_CRM_URL not set; skipping ticket scrape");
       return [];
     }
 
     try {
-      console.log("[heartbeat] Scraping support tickets via Phyne-CRM...");
+      this.logger.info("Scraping support tickets via Phyne-CRM...");
       const events = await this.crmScraper.scrape();
       // Filter for task-type activities only (ticket-like items)
       return events.filter((e) => e.type === "activity_overdue");
     } catch (err) {
-      console.error("[heartbeat] Ticket scrape failed:", err);
+      this.logger.error({ err }, "Ticket scrape failed");
       return [];
     }
   }
@@ -264,12 +297,13 @@ export class HeartbeatService {
           data: wave,
         });
         ws.send(message);
-        console.log(
-          `[heartbeat] Dispatched ${wave.kind} from ${wave.source} (${wave.events.length} events)`
+        this.logger.info(
+          { kind: wave.kind, source: wave.source, eventCount: wave.events.length },
+          "Dispatched wave"
         );
       }
     } catch (err) {
-      console.error("[heartbeat] Failed to dispatch waves:", err);
+      this.logger.error({ err }, "Failed to dispatch waves");
     }
   }
 
@@ -286,16 +320,17 @@ export class HeartbeatService {
     this.ws = new WebSocket(this.nexusApiUrl);
 
     this.ws.on("open", () => {
-      console.log("[heartbeat] WebSocket connected to nexus-api");
+      this.logger.info("WebSocket connected to nexus-api");
     });
 
     this.ws.on("error", (err) => {
-      console.error("[heartbeat] WebSocket error:", err);
+      this.logger.error({ err }, "WebSocket error");
     });
 
     this.ws.on("close", (code, reason) => {
-      console.log(
-        `[heartbeat] WebSocket closed (code=${code}, reason=${reason.toString()})`
+      this.logger.info(
+        { code, reason: reason.toString() },
+        "WebSocket closed"
       );
       this.ws = null;
     });

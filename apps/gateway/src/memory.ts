@@ -1,17 +1,20 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type pino from "pino";
 
 export class MemoryManager {
   private readonly memoryDir: string;
   private readonly memoryFile: string;
   private readonly soulFile: string;
   private readonly logsDir: string;
+  private readonly logger: pino.Logger;
 
-  constructor(memoryDir: string = "./data/memory") {
+  constructor(memoryDir: string = "./data/memory", logger: pino.Logger) {
     this.memoryDir = memoryDir;
     this.memoryFile = path.join(memoryDir, "MEMORY.md");
     this.soulFile = path.join(memoryDir, "SOUL.md");
     this.logsDir = path.join(memoryDir, "logs");
+    this.logger = logger;
   }
 
   ensureDir(): void {
@@ -89,7 +92,7 @@ export class MemoryManager {
       if (fileDate < cutoff) {
         const filePath = path.join(this.logsDir, file);
         fs.unlinkSync(filePath);
-        console.log(`[memory] Rotated old log: ${file}`);
+        this.logger.info({ file }, "Rotated old log");
       }
     }
   }

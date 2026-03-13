@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { CRMScraper } from "../crm-scraper";
+import { mockLogger } from "./helpers";
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -35,7 +36,7 @@ describe("CRMScraper", () => {
     // Activities call returns empty
     mockFetch.mockResolvedValueOnce(tRPCResponse([]));
 
-    const scraper = new CRMScraper("http://crm:3000", "token");
+    const scraper = new CRMScraper("http://crm:3000", "token", mockLogger());
     const events = await scraper.scrape();
 
     const followups = events.filter((e) => e.type === "lead_followup");
@@ -58,7 +59,7 @@ describe("CRMScraper", () => {
     );
     mockFetch.mockResolvedValueOnce(tRPCResponse([]));
 
-    const scraper = new CRMScraper("http://crm:3000");
+    const scraper = new CRMScraper("http://crm:3000", "", mockLogger());
     const events = await scraper.scrape();
 
     const hotLeads = events.filter((e) => e.type === "hot_lead");
@@ -82,7 +83,7 @@ describe("CRMScraper", () => {
       ])
     );
 
-    const scraper = new CRMScraper("http://crm:3000");
+    const scraper = new CRMScraper("http://crm:3000", "", mockLogger());
     const events = await scraper.scrape();
 
     const overdue = events.filter((e) => e.type === "activity_overdue");
@@ -93,7 +94,7 @@ describe("CRMScraper", () => {
   it("returns empty when CRM is unreachable", async () => {
     mockFetch.mockRejectedValue(new Error("Connection refused"));
 
-    const scraper = new CRMScraper("http://crm:3000");
+    const scraper = new CRMScraper("http://crm:3000", "", mockLogger());
     const events = await scraper.scrape();
 
     expect(events).toEqual([]);
@@ -113,7 +114,7 @@ describe("CRMScraper", () => {
     );
     mockFetch.mockResolvedValueOnce(tRPCResponse([]));
 
-    const scraper = new CRMScraper("http://crm:3000");
+    const scraper = new CRMScraper("http://crm:3000", "", mockLogger());
     const events = await scraper.scrape();
 
     expect(events).toHaveLength(1);
@@ -129,7 +130,7 @@ describe("CRMScraper", () => {
     mockFetch.mockResolvedValueOnce(tRPCResponse([]));
     mockFetch.mockResolvedValueOnce(tRPCResponse([]));
 
-    const scraper = new CRMScraper("http://crm:3000", "my-token");
+    const scraper = new CRMScraper("http://crm:3000", "my-token", mockLogger());
     await scraper.scrape();
 
     expect(mockFetch).toHaveBeenCalled();

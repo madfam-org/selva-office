@@ -2,5 +2,18 @@
   "name": "@autoswarm/config",
   "version": "0.1.0",
   "private": true,
-  "files": ["eslint", "typescript"]
+  "files": ["eslint", "typescript", "logging.ts", "sentry.ts", "metrics.ts"],
+  "exports": {
+    "./eslint/*": "./eslint/*",
+    "./typescript/*": "./typescript/*",
+    "./logging": "./logging.ts",
+    "./sentry": "./sentry.ts",
+    "./metrics": "./metrics.ts"
+  },
+  "dependencies": {
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.0.0"
+  }
 }

@@ -6,13 +6,13 @@
 
 ## 2. Licensing Strategy & Core Tech Stack
 
-To maintain a 100% commercial-friendly, MIT-licensed foundation, the architecture will utilize the following stack:
+AutoSwarm Office is released under the **AGPL-3.0** license. Any network-accessible deployment of this software (including SaaS hosting) triggers the obligation to disclose the complete corresponding source code to its users. The architecture utilizes the following stack:
 
-* **Spatial Frontend (Replaces WorkAdventure): SkyOffice.** SkyOffice is an MIT-licensed, open-source 2D virtual office clone built on Phaser 3 (game engine), Colyseus (WebSocket server), and React. This gives us full ownership of the 16-bit RPG environment without commercial restrictions.
-* **Central Orchestration Gateway: OpenClaw.** OpenClaw natively uses the MIT License. It will serve as our persistent background daemon, managing API connections, scheduled behaviors, and localized memory.
+* **Spatial Frontend: Custom Phaser 3 + Colyseus + React.** A purpose-built 2D virtual office environment using Phaser 3 (game engine), Colyseus (WebSocket server), and React. This gives us full ownership of the 16-bit RPG environment.
+* **Central Orchestration Gateway: OpenClaw.** OpenClaw serves as the persistent background daemon, managing API connections, scheduled behaviors, and localized memory.
 
 
-* **Execution Engine (Replaces AutoClaude/OpenCode): LangGraph & Ruflo.** To replace the AGPL-licensed AutoClaude, we will build the heavy parallel execution pipelines using **LangGraph** (an MIT-licensed framework perfect for cyclic, multi-agent workflows) and **Ruflo** (an MIT-licensed enterprise AI orchestration platform designed for deploying specialized swarms). These will handle isolated Git worktrees and granular tool permissioning natively.
+* **Execution Engine: LangGraph & Ruflo.** The heavy parallel execution pipelines are built using **LangGraph** (a framework designed for cyclic, multi-agent workflows) and **Ruflo** (an enterprise AI orchestration platform designed for deploying specialized swarms). These handle isolated Git worktrees and granular tool permissioning natively.
 
 ## 3. Core Features & System Requirements
 
@@ -67,4 +67,10 @@ The user spends Compute Tokens to upgrade their Engineering Swarm to Level 2. Th
 
 ## 5. Future Commercialization Strategy
 
-Because all underlying infrastructure (SkyOffice, OpenClaw, LangGraph, Ruflo) utilizes the MIT License, **AutoSwarm Office** can be packaged and sold as a closed-source SaaS product or an enterprise self-hosted license without violating copyleft distribution rules. Future roadmap items include multi-tenant support, enterprise SSO integration, and a mobile-friendly tactician dashboard.
+Because AutoSwarm Office is licensed under **AGPL-3.0**, any party that deploys the software over a network must make the complete corresponding source code available to its users. This copyleft requirement protects the open-source community while enabling several commercial models:
+
+* **Dual licensing:** Offer a commercial license for organizations that need to deploy AutoSwarm Office without the AGPL-3.0 source-disclosure obligation (e.g., proprietary SaaS or embedded distributions).
+* **Enterprise support & services:** Sell premium support tiers, SLA-backed hosting, and professional services (custom integrations, onboarding, training).
+* **Managed cloud offering:** Operate an official hosted version. Because the operator controls the canonical codebase, AGPL-3.0 compliance is straightforward while competing on operational excellence.
+
+Future roadmap items include multi-tenant support, enterprise SSO integration, and a mobile-friendly tactician dashboard.

@@ -6,9 +6,11 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-import redis.asyncio as aioredis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from autoswarm_observability import init_sentry
+from autoswarm_redis_pool import get_redis_pool
 
 from .config import get_settings
 from .database import engine
@@ -36,8 +38,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan context manager.
 
-    Initializes the async database engine and verifies Redis connectivity
-    on startup, then disposes resources on shutdown.
+    Initializes the async database engine, Redis pool, and verifies
+    connectivity on startup, then disposes resources on shutdown.
     """
     settings = get_settings()
 
@@ -49,19 +51,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.run_sync(lambda _conn: None)  # connection check
     logger.info("Database engine initialized")
 
-    # Verify Redis connectivity.
-    redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-    try:
-        await redis_client.ping()
-        logger.info("Redis connection verified")
-    except Exception:
+    # Initialize Redis pool and verify connectivity.
+    pool = get_redis_pool(url=settings.redis_url)
+    if await pool.ping():
+        logger.info("Redis pool initialized and connection verified")
+    else:
         logger.warning("Redis unavailable at startup; real-time features may be degraded")
-    finally:
-        await redis_client.aclose()
 
     yield
 
     # -- Shutdown -------------------------------------------------------------
+    await pool.close()
     await engine.dispose()
     logger.info("Nexus API shut down")
 
@@ -71,6 +71,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     configure_logging(settings.log_format)
+    init_sentry("nexus-api")
 
     app = FastAPI(
         title="AutoSwarm Nexus API",
@@ -78,6 +79,14 @@ def create_app() -> FastAPI:
         description="Core orchestration API for the AutoSwarm Office platform",
         lifespan=lifespan,
     )
+
+    # -- Prometheus metrics ----------------------------------------------------
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+
+        Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    except ImportError:
+        pass  # prometheus-fastapi-instrumentator not installed
 
     # -- CORS -----------------------------------------------------------------
     app.add_middleware(

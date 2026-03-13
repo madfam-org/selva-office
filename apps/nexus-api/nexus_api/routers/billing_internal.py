@@ -10,7 +10,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -91,7 +91,7 @@ async def check_budget(
     except Exception:
         pass  # Fall back to default
 
-    today_start = datetime.now(timezone.utc).replace(
+    today_start = datetime.now(UTC).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
     result = await db.execute(

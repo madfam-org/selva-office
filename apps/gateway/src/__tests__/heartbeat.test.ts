@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { mockLogger } from "./helpers";
 
 // We test the HeartbeatService methods by importing the class and mocking
 // external dependencies (Octokit, WebSocket).
@@ -19,7 +20,11 @@ describe("scrapeGitHub", () => {
     delete process.env.GITHUB_REPOS;
 
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     // Access private method via type assertion
     const events = await (service as any).scrapeGitHub();
@@ -31,7 +36,11 @@ describe("scrapeGitHub", () => {
     delete process.env.GITHUB_REPOS;
 
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     const events = await (service as any).scrapeGitHub();
     expect(events).toEqual([]);
@@ -45,7 +54,11 @@ describe("scrapeGitHub", () => {
 describe("compileEnemyWaves", () => {
   it("returns empty for empty events", async () => {
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     const waves = (service as any).compileEnemyWaves([]);
     expect(waves).toEqual([]);
@@ -53,7 +66,11 @@ describe("compileEnemyWaves", () => {
 
   it("groups events by source", async () => {
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     const events = [
       { source: "github", type: "pr_review_requested", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
@@ -73,7 +90,11 @@ describe("compileEnemyWaves", () => {
 
   it("marks escalation events as alerts", async () => {
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     const events = [
       { source: "tickets", type: "escalation", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
@@ -87,7 +108,11 @@ describe("compileEnemyWaves", () => {
 
   it("marks sla_breach events as alerts", async () => {
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     const events = [
       { source: "support", type: "sla_breach", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
@@ -99,7 +124,11 @@ describe("compileEnemyWaves", () => {
 
   it("marks non-urgent events as enemy_wave", async () => {
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     const events = [
       { source: "github", type: "pr_review_requested", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
@@ -117,7 +146,11 @@ describe("compileEnemyWaves", () => {
 describe("dispatch", () => {
   it("sends wave messages via WebSocket", async () => {
     const { HeartbeatService } = await import("../heartbeat");
-    const service = new HeartbeatService("ws://localhost:4300/api/v1/approvals/ws");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
 
     const mockWs = {
       readyState: 1, // WebSocket.OPEN
@@ -146,5 +179,44 @@ describe("dispatch", () => {
     const sent = JSON.parse(mockWs.send.mock.calls[0][0]);
     expect(sent.type).toBe("gateway:wave");
     expect(sent.data.source).toBe("github");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stat getters
+// ---------------------------------------------------------------------------
+
+describe("HeartbeatService stat getters", () => {
+  it("lastTickTime is null before any tick", async () => {
+    const { HeartbeatService } = await import("../heartbeat");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
+
+    expect(service.lastTickTime).toBeNull();
+  });
+
+  it("totalTicks is 0 before any tick", async () => {
+    const { HeartbeatService } = await import("../heartbeat");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
+
+    expect(service.totalTicks).toBe(0);
+  });
+
+  it("nextTickTime is null when not started", async () => {
+    const { HeartbeatService } = await import("../heartbeat");
+    const service = new HeartbeatService(
+      "ws://localhost:4300/api/v1/approvals/ws",
+      "*/30 * * * *",
+      mockLogger()
+    );
+
+    expect(service.nextTickTime).toBeNull();
   });
 });

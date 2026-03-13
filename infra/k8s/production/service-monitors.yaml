@@ -1,0 +1,63 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: autoswarm-nexus-api
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: autoswarm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nexus-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: autoswarm-colyseus
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: autoswarm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: colyseus
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: autoswarm-gateway
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: autoswarm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: autoswarm-workers
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: autoswarm
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: workers
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: 15s

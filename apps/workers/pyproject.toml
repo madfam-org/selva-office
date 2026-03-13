@@ -15,6 +15,12 @@ dependencies = [
   "autoswarm-inference",
   "autoswarm-permissions",
   "autoswarm-skills",
+  "autoswarm-observability",
+  "autoswarm-redis-pool",
+  "sentry-sdk>=2.19.0",
+  "prometheus-client>=0.21.0",
+  "aiohttp>=3.11.0",
+  "cachetools>=5.5.0",
 ]
 
 [build-system]

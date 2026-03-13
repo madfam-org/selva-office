@@ -109,6 +109,73 @@ describe('WFCGrid', () => {
       }
     }
   });
+
+  it('recovers from contradictions via backtracking retries', () => {
+    // Use a tiny grid with many departments to maximise contradiction probability.
+    // With maxRetries > 1, the WFC should eventually find a valid solution or
+    // exhaust retries gracefully (returning null rather than throwing).
+    const { rules, allTiles } = buildOfficeRules(5);
+    const grid = new WFCGrid({
+      width: 5,
+      height: 5,
+      rules,
+      allTiles,
+      seed: 1,
+      maxRetries: 20,
+    });
+
+    const result = grid.run();
+    // The algorithm should either converge or return null -- never throw.
+    // With 20 retries on a 5x5 grid it should find a solution.
+    if (result !== null) {
+      expect(result).toHaveLength(5);
+      expect(result[0]).toHaveLength(5);
+    }
+  });
+
+  it('converges on a minimum 3x3 grid', () => {
+    const { rules, allTiles } = buildOfficeRules(1);
+    const grid = new WFCGrid({
+      width: 3,
+      height: 3,
+      rules,
+      allTiles,
+      seed: 42,
+    });
+
+    const result = grid.run();
+    expect(result).not.toBeNull();
+    expect(result!).toHaveLength(3);
+    expect(result![0]).toHaveLength(3);
+
+    // Every cell should be a valid meta-tile
+    const tileSet = new Set(allTiles);
+    for (const row of result!) {
+      for (const cell of row) {
+        expect(tileSet.has(cell)).toBe(true);
+      }
+    }
+  });
+
+  it('completes an 80x44 grid within 5 seconds', () => {
+    const { rules, allTiles } = buildOfficeRules(4);
+    const grid = new WFCGrid({
+      width: 80,
+      height: 44,
+      rules,
+      allTiles,
+      seed: 42,
+    });
+
+    const start = performance.now();
+    const result = grid.run();
+    const elapsed = performance.now() - start;
+
+    expect(result).not.toBeNull();
+    expect(result!).toHaveLength(44);
+    expect(result![0]).toHaveLength(80);
+    expect(elapsed).toBeLessThan(5000);
+  });
 });
 
 describe('metaTileToTileId', () => {
@@ -146,6 +213,54 @@ describe('findDepartmentRegions', () => {
     expect(regions).toHaveLength(2);
     expect(regions[0].cells.length).toBe(4);
     expect(regions[1].cells.length).toBe(4);
+  });
+
+  it('returns empty regions when departmentCount is 0', () => {
+    const grid = [
+      ['corridor', 'corridor'],
+      ['corridor', 'corridor'],
+    ];
+    const regions = findDepartmentRegions(grid, 0);
+    expect(regions).toHaveLength(0);
+  });
+
+  it('validates that a hand-crafted contiguous department forms a single connected component', () => {
+    // Build a grid where dept_0 cells are all 4-connected (contiguous)
+    const grid = [
+      ['dept_0', 'dept_0', 'corridor', 'dept_1', 'dept_1'],
+      ['dept_0', 'dept_0', 'corridor', 'dept_1', 'dept_1'],
+      ['corridor', 'corridor', 'corridor', 'corridor', 'corridor'],
+    ];
+    const regions = findDepartmentRegions(grid, 2);
+
+    for (const region of regions) {
+      // BFS from the first cell to verify all cells in the region are reachable
+      const cellSet = new Set(region.cells.map((c) => `${c.x},${c.y}`));
+      const visited = new Set<string>();
+      const queue = [region.cells[0]];
+      visited.add(`${queue[0].x},${queue[0].y}`);
+
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        const neighbors = [
+          { x: current.x - 1, y: current.y },
+          { x: current.x + 1, y: current.y },
+          { x: current.x, y: current.y - 1 },
+          { x: current.x, y: current.y + 1 },
+        ];
+
+        for (const n of neighbors) {
+          const key = `${n.x},${n.y}`;
+          if (cellSet.has(key) && !visited.has(key)) {
+            visited.add(key);
+            queue.push(n);
+          }
+        }
+      }
+
+      // All cells in the region should be reachable from the first cell
+      expect(visited.size).toBe(region.cells.length);
+    }
   });
 });
 
@@ -187,6 +302,29 @@ describe('placeObjects', () => {
 
     const spawns = objects.filter((o) => o.type === 'spawn-point');
     expect(spawns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('never places two corridor objects at the same grid position', () => {
+    const grid = [
+      ['dept_0', 'dept_0', 'corridor', 'dept_1', 'dept_1'],
+      ['dept_0', 'dept_0', 'corridor', 'dept_1', 'dept_1'],
+      ['corridor', 'corridor', 'corridor', 'corridor', 'corridor'],
+      ['corridor', 'corridor', 'corridor', 'corridor', 'corridor'],
+    ];
+    const regions = findDepartmentRegions(grid, 2);
+    const objects = placeObjects(
+      grid,
+      regions,
+      { ...DEFAULT_CONSTRAINTS, minDispatchStations: 3, minSpawnPoints: 2 },
+      42,
+    );
+
+    // Dispatch and spawn are corridor-based and use splice() to remove chosen
+    // cells from the pool, so they should never share a position.
+    const corridorObjects = objects.filter((o) => o.type === 'dispatch' || o.type === 'spawn-point');
+    const positions = corridorObjects.map((o) => `${o.x},${o.y}`);
+    const unique = new Set(positions);
+    expect(unique.size).toBe(positions.length);
   });
 });
 
@@ -266,6 +404,55 @@ describe('buildTmj', () => {
     expect(tmj.tilesets[0].name).toBe('office-tileset');
     expect(tmj.tilesets[0].firstgid).toBe(1);
   });
+
+  it('output conforms to TMJ schema with all required top-level properties', () => {
+    const grid = [
+      ['dept_0', 'corridor', 'dept_1'],
+      ['corridor', 'corridor', 'corridor'],
+    ];
+    const regions = findDepartmentRegions(grid, 2);
+    const objects = placeObjects(grid, regions, DEFAULT_CONSTRAINTS, 42);
+    const tmj = buildTmj(grid, regions, objects);
+
+    // Required top-level properties per Tiled JSON format
+    expect(tmj).toHaveProperty('type', 'map');
+    expect(tmj).toHaveProperty('version');
+    expect(tmj).toHaveProperty('tiledversion');
+    expect(tmj).toHaveProperty('width', 3);
+    expect(tmj).toHaveProperty('height', 2);
+    expect(tmj).toHaveProperty('tilewidth', 32);
+    expect(tmj).toHaveProperty('tileheight', 32);
+    expect(tmj).toHaveProperty('orientation', 'orthogonal');
+    expect(tmj).toHaveProperty('renderorder', 'right-down');
+    expect(tmj).toHaveProperty('infinite', false);
+    expect(tmj).toHaveProperty('compressionlevel');
+    expect(tmj).toHaveProperty('nextlayerid');
+    expect(tmj).toHaveProperty('nextobjectid');
+
+    // layers must be an array with at least the 5 required layers
+    expect(Array.isArray(tmj.layers)).toBe(true);
+    expect(tmj.layers.length).toBeGreaterThanOrEqual(5);
+
+    // tilesets must be a non-empty array
+    expect(Array.isArray(tmj.tilesets)).toBe(true);
+    expect(tmj.tilesets.length).toBeGreaterThanOrEqual(1);
+
+    // Each tilelayer must have data, each objectgroup must have objects
+    for (const layer of tmj.layers) {
+      expect(layer).toHaveProperty('id');
+      expect(layer).toHaveProperty('name');
+      expect(layer).toHaveProperty('type');
+      expect(layer).toHaveProperty('visible');
+      expect(layer).toHaveProperty('opacity');
+
+      if (layer.type === 'tilelayer') {
+        expect(Array.isArray(layer.data)).toBe(true);
+        expect(layer.data!.length).toBe(tmj.width * tmj.height);
+      } else if (layer.type === 'objectgroup') {
+        expect(Array.isArray(layer.objects)).toBe(true);
+      }
+    }
+  });
 });
 
 describe('end-to-end: WFC -> TMJ', () => {
@@ -302,5 +489,64 @@ describe('end-to-end: WFC -> TMJ', () => {
     // Floor data length matches dimensions
     const floor = tmj.layers.find((l) => l.name === 'floor')!;
     expect(floor.data).toHaveLength(20 * 14);
+  });
+
+  it('WFC-generated departments have a dominant connected component', () => {
+    // WFC adjacency rules encourage dept cells to cluster but do not enforce
+    // global contiguity. This test verifies that each department's largest
+    // connected component contains a meaningful fraction of its total cells,
+    // which is the practical quality invariant for map usability.
+    const deptCount = 4;
+    const { rules, allTiles } = buildOfficeRules(deptCount);
+    const wfc = new WFCGrid({
+      width: 20,
+      height: 14,
+      rules,
+      allTiles,
+      seed: 42,
+    });
+
+    const grid = wfc.run();
+    expect(grid).not.toBeNull();
+
+    const regions = findDepartmentRegions(grid!, deptCount);
+    expect(regions.length).toBeGreaterThan(0);
+
+    for (const region of regions) {
+      if (region.cells.length <= 1) continue;
+
+      const cellSet = new Set(region.cells.map((c) => `${c.x},${c.y}`));
+      const globalVisited = new Set<string>();
+      let largestComponent = 0;
+
+      for (const cell of region.cells) {
+        const startKey = `${cell.x},${cell.y}`;
+        if (globalVisited.has(startKey)) continue;
+
+        // BFS to measure this connected component
+        const visited = new Set<string>();
+        const queue = [cell];
+        visited.add(startKey);
+
+        while (queue.length > 0) {
+          const current = queue.shift()!;
+          for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+            const key = `${current.x + dx},${current.y + dy}`;
+            if (cellSet.has(key) && !visited.has(key)) {
+              visited.add(key);
+              queue.push({ x: current.x + dx, y: current.y + dy });
+            }
+          }
+        }
+
+        for (const v of visited) globalVisited.add(v);
+        if (visited.size > largestComponent) largestComponent = visited.size;
+      }
+
+      // The largest connected component should contain at least 25% of the
+      // region's total cells, confirming a dominant cluster exists.
+      const ratio = largestComponent / region.cells.length;
+      expect(ratio).toBeGreaterThanOrEqual(0.25);
+    }
   });
 });

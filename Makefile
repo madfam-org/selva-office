@@ -1,4 +1,4 @@
-.PHONY: dev worker build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map
+.PHONY: dev worker build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup
 
 # ── Development ─────────────────────────────────────
 dev:
@@ -51,6 +51,15 @@ db-migrate:
 
 db-seed:
 	uv run python scripts/seed-agents.py
+
+db-backup:
+	bash scripts/backup-postgres.sh
+
+db-restore:
+	bash scripts/restore-postgres.sh $(BACKUP_FILE)
+
+db-verify-backup:
+	bash scripts/verify-backup.sh $(BACKUP_FILE)
 
 # ── Assets ─────────────────────────────────────────
 generate-assets:

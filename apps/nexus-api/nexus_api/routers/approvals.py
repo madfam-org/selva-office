@@ -5,14 +5,15 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from autoswarm_redis_pool import get_redis_pool
 
 from ..approval_notifier import notify_approval_decision
 from ..auth import get_current_user
@@ -114,7 +115,7 @@ async def _respond_to_request(
 
     approval_req.status = decision
     approval_req.feedback = feedback
-    approval_req.responded_at = datetime.now(timezone.utc)
+    approval_req.responded_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(approval_req)
 
@@ -257,8 +258,6 @@ async def approval_websocket(websocket: WebSocket) -> None:
     except Exception:
         # If fetching the batch fails, log and continue -- the WS is still useful
         # for real-time events.
-        import logging
-
         logging.getLogger(__name__).warning(
             "Failed to send initial approval batch to client %s", client_id
         )
@@ -300,36 +299,40 @@ async def _handle_wave(wave_data: dict[str, Any]) -> None:
     settings = get_settings()
 
     async with async_session_factory() as session:
-        redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-        try:
-            for event in events[:MAX_TASKS_PER_WAVE]:
-                event_type = event.get("type", "")
-                graph_type = _EVENT_TYPE_TO_GRAPH.get(event_type, "research")
-                payload = event.get("payload", {})
+        pool = get_redis_pool(url=settings.redis_url)
+        for event in events[:MAX_TASKS_PER_WAVE]:
+            event_type = event.get("type", "")
+            graph_type = _EVENT_TYPE_TO_GRAPH.get(event_type, "research")
+            payload = event.get("payload", {})
 
-                task = SwarmTask(
-                    description=f"[{source}] {event_type}: {payload.get('title', 'N/A')}",
-                    graph_type=graph_type,
-                    payload=payload,
-                    status="pending",
+            task = SwarmTask(
+                description=f"[{source}] {event_type}: {payload.get('title', 'N/A')}",
+                graph_type=graph_type,
+                payload=payload,
+                status="pending",
+            )
+            session.add(task)
+            await session.flush()
+            await session.refresh(task)
+
+            task_msg = json.dumps({
+                "task_id": str(task.id),
+                "graph_type": graph_type,
+                "description": task.description,
+                "payload": payload,
+                "assigned_agent_ids": [],
+            })
+            try:
+                # Dual-write: LPUSH (legacy) + XADD (stream)
+                await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
+                await pool.execute_with_retry(
+                    "xadd", "autoswarm:task-stream", {"data": task_msg}
                 )
-                session.add(task)
-                await session.flush()
-                await session.refresh(task)
+            except Exception:
+                _wave_logger.warning("Redis unavailable for wave task %s", task.id)
+            created += 1
 
-                task_msg = json.dumps({
-                    "task_id": str(task.id),
-                    "graph_type": graph_type,
-                    "description": task.description,
-                    "payload": payload,
-                    "assigned_agent_ids": [],
-                })
-                await redis_client.lpush("autoswarm:tasks", task_msg)
-                created += 1
-
-            await session.commit()
-        finally:
-            await redis_client.aclose()
+        await session.commit()
 
     if created > 0:
         await manager.broadcast({

@@ -4,17 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC
 from typing import Any, TypedDict
 
 from langchain_core.messages import BaseMessage
 
 from autoswarm_permissions import (
-    ActionClassifier,
     DEFAULT_CONTEXT_RULES,
     DEFAULT_PERMISSION_MATRIX,
+    ROLE_PERMISSION_MATRICES,
+    ActionClassifier,
     PermissionContext,
     PermissionEngine,
-    ROLE_PERMISSION_MATRICES,
     RoleMatrixRule,
 )
 from autoswarm_permissions.types import ActionCategory, PermissionLevel
@@ -108,10 +109,10 @@ def permission_check(state: BaseGraphState) -> BaseGraphState:
     engine = _build_engine_for_state(state)
 
     # Build permission context from agent metadata.
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     perm_context = PermissionContext(
-        time_utc=datetime.now(timezone.utc),
+        time_utc=datetime.now(UTC),
         agent_level=state.get("agent_level"),  # type: ignore[arg-type]
         risk_score=state.get("risk_score"),  # type: ignore[arg-type]
         agent_role=state.get("agent_role"),  # type: ignore[arg-type]

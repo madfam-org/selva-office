@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from autoswarm_redis_pool import get_redis_pool
 
 from ..auth import get_current_user
 from ..config import get_settings
@@ -75,6 +77,7 @@ def _task_to_response(task: SwarmTask) -> SwarmTaskResponse:
 @router.post("/dispatch", response_model=SwarmTaskResponse, status_code=status.HTTP_201_CREATED)
 async def dispatch_task(
     body: DispatchRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
 ) -> SwarmTaskResponse:
@@ -84,6 +87,9 @@ async def dispatch_task(
     message to the Redis task queue for worker consumption.
     """
     settings = get_settings()
+
+    # Extract request_id for cross-service correlation.
+    request_id = getattr(request.state, "request_id", None)
 
     # -- Skill-based agent matching (when no explicit agents provided) --------
     assigned_agent_ids = body.assigned_agent_ids
@@ -114,7 +120,7 @@ async def dispatch_task(
     dispatch_cost = 10  # matches ComputeTokenManager.COST_TABLE["dispatch_task"]
 
     # Check remaining budget before dispatching.
-    today_start = datetime.now(timezone.utc).replace(
+    today_start = datetime.now(UTC).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
     budget_result = await db.execute(
@@ -156,23 +162,21 @@ async def dispatch_task(
 
     # -- Publish to Redis queue for workers -----------------------------------
     try:
-        import redis.asyncio as aioredis
-
-        redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-        await redis_client.lpush(
-            "autoswarm:tasks",
-            json.dumps(
-                {
-                    "task_id": str(task.id),
-                    "graph_type": task.graph_type,
-                    "description": task.description,
-                    "assigned_agent_ids": task.assigned_agent_ids,
-                    "required_skills": body.required_skills,
-                    "payload": task.payload,
-                }
-            ),
+        pool = get_redis_pool(url=settings.redis_url)
+        task_msg = json.dumps(
+            {
+                "task_id": str(task.id),
+                "graph_type": task.graph_type,
+                "description": task.description,
+                "assigned_agent_ids": task.assigned_agent_ids,
+                "required_skills": body.required_skills,
+                "payload": task.payload,
+                "request_id": request_id,
+            }
         )
-        await redis_client.aclose()
+        # Dual-write: LPUSH (legacy) + XADD (stream) for migration
+        await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
+        await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
     except Exception:
         # If Redis is unavailable the task is still persisted in the DB.
         # Workers can fall back to polling the database.
@@ -251,7 +255,7 @@ async def update_task_status(
         task.payload = {**(task.payload or {}), "result": body.result}
 
     if body.status in ("completed", "failed"):
-        task.completed_at = datetime.now(timezone.utc)
+        task.completed_at = datetime.now(UTC)
 
     await db.flush()
     await db.refresh(task)

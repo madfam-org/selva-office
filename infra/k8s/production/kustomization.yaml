@@ -12,6 +12,11 @@ resources:
   - admin.yaml
   - gateway.yaml
   - workers.yaml
+  - service-monitors.yaml
+  - pdb.yaml
+  - hpa.yaml
+  - networkpolicy.yaml
+  - backup-cronjob.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: autoswarm-office

@@ -34,10 +34,24 @@ export interface ProximityVideoState {
   handleWebRTCSignal: (signal: WebRTCSignal) => void;
 }
 
-const STUN_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-];
+function buildIceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ];
+
+  // Add TURN server if configured
+  const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
+  if (turnUrl) {
+    servers.push({
+      urls: turnUrl,
+      username: process.env.NEXT_PUBLIC_TURN_USERNAME ?? '',
+      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL ?? '',
+    });
+  }
+
+  return servers;
+}
 
 /**
  * Manages WebRTC peer connections for proximity-based video/audio.
@@ -138,7 +152,7 @@ export function useProximityVideo({
         initiator,
         stream: localStreamRef.current,
         trickle: true,
-        config: { iceServers: STUN_SERVERS },
+        config: { iceServers: buildIceServers() },
       });
 
       const connection: PeerConnection = {

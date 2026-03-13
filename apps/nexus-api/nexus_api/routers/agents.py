@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -169,7 +169,7 @@ async def update_agent(
     for field_name, value in update_data.items():
         setattr(agent, field_name, value)
 
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(agent)
     return _agent_to_response(agent)
@@ -192,7 +192,7 @@ async def assign_agent(
         ) from exc
 
     agent.department_id = dept_uid
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(agent)
     return _agent_to_response(agent)

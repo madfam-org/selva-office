@@ -13,6 +13,11 @@ import { handleAvatar } from "../handlers/avatar";
 import { startProximityLoop } from "../handlers/proximity";
 import { handleSignaling } from "../handlers/signaling";
 import type { WebRTCSignalMessage } from "../handlers/signaling";
+import { createLogger } from "@autoswarm/config/logging";
+import { getRedisClient, closeRedisClient } from "../redis-client";
+import type { RedisClientType } from "redis";
+
+const logger = createLogger({ service: "colyseus" }).child({ component: "OfficeRoom" });
 
 interface MoveMessage {
   x: number;
@@ -92,9 +97,10 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   private nexusApiUrl: string = "http://localhost:4300";
   private stopProximityLoop: (() => void) | null = null;
   private agentIndex = new Map<string, { deptId: string; agentIndex: number }>();
+  private redisSubscriber: RedisClientType | null = null;
 
   onCreate(options: RoomOptions): void {
-    console.log("[OfficeRoom] Room created");
+    logger.info("Room created");
 
     this.setState(new OfficeStateSchema());
 
@@ -165,23 +171,24 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       5
     );
 
-    console.log(
-      `[OfficeRoom] Initialized with ${DEFAULT_DEPARTMENTS.length} departments`
+    logger.info(
+      { departmentCount: DEFAULT_DEPARTMENTS.length },
+      "Initialized with departments"
     );
 
     // Fire-and-forget: populate agents from nexus-api database.
     this.fetchAgentsFromApi().catch((err) =>
-      console.error("[OfficeRoom] Failed to fetch agents:", err)
+      logger.error({ err }, "Failed to fetch agents")
     );
 
     // Fire-and-forget: subscribe to real-time agent status updates via Redis.
     this.subscribeToAgentUpdates().catch((err) =>
-      console.error("[OfficeRoom] Failed to subscribe to agent updates:", err)
+      logger.error({ err }, "Failed to subscribe to agent updates")
     );
   }
 
   onJoin(client: Client, options?: RoomOptions & { name?: string }): void {
-    console.log(`[OfficeRoom] Client joined: ${client.sessionId}`);
+    logger.info({ sessionId: client.sessionId }, "Client joined");
 
     const player = new TacticianSchema();
     player.sessionId = client.sessionId;
@@ -199,8 +206,9 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   }
 
   onLeave(client: Client, consented: boolean): void {
-    console.log(
-      `[OfficeRoom] Client left: ${client.sessionId} (consented: ${consented})`
+    logger.info(
+      { sessionId: client.sessionId, consented },
+      "Client left"
     );
 
     const player = this.state.players.get(client.sessionId);
@@ -212,7 +220,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   }
 
   onDispose(): void {
-    console.log("[OfficeRoom] Room disposed");
+    logger.info("Room disposed");
     if (this.stopProximityLoop) {
       this.stopProximityLoop();
       this.stopProximityLoop = null;
@@ -223,8 +231,6 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   }
 
   // -- Agent sync from database -----------------------------------------------
-
-  private redisSubscriber: import("redis").RedisClientType | null = null;
 
   private async fetchAgentsFromApi(): Promise<void> {
     // Build a slug->colyseus-dept map for matching API departments to state.
@@ -241,12 +247,15 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
         { headers: { Authorization: "Bearer dev-token" } }
       );
       if (!listResp.ok) {
-        console.error("[OfficeRoom] Failed to fetch department list:", listResp.status);
+        logger.error(
+          { statusCode: listResp.status },
+          "Failed to fetch department list"
+        );
         return;
       }
       apiDepts = (await listResp.json()) as Array<Record<string, any>>;
     } catch (err) {
-      console.error("[OfficeRoom] Failed to fetch department list:", err);
+      logger.error({ err }, "Failed to fetch department list");
       return;
     }
 
@@ -283,13 +292,14 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
           }
           dept.agents.push(agent);
         }
-        console.log(
-          `[OfficeRoom] Loaded ${agents.length} agents into ${dept.slug} (${stateKey})`
+        logger.info(
+          { agentCount: agents.length, deptSlug: dept.slug, deptKey: stateKey },
+          "Loaded agents into department"
         );
       } catch (err) {
-        console.error(
-          `[OfficeRoom] Failed to fetch agents for ${dept.slug}:`,
-          err
+        logger.error(
+          { err, deptSlug: dept.slug },
+          "Failed to fetch agents for department"
         );
       }
     }
@@ -297,24 +307,12 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   }
 
   private async subscribeToAgentUpdates(): Promise<void> {
-    const { createClient } = await import("redis");
-    const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
-    this.redisSubscriber = createClient({ url: redisUrl });
-
-    this.redisSubscriber.on("error", (err) => {
-      console.error("[OfficeRoom] Redis subscriber error:", err);
-    });
-
-    this.redisSubscriber.on("reconnecting", () => {
-      console.log("[OfficeRoom] Redis subscriber reconnecting...");
-    });
-
     try {
-      await this.redisSubscriber.connect();
+      this.redisSubscriber = await getRedisClient();
     } catch (err) {
-      console.error(
-        "[OfficeRoom] Redis subscriber failed to connect (room will work without real-time agent updates):",
-        err
+      logger.error(
+        { err },
+        "Redis subscriber failed to connect (room will work without real-time agent updates)"
       );
       return;
     }
@@ -336,11 +334,11 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
             update.task_description
           );
         } catch (err) {
-          console.error("[OfficeRoom] Bad agent-status message:", err);
+          logger.error({ err }, "Bad agent-status message");
         }
       }
     );
-    console.log("[OfficeRoom] Subscribed to autoswarm:agent-status channel");
+    logger.info("Subscribed to autoswarm:agent-status channel");
   }
 
   private rebuildAgentIndex(): void {
@@ -408,8 +406,9 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     });
 
     if (!found) {
-      console.warn(
-        `[OfficeRoom] Agent ${agentId} not found in any department`
+      logger.warn(
+        { agentId },
+        "Agent not found in any department"
       );
     }
   }

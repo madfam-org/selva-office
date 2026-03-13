@@ -50,6 +50,43 @@ jobs:
       - name: Ruff check
         run: uv run ruff check .
 
+  lint-community-skills:
+    name: Lint Community Skills (advisory)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for community skill changes
+        id: changed
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'packages/skills/community-skills/' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.changed.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        if: steps.changed.outputs.skip != 'true'
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        if: steps.changed.outputs.skip != 'true'
+        run: uv sync
+
+      - name: Ruff check community skills (errors + pyflakes only)
+        if: steps.changed.outputs.skip != 'true'
+        run: uv run ruff check --select E,F packages/skills/community-skills/
+
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest

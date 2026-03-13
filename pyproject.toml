@@ -10,6 +10,8 @@ dependencies = [
   "autoswarm-nexus-api",
   "autoswarm-workers",
   "autoswarm-skills",
+  "autoswarm-observability",
+  "autoswarm-redis-pool",
 ]
 
 [tool.uv.workspace]
@@ -20,6 +22,8 @@ members = [
   "packages/orchestrator",
   "packages/permissions",
   "packages/skills",
+  "packages/observability",
+  "packages/redis-pool",
 ]
 
 [tool.uv.sources]
@@ -29,6 +33,8 @@ autoswarm-permissions = { workspace = true }
 autoswarm-nexus-api = { workspace = true }
 autoswarm-workers = { workspace = true }
 autoswarm-skills = { workspace = true }
+autoswarm-observability = { workspace = true }
+autoswarm-redis-pool = { workspace = true }
 
 [tool.uv]
 dev-dependencies = [
@@ -49,7 +55,7 @@ extend-exclude = ["packages/skills/community-skills"]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["autoswarm_orchestrator", "autoswarm_inference", "autoswarm_permissions", "nexus_api", "autoswarm_workers", "autoswarm_skills"]
+known-first-party = ["autoswarm_orchestrator", "autoswarm_inference", "autoswarm_permissions", "nexus_api", "autoswarm_workers", "autoswarm_skills", "autoswarm_observability", "autoswarm_redis_pool"]
 
 [tool.mypy]
 python_version = "3.12"

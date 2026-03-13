@@ -17,7 +17,8 @@
 | 4301 | office-ui | Next.js frontend |
 | 4302 | admin | Admin dashboard |
 | 4303 | colyseus | Game state server |
-| 4304 | gateway | Heartbeat daemon (background worker) |
+| 4304 | gateway | Heartbeat daemon (health + metrics HTTP) |
+| 4305 | workers | Worker health + metrics HTTP server |
 
 These ports do not conflict with Janua (4100-4104) or Enclii (4200-4204).
 
@@ -37,14 +38,17 @@ make generate-assets  # Regenerate pixel-art sprite PNGs
 make generate-variants # Generate palette-themed sprite/tile variants
 make generate-map     # Procedurally generate office map (WFC)
 make post-process     # Optional ImageMagick upscale/WebP conversion
+make db-backup        # Backup PostgreSQL database
+make db-restore       # Restore from backup (BACKUP_FILE=<path>)
+make db-verify-backup # Verify backup integrity (BACKUP_FILE=<path>)
 
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (351 tests across 25 suites)
+pnpm test             # TypeScript tests (405 tests across 31 suites)
 pnpm typecheck        # TypeScript type checking
 
-uv run pytest         # Python tests (231 tests)
+uv run pytest         # Python tests (310 tests)
 uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```
@@ -110,7 +114,22 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 ## Architecture Notes
 
-- The Redis queue key is `autoswarm:tasks` (LPUSH to enqueue, BRPOP to dequeue).
+- **Task queue**: Redis Streams (`autoswarm:task-stream`) with consumer groups
+  (`autoswarm-workers`). Legacy `autoswarm:tasks` LIST is dual-written for migration.
+  Dead letter queue at `autoswarm:task-dlq` after 3 retries. Workers auto-claim
+  stalled messages on startup via XAUTOCLAIM.
+- **Redis pool**: `packages/redis-pool/` provides a singleton `RedisPool` with circuit
+  breaker and exponential backoff. All Python services use `get_redis_pool()` instead
+  of one-off `aioredis.from_url()` calls. Colyseus uses `redis-client.ts` singleton.
+- **Observability**: `packages/observability/` provides shared `configure_logging()`,
+  `bind_task_context()`, `init_sentry()` for Python. TypeScript uses pino via
+  `packages/config/logging.ts`. All services emit structured JSON logs with
+  `request_id` correlation. Prometheus metrics on `/metrics` endpoints.
+- **Health endpoints**: nexus-api (`/api/v1/health/*`), gateway (`:4304/health`),
+  workers (`:4305/health`), colyseus (`:4303/health`). Queue stats at
+  `/api/v1/health/queue-stats`.
+- Legacy: The Redis queue key `autoswarm:tasks` (LPUSH to enqueue, BRPOP to dequeue)
+  is still dual-written but workers now consume from the stream.
 - WebSocket approval events use the `ConnectionManager` singleton in
   `apps/nexus-api/src/ws.py`.
 - LangGraph `interrupt()` is used to pause agent execution for HITL approval.
