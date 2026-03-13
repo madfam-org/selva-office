@@ -138,6 +138,27 @@ class SwarmTask(Base):
     )
 
 
+class Workflow(Base):
+    """A custom workflow definition stored as YAML."""
+
+    __tablename__ = "workflows"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0.0")
+    description: Mapped[str] = mapped_column(Text, default="")
+    yaml_content: Mapped[str] = mapped_column(Text, nullable=False)
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="default", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
 class ComputeTokenLedger(Base):
     """Immutable ledger of compute token debits and credits."""
 

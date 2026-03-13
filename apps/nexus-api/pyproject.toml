@@ -19,6 +19,7 @@ dependencies = [
   "autoswarm-permissions",
   "autoswarm-inference",
   "autoswarm-skills",
+  "autoswarm-workflows",
   "autoswarm-observability",
   "autoswarm-redis-pool",
   "structlog>=24.0",

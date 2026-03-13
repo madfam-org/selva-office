@@ -1,0 +1,276 @@
+"""Workflow CRUD, import/export, and validation endpoints."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import Workflow
+from ..tenant import TenantContext, get_tenant
+
+router = APIRouter(tags=["workflows"], dependencies=[Depends(get_current_user)])
+
+
+# -- Request / Response schemas ------------------------------------------------
+
+
+class WorkflowCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(default="")
+    yaml_content: str = Field(..., min_length=1)
+
+
+class WorkflowUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    description: str | None = None
+    yaml_content: str | None = None
+
+
+class WorkflowResponse(BaseModel):
+    id: str
+    name: str
+    version: str
+    description: str
+    yaml_content: str
+    org_id: str
+    created_at: str
+    updated_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class WorkflowValidationResponse(BaseModel):
+    is_valid: bool
+    errors: list[dict[str, Any]]
+    warnings: list[dict[str, Any]]
+
+
+class WorkflowImportRequest(BaseModel):
+    yaml_content: str = Field(..., min_length=1)
+
+
+# -- Helpers -------------------------------------------------------------------
+
+
+def _workflow_to_response(wf: Workflow) -> WorkflowResponse:
+    return WorkflowResponse(
+        id=str(wf.id),
+        name=wf.name,
+        version=wf.version,
+        description=wf.description,
+        yaml_content=wf.yaml_content,
+        org_id=wf.org_id,
+        created_at=wf.created_at.isoformat(),
+        updated_at=wf.updated_at.isoformat(),
+    )
+
+
+def _validate_yaml(yaml_content: str) -> WorkflowValidationResponse:
+    """Parse and validate a YAML workflow definition."""
+    from autoswarm_workflows import WorkflowSerializer, WorkflowValidator
+
+    try:
+        workflow_def = WorkflowSerializer.from_yaml(yaml_content)
+    except Exception as exc:
+        return WorkflowValidationResponse(
+            is_valid=False,
+            errors=[{"code": "PARSE_ERROR", "message": str(exc)}],
+            warnings=[],
+        )
+
+    validator = WorkflowValidator()
+    result = validator.validate(workflow_def)
+    return WorkflowValidationResponse(
+        is_valid=result.is_valid,
+        errors=[
+            {"code": e.code, "message": e.message, "node_id": e.node_id}
+            for e in result.errors
+        ],
+        warnings=[
+            {"code": w.code, "message": w.message, "node_id": w.node_id}
+            for w in result.warnings
+        ],
+    )
+
+
+# -- Endpoints -----------------------------------------------------------------
+
+
+@router.post("", response_model=WorkflowResponse, status_code=status.HTTP_201_CREATED)
+async def create_workflow(
+    body: WorkflowCreateRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> WorkflowResponse:
+    """Create a new workflow definition."""
+    # Validate the YAML before persisting
+    validation = _validate_yaml(body.yaml_content)
+    if not validation.is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Invalid workflow YAML", "errors": validation.errors},
+        )
+
+    # Extract version from parsed YAML
+    from autoswarm_workflows import WorkflowSerializer
+
+    parsed = WorkflowSerializer.from_yaml(body.yaml_content)
+
+    wf = Workflow(
+        name=body.name,
+        version=parsed.version,
+        description=body.description or parsed.description,
+        yaml_content=body.yaml_content,
+        org_id=tenant.org_id,
+    )
+    db.add(wf)
+    await db.flush()
+    await db.refresh(wf)
+    return _workflow_to_response(wf)
+
+
+@router.get("", response_model=list[WorkflowResponse])
+async def list_workflows(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> list[WorkflowResponse]:
+    """List all workflows for the current tenant."""
+    result = await db.execute(
+        select(Workflow)
+        .where(Workflow.org_id == tenant.org_id)
+        .order_by(Workflow.updated_at.desc())
+    )
+    workflows = result.scalars().all()
+    return [_workflow_to_response(wf) for wf in workflows]
+
+
+@router.get("/{workflow_id}", response_model=WorkflowResponse)
+async def get_workflow(
+    workflow_id: str,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> WorkflowResponse:
+    """Get a single workflow by ID."""
+    wf = await _get_workflow_or_404(workflow_id, db)
+    return _workflow_to_response(wf)
+
+
+@router.put("/{workflow_id}", response_model=WorkflowResponse)
+async def update_workflow(
+    workflow_id: str,
+    body: WorkflowUpdateRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> WorkflowResponse:
+    """Update an existing workflow definition."""
+    wf = await _get_workflow_or_404(workflow_id, db)
+
+    if body.yaml_content is not None:
+        validation = _validate_yaml(body.yaml_content)
+        if not validation.is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message": "Invalid workflow YAML", "errors": validation.errors},
+            )
+        wf.yaml_content = body.yaml_content
+
+        from autoswarm_workflows import WorkflowSerializer
+
+        parsed = WorkflowSerializer.from_yaml(body.yaml_content)
+        wf.version = parsed.version
+
+    if body.name is not None:
+        wf.name = body.name
+    if body.description is not None:
+        wf.description = body.description
+
+    wf.updated_at = datetime.now(UTC)
+    await db.flush()
+    await db.refresh(wf)
+    return _workflow_to_response(wf)
+
+
+@router.delete("/{workflow_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_workflow(
+    workflow_id: str,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> None:
+    """Delete a workflow definition."""
+    wf = await _get_workflow_or_404(workflow_id, db)
+    await db.delete(wf)
+    await db.flush()
+
+
+@router.post("/validate", response_model=WorkflowValidationResponse)
+async def validate_workflow(
+    body: WorkflowImportRequest,
+) -> WorkflowValidationResponse:
+    """Validate a workflow YAML without persisting it."""
+    return _validate_yaml(body.yaml_content)
+
+
+@router.post("/import", response_model=WorkflowResponse, status_code=status.HTTP_201_CREATED)
+async def import_workflow(
+    body: WorkflowImportRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> WorkflowResponse:
+    """Import a workflow from YAML content."""
+    validation = _validate_yaml(body.yaml_content)
+    if not validation.is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Invalid workflow YAML", "errors": validation.errors},
+        )
+
+    from autoswarm_workflows import WorkflowSerializer
+
+    parsed = WorkflowSerializer.from_yaml(body.yaml_content)
+
+    wf = Workflow(
+        name=parsed.name,
+        version=parsed.version,
+        description=parsed.description,
+        yaml_content=body.yaml_content,
+        org_id=tenant.org_id,
+    )
+    db.add(wf)
+    await db.flush()
+    await db.refresh(wf)
+    return _workflow_to_response(wf)
+
+
+@router.get("/{workflow_id}/export")
+async def export_workflow(
+    workflow_id: str,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, str]:
+    """Export a workflow as YAML content."""
+    wf = await _get_workflow_or_404(workflow_id, db)
+    return {"yaml_content": wf.yaml_content}
+
+
+# -- Internal helpers ----------------------------------------------------------
+
+
+async def _get_workflow_or_404(workflow_id: str, db: AsyncSession) -> Workflow:
+    try:
+        uid = uuid.UUID(workflow_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
+        ) from exc
+
+    result = await db.execute(select(Workflow).where(Workflow.id == uid))
+    wf = result.scalar_one_or_none()
+    if wf is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found"
+        )
+    return wf

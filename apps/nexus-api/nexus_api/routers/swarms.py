@@ -17,7 +17,7 @@ from autoswarm_redis_pool import get_redis_pool
 from ..auth import get_current_user
 from ..config import get_settings
 from ..database import get_db
-from ..models import Agent, ComputeTokenLedger, SwarmTask
+from ..models import Agent, ComputeTokenLedger, SwarmTask, Workflow
 from ..tenant import TenantContext, get_tenant
 
 router = APIRouter(tags=["swarms"], dependencies=[Depends(get_current_user)])
@@ -30,11 +30,15 @@ class DispatchRequest(BaseModel):
     description: str = Field(..., min_length=1, max_length=2000)
     graph_type: str = Field(
         default="sequential",
-        pattern=r"^(sequential|parallel|coding|research|crm)$",
+        pattern=r"^(sequential|parallel|coding|research|crm|custom)$",
     )
     assigned_agent_ids: list[str] = Field(default_factory=list)
     required_skills: list[str] = Field(default_factory=list)
     payload: dict[str, Any] = Field(default_factory=dict)
+    workflow_id: str | None = Field(
+        default=None,
+        description="UUID of a custom workflow definition (required for graph_type='custom')",
+    )
 
 
 class SwarmTaskResponse(BaseModel):
@@ -78,7 +82,7 @@ def _task_to_response(task: SwarmTask) -> SwarmTaskResponse:
 async def dispatch_task(
     body: DispatchRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
 ) -> SwarmTaskResponse:
     """Dispatch a new swarm task.
@@ -90,6 +94,30 @@ async def dispatch_task(
 
     # Extract request_id for cross-service correlation.
     request_id = getattr(request.state, "request_id", None)
+
+    # -- Validate custom workflow dispatch ------------------------------------
+    workflow_yaml: str | None = None
+    if body.graph_type == "custom":
+        if not body.workflow_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="workflow_id is required when graph_type is 'custom'",
+            )
+        try:
+            wf_uid = uuid.UUID(body.workflow_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid workflow_id UUID",
+            ) from exc
+        wf_result = await db.execute(select(Workflow).where(Workflow.id == wf_uid))
+        wf = wf_result.scalar_one_or_none()
+        if wf is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workflow not found",
+            )
+        workflow_yaml = wf.yaml_content
 
     # -- Skill-based agent matching (when no explicit agents provided) --------
     assigned_agent_ids = body.assigned_agent_ids
@@ -163,17 +191,18 @@ async def dispatch_task(
     # -- Publish to Redis queue for workers -----------------------------------
     try:
         pool = get_redis_pool(url=settings.redis_url)
-        task_msg = json.dumps(
-            {
-                "task_id": str(task.id),
-                "graph_type": task.graph_type,
-                "description": task.description,
-                "assigned_agent_ids": task.assigned_agent_ids,
-                "required_skills": body.required_skills,
-                "payload": task.payload,
-                "request_id": request_id,
-            }
-        )
+        task_msg_data: dict[str, Any] = {
+            "task_id": str(task.id),
+            "graph_type": task.graph_type,
+            "description": task.description,
+            "assigned_agent_ids": task.assigned_agent_ids,
+            "required_skills": body.required_skills,
+            "payload": task.payload,
+            "request_id": request_id,
+        }
+        if workflow_yaml is not None:
+            task_msg_data["workflow_yaml"] = workflow_yaml
+        task_msg = json.dumps(task_msg_data)
         # Dual-write: LPUSH (legacy) + XADD (stream) for migration
         await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
         await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
@@ -188,7 +217,7 @@ async def dispatch_task(
 
 @router.get("/tasks", response_model=list[SwarmTaskResponse])
 async def list_active_tasks(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
 ) -> list[SwarmTaskResponse]:
     """List tasks that are currently queued or in progress."""
@@ -205,7 +234,7 @@ async def list_active_tasks(
 @router.get("/tasks/{task_id}", response_model=SwarmTaskResponse)
 async def get_task(
     task_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> SwarmTaskResponse:
     """Retrieve a single task by ID."""
     try:
@@ -228,7 +257,7 @@ async def get_task(
 async def update_task_status(
     task_id: str,
     body: TaskStatusUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> SwarmTaskResponse:
     """Update a task's status.
 

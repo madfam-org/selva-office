@@ -29,6 +29,7 @@ from .routers import (
     health,
     skills,
     swarms,
+    workflows,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,6 +118,7 @@ def create_app() -> FastAPI:
     app.include_router(billing_internal.router, prefix="/api/v1/billing")
     app.include_router(skills.router, prefix="/api/v1/skills")
     app.include_router(gateway.router, prefix="/api/v1/gateway")
+    app.include_router(workflows.router, prefix="/api/v1/workflows")
 
     return app
 

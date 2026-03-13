@@ -8,6 +8,10 @@
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
 - `packages/inference/src/router.py` -- LLM model routing logic
+- `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
+- `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
+- `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (20+ built-in tools)
+- `packages/memory/src/autoswarm_memory/store.py` -- Per-agent FAISS memory store
 
 ## Port Assignments
 
@@ -48,7 +52,7 @@ pnpm lint             # ESLint
 pnpm test             # TypeScript tests (405 tests across 31 suites)
 pnpm typecheck        # TypeScript type checking
 
-uv run pytest         # Python tests (310 tests)
+uv run pytest         # Python tests (390 tests)
 uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```
@@ -111,6 +115,46 @@ The `packages/skills/` package implements the AgentSkills standard.
 - Core skills always take precedence on name collision with community skills.
 - Community skill scripts under `community-skills/` are excluded from ruff linting
   via `extend-exclude` in `pyproject.toml`.
+
+## Dynamic Workflow System (ChatDev 2.0 Parity)
+
+### Workflow Engine (`packages/workflows`)
+- **Schema** (`schema.py`): Pydantic models for `WorkflowDefinition`, `NodeDefinition`
+  (7 node types: `agent`, `human`, `passthrough`, `subgraph`, `python_runner`,
+  `literal`, `loop_counter`), `EdgeDefinition` with conditional routing.
+- **Compiler** (`compiler.py`): `WorkflowCompiler.compile(workflow_def)` → LangGraph
+  `StateGraph`. Supports conditional edges (regex, keyword, expression), context
+  window policies (keep_all, keep_last_n, clear_all, sliding_window), and subgraph
+  nesting via recursive compilation.
+- **Serializer** (`serializer.py`): YAML ↔ WorkflowDefinition roundtrip.
+- **Validator** (`validator.py`): Cycle detection (loop counter nodes exempt),
+  orphan node warnings, edge reference checks, type-specific config validation.
+- Custom workflows dispatched via `graph_type: "custom"` + `workflow_id` in
+  `POST /api/v1/swarms/dispatch`. YAML loaded from `workflows` table, compiled
+  at runtime by the worker.
+
+### Tool Registry (`packages/tools`)
+- **BaseTool** ABC with `name`, `description`, `parameters_schema()`, `async execute()`.
+- `ToolRegistry` singleton: 20+ built-in tools across 7 categories (file ops, code
+  exec, git, web, data, communication, environment). `get_specs(tool_names)` returns
+  OpenAI function-calling format.
+- **MCP Client** (`mcp/client.py`): `McpToolAdapter` wraps remote MCP tools as
+  BaseTool instances. Stdio and HTTP transports. `discover_mcp_tools(transport)`
+  auto-registers.
+
+### Agent Memory (`packages/memory`)
+- **MemoryStore**: Per-agent FAISS `IndexFlatIP` with metadata. `store()`, `search()`,
+  `list_entries()`, `delete()`. Persists to disk (index.faiss + entries.json).
+- **EmbeddingProvider**: OpenAI (`text-embedding-3-small`), Ollama
+  (`nomic-embed-text`), or hash-based fallback for dev.
+- **ExperienceStore** (IER): Per-role task pattern learning with temporal decay
+  (30-day half-life). `record()`, `search_similar()`, `get_shortcuts()`.
+- **MemoryManager**: Lazy-loading per-agent stores, `get_relevant_context()` for
+  LLM prompt injection.
+
+### Workflow CRUD API
+- `POST/GET/PUT/DELETE /api/v1/workflows` + `/validate`, `/import`, `/export`
+- Alembic migration `0005` adds `workflows` table + `workflow_id` FK on `swarm_tasks`
 
 ## Architecture Notes
 

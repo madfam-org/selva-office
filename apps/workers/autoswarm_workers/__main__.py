@@ -39,6 +39,7 @@ GRAPH_BUILDERS = {
     "coding": build_coding_graph,
     "research": build_research_graph,
     "crm": build_crm_graph,
+    # "custom" is handled dynamically via WorkflowCompiler — see process_task()
 }
 
 checkpointer = create_checkpointer()
@@ -183,15 +184,35 @@ async def process_task(task_data: dict) -> None:
     request_id = task_data.get("request_id")
     bind_task_context(task_id=task_id, request_id=request_id)
 
-    builder = GRAPH_BUILDERS.get(graph_type)
-    if builder is None:
-        logger.error("Unknown graph type '%s' for task %s", graph_type, task_id)
-        return
+    # -- Build graph (standard or custom) ----------------------------------------
+    if graph_type == "custom":
+        workflow_yaml = task_data.get("workflow_yaml")
+        if not workflow_yaml:
+            logger.error("Custom task %s missing workflow_yaml in payload", task_id)
+            return
 
-    logger.info("Processing task %s with %s graph", task_id, graph_type)
+        logger.info("Processing task %s with custom workflow", task_id)
 
-    graph = builder()
-    compiled = graph.compile(checkpointer=checkpointer)
+        from autoswarm_workflows import WorkflowCompiler, WorkflowSerializer
+
+        try:
+            workflow_def = WorkflowSerializer.from_yaml(workflow_yaml)
+            compiler = WorkflowCompiler()
+            graph = compiler.compile(workflow_def)
+        except Exception:
+            logger.exception("Failed to compile custom workflow for task %s", task_id)
+            return
+        compiled = graph.compile(checkpointer=checkpointer)
+    else:
+        builder = GRAPH_BUILDERS.get(graph_type)
+        if builder is None:
+            logger.error("Unknown graph type '%s' for task %s", graph_type, task_id)
+            return
+
+        logger.info("Processing task %s with %s graph", task_id, graph_type)
+
+        graph = builder()
+        compiled = graph.compile(checkpointer=checkpointer)
 
     agent_id = (
         task_data.get("assigned_agent_ids", ["unknown"])[0]
@@ -224,6 +245,9 @@ async def process_task(task_data: dict) -> None:
         "approval_request_id": None,
         "agent_system_prompt": agent_system_prompt,
         "agent_skill_ids": skill_ids,
+        "workflow_variables": task_data.get("payload", {}).get("variables", {}),
+        "description": task_data.get("description", ""),
+        "current_node_id": "",
     }
 
     # Add graph-specific state

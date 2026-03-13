@@ -15,6 +15,7 @@ dependencies = [
   "autoswarm-inference",
   "autoswarm-permissions",
   "autoswarm-skills",
+  "autoswarm-workflows",
   "autoswarm-observability",
   "autoswarm-redis-pool",
   "sentry-sdk>=2.19.0",

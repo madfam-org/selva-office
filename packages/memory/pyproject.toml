@@ -1,0 +1,18 @@
+[project]
+name = "autoswarm-memory"
+version = "0.1.0"
+description = "Per-agent semantic memory with FAISS vector search"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.10.5",
+  "faiss-cpu>=1.9.0",
+  "numpy>=2.0",
+  "httpx>=0.28.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autoswarm_memory"]

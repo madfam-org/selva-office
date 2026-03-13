@@ -56,6 +56,10 @@ class BaseGraphState(TypedDict, total=False):
     approval_request_id: str | None
     agent_system_prompt: str
     agent_skill_ids: list[str]
+    # Custom workflow fields
+    workflow_variables: dict[str, Any]
+    current_node_id: str
+    description: str
 
 
 # -- Shared node functions ----------------------------------------------------
