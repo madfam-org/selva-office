@@ -19,6 +19,7 @@ interface EditorToolbarProps {
   onValidate: () => void;
   onRun: () => void;
   onClose: () => void;
+  onOpenTemplates: () => void;
 }
 
 export function EditorToolbar({
@@ -36,6 +37,7 @@ export function EditorToolbar({
   onValidate,
   onRun,
   onClose,
+  onOpenTemplates,
 }: EditorToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +79,7 @@ export function EditorToolbar({
       <div className="h-4 w-px bg-slate-700" />
 
       <PixelButton variant="ghost" size="sm" onClick={onNew}>New</PixelButton>
+      <PixelButton variant="ghost" size="sm" onClick={onOpenTemplates}>Templates</PixelButton>
       <PixelButton variant="default" size="sm" onClick={onSave} disabled={status === 'saving'}>
         {status === 'saving' ? 'Saving...' : 'Save'}
       </PixelButton>

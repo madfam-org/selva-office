@@ -1,0 +1,47 @@
+name: 3D Modeling Pipeline
+version: '1.0.0'
+description: End-to-end 3D modeling workflow with human review
+
+nodes:
+  - id: modeler
+    type: agent
+    system_prompt: >-
+      You are a 3D modeler. Create a model based on the description provided.
+      Output a detailed specification of geometry, materials, and UV mapping.
+    model: gpt-4o
+
+  - id: review_counter
+    type: loop_counter
+    max_iterations: 5
+
+  - id: review
+    type: human
+    interrupt_message: Review the 3D model and provide feedback. Reply 'approved' to proceed or 'revise' to send back.
+
+  - id: renderer
+    type: agent
+    system_prompt: >-
+      You are a 3D renderer. Render the approved model with high-quality
+      settings including global illumination, anti-aliasing, and PBR materials.
+    model: gpt-4o
+
+  - id: output
+    type: passthrough
+
+edges:
+  - source: modeler
+    target: review_counter
+  - source: review_counter
+    target: review
+  - source: review
+    target: renderer
+    condition:
+      keyword: approved
+  - source: review
+    target: modeler
+    condition:
+      keyword: revise
+  - source: renderer
+    target: output
+
+entry_node: modeler

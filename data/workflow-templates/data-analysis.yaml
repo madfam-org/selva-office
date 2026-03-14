@@ -1,0 +1,70 @@
+name: Data Analysis Pipeline
+version: '1.0.0'
+description: End-to-end data analysis workflow with collection, cleaning, analysis, and reporting
+
+nodes:
+  - id: collector
+    type: agent
+    system_prompt: >-
+      You are a data collector. Identify and gather relevant data sources,
+      define schemas, and prepare raw datasets for processing.
+    model: gpt-4o
+
+  - id: cleaner
+    type: agent
+    system_prompt: >-
+      You are a data engineer. Clean and preprocess the collected data by
+      handling missing values, removing duplicates, normalizing formats,
+      and validating data quality.
+    model: gpt-4o
+
+  - id: analyst
+    type: agent
+    system_prompt: >-
+      You are a data analyst. Perform statistical analysis, identify patterns
+      and trends, create visualizations, and generate key insights from the
+      cleaned dataset.
+    model: gpt-4o
+
+  - id: validate_counter
+    type: loop_counter
+    max_iterations: 3
+
+  - id: validate
+    type: human
+    interrupt_message: >-
+      Review the analysis results and insights. Reply 'approved' to generate
+      the final report or 'revise' to request re-analysis.
+
+  - id: report_generator
+    type: agent
+    system_prompt: >-
+      You are a report writer. Generate a comprehensive data analysis report
+      with executive summary, methodology, findings, visualizations, and
+      actionable recommendations.
+    model: gpt-4o
+
+  - id: output
+    type: passthrough
+
+edges:
+  - source: collector
+    target: cleaner
+  - source: cleaner
+    target: analyst
+  - source: analyst
+    target: validate_counter
+  - source: validate_counter
+    target: validate
+  - source: validate
+    target: report_generator
+    condition:
+      keyword: approved
+  - source: validate
+    target: analyst
+    condition:
+      keyword: revise
+  - source: report_generator
+    target: output
+
+entry_node: collector

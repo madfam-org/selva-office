@@ -1,0 +1,69 @@
+name: DevOps Pipeline
+version: '1.0.0'
+description: CI/CD deployment pipeline with validation, build, human gate, deploy, and monitoring
+
+nodes:
+  - id: validator
+    type: agent
+    system_prompt: >-
+      You are a CI validator. Run static analysis, lint checks, unit tests,
+      and security scans on the codebase. Report any failures or warnings.
+    model: gpt-4o
+
+  - id: builder
+    type: agent
+    system_prompt: >-
+      You are a build engineer. Compile the application, create Docker images,
+      run integration tests, and prepare deployment artifacts.
+    model: gpt-4o
+
+  - id: gate_counter
+    type: loop_counter
+    max_iterations: 3
+
+  - id: deploy_gate
+    type: human
+    interrupt_message: >-
+      Build artifacts are ready. Review build logs and test results.
+      Reply 'approved' to deploy or 'reject' to cancel deployment.
+
+  - id: deployer
+    type: agent
+    system_prompt: >-
+      You are a deployment engineer. Deploy the built artifacts to the target
+      environment using rolling updates. Ensure zero-downtime deployment
+      and proper health checks.
+    model: gpt-4o
+
+  - id: monitor
+    type: agent
+    system_prompt: >-
+      You are an SRE monitor. Verify deployment health by checking metrics,
+      error rates, response times, and resource utilization. Report any
+      anomalies detected post-deployment.
+    model: gpt-4o
+
+  - id: output
+    type: passthrough
+
+edges:
+  - source: validator
+    target: builder
+  - source: builder
+    target: gate_counter
+  - source: gate_counter
+    target: deploy_gate
+  - source: deploy_gate
+    target: deployer
+    condition:
+      keyword: approved
+  - source: deploy_gate
+    target: validator
+    condition:
+      keyword: reject
+  - source: deployer
+    target: monitor
+  - source: monitor
+    target: output
+
+entry_node: validator
