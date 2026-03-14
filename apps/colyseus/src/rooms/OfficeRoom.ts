@@ -10,7 +10,7 @@ import { handleInteraction, handleApproval } from "../handlers/interaction";
 import { handleChat, addSystemMessage } from "../handlers/chat";
 import { handleEmote } from "../handlers/emotes";
 import { handleAvatar } from "../handlers/avatar";
-import { handleStatus } from "../handlers/status";
+import { handleStatus, handleMusicStatus } from "../handlers/status";
 import {
   startProximityLoop,
   lockBubble,
@@ -206,6 +206,10 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
     this.onMessage("status", (client: Client, message: StatusMessage) => {
       handleStatus(this.state, client, message);
+    });
+
+    this.onMessage("music_status", (client: Client, message: { status: string }) => {
+      handleMusicStatus(this.state, client, message);
     });
 
     this.onMessage("lock_bubble", (client: Client) => {

@@ -44,3 +44,31 @@ export function handleStatus(
 
   player.playerStatus = status;
 }
+
+interface MusicStatusMessage {
+  status: string;
+}
+
+/**
+ * Handle an incoming "music_status" message from a client.
+ *
+ * Music status is a free-text field (max 50 chars) allowing players
+ * to share what they are listening to or their current mood.
+ */
+export function handleMusicStatus(
+  state: OfficeStateSchema,
+  client: Client,
+  data: MusicStatusMessage,
+): void {
+  const status = typeof data.status === "string" ? data.status : "";
+
+  if (status.length > 50) {
+    client.send("error", { message: "Music status too long (max 50 chars)" });
+    return;
+  }
+
+  const player = state.players.get(client.sessionId);
+  if (!player) return;
+
+  player.musicStatus = status;
+}

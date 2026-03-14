@@ -32,6 +32,7 @@ export interface Player {
   avatarConfig?: string;
   playerStatus?: 'online' | 'away' | 'busy' | 'dnd';
   companionType?: string;
+  musicStatus?: string;
 }
 
 export interface ChatMessage {
