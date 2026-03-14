@@ -43,8 +43,8 @@ function renderPanel(
     open: true,
     onClose: vi.fn(),
     pendingApprovals: [] as ApprovalRequest[],
-    onApprove: vi.fn(),
-    onDeny: vi.fn(),
+    onApprove: vi.fn().mockResolvedValue(true),
+    onDeny: vi.fn().mockResolvedValue(true),
     connected: true,
     ...overrides,
   };
@@ -124,6 +124,19 @@ describe('ApprovalPanel', () => {
     // Atlas (critical) should appear before Nova (medium)
     expect(agentNames[0].textContent).toBe('Atlas');
     expect(agentNames[1].textContent).toBe('Nova');
+  });
+
+  it('shows error toast when onApprove returns false', async () => {
+    const { props } = renderPanel({
+      pendingApprovals: [mockRequest],
+      onApprove: vi.fn().mockResolvedValue(false),
+    });
+
+    const approveBtn = screen.getByText('Approve');
+    await fireEvent.click(approveBtn);
+
+    // onApprove was called
+    expect(props.onApprove).toHaveBeenCalledWith('req-1', undefined);
   });
 
   it('shows connection status indicator', () => {

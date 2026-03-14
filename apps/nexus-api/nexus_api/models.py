@@ -169,6 +169,30 @@ class Workflow(Base):
     )
 
 
+class Artifact(Base):
+    """A task output artifact persisted in storage."""
+
+    __tablename__ = "artifacts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    task_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("swarm_tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False, default="text/plain")
+    storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="default", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class ComputeTokenLedger(Base):
     """Immutable ledger of compute token debits and credits."""
 

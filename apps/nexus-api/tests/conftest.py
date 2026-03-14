@@ -11,13 +11,14 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
-    async_sessionmaker,
+)
+from sqlalchemy.ext.asyncio import (
     create_async_engine as _real_create_async_engine,
 )
 from sqlalchemy.pool import StaticPool
@@ -86,6 +87,28 @@ import nexus_api.routers.approvals as _approvals_mod  # noqa: E402
 _approvals_mod.notify_approval_decision = AsyncMock()
 _approvals_mod.manager.send_approval_request = AsyncMock()
 _approvals_mod.manager.send_approval_response = AsyncMock()
+
+
+# ---------------------------------------------------------------------------
+# 5. Mock rate limiter globally so tests sharing 127.0.0.1 don't hit 429.
+#    TestRateLimiting in test_security.py uses its own inner patch() which
+#    takes precedence, so real rate-limiter behaviour is still tested there.
+# ---------------------------------------------------------------------------
+
+_mock_rl_pipe = MagicMock()
+_mock_rl_pipe.incr = AsyncMock()
+_mock_rl_pipe.expire = AsyncMock()
+_mock_rl_pipe.execute = AsyncMock(return_value=[1, True])
+_mock_rl_client = MagicMock()
+_mock_rl_client.pipeline.return_value = _mock_rl_pipe
+_mock_rl_pool = MagicMock()
+_mock_rl_pool.client = AsyncMock(return_value=_mock_rl_client)
+
+_rate_limit_patch = patch(
+    "nexus_api.middleware.rate_limit.get_redis_pool",
+    return_value=_mock_rl_pool,
+)
+_rate_limit_patch.start()
 
 
 # ---------------------------------------------------------------------------

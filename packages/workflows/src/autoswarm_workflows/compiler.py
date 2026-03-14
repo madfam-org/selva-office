@@ -63,6 +63,7 @@ class WorkflowCompiler:
         """
         self._loader = workflow_loader
         self._validator = WorkflowValidator()
+        self._pending_batch_nodes: list[tuple[NodeDefinition, Any]] = []
 
     def compile(
         self,
@@ -96,11 +97,24 @@ class WorkflowCompiler:
         node_map = {n.id: n for n in workflow.nodes}
         entry_id = workflow.entry_node or workflow.nodes[0].id
 
-        # Add nodes
+        # Reset pending batch nodes for this compilation
+        self._pending_batch_nodes = []
+
+        # Build node functions (batch nodes record themselves for delegate wiring)
+        built_fns: dict[str, Any] = {}
         for node_def in workflow.nodes:
             node_fn = self._build_node_function(node_def)
-            # Wrap with context policy if needed
-            wrapped_fn = self._wrap_with_context_policy(node_fn, node_def)
+            built_fns[node_def.id] = node_fn
+
+        # Wire batch node delegates now that all node functions exist
+        for batch_node_def, batch_handler in self._pending_batch_nodes:
+            delegate_id = batch_node_def.delegate_node_id
+            if delegate_id and delegate_id in built_fns:
+                batch_handler.set_delegate_fn(built_fns[delegate_id])
+
+        # Add nodes
+        for node_def in workflow.nodes:
+            wrapped_fn = self._wrap_with_context_policy(built_fns[node_def.id], node_def)
             graph.add_node(node_def.id, wrapped_fn)
 
         # Set entry point
@@ -186,12 +200,25 @@ class WorkflowCompiler:
             handler = SubgraphNodeHandler(node, workflow_loader=self._loader)
             return handler.build_node_fn()
 
+        if node.type == NodeType.BATCH:
+            return self._build_batch_node(node)
+
         handler_cls = handlers.get(node.type)
         if handler_cls is None:
             msg = f"Unknown node type: {node.type}"
             raise ValueError(msg)
 
         return handler_cls(node).build_node_fn()
+
+    def _build_batch_node(self, node: NodeDefinition) -> Any:
+        """Build a batch node, wiring up the delegate node function."""
+        from .nodes.batch import BatchNodeHandler
+
+        handler = BatchNodeHandler(node)
+        # The delegate is resolved after all nodes are built (deferred).
+        # Store as a placeholder — the compile() method will wire it up.
+        self._pending_batch_nodes.append((node, handler))
+        return handler.build_node_fn()
 
     def _wrap_with_context_policy(self, node_fn: Any, node: NodeDefinition) -> Any:
         """Wrap a node function with context window policy trimming."""

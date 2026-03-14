@@ -44,6 +44,7 @@ class WorkflowValidator:
         self._check_orphan_nodes(workflow, node_map, result)
         self._check_cycles(workflow, result)
         self._check_node_type_config(workflow.nodes, result)
+        self._check_batch_delegate_refs(workflow.nodes, node_map, result)
         self._check_conditional_edges(workflow.edges, node_map, result)
 
         return result
@@ -136,8 +137,11 @@ class WorkflowValidator:
         for edge in workflow.edges:
             adjacency[edge.source].append(edge.target)
 
-        # Build set of loop counter node IDs (cycles involving these are allowed)
-        loop_nodes = {n.id for n in workflow.nodes if n.type == NodeType.LOOP_COUNTER}
+        # Build set of loop counter / batch node IDs (cycles involving these are allowed)
+        loop_nodes = {
+            n.id for n in workflow.nodes
+            if n.type in (NodeType.LOOP_COUNTER, NodeType.BATCH)
+        }
 
         white, gray, black = 0, 1, 2
         color: dict[str, int] = {n.id: white for n in workflow.nodes}
@@ -185,6 +189,46 @@ class WorkflowValidator:
                     ValidationError(
                         code="MISSING_PYTHON_CODE",
                         message=f"Python runner node '{node.id}' must specify code",
+                        node_id=node.id,
+                    )
+                )
+            if node.type == NodeType.BATCH:
+                if not node.batch_split_key:
+                    result.errors.append(
+                        ValidationError(
+                            code="MISSING_BATCH_SPLIT_KEY",
+                            message=f"Batch node '{node.id}' must specify batch_split_key",
+                            node_id=node.id,
+                        )
+                    )
+                if not node.delegate_node_id:
+                    result.errors.append(
+                        ValidationError(
+                            code="MISSING_BATCH_DELEGATE",
+                            message=f"Batch node '{node.id}' must specify delegate_node_id",
+                            node_id=node.id,
+                        )
+                    )
+
+    def _check_batch_delegate_refs(
+        self,
+        nodes: list[NodeDefinition],
+        node_map: dict[str, NodeDefinition],
+        result: ValidationResult,
+    ) -> None:
+        for node in nodes:
+            if (
+                node.type == NodeType.BATCH
+                and node.delegate_node_id
+                and node.delegate_node_id not in node_map
+            ):
+                result.errors.append(
+                    ValidationError(
+                        code="INVALID_BATCH_DELEGATE",
+                        message=(
+                            f"Batch node '{node.id}' references delegate "
+                            f"'{node.delegate_node_id}' which does not exist"
+                        ),
                         node_id=node.id,
                     )
                 )

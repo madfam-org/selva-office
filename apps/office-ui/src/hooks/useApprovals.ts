@@ -11,8 +11,8 @@ const MAX_RECONNECT_DELAY_MS = 30000;
 
 interface ApprovalsState {
   pendingApprovals: ApprovalRequest[];
-  approve: (requestId: string, feedback?: string) => void;
-  deny: (requestId: string, feedback?: string) => void;
+  approve: (requestId: string, feedback?: string) => Promise<boolean>;
+  deny: (requestId: string, feedback?: string) => Promise<boolean>;
   connected: boolean;
 }
 
@@ -123,7 +123,7 @@ export function useApprovals(): ApprovalsState {
   }, [connect]);
 
   const sendDecision = useCallback(
-    async (requestId: string, decision: 'approve' | 'deny', feedback?: string) => {
+    async (requestId: string, decision: 'approve' | 'deny', feedback?: string): Promise<boolean> => {
       const url = `${API_BASE_URL}/api/v1/approvals/${requestId}/${decision}`;
       const body: Record<string, unknown> = {};
       if (feedback !== undefined) {
@@ -142,25 +142,26 @@ export function useApprovals(): ApprovalsState {
           // Optimistically remove from pending -- the WS will also broadcast the
           // resolution, but removing immediately gives a snappy UI.
           setPendingApprovals((prev) => prev.filter((a) => a.id !== requestId));
+          return true;
         }
+        return false;
       } catch {
-        // Network errors are silently ignored; the approval stays in the queue
-        // and the user can retry.
+        return false;
       }
     },
     [],
   );
 
   const approve = useCallback(
-    (requestId: string, feedback?: string) => {
-      void sendDecision(requestId, 'approve', feedback);
+    async (requestId: string, feedback?: string): Promise<boolean> => {
+      return sendDecision(requestId, 'approve', feedback);
     },
     [sendDecision],
   );
 
   const deny = useCallback(
-    (requestId: string, feedback?: string) => {
-      void sendDecision(requestId, 'deny', feedback);
+    async (requestId: string, feedback?: string): Promise<boolean> => {
+      return sendDecision(requestId, 'deny', feedback);
     },
     [sendDecision],
   );

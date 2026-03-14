@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..base import BaseTool
+from .artifact import ListArtifactsTool, RetrieveArtifactTool, SaveArtifactTool
 from .code import BashExecTool, PythonExecTool
 from .communication import CreateReportTool, SendNotificationTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
@@ -47,4 +48,8 @@ def get_builtin_tools() -> list[BaseTool]:
         # Deployment
         DeployTool(),
         DeployStatusTool(),
+        # Artifacts
+        SaveArtifactTool(),
+        RetrieveArtifactTool(),
+        ListArtifactsTool(),
     ]

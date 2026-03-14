@@ -14,8 +14,11 @@
 - `packages/inference/src/router.py` -- LLM model routing logic
 - `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
 - `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
-- `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (20+ built-in tools)
+- `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (23 built-in tools)
 - `packages/memory/src/autoswarm_memory/store.py` -- Per-agent FAISS memory store
+- `packages/tools/src/autoswarm_tools/storage/local.py` -- Content-addressable artifact storage
+- `packages/tools/src/autoswarm_tools/builtins/artifact.py` -- Artifact management tools (save/retrieve/list)
+- `packages/workflows/src/autoswarm_workflows/nodes/batch.py` -- Batch processing node handler
 
 ## Port Assignments
 
@@ -130,8 +133,8 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 ### Workflow Engine (`packages/workflows`)
 - **Schema** (`schema.py`): Pydantic models for `WorkflowDefinition`, `NodeDefinition`
-  (7 node types: `agent`, `human`, `passthrough`, `subgraph`, `python_runner`,
-  `literal`, `loop_counter`), `EdgeDefinition` with conditional routing.
+  (8 node types: `agent`, `human`, `passthrough`, `subgraph`, `python_runner`,
+  `literal`, `loop_counter`, `batch`), `EdgeDefinition` with conditional routing.
 - **Compiler** (`compiler.py`): `WorkflowCompiler.compile(workflow_def)` → LangGraph
   `StateGraph`. Supports conditional edges (regex, keyword, expression), context
   window policies (keep_all, keep_last_n, clear_all, sliding_window), and subgraph
@@ -145,8 +148,8 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 ### Tool Registry (`packages/tools`)
 - **BaseTool** ABC with `name`, `description`, `parameters_schema()`, `async execute()`.
-- `ToolRegistry` singleton: 20+ built-in tools across 7 categories (file ops, code
-  exec, git, web, data, communication, environment). `get_specs(tool_names)` returns
+- `ToolRegistry` singleton: 23 built-in tools across 8 categories (file ops, code
+  exec, git, web, data, communication, environment, artifacts). `get_specs(tool_names)` returns
   OpenAI function-calling format.
 - **MCP Client** (`mcp/client.py`): `McpToolAdapter` wraps remote MCP tools as
   BaseTool instances. Stdio and HTTP transports. `discover_mcp_tools(transport)`
@@ -170,8 +173,8 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Blueprint Room**: `dept-blueprint` department zone (maxAgents: 0) at (800,260).
   `blueprint` interactable type emits `open_blueprint` event → opens WorkflowEditor.
 - **WorkflowEditor** (`apps/office-ui/src/components/workflow-editor/`): Full-screen
-  modal with React Flow canvas, 7 custom node types (Agent, Human, Passthrough,
-  Subgraph, PythonRunner, Literal, LoopCounter), conditional edges, NodePalette
+  modal with React Flow canvas, 8 custom node types (Agent, Human, Passthrough,
+  Subgraph, PythonRunner, Literal, LoopCounter, Batch), conditional edges, NodePalette
   (drag-and-drop), PropertiesPanel (dynamic form fields), EditorToolbar (New, Save,
   Load, Export YAML, Import YAML, Validate, Run).
 - **workflow-converter** (`apps/office-ui/src/lib/workflow-converter.ts`): Bidirectional
@@ -188,6 +191,30 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Shared types**: `packages/shared-types/src/workflow.ts` mirrors Python schema.
   `Agent.currentNodeId` optional field.
 - **Dependencies**: `@xyflow/react`, `js-yaml` (office-ui).
+
+### Phase 5: Advanced Features
+
+#### Artifact Management (5.1)
+- **Storage**: `packages/tools/src/autoswarm_tools/storage/` — `ArtifactStorage` ABC +
+  `LocalFSStorage` (content-addressable SHA-256 dedup, layout `<hash[:2]>/<hash[2:4]>/<hash>`).
+  `ARTIFACT_STORAGE_PATH` env var or `/tmp/autoswarm-artifacts` default.
+- **Tools**: `SaveArtifactTool`, `RetrieveArtifactTool`, `ListArtifactsTool` in
+  `builtins/artifact.py`. Registered in `get_builtin_tools()`.
+- **REST API**: `apps/nexus-api/nexus_api/routers/artifacts.py` —
+  `GET /api/v1/artifacts`, `GET .../download`, `DELETE ...`. Org-scoped.
+- **DB**: `Artifact` model in `models.py`, migration `0006_add_artifacts_table`.
+
+#### Batch Processing Node (5.2)
+- **Schema**: `NodeType.BATCH` + `BatchAggregateStrategy` enum (`collect`/`merge`/`vote`).
+  `NodeDefinition` extended with `batch_split_key`, `batch_aggregate_strategy`,
+  `max_parallel`, `delegate_node_id`.
+- **Handler**: `BatchNodeHandler` in `nodes/batch.py` — splits `state[split_key]`,
+  runs delegate function in parallel via `asyncio.Semaphore`, aggregates per strategy.
+- **Compiler**: batch nodes exempt from cycle detection (like loop_counter).
+  Delegate functions wired after all nodes are built.
+- **Validator**: checks `MISSING_BATCH_SPLIT_KEY`, `MISSING_BATCH_DELEGATE`,
+  `INVALID_BATCH_DELEGATE`.
+- **UI**: `BatchNode` React Flow component, palette entry, PropertiesPanel fields.
 
 ## Architecture Notes
 

@@ -375,6 +375,60 @@ describe('useApprovals', () => {
     expect(result.current.pendingApprovals).toHaveLength(1);
   });
 
+  it('approve() returns true on success and false on failure', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: false, status: 500 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useApprovals());
+    const ws = MockWebSocket.last;
+
+    act(() => {
+      ws.simulateOpen();
+    });
+
+    act(() => {
+      ws.simulateMessage({ type: 'approval_request', payload: makeApprovalRequest('req-e') });
+      ws.simulateMessage({ type: 'approval_request', payload: makeApprovalRequest('req-f') });
+    });
+
+    let ok: boolean = false;
+    await act(async () => {
+      ok = await result.current.approve('req-e');
+    });
+    expect(ok).toBe(true);
+
+    await act(async () => {
+      ok = await result.current.approve('req-f');
+    });
+    expect(ok).toBe(false);
+  });
+
+  it('deny() returns false on network error', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('Network error'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useApprovals());
+    const ws = MockWebSocket.last;
+
+    act(() => {
+      ws.simulateOpen();
+    });
+
+    act(() => {
+      ws.simulateMessage({ type: 'approval_request', payload: makeApprovalRequest('req-g') });
+    });
+
+    let ok: boolean = true;
+    await act(async () => {
+      ok = await result.current.deny('req-g');
+    });
+    expect(ok).toBe(false);
+    // Approval should stay in pending
+    expect(result.current.pendingApprovals).toHaveLength(1);
+  });
+
   // -----------------------------------------------------------------------
   // Reconnection logic
   // -----------------------------------------------------------------------

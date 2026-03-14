@@ -1,4 +1,5 @@
 import { AgentNode } from './AgentNode';
+import { BatchNode } from './BatchNode';
 import { HumanNode } from './HumanNode';
 import { PassthroughNode } from './PassthroughNode';
 import { SubgraphNode } from './SubgraphNode';
@@ -10,6 +11,7 @@ import type { NodeTypes } from '@xyflow/react';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const nodeTypes: NodeTypes = {
   agentNode: AgentNode,
+  batchNode: BatchNode,
   humanNode: HumanNode,
   passthroughNode: PassthroughNode,
   subgraphNode: SubgraphNode,
@@ -18,4 +20,4 @@ export const nodeTypes: NodeTypes = {
   loopCounterNode: LoopCounterNode,
 } as unknown as NodeTypes;
 
-export { AgentNode, HumanNode, PassthroughNode, SubgraphNode, PythonRunnerNode, LiteralNode, LoopCounterNode };
+export { AgentNode, BatchNode, HumanNode, PassthroughNode, SubgraphNode, PythonRunnerNode, LiteralNode, LoopCounterNode };

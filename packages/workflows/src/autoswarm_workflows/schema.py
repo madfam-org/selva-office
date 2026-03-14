@@ -18,6 +18,15 @@ class NodeType(StrEnum):
     PYTHON_RUNNER = "python_runner"
     LITERAL = "literal"
     LOOP_COUNTER = "loop_counter"
+    BATCH = "batch"
+
+
+class BatchAggregateStrategy(StrEnum):
+    """How to combine results from parallel batch items."""
+
+    COLLECT = "collect"
+    MERGE = "merge"
+    VOTE = "vote"
 
 
 class ContextWindowPolicy(StrEnum):
@@ -75,6 +84,19 @@ class NodeDefinition(BaseModel):
 
     # Loop counter config
     max_iterations: int = Field(default=5, ge=1, le=100)
+
+    # Batch node config
+    batch_split_key: str | None = Field(
+        default=None, description="State key containing the list to split"
+    )
+    batch_aggregate_strategy: BatchAggregateStrategy = Field(
+        default=BatchAggregateStrategy.COLLECT,
+        description="How to aggregate batch results",
+    )
+    max_parallel: int = Field(default=5, ge=1, le=50, description="Max concurrent batch items")
+    delegate_node_id: str | None = Field(
+        default=None, description="Node ID to execute for each batch item"
+    )
 
     # Context policy
     context_policy: ContextPolicyConfig = Field(default_factory=ContextPolicyConfig)

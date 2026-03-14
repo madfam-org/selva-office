@@ -17,6 +17,7 @@ const CONTEXT_POLICIES: ContextWindowPolicy[] = ['keep_all', 'keep_last_n', 'cle
 
 const NODE_TYPE_REVERSE: Record<string, NodeType> = {
   agentNode: 'agent',
+  batchNode: 'batch',
   humanNode: 'human',
   passthroughNode: 'passthrough',
   subgraphNode: 'subgraph',
@@ -265,6 +266,49 @@ export function PropertiesPanel({
               onChange={(e) => updateField('max_iterations', parseInt(e.target.value) || 5)}
             />
           </Field>
+        )}
+
+        {/* Batch node fields */}
+        {nodeType === 'batch' && (
+          <>
+            <Field label="Split Key">
+              <input
+                className="pxa-input w-full"
+                value={nodeData?.batch_split_key ?? ''}
+                placeholder="e.g. items"
+                onChange={(e) => updateField('batch_split_key', e.target.value || null)}
+              />
+            </Field>
+            <Field label="Delegate Node ID">
+              <input
+                className="pxa-input w-full"
+                value={nodeData?.delegate_node_id ?? ''}
+                placeholder="e.g. worker_node"
+                onChange={(e) => updateField('delegate_node_id', e.target.value || null)}
+              />
+            </Field>
+            <Field label="Aggregate Strategy">
+              <select
+                className="pxa-input w-full"
+                value={nodeData?.batch_aggregate_strategy ?? 'collect'}
+                onChange={(e) => updateField('batch_aggregate_strategy', e.target.value)}
+              >
+                <option value="collect">Collect</option>
+                <option value="merge">Merge</option>
+                <option value="vote">Vote</option>
+              </select>
+            </Field>
+            <Field label="Max Parallel">
+              <input
+                type="number"
+                className="pxa-input w-full"
+                min={1}
+                max={50}
+                value={nodeData?.max_parallel ?? 5}
+                onChange={(e) => updateField('max_parallel', parseInt(e.target.value) || 5)}
+              />
+            </Field>
+          </>
         )}
 
         {/* Context policy (all nodes) */}

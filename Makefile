@@ -1,12 +1,25 @@
-.PHONY: dev dev-full dev-seed worker build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test worktree-cleanup
+.PHONY: dev dev-full dev-seed worker build test lint clean docker-up docker-down db-migrate db-wait setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test worktree-cleanup
 
 # ── Development ─────────────────────────────────────
 dev:
 	pnpm dev & uv run --directory apps/nexus-api uvicorn nexus_api.main:app --host 0.0.0.0 --port 4300 --reload & uv run --directory apps/workers python -m autoswarm_workers
 
+db-wait:
+	@echo "Waiting for PostgreSQL..."
+	@for i in $$(seq 1 30); do \
+	  if command -v pg_isready >/dev/null 2>&1; then \
+	    pg_isready -h localhost -p 5432 -q 2>/dev/null && break; \
+	  else \
+	    python3 -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('localhost',5432)); s.close()" 2>/dev/null && break; \
+	  fi; \
+	  sleep 1; \
+	done
+	@echo "PostgreSQL is ready."
+
 dev-full:
 	@echo "Starting infrastructure..."
 	docker compose -f infra/docker/docker-compose.dev.yml up -d --wait
+	$(MAKE) db-wait
 	@echo "Running database migrations..."
 	uv run --directory apps/nexus-api alembic upgrade head
 	@echo "Starting all services..."

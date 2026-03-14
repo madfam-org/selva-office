@@ -20,6 +20,7 @@ const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'python_runner', rfType: 'pythonRunnerNode', icon: '🐍', label: 'Python', description: 'Run Python code', category: 'Compute' },
   { type: 'literal', rfType: 'literalNode', icon: '📋', label: 'Literal', description: 'Static value', category: 'Compute' },
   { type: 'loop_counter', rfType: 'loopCounterNode', icon: '🔁', label: 'Loop Counter', description: 'Iteration limit', category: 'Control' },
+  { type: 'batch', rfType: 'batchNode', icon: '📦', label: 'Batch', description: 'Parallel processing', category: 'Control' },
 ];
 
 const CATEGORIES = ['Core', 'Compose', 'Compute', 'Control'];
