@@ -54,4 +54,5 @@ export class OfficeStateSchema extends Schema {
   @type([ChatMessageSchema]) chatMessages: ArraySchema<ChatMessageSchema> =
     new ArraySchema<ChatMessageSchema>();
   @type("number") pendingApprovalCount: number = 0;
+  @type("string") spotlightPresenter: string = "";
 }

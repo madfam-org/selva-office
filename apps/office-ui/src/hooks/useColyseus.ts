@@ -27,11 +27,18 @@ export interface WebRTCSignal {
   signal: unknown;
 }
 
+export interface SpotlightActiveEvent {
+  sessionId: string;
+  name?: string;
+  active: boolean;
+}
+
 interface ColyseusOptions {
   playerName?: string;
   onPlayerEmote?: (event: PlayerEmoteEvent) => void;
   onProximityUpdate?: (update: ProximityUpdate) => void;
   onWebRTCSignal?: (signal: WebRTCSignal) => void;
+  onSpotlightActive?: (event: SpotlightActiveEvent) => void;
 }
 
 interface ColyseusState {
@@ -49,6 +56,8 @@ interface ColyseusState {
   sendCompanion: (type: string) => void;
   sendMegaphoneStart: () => void;
   sendMegaphoneStop: () => void;
+  sendSpotlightStart: () => void;
+  sendSpotlightStop: () => void;
   sendLockBubble: () => void;
   sendUnlockBubble: () => void;
 }
@@ -111,6 +120,8 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
   onProximityUpdateRef.current = opts.onProximityUpdate;
   const onWebRTCSignalRef = useRef(opts.onWebRTCSignal);
   onWebRTCSignalRef.current = opts.onWebRTCSignal;
+  const onSpotlightActiveRef = useRef(opts.onSpotlightActive);
+  onSpotlightActiveRef.current = opts.onSpotlightActive;
 
   const sendMove = useCallback((x: number, y: number) => {
     roomRef.current?.send('move', { x, y });
@@ -146,6 +157,14 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
 
   const sendMegaphoneStop = useCallback(() => {
     roomRef.current?.send('megaphone_stop', {});
+  }, []);
+
+  const sendSpotlightStart = useCallback(() => {
+    roomRef.current?.send('spotlight_start', {});
+  }, []);
+
+  const sendSpotlightStop = useCallback(() => {
+    roomRef.current?.send('spotlight_stop', {});
   }, []);
 
   const sendLockBubble = useCallback(() => {
@@ -219,6 +238,11 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
         onWebRTCSignalRef.current?.(message as WebRTCSignal);
       });
 
+      // Listen for spotlight presentation broadcasts
+      (room as unknown as RoomLike).onMessage('spotlight_active', (message: unknown) => {
+        onSpotlightActiveRef.current?.(message as SpotlightActiveEvent);
+      });
+
       room.onLeave((code: number) => {
         setConnected(false);
         roomRef.current = null;
@@ -272,6 +296,8 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
     sendCompanion,
     sendMegaphoneStart,
     sendMegaphoneStop,
+    sendSpotlightStart,
+    sendSpotlightStop,
     sendLockBubble,
     sendUnlockBubble,
   };

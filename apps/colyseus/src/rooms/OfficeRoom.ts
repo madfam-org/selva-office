@@ -24,6 +24,11 @@ import {
   releaseMegaphone,
   getMegaphoneSpeaker,
 } from "../handlers/megaphone";
+import {
+  handleSpotlightStart,
+  handleSpotlightStop,
+  releaseSpotlight,
+} from "../handlers/spotlight";
 import { handleSignaling } from "../handlers/signaling";
 import type { WebRTCSignalMessage } from "../handlers/signaling";
 import { handleCompanion } from "../handlers/companion";
@@ -222,6 +227,18 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       );
     });
 
+    this.onMessage("spotlight_start", (client: Client) => {
+      handleSpotlightStart(this.state, client, (type, payload) =>
+        this.broadcast(type, payload)
+      );
+    });
+
+    this.onMessage("spotlight_stop", (client: Client) => {
+      handleSpotlightStop(client, this.state, (type, payload) =>
+        this.broadcast(type, payload)
+      );
+    });
+
     this.onMessage("companion", (client: Client, message: { type: string }) => {
       handleCompanion(this.state, client, message);
     });
@@ -278,6 +295,9 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     this.state.players.delete(client.sessionId);
     removeFromLockedGroups(client.sessionId);
     releaseMegaphone(client.sessionId, (type, payload) =>
+      this.broadcast(type, payload)
+    );
+    releaseSpotlight(client.sessionId, this.state, (type, payload) =>
       this.broadcast(type, payload)
     );
 
