@@ -136,6 +136,16 @@ class SwarmTask(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Queue tracking (migration 0004)
+    stream_message_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    worker_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Workflow reference (migration 0005)
+    workflow_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workflows.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class Workflow(Base):

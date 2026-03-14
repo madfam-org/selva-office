@@ -57,6 +57,8 @@ class SwarmTaskResponse(BaseModel):
 class TaskStatusUpdate(BaseModel):
     status: str = Field(..., pattern=r"^(running|completed|failed|cancelled)$")
     result: dict[str, Any] | None = None
+    started_at: str | None = None
+    error_message: str | None = None
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -167,6 +169,7 @@ async def dispatch_task(
 
     # Record the debit in the ledger (the in-memory ComputeTokenManager lives
     # in the orchestrator package; the ledger is the durable record).
+    wf_uid_value = wf_uid if body.graph_type == "custom" else None
     task = SwarmTask(
         description=body.description,
         graph_type=body.graph_type,
@@ -174,6 +177,7 @@ async def dispatch_task(
         payload=body.payload,
         status="queued",
         org_id=tenant.org_id,
+        workflow_id=wf_uid_value,
     )
     db.add(task)
     await db.flush()
@@ -282,6 +286,12 @@ async def update_task_status(
 
     if body.result is not None:
         task.payload = {**(task.payload or {}), "result": body.result}
+
+    if body.started_at is not None:
+        task.started_at = datetime.fromisoformat(body.started_at)
+
+    if body.error_message is not None:
+        task.error_message = body.error_message
 
     if body.status in ("completed", "failed"):
         task.completed_at = datetime.now(UTC)

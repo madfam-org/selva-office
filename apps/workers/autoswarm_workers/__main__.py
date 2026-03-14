@@ -7,6 +7,7 @@ import json
 import logging
 import signal
 import sys
+from datetime import UTC, datetime
 
 import httpx
 from cachetools import TTLCache
@@ -290,7 +291,10 @@ async def process_task(task_data: dict) -> None:
 
     # Notify Colyseus that this agent is now working.
     await _publish_agent_status(agent_id, "working")
-    await _update_task_status(settings.nexus_api_url, task_id, "running")
+    await _update_task_status(
+        settings.nexus_api_url, task_id, "running",
+        started_at=datetime.now(UTC).isoformat(),
+    )
 
     try:
         # Apply per-graph-type timeout
@@ -327,12 +331,14 @@ async def process_task(task_data: dict) -> None:
         logger.error("Task %s timed out after %ds", task_id, timeout)
         await _update_task_status(
             settings.nexus_api_url, task_id, "failed", {"error": f"Timed out after {timeout}s"},
+            error_message=f"Timed out after {timeout}s",
         )
         await _publish_agent_status(agent_id, "error", current_node_id="")
     except Exception as exc:
         logger.exception("Task %s failed", task_id)
         await _update_task_status(
             settings.nexus_api_url, task_id, "failed", {"error": str(exc)},
+            error_message=str(exc),
         )
         await _publish_agent_status(agent_id, "error", current_node_id="")
     finally:

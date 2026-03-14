@@ -1,8 +1,20 @@
-.PHONY: dev worker build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup
+.PHONY: dev dev-full dev-seed worker build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test
 
 # ── Development ─────────────────────────────────────
 dev:
 	pnpm dev & uv run --directory apps/nexus-api uvicorn nexus_api.main:app --host 0.0.0.0 --port 4300 --reload & uv run --directory apps/workers python -m autoswarm_workers
+
+dev-full:
+	@echo "Starting infrastructure..."
+	docker compose -f infra/docker/docker-compose.dev.yml up -d --wait
+	@echo "Running database migrations..."
+	uv run --directory apps/nexus-api alembic upgrade head
+	@echo "Starting all services..."
+	$(MAKE) dev
+
+dev-seed:
+	@echo "Seeding departments and agents..."
+	uv run python scripts/seed-agents.py
 
 worker:
 	uv run --directory apps/workers python -m autoswarm_workers
@@ -81,6 +93,9 @@ generate-office-map:
 # ── Setup ───────────────────────────────────────────
 setup:
 	bash scripts/setup.sh
+
+smoke-test:
+	bash scripts/smoke-test.sh
 
 install:
 	pnpm install
