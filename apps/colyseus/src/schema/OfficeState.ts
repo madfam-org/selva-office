@@ -1,4 +1,5 @@
 import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema";
+import { WhiteboardSchema } from "./Whiteboard";
 
 export class AgentSchema extends Schema {
   @type("string") id: string = "";
@@ -54,4 +55,6 @@ export class OfficeStateSchema extends Schema {
   @type([ChatMessageSchema]) chatMessages: ArraySchema<ChatMessageSchema> =
     new ArraySchema<ChatMessageSchema>();
   @type("number") pendingApprovalCount: number = 0;
+  @type({ map: WhiteboardSchema }) whiteboards: MapSchema<WhiteboardSchema> =
+    new MapSchema<WhiteboardSchema>();
 }

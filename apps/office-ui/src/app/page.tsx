@@ -13,6 +13,7 @@ import { AvatarEditor } from '@/components/AvatarEditor';
 import { CoWebsitePanel } from '@/components/CoWebsitePanel';
 import { PopupOverlay } from '@/components/PopupOverlay';
 import { SkillMarketplace } from '@/components/SkillMarketplace';
+import { WhiteboardPanel } from '@/components/WhiteboardPanel';
 import { DeskInfoPanel } from '@/components/DeskInfoPanel';
 import { VideoOverlay } from '@/components/VideoOverlay';
 import { MediaControls } from '@/components/MediaControls';
@@ -26,6 +27,7 @@ import { usePlayerStatus } from '@/hooks/usePlayerStatus';
 import { StatusSelector } from '@/components/StatusSelector';
 import { useProximityVideo } from '@/hooks/useProximityVideo';
 import { useRecording } from '@/hooks/useRecording';
+import { useWhiteboard } from '@/hooks/useWhiteboard';
 import { MegaphoneControls } from '@/components/MegaphoneControls';
 import { RoomNavigator } from '@/components/RoomNavigator';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
@@ -81,6 +83,7 @@ export default function HomePage() {
   const sessionUser = useMemo(() => getSessionUser(), []);
 
   const {
+    room: colyseusRoom,
     officeState,
     connected: colyseusConnected,
     sessionId,
@@ -134,6 +137,20 @@ export default function HomePage() {
     stopRecording,
   } = useRecording({ localStream, peers });
 
+  const {
+    strokes: whiteboardStrokes,
+    tool: whiteboardTool,
+    color: whiteboardColor,
+    width: whiteboardWidth,
+    colors: whiteboardColors,
+    widths: whiteboardWidths,
+    sendStroke: whiteboardSendStroke,
+    clearBoard: whiteboardClear,
+    setTool: whiteboardSetTool,
+    setColor: whiteboardSetColor,
+    setWidth: whiteboardSetWidth,
+  } = useWhiteboard({ room: colyseusConnected ? colyseusRoom : null });
+
   // Wire up the refs now that both hooks are initialized
   proximityUpdateRef.current = videoHandleProximity;
   webrtcSignalRef.current = videoHandleSignal;
@@ -157,6 +174,7 @@ export default function HomePage() {
   const [approvalPanelOpen, setApprovalPanelOpen] = useState(false);
   const [workflowEditorOpen, setWorkflowEditorOpen] = useState(false);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -304,6 +322,20 @@ export default function HomePage() {
       cleanup = mod.gameEventBus.on('open_desk_info', (detail: unknown) => {
         const event = detail as { title: string; assignedAgentId: string };
         setDeskInfo({ assignedAgentId: event.assignedAgentId, title: event.title });
+      });
+    });
+    return () => cleanup?.();
+  }, []);
+
+  // Listen for whiteboard open events from game
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    import('@/game/PhaserGame').then((mod) => {
+      cleanup = mod.gameEventBus.on('open_whiteboard', () => {
+        setWhiteboardOpen(true);
+        setDashboardOpen(false);
+        setDispatchPanelOpen(false);
+        setApprovalPanelOpen(false);
       });
     });
     return () => cleanup?.();
@@ -513,6 +545,22 @@ export default function HomePage() {
       <SkillMarketplace
         open={marketplaceOpen}
         onClose={() => setMarketplaceOpen(false)}
+      />
+
+      <WhiteboardPanel
+        open={whiteboardOpen}
+        onClose={() => setWhiteboardOpen(false)}
+        strokes={whiteboardStrokes}
+        tool={whiteboardTool}
+        color={whiteboardColor}
+        width={whiteboardWidth}
+        colors={whiteboardColors}
+        widths={whiteboardWidths}
+        onSendStroke={whiteboardSendStroke}
+        onClear={whiteboardClear}
+        onToolChange={whiteboardSetTool}
+        onColorChange={whiteboardSetColor}
+        onWidthChange={whiteboardSetWidth}
       />
 
       {activeApproval && (

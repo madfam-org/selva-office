@@ -27,6 +27,15 @@ import {
 import { handleSignaling } from "../handlers/signaling";
 import type { WebRTCSignalMessage } from "../handlers/signaling";
 import { handleCompanion } from "../handlers/companion";
+import {
+  handleWhiteboardDraw,
+  handleWhiteboardClear,
+} from "../handlers/whiteboard";
+import type {
+  DrawStrokeMessage,
+  ClearWhiteboardMessage,
+} from "../handlers/whiteboard";
+import { WhiteboardSchema } from "../schema/Whiteboard";
 import { createLogger } from "@autoswarm/config/logging";
 import { getRedisClient, closeRedisClient } from "../redis-client";
 import type { RedisClientType } from "redis";
@@ -225,6 +234,25 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     this.onMessage("companion", (client: Client, message: { type: string }) => {
       handleCompanion(this.state, client, message);
     });
+
+    this.onMessage(
+      "draw_stroke",
+      (client: Client, message: DrawStrokeMessage) => {
+        handleWhiteboardDraw(this.state.whiteboards, client, message);
+      },
+    );
+
+    this.onMessage(
+      "clear_whiteboard",
+      (client: Client, message: ClearWhiteboardMessage) => {
+        handleWhiteboardClear(this.state.whiteboards, client, message);
+      },
+    );
+
+    // Create default whiteboard
+    const defaultWb = new WhiteboardSchema();
+    defaultWb.id = "main";
+    this.state.whiteboards.set("main", defaultWb);
 
     // Start proximity detection loop at 5Hz for WebRTC peer management
     this.stopProximityLoop = startProximityLoop(
