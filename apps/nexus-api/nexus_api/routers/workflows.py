@@ -1,9 +1,10 @@
-"""Workflow CRUD, import/export, and validation endpoints."""
+"""Workflow CRUD, import/export, validation, and template endpoints."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,18 @@ from ..models import Workflow
 from ..tenant import TenantContext, get_tenant
 
 router = APIRouter(tags=["workflows"], dependencies=[Depends(get_current_user)])
+
+# Path to the built-in workflow templates directory
+_TEMPLATES_DIR = Path(__file__).resolve().parents[4] / "data" / "workflow-templates"
+
+# Category inference from template filename
+_FILENAME_CATEGORY_MAP: dict[str, str] = {
+    "3d-modeling.yaml": "Creative",
+    "video-production.yaml": "Creative",
+    "data-analysis.yaml": "Data",
+    "devops-pipeline.yaml": "Operations",
+    "content-marketing.yaml": "Operations",
+}
 
 
 # -- Request / Response schemas ------------------------------------------------
@@ -55,6 +68,19 @@ class WorkflowValidationResponse(BaseModel):
 
 class WorkflowImportRequest(BaseModel):
     yaml_content: str = Field(..., min_length=1)
+
+
+class WorkflowTemplateResponse(BaseModel):
+    name: str
+    description: str
+    filename: str
+    category: str
+    node_count: int
+
+
+class CreateFromTemplateRequest(BaseModel):
+    template_filename: str = Field(..., pattern=r"^[a-z0-9-]+\.yaml$")
+    name: str | None = None
 
 
 # -- Helpers -------------------------------------------------------------------
@@ -150,6 +176,93 @@ async def list_workflows(
     )
     workflows = result.scalars().all()
     return [_workflow_to_response(wf) for wf in workflows]
+
+
+# -- Template endpoints (before /{workflow_id} to avoid route conflict) --------
+
+
+@router.get("/templates", response_model=list[WorkflowTemplateResponse])
+async def list_templates() -> list[WorkflowTemplateResponse]:
+    """List available workflow templates from data/workflow-templates/."""
+    from autoswarm_workflows import WorkflowSerializer
+
+    templates: list[WorkflowTemplateResponse] = []
+
+    if not _TEMPLATES_DIR.is_dir():
+        return templates
+
+    for yaml_file in sorted(_TEMPLATES_DIR.glob("*.yaml")):
+        try:
+            yaml_content = yaml_file.read_text(encoding="utf-8")
+            workflow_def = WorkflowSerializer.from_yaml(yaml_content)
+            category = _FILENAME_CATEGORY_MAP.get(yaml_file.name, "Other")
+            templates.append(
+                WorkflowTemplateResponse(
+                    name=workflow_def.name,
+                    description=workflow_def.description,
+                    filename=yaml_file.name,
+                    category=category,
+                    node_count=len(workflow_def.nodes),
+                )
+            )
+        except Exception:
+            # Skip files that fail to parse
+            continue
+
+    return templates
+
+
+@router.post(
+    "/from-template",
+    response_model=WorkflowResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_from_template(
+    body: CreateFromTemplateRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> WorkflowResponse:
+    """Create a new workflow from a built-in template."""
+    template_path = _TEMPLATES_DIR / body.template_filename
+
+    if not template_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Template '{body.template_filename}' not found",
+        )
+
+    yaml_content = template_path.read_text(encoding="utf-8")
+
+    # Validate the template YAML
+    validation = _validate_yaml(yaml_content)
+    if not validation.is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": "Template YAML is invalid",
+                "errors": validation.errors,
+            },
+        )
+
+    from autoswarm_workflows import WorkflowSerializer
+
+    parsed = WorkflowSerializer.from_yaml(yaml_content)
+    workflow_name = body.name or parsed.name
+
+    wf = Workflow(
+        name=workflow_name,
+        version=parsed.version,
+        description=parsed.description,
+        yaml_content=yaml_content,
+        org_id=tenant.org_id,
+    )
+    db.add(wf)
+    await db.flush()
+    await db.refresh(wf)
+    return _workflow_to_response(wf)
+
+
+# -- Parameterized endpoints ---------------------------------------------------
 
 
 @router.get("/{workflow_id}", response_model=WorkflowResponse)

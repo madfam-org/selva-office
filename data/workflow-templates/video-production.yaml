@@ -1,0 +1,60 @@
+name: Video Production Pipeline
+version: '1.0.0'
+description: Multi-stage video production workflow from script to final edit
+
+nodes:
+  - id: scriptwriter
+    type: agent
+    system_prompt: >-
+      You are a scriptwriter. Write a compelling script including dialogue,
+      scene descriptions, and camera direction notes based on the brief.
+    model: gpt-4o
+
+  - id: storyboarder
+    type: agent
+    system_prompt: >-
+      You are a storyboard artist. Create detailed storyboard descriptions
+      for each scene in the script, including shot composition, transitions,
+      and visual references.
+    model: gpt-4o
+
+  - id: review_counter
+    type: loop_counter
+    max_iterations: 5
+
+  - id: review
+    type: human
+    interrupt_message: >-
+      Review the storyboard and script. Reply 'approved' to proceed to editing
+      or 'revise' to send back to the scriptwriter.
+
+  - id: editor
+    type: agent
+    system_prompt: >-
+      You are a video editor. Create an editing plan with timeline, cuts,
+      transitions, color grading, and audio mix specifications based on
+      the approved storyboard.
+    model: gpt-4o
+
+  - id: output
+    type: passthrough
+
+edges:
+  - source: scriptwriter
+    target: storyboarder
+  - source: storyboarder
+    target: review_counter
+  - source: review_counter
+    target: review
+  - source: review
+    target: editor
+    condition:
+      keyword: approved
+  - source: review
+    target: scriptwriter
+    condition:
+      keyword: revise
+  - source: editor
+    target: output
+
+entry_node: scriptwriter

@@ -36,6 +36,7 @@ import { NodePalette } from './NodePalette';
 import { PropertiesPanel } from './PropertiesPanel';
 import { EditorToolbar } from './EditorToolbar';
 import { ExecutionLog } from './ExecutionLog';
+import { TemplateGallery } from './TemplateGallery';
 
 interface WorkflowEditorProps {
   open: boolean;
@@ -62,6 +63,7 @@ function InnerEditor({ onClose, officeState }: Omit<WorkflowEditorProps, 'open'>
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [workflowName, setWorkflowName] = useState('Untitled Workflow');
+  const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const {
@@ -316,6 +318,23 @@ function InnerEditor({ onClose, officeState }: Omit<WorkflowEditorProps, 'open'>
     }
   }, [workflow, nodes, edges, workflowName, save, dispatchTask]);
 
+  const handleTemplateCreated = useCallback(
+    (created: { id: string; name: string; yaml_content: string }) => {
+      setWorkflowName(created.name);
+      try {
+        const wf = yamlToWorkflow(created.yaml_content);
+        const { nodes: rfNodes, edges: rfEdges } = workflowToReactFlow(wf);
+        setNodes(rfNodes);
+        setEdges(rfEdges);
+      } catch {
+        // Best-effort load; canvas stays empty if parse fails
+      }
+      // Refresh the workflow list to include the new entry
+      loadList();
+    },
+    [setNodes, setEdges, loadList],
+  );
+
   return (
     <div className="flex flex-col w-full h-full">
       <EditorToolbar
@@ -333,6 +352,7 @@ function InnerEditor({ onClose, officeState }: Omit<WorkflowEditorProps, 'open'>
         onValidate={handleValidate}
         onRun={handleRun}
         onClose={onClose}
+        onOpenTemplates={() => setTemplateGalleryOpen(true)}
       />
 
       <div className="flex flex-1 min-h-0">
@@ -377,6 +397,12 @@ function InnerEditor({ onClose, officeState }: Omit<WorkflowEditorProps, 'open'>
       </div>
 
       <ExecutionLog events={events} onClear={clearEvents} />
+
+      <TemplateGallery
+        open={templateGalleryOpen}
+        onClose={() => setTemplateGalleryOpen(false)}
+        onCreated={handleTemplateCreated}
+      />
     </div>
   );
 }

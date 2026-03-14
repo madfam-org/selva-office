@@ -1,0 +1,71 @@
+name: Content Marketing Pipeline
+version: '1.0.0'
+description: Full content marketing workflow from research to publication
+
+nodes:
+  - id: researcher
+    type: agent
+    system_prompt: >-
+      You are a market researcher. Analyze target audience, trending topics,
+      competitor content, and SEO opportunities. Produce a content brief
+      with key messages and target keywords.
+    model: gpt-4o
+
+  - id: writer
+    type: agent
+    system_prompt: >-
+      You are a content writer. Create engaging, SEO-optimized content based
+      on the research brief. Include headlines, body copy, CTAs, and meta
+      descriptions.
+    model: gpt-4o
+
+  - id: designer
+    type: agent
+    system_prompt: >-
+      You are a graphic designer. Create visual asset specifications including
+      hero images, infographics, social media graphics, and brand-consistent
+      visual elements to accompany the written content.
+    model: gpt-4o
+
+  - id: approval_counter
+    type: loop_counter
+    max_iterations: 5
+
+  - id: approval
+    type: human
+    interrupt_message: >-
+      Review the content and design assets. Reply 'approved' to publish
+      or 'revise' to send back for changes.
+
+  - id: publisher
+    type: agent
+    system_prompt: >-
+      You are a content publisher. Prepare the final content package for
+      distribution across channels including blog, social media, email
+      newsletter, and paid promotion. Generate a publishing schedule.
+    model: gpt-4o
+
+  - id: output
+    type: passthrough
+
+edges:
+  - source: researcher
+    target: writer
+  - source: writer
+    target: designer
+  - source: designer
+    target: approval_counter
+  - source: approval_counter
+    target: approval
+  - source: approval
+    target: publisher
+    condition:
+      keyword: approved
+  - source: approval
+    target: writer
+    condition:
+      keyword: revise
+  - source: publisher
+    target: output
+
+entry_node: researcher
