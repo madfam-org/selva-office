@@ -39,6 +39,11 @@ const WorkflowEditor = dynamic(
   { ssr: false },
 );
 
+const MapEditor = dynamic(
+  () => import('@/components/map-editor/MapEditor').then((m) => ({ default: m.MapEditor })),
+  { ssr: false },
+);
+
 const PhaserGame = dynamic(() => import('@/game/PhaserGame'), {
   ssr: false,
   loading: () => (
@@ -157,6 +162,7 @@ export default function HomePage() {
   const [approvalPanelOpen, setApprovalPanelOpen] = useState(false);
   const [workflowEditorOpen, setWorkflowEditorOpen] = useState(false);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+  const [mapEditorOpen, setMapEditorOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -255,6 +261,13 @@ export default function HomePage() {
 
   const handleMarketplaceOpen = useCallback(() => {
     setMarketplaceOpen(true);
+    setDashboardOpen(false);
+    setDispatchPanelOpen(false);
+    setApprovalPanelOpen(false);
+  }, []);
+
+  const handleMapEditorOpen = useCallback(() => {
+    setMapEditorOpen(true);
     setDashboardOpen(false);
     setDispatchPanelOpen(false);
     setApprovalPanelOpen(false);
@@ -382,6 +395,7 @@ export default function HomePage() {
         departments={officeState?.departments ?? []}
         onNewTask={handleDispatchOpen}
         onOpenMarketplace={handleMarketplaceOpen}
+        onOpenMapEditor={handleMapEditorOpen}
       />
 
       <TaskDispatchPanel
@@ -513,6 +527,11 @@ export default function HomePage() {
       <SkillMarketplace
         open={marketplaceOpen}
         onClose={() => setMarketplaceOpen(false)}
+      />
+
+      <MapEditor
+        open={mapEditorOpen}
+        onClose={() => setMapEditorOpen(false)}
       />
 
       {activeApproval && (

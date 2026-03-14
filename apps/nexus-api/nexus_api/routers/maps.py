@@ -1,0 +1,236 @@
+"""Map CRUD, import/export endpoints for the in-browser map editor."""
+
+from __future__ import annotations
+
+import json
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import Map
+from ..tenant import TenantContext, get_tenant
+
+router = APIRouter(tags=["maps"], dependencies=[Depends(get_current_user)])
+
+
+# -- Request / Response schemas ------------------------------------------------
+
+
+class MapCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(default="")
+    tmj_content: str = Field(..., min_length=1)
+
+
+class MapUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    description: str | None = None
+    tmj_content: str | None = None
+
+
+class MapResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    tmj_content: str
+    org_id: str
+    created_at: str
+    updated_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class MapImportRequest(BaseModel):
+    tmj_content: str = Field(..., min_length=1)
+
+
+# -- Helpers -------------------------------------------------------------------
+
+
+def _map_to_response(m: Map) -> MapResponse:
+    return MapResponse(
+        id=str(m.id),
+        name=m.name,
+        description=m.description,
+        tmj_content=m.tmj_content,
+        org_id=m.org_id,
+        created_at=m.created_at.isoformat(),
+        updated_at=m.updated_at.isoformat(),
+    )
+
+
+def _validate_tmj(tmj_content: str) -> dict[str, Any]:
+    """Parse and perform basic validation on TMJ content.
+
+    Returns the parsed dict on success, raises HTTPException on failure.
+    """
+    try:
+        data: Any = json.loads(tmj_content)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Invalid TMJ JSON", "errors": [str(exc)]},
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "TMJ content must be a JSON object"},
+        )
+
+    # Basic structure validation
+    if "layers" not in data:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "TMJ must contain a 'layers' field"},
+        )
+
+    return data
+
+
+# -- Endpoints -----------------------------------------------------------------
+
+
+@router.post("", response_model=MapResponse, status_code=status.HTTP_201_CREATED)
+async def create_map(
+    body: MapCreateRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> MapResponse:
+    """Create a new map definition."""
+    _validate_tmj(body.tmj_content)
+
+    m = Map(
+        name=body.name,
+        description=body.description,
+        tmj_content=body.tmj_content,
+        org_id=tenant.org_id,
+    )
+    db.add(m)
+    await db.flush()
+    await db.refresh(m)
+    return _map_to_response(m)
+
+
+@router.get("", response_model=list[MapResponse])
+async def list_maps(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> list[MapResponse]:
+    """List all maps for the current tenant."""
+    result = await db.execute(
+        select(Map).where(Map.org_id == tenant.org_id).order_by(Map.updated_at.desc())
+    )
+    maps = result.scalars().all()
+    return [_map_to_response(m) for m in maps]
+
+
+@router.get("/{map_id}", response_model=MapResponse)
+async def get_map(
+    map_id: str,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> MapResponse:
+    """Get a single map by ID."""
+    m = await _get_map_or_404(map_id, db)
+    return _map_to_response(m)
+
+
+@router.put("/{map_id}", response_model=MapResponse)
+async def update_map(
+    map_id: str,
+    body: MapUpdateRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> MapResponse:
+    """Update an existing map definition."""
+    m = await _get_map_or_404(map_id, db)
+
+    if body.tmj_content is not None:
+        _validate_tmj(body.tmj_content)
+        m.tmj_content = body.tmj_content
+
+    if body.name is not None:
+        m.name = body.name
+    if body.description is not None:
+        m.description = body.description
+
+    m.updated_at = datetime.now(UTC)
+    await db.flush()
+    await db.refresh(m)
+    return _map_to_response(m)
+
+
+@router.delete("/{map_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_map(
+    map_id: str,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> None:
+    """Delete a map definition."""
+    m = await _get_map_or_404(map_id, db)
+    await db.delete(m)
+    await db.flush()
+
+
+@router.post("/export")
+async def export_map(
+    body: MapImportRequest,
+) -> dict[str, str]:
+    """Validate TMJ content and return it (for download)."""
+    _validate_tmj(body.tmj_content)
+    return {"tmj_content": body.tmj_content}
+
+
+@router.post("/import", response_model=MapResponse, status_code=status.HTTP_201_CREATED)
+async def import_map(
+    body: MapImportRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> MapResponse:
+    """Import a TMJ file as a new map."""
+    parsed = _validate_tmj(body.tmj_content)
+
+    # Try to extract a name from TMJ metadata
+    name = "Imported Map"
+    properties = parsed.get("properties")
+    if isinstance(properties, list):
+        for prop in properties:
+            if isinstance(prop, dict) and prop.get("name") == "name":
+                name = str(prop.get("value", name))
+                break
+
+    m = Map(
+        name=name,
+        description="Imported from TMJ file",
+        tmj_content=body.tmj_content,
+        org_id=tenant.org_id,
+    )
+    db.add(m)
+    await db.flush()
+    await db.refresh(m)
+    return _map_to_response(m)
+
+
+# -- Internal helpers ----------------------------------------------------------
+
+
+async def _get_map_or_404(map_id: str, db: AsyncSession) -> Map:
+    try:
+        uid = uuid.UUID(map_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
+        ) from exc
+
+    result = await db.execute(select(Map).where(Map.id == uid))
+    m = result.scalar_one_or_none()
+    if m is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Map not found"
+        )
+    return m

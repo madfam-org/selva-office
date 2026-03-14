@@ -279,3 +279,23 @@ class SkillRating(Base):
     entry: Mapped[SkillMarketplaceEntry] = relationship(
         "SkillMarketplaceEntry", back_populates="ratings", lazy="selectin"
     )
+
+
+class Map(Base):
+    """A custom office map stored as TMJ (Tiled Map JSON)."""
+
+    __tablename__ = "maps"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    tmj_content: Mapped[str] = mapped_column(Text, nullable=False)
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="default", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
