@@ -53,11 +53,12 @@ make post-process     # Optional ImageMagick upscale/WebP conversion
 make db-backup        # Backup PostgreSQL database
 make db-restore       # Restore from backup (BACKUP_FILE=<path>)
 make db-verify-backup # Verify backup integrity (BACKUP_FILE=<path>)
+make worktree-cleanup # Remove stale git worktrees (STALE_HOURS=24)
 
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (432 tests across 34 suites)
+pnpm test             # TypeScript tests (444 tests across 35 suites)
 pnpm typecheck        # TypeScript type checking
 
 uv run pytest packages/ apps/nexus-api/  # Python tests (399 tests)

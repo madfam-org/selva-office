@@ -6,6 +6,7 @@ import { ToastProvider } from '@/components/Toast';
 import { HUD } from '@/components/HUD';
 import { DashboardPanel } from '@/components/DashboardPanel';
 import { TaskDispatchPanel } from '@/components/TaskDispatchPanel';
+import { ApprovalPanel } from '@/components/ApprovalPanel';
 import { ChatPanel } from '@/components/ChatPanel';
 import { EmotePicker } from '@/components/EmotePicker';
 import { AvatarEditor } from '@/components/AvatarEditor';
@@ -122,6 +123,7 @@ export default function HomePage() {
   const [avatarEditorOpen, setAvatarEditorOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [dispatchPanelOpen, setDispatchPanelOpen] = useState(false);
+  const [approvalPanelOpen, setApprovalPanelOpen] = useState(false);
   const [workflowEditorOpen, setWorkflowEditorOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
@@ -141,7 +143,7 @@ export default function HomePage() {
   );
 
   const handleApprove = useCallback(
-    (requestId: string, feedback: string) => {
+    (requestId: string, feedback?: string) => {
       approve(requestId, feedback || undefined);
       setActiveApproval(null);
     },
@@ -149,7 +151,7 @@ export default function HomePage() {
   );
 
   const handleDeny = useCallback(
-    (requestId: string, feedback: string) => {
+    (requestId: string, feedback?: string) => {
       deny(requestId, feedback || undefined);
       setActiveApproval(null);
     },
@@ -187,13 +189,21 @@ export default function HomePage() {
 
   const handleDispatchOpen = useCallback(() => {
     setDashboardOpen(false);
+    setApprovalPanelOpen(false);
     setDispatchPanelOpen(true);
+  }, []);
+
+  const handleApprovalPanelOpen = useCallback(() => {
+    setDashboardOpen(false);
+    setDispatchPanelOpen(false);
+    setApprovalPanelOpen(true);
   }, []);
 
   const handleBlueprintOpen = useCallback(() => {
     setWorkflowEditorOpen(true);
     setDashboardOpen(false);
     setDispatchPanelOpen(false);
+    setApprovalPanelOpen(false);
   }, []);
 
   const handleDispatchClose = useCallback(() => {
@@ -251,11 +261,12 @@ export default function HomePage() {
         departments={officeState?.departments ?? []}
         playerPosition={playerPosition}
         userName={sessionUser?.name ?? sessionUser?.email ?? null}
+        onApprovalClick={handleApprovalPanelOpen}
       />
 
       <DashboardPanel
         open={dashboardOpen}
-        onToggle={() => setDashboardOpen((prev) => !prev)}
+        onToggle={() => setDashboardOpen((prev) => { if (!prev) setApprovalPanelOpen(false); return !prev; })}
         departments={officeState?.departments ?? []}
         onNewTask={handleDispatchOpen}
       />
@@ -269,6 +280,15 @@ export default function HomePage() {
         lastDispatchedTask={lastDispatchedTask}
         departments={officeState?.departments ?? []}
         onReset={resetDispatch}
+      />
+
+      <ApprovalPanel
+        open={approvalPanelOpen}
+        onClose={() => setApprovalPanelOpen(false)}
+        pendingApprovals={pendingApprovals}
+        onApprove={handleApprove}
+        onDeny={handleDeny}
+        connected={approvalsConnected}
       />
 
       <ChatPanel

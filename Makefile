@@ -1,4 +1,4 @@
-.PHONY: dev dev-full dev-seed worker build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test
+.PHONY: dev dev-full dev-seed worker build test lint clean docker-up docker-down db-migrate setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test worktree-cleanup
 
 # ── Development ─────────────────────────────────────
 dev:
@@ -96,6 +96,9 @@ setup:
 
 smoke-test:
 	bash scripts/smoke-test.sh
+
+worktree-cleanup:
+	bash scripts/cleanup-worktrees.sh
 
 install:
 	pnpm install

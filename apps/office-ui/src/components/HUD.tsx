@@ -12,6 +12,7 @@ interface HUDProps {
   departments?: Department[];
   playerPosition?: { x: number; y: number } | null;
   userName?: string | null;
+  onApprovalClick?: () => void;
 }
 
 const WORLD_WIDTH = 1600;
@@ -140,6 +141,7 @@ export const HUD: FC<HUDProps> = ({
   departments = [],
   playerPosition = null,
   userName = null,
+  onApprovalClick,
 }) => {
   const tokenPercent = computeTokens
     ? Math.min((computeTokens.used / computeTokens.limit) * 100, 100)
@@ -203,7 +205,11 @@ export const HUD: FC<HUDProps> = ({
 
       {/* Right: Pending Approvals + Connection Status */}
       <div className="pointer-events-auto flex flex-col gap-2">
-        <div className="retro-panel relative px-4 py-3 font-mono">
+        <button
+          className="retro-panel relative px-4 py-3 font-mono cursor-pointer hover:bg-slate-700/50 transition-colors"
+          onClick={onApprovalClick}
+          aria-label={`Open approval queue (${pendingApprovalCount} pending)`}
+        >
           <span className="pixel-text text-[8px] uppercase text-slate-400">
             Approvals
           </span>
@@ -220,7 +226,7 @@ export const HUD: FC<HUDProps> = ({
               {pendingApprovalCount > 9 ? '9+' : pendingApprovalCount}
             </span>
           )}
-        </div>
+        </button>
 
         {/* Connection indicators */}
         <div className="retro-panel px-3 py-2 font-mono text-[8px]">
