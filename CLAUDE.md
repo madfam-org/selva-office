@@ -34,6 +34,8 @@ These ports do not conflict with Janua (4100-4104) or Enclii (4200-4204).
 
 ```bash
 make dev              # Start all services (TS + Python + Worker)
+make dev-full         # Full boot: Docker + migrations + all services
+make dev-seed         # Seed departments and agents (requires nexus-api running)
 make worker           # Run worker process independently
 make test             # Run all tests
 make lint             # Run all linters
@@ -42,6 +44,7 @@ make build            # Build all packages
 make docker-dev       # Start Postgres + Redis
 make db-migrate       # Run Alembic migrations
 make db-seed          # Seed departments and agents
+make smoke-test       # Verify all services are healthy
 make generate-assets  # Regenerate pixel-art sprite PNGs
 make generate-variants # Generate palette-themed sprite/tile variants
 make generate-map     # Procedurally generate office map (WFC)
@@ -57,8 +60,8 @@ pnpm lint             # ESLint
 pnpm test             # TypeScript tests (432 tests across 34 suites)
 pnpm typecheck        # TypeScript type checking
 
-uv run pytest packages/ apps/nexus-api/  # Python tests (390 tests)
-uv run pytest apps/workers/tests/       # Worker tests (65 tests)
+uv run pytest packages/ apps/nexus-api/  # Python tests (399 tests)
+uv run pytest apps/workers/tests/       # Worker tests (94 tests)
 uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```

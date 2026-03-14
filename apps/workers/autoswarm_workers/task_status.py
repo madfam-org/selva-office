@@ -14,6 +14,8 @@ async def update_task_status(
     task_id: str,
     status: str,
     result: dict | None = None,
+    started_at: str | None = None,
+    error_message: str | None = None,
 ) -> None:
     """PATCH task status to the nexus-api.
 
@@ -25,6 +27,10 @@ async def update_task_status(
     body: dict = {"status": status}
     if result is not None:
         body["result"] = result
+    if started_at is not None:
+        body["started_at"] = started_at
+    if error_message is not None:
+        body["error_message"] = error_message
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.patch(

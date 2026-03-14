@@ -122,6 +122,75 @@ class TestUpdateTaskStatus:
             mock_logger.warning.assert_called()
 
 
+    @pytest.mark.asyncio
+    async def test_includes_started_at_when_provided(self) -> None:
+        mock_response = MagicMock(status_code=200)
+        mock_client = AsyncMock()
+        mock_client.patch.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "autoswarm_workers.task_status.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            from autoswarm_workers.task_status import update_task_status
+
+            await update_task_status(
+                "http://test:4300", "task-1", "running",
+                started_at="2026-03-14T10:00:00+00:00",
+            )
+
+            payload = mock_client.patch.call_args[1]["json"]
+            assert payload["status"] == "running"
+            assert payload["started_at"] == "2026-03-14T10:00:00+00:00"
+
+    @pytest.mark.asyncio
+    async def test_includes_error_message_when_provided(self) -> None:
+        mock_response = MagicMock(status_code=200)
+        mock_client = AsyncMock()
+        mock_client.patch.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "autoswarm_workers.task_status.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            from autoswarm_workers.task_status import update_task_status
+
+            await update_task_status(
+                "http://test:4300", "task-1", "failed",
+                result={"error": "boom"},
+                error_message="boom",
+            )
+
+            payload = mock_client.patch.call_args[1]["json"]
+            assert payload["status"] == "failed"
+            assert payload["error_message"] == "boom"
+            assert payload["result"]["error"] == "boom"
+
+    @pytest.mark.asyncio
+    async def test_omits_metadata_when_not_provided(self) -> None:
+        mock_response = MagicMock(status_code=200)
+        mock_client = AsyncMock()
+        mock_client.patch.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "autoswarm_workers.task_status.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            from autoswarm_workers.task_status import update_task_status
+
+            await update_task_status("http://test:4300", "task-1", "running")
+
+            payload = mock_client.patch.call_args[1]["json"]
+            assert "started_at" not in payload
+            assert "error_message" not in payload
+
+
 class TestStatusMapping:
     """Verify graph status -> API status mapping logic."""
 
