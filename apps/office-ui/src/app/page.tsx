@@ -16,6 +16,7 @@ import { SkillMarketplace } from '@/components/SkillMarketplace';
 import { DeskInfoPanel } from '@/components/DeskInfoPanel';
 import { VideoOverlay } from '@/components/VideoOverlay';
 import { MediaControls } from '@/components/MediaControls';
+import { RecordingControls } from '@/components/RecordingControls';
 import { useApprovals } from '@/hooks/useApprovals';
 import { useTaskDispatch } from '@/hooks/useTaskDispatch';
 import { useColyseus } from '@/hooks/useColyseus';
@@ -24,6 +25,7 @@ import { useAvatarConfig } from '@/hooks/useAvatarConfig';
 import { usePlayerStatus } from '@/hooks/usePlayerStatus';
 import { StatusSelector } from '@/components/StatusSelector';
 import { useProximityVideo } from '@/hooks/useProximityVideo';
+import { useRecording } from '@/hooks/useRecording';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
 import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
@@ -86,6 +88,8 @@ export default function HomePage() {
     sendAvatarConfig,
     sendStatus,
     sendSignal,
+    sendLockBubble,
+    sendUnlockBubble,
   } = useColyseus({
     playerName: sessionUser?.name ?? sessionUser?.email ?? 'Tactician',
     onPlayerEmote: handlePlayerEmote,
@@ -103,8 +107,10 @@ export default function HomePage() {
     localStream,
     audioEnabled,
     videoEnabled,
+    screenSharing,
     toggleAudio,
     toggleVideo,
+    toggleScreenShare,
     handleProximityUpdate: videoHandleProximity,
     handleWebRTCSignal: videoHandleSignal,
   } = useProximityVideo({
@@ -113,6 +119,13 @@ export default function HomePage() {
     enabled: colyseusConnected,
     playerStatus,
   });
+
+  const {
+    recordingState,
+    formattedDuration,
+    startRecording,
+    stopRecording,
+  } = useRecording({ localStream, peers });
 
   // Wire up the refs now that both hooks are initialized
   proximityUpdateRef.current = videoHandleProximity;
@@ -144,6 +157,7 @@ export default function HomePage() {
   const [popup, setPopup] = useState<PopupEvent | null>(null);
   const [playerPosition, setPlayerPosition] = useState<{ x: number; y: number } | null>(null);
   const [deskInfo, setDeskInfo] = useState<{ assignedAgentId: string; title: string } | null>(null);
+  const [bubbleLocked, setBubbleLocked] = useState(false);
   const [followingPlayer, setFollowingPlayer] = useState<string | null>(null);
   const [explorerMode, setExplorerMode] = useState(false);
 
@@ -353,12 +367,31 @@ export default function HomePage() {
         localSessionId={sessionId ?? ''}
       />
 
-      <VideoOverlay peers={peers} localStream={localStream} />
+      <VideoOverlay peers={peers} localStream={localStream} screenSharing={screenSharing} />
       <MediaControls
         audioEnabled={audioEnabled}
         videoEnabled={videoEnabled}
         onToggleAudio={toggleAudio}
         onToggleVideo={toggleVideo}
+        screenSharing={screenSharing}
+        onToggleScreenShare={toggleScreenShare}
+        bubbleLocked={bubbleLocked}
+        onToggleLockBubble={() => {
+          if (bubbleLocked) {
+            sendUnlockBubble();
+            setBubbleLocked(false);
+          } else {
+            sendLockBubble();
+            setBubbleLocked(true);
+          }
+        }}
+        visible={peers.length > 0 || !!localStream}
+      />
+      <RecordingControls
+        recordingState={recordingState}
+        formattedDuration={formattedDuration}
+        onStart={startRecording}
+        onStop={stopRecording}
         visible={peers.length > 0 || !!localStream}
       />
 

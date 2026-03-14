@@ -46,6 +46,8 @@ interface ColyseusState {
   sendAvatarConfig: (config: string) => void;
   sendStatus: (status: string) => void;
   sendSignal: (targetSessionId: string, signal: unknown) => void;
+  sendLockBubble: () => void;
+  sendUnlockBubble: () => void;
 }
 
 interface RoomLike {
@@ -129,6 +131,14 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
 
   const sendSignal = useCallback((targetSessionId: string, signal: unknown) => {
     roomRef.current?.send('webrtc_signal', { targetSessionId, signal });
+  }, []);
+
+  const sendLockBubble = useCallback(() => {
+    roomRef.current?.send('lock_bubble', {});
+  }, []);
+
+  const sendUnlockBubble = useCallback(() => {
+    roomRef.current?.send('unlock_bubble', {});
   }, []);
 
   const connect = useCallback(async () => {
@@ -244,5 +254,7 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
     sendAvatarConfig,
     sendStatus,
     sendSignal,
+    sendLockBubble,
+    sendUnlockBubble,
   };
 }

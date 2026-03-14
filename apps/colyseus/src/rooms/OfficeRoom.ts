@@ -11,7 +11,13 @@ import { handleChat, addSystemMessage } from "../handlers/chat";
 import { handleEmote } from "../handlers/emotes";
 import { handleAvatar } from "../handlers/avatar";
 import { handleStatus } from "../handlers/status";
-import { startProximityLoop } from "../handlers/proximity";
+import {
+  startProximityLoop,
+  lockBubble,
+  unlockBubble,
+  removeFromLockedGroups,
+  isInLockedBubble,
+} from "../handlers/proximity";
 import { handleSignaling } from "../handlers/signaling";
 import type { WebRTCSignalMessage } from "../handlers/signaling";
 import { createLogger } from "@autoswarm/config/logging";
@@ -181,6 +187,22 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       handleStatus(this.state, client, message);
     });
 
+    this.onMessage("lock_bubble", (client: Client) => {
+      const locked = lockBubble(client.sessionId, this.state);
+      client.send("bubble_lock_status", { locked });
+      if (locked) {
+        logger.info({ sessionId: client.sessionId }, "Bubble locked");
+      }
+    });
+
+    this.onMessage("unlock_bubble", (client: Client) => {
+      const unlocked = unlockBubble(client.sessionId);
+      client.send("bubble_lock_status", { locked: false });
+      if (unlocked) {
+        logger.info({ sessionId: client.sessionId }, "Bubble unlocked");
+      }
+    });
+
     // Start proximity detection loop at 5Hz for WebRTC peer management
     this.stopProximityLoop = startProximityLoop(
       this.state,
@@ -231,6 +253,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     const player = this.state.players.get(client.sessionId);
     const name = player?.name ?? "Player";
     this.state.players.delete(client.sessionId);
+    removeFromLockedGroups(client.sessionId);
 
     addSystemMessage(this.state, `${name} left`);
     this.broadcast("player_left", { sessionId: client.sessionId });

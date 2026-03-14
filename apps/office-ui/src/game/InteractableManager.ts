@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { gameEventBus } from './PhaserGame';
 
-export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch' | 'blueprint' | 'desk';
+export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch' | 'blueprint' | 'desk' | 'restricted-zone';
 
 export interface InteractableDef {
   id: string;
@@ -17,6 +17,8 @@ export interface InteractableDef {
   label?: string;
   /** Agent ID assigned to this desk (desk interactType only) */
   assignedAgentId?: string;
+  /** Comma-separated tags required to enter (restricted-zone only) */
+  requiredTags?: string;
 }
 
 interface ActiveZone {
@@ -26,7 +28,7 @@ interface ActiveZone {
   isOverlapping: boolean;
 }
 
-const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch', 'blueprint', 'desk'];
+const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch', 'blueprint', 'desk', 'restricted-zone'];
 
 /**
  * Manages interactive map objects parsed from Tiled object layer 'interactables'.
@@ -40,10 +42,17 @@ export class InteractableManager {
   private currentOverlap: ActiveZone | null = null;
   private inSilentZone: boolean = false;
   private overlappingZoneIds: Set<string> = new Set();
+  private playerTags: Set<string> = new Set();
+  private restrictedDeniedZoneId: string | null = null;
 
   constructor(scene: Phaser.Scene, playerSprite: Phaser.GameObjects.Sprite) {
     this.scene = scene;
     this.playerSprite = playerSprite;
+  }
+
+  /** Set the player's tags/roles for restricted zone access checks. */
+  setPlayerTags(tags: string[]): void {
+    this.playerTags = new Set(tags);
   }
 
   /**
@@ -68,6 +77,7 @@ export class InteractableManager {
         content: (this.getProp(obj, 'content') as string) ?? '',
         label: (this.getProp(obj, 'label') as string) ?? undefined,
         assignedAgentId: (this.getProp(obj, 'assignedAgentId') as string) ?? undefined,
+        requiredTags: (this.getProp(obj, 'requiredTags') as string) ?? undefined,
       };
 
       this.createZone(def);
@@ -120,13 +130,50 @@ export class InteractableManager {
 
     // Update prompt visibility
     for (const az of this.zones) {
-      const shouldShow = az === closestZone && az.def.interactType !== 'silent-zone';
+      const isAutoZone = az.def.interactType === 'silent-zone' || az.def.interactType === 'restricted-zone';
+      const shouldShow = az === closestZone && !isAutoZone;
       az.prompt.setVisible(shouldShow);
       if (shouldShow) {
         const promptX = Phaser.Math.Clamp(this.playerSprite.x, 60, (this.scene.scale.width || 1280) - 60);
         const promptY = Math.max(20, this.playerSprite.y - 40);
         az.prompt.setPosition(promptX, promptY);
       }
+    }
+
+    // Handle restricted zone access check
+    for (const az of this.zones) {
+      if (az.isOverlapping && az.def.interactType === 'restricted-zone' && az.def.requiredTags) {
+        const required = az.def.requiredTags.split(',').map((t) => t.trim());
+        const hasAccess = required.some((tag) => this.playerTags.has(tag));
+        if (!hasAccess) {
+          // Push player out of the restricted zone
+          const bounds = az.zone.getBounds();
+          const cx = bounds.centerX;
+          const cy = bounds.centerY;
+          const dx = this.playerSprite.x - cx;
+          const dy = this.playerSprite.y - cy;
+          const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+          // Push back to edge + 4px margin
+          this.playerSprite.x = cx + (dx / dist) * (bounds.width / 2 + 4);
+          this.playerSprite.y = cy + (dy / dist) * (bounds.height / 2 + 4);
+          az.isOverlapping = false;
+          // Emit access denied once per zone entry attempt
+          if (this.restrictedDeniedZoneId !== az.def.id) {
+            this.restrictedDeniedZoneId = az.def.id;
+            gameEventBus.emit('access_denied', {
+              zoneName: az.def.label ?? az.def.name,
+              requiredTags: required,
+            });
+          }
+        }
+      }
+    }
+    // Clear denied zone when no longer overlapping any restricted zone
+    const stillInRestricted = this.zones.some(
+      (az) => az.isOverlapping && az.def.interactType === 'restricted-zone',
+    );
+    if (!stillInRestricted) {
+      this.restrictedDeniedZoneId = null;
     }
 
     // Handle silent zone enter/exit
