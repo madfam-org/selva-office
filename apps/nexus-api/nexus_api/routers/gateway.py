@@ -143,6 +143,140 @@ async def github_webhook(
     return {"status": "ok", "tasks_created": tasks_created}
 
 
+_ENCLII_EVENT_MAP: dict[str, str] = {
+    "deploy_failed": "coding",
+    "deploy_rollback": "coding",
+    "deploy_succeeded": "research",
+}
+
+
+@router.post("/enclii")
+async def enclii_webhook(
+    request: Request,
+) -> dict[str, Any]:
+    """Receive Enclii deployment event webhooks and convert to SwarmTasks.
+
+    Supports: deploy_failed, deploy_rollback, deploy_succeeded events.
+    Auth: Bearer token in Authorization header verified against
+    ``enclii_webhook_secret`` setting.
+    """
+    settings = get_settings()
+
+    # Verify Bearer token.
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Bearer token",
+        )
+    token = auth_header[len("Bearer "):]
+    webhook_secret = settings.enclii_webhook_secret
+
+    if not webhook_secret and settings.environment != "development":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Enclii webhook secret not configured",
+        )
+
+    if webhook_secret and not hmac.compare_digest(token, webhook_secret):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook token",
+        )
+
+    body = await request.body()
+    payload = json.loads(body)
+
+    event_type = payload.get("event", "")
+    graph_type = _ENCLII_EVENT_MAP.get(event_type)
+    if graph_type is None:
+        logger.info("Ignoring Enclii event: %s", event_type)
+        return {"status": "ignored", "event": event_type}
+
+    request_id = getattr(request.state, "request_id", None)
+    tasks_created = 0
+
+    async with async_session_factory() as session:
+        task = await _create_task_from_enclii(session, event_type, payload, graph_type)
+        if task:
+            tasks_created = 1
+
+            try:
+                pool = get_redis_pool(url=settings.redis_url)
+                task_msg = json.dumps(
+                    {
+                        "task_id": str(task.id),
+                        "graph_type": task.graph_type,
+                        "description": task.description,
+                        "assigned_agent_ids": task.assigned_agent_ids or [],
+                        "payload": task.payload or {},
+                        "request_id": request_id,
+                    }
+                )
+                await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
+                await pool.execute_with_retry(
+                    "xadd", "autoswarm:task-stream", {"data": task_msg}
+                )
+            except Exception:
+                logger.warning("Redis unavailable; task persisted in DB only")
+                task.status = "pending"
+
+        await session.commit()
+
+    if tasks_created > 0:
+        await manager.broadcast(
+            {
+                "type": "wave_incoming",
+                "source": "enclii",
+                "task_count": tasks_created,
+            }
+        )
+
+    return {"status": "ok", "tasks_created": tasks_created}
+
+
+async def _create_task_from_enclii(
+    session: AsyncSession,
+    event_type: str,
+    payload: dict[str, Any],
+    graph_type: str,
+) -> SwarmTask | None:
+    """Create a SwarmTask from an Enclii deployment webhook payload."""
+    service = payload.get("service", "unknown")
+    environment = payload.get("environment", "unknown")
+    deploy_id = payload.get("deploy_id", "")
+
+    if event_type == "deploy_failed":
+        description = f"[enclii] Deploy failed: {service} ({environment}) — investigate"
+    elif event_type == "deploy_rollback":
+        description = f"[enclii] Deploy rollback: {service} ({environment}) — investigate"
+    elif event_type == "deploy_succeeded":
+        description = f"[enclii] Deploy succeeded: {service} ({environment}) — report"
+    else:
+        return None
+
+    task_payload = {
+        "service": service,
+        "environment": environment,
+        "deploy_id": deploy_id,
+        "event": event_type,
+        "error": payload.get("error", ""),
+    }
+
+    task = SwarmTask(
+        description=description,
+        graph_type=graph_type,
+        payload=task_payload,
+        status="queued",
+    )
+    session.add(task)
+    await session.flush()
+    await session.refresh(task)
+
+    logger.info("Created task %s from Enclii %s", task.id, event_type)
+    return task
+
+
 async def _create_task_from_github(
     session: AsyncSession,
     event_type: str,

@@ -43,6 +43,8 @@ class ActionClassifier:
         "hubspot": ActionCategory.CRM_UPDATE,
         # Deploy
         "deploy": ActionCategory.DEPLOY,
+        "deploy_trigger": ActionCategory.DEPLOY,
+        "deploy_status": ActionCategory.DEPLOY,
         "kubectl": ActionCategory.DEPLOY,
         "terraform": ActionCategory.DEPLOY,
         # API / HTTP

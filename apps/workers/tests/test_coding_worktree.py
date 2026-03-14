@@ -71,7 +71,19 @@ class TestCodingWorktree:
         from autoswarm_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
+        mock_git.commit = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
+        mock_git.push = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
+        mock_git.create_pr = AsyncMock(
+            return_value=MagicMock(return_code=0, stdout="", stderr=""),
+        )
         mock_git.cleanup_worktree = AsyncMock()
+
+        mock_settings = MagicMock()
+        mock_settings.github_token = None
 
         with (
             patch(
@@ -79,6 +91,10 @@ class TestCodingWorktree:
                 return_value={"approved": True},
             ),
             patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch(
+                "autoswarm_workers.config.get_settings",
+                return_value=mock_settings,
+            ),
         ):
             result = push_gate({
                 "messages": [],
@@ -157,7 +173,13 @@ class TestPushGateCommitPush:
         mock_git.push = AsyncMock(
             return_value=MagicMock(return_code=0, stderr=""),
         )
+        mock_git.create_pr = AsyncMock(
+            return_value=MagicMock(return_code=0, stdout="", stderr=""),
+        )
         mock_git.cleanup_worktree = AsyncMock()
+
+        mock_settings = MagicMock()
+        mock_settings.github_token = None
 
         with (
             patch(
@@ -165,6 +187,10 @@ class TestPushGateCommitPush:
                 return_value={"approved": True},
             ),
             patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch(
+                "autoswarm_workers.config.get_settings",
+                return_value=mock_settings,
+            ),
         ):
             result = push_gate({
                 "messages": [],
@@ -180,7 +206,7 @@ class TestPushGateCommitPush:
             "/tmp/worktrees/task-t1", "autoswarm: Add feature X",
         )
         mock_git.push.assert_called_once_with(
-            "/tmp/worktrees/task-t1", "autoswarm/task-t1",
+            "/tmp/worktrees/task-t1", "autoswarm/task-t1", token=None,
         )
         # Cleanup should still happen after commit+push.
         mock_git.cleanup_worktree.assert_called_once()
@@ -223,12 +249,19 @@ class TestPushGateCommitPush:
         mock_git.push = AsyncMock()
         mock_git.cleanup_worktree = AsyncMock()
 
+        mock_settings = MagicMock()
+        mock_settings.github_token = None
+
         with (
             patch(
                 "autoswarm_workers.graphs.coding.interrupt",
                 return_value={"approved": True},
             ),
             patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch(
+                "autoswarm_workers.config.get_settings",
+                return_value=mock_settings,
+            ),
         ):
             result = push_gate({
                 "messages": [],

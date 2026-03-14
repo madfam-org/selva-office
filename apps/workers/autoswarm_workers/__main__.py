@@ -24,6 +24,7 @@ from .checkpointer import create_checkpointer
 from .config import get_settings
 from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
+from .graphs.deployment import build_deployment_graph
 from .graphs.research import build_research_graph
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
@@ -40,6 +41,7 @@ GRAPH_BUILDERS = {
     "coding": build_coding_graph,
     "research": build_research_graph,
     "crm": build_crm_graph,
+    "deployment": build_deployment_graph,
     # "custom" is handled dynamically via WorkflowCompiler — see process_task()
 }
 
@@ -269,6 +271,11 @@ async def process_task(task_data: dict) -> None:
         payload = task_data.get("payload", {})
         initial_state["recipient"] = payload.get("recipient", "unknown@example.com")
         initial_state["crm_action"] = payload.get("crm_action", "email")
+    elif graph_type == "deployment":
+        payload = task_data.get("payload", {})
+        initial_state["service"] = payload.get("service", "")
+        initial_state["environment"] = payload.get("environment", "staging")
+        initial_state["image_tag"] = payload.get("image_tag", "latest")
 
     handler = InterruptHandler(
         nexus_api_url=settings.nexus_api_url,

@@ -202,9 +202,24 @@ The `packages/skills/` package implements the AgentSkills standard.
   `git_tool.commit()` + `git_tool.push()` before worktree cleanup on approval.
 - **Permission engine wiring**: `check_permission()` in `base.py` evaluates an
   `ActionCategory` against the `PermissionEngine`. Called by `implement()`
-  (`file_write`) and CRM `send()` (`email_send`). Returns `DENY` → node returns
-  `status: "blocked"`. The `push_gate` already uses `interrupt()` for ASK-level
-  gating. Skill-based overrides apply when `agent_skill_ids` are present.
+  (`file_write`), CRM `send()` (`email_send`), and deployment `validate()`
+  (`deploy`). Returns `DENY` → node returns `status: "blocked"`. The
+  `push_gate` and `deploy_gate` use `interrupt()` for ASK-level gating.
+  Skill-based overrides apply when `agent_skill_ids` are present.
+- **GitHub credential handling**: `GitTool.configure_credentials()` sets a
+  repo-local `credential.helper` echoing the token. `push()` accepts an
+  optional `token` kwarg and calls `configure_credentials()` automatically.
+  `push_gate()` reads `settings.github_token` and passes it through.
+- **PR creation after push**: `_create_pr_after_push()` in `coding.py` calls
+  `GitTool.create_pr()` (which invokes `gh pr create`) after a successful push.
+  Fire-and-forget — failures are logged, never raised.
+- **Deployment graph**: `apps/workers/autoswarm_workers/graphs/deployment.py`
+  implements `validate → deploy_gate (interrupt) → deploy → monitor → END`.
+  Uses `DeployTool` and `DeployStatusTool` from `packages/tools`.
+- **Enclii webhook**: `POST /api/v1/gateway/enclii` receives deployment events
+  from Enclii. Bearer token auth via `enclii_webhook_secret`. Maps
+  `deploy_failed`/`deploy_rollback` → `coding`, `deploy_succeeded` → `research`.
+  Creates SwarmTasks and dual-writes to Redis.
 - **Task queue**: Redis Streams (`autoswarm:task-stream`) with consumer groups
   (`autoswarm-workers`). Legacy `autoswarm:tasks` LIST is dual-written for migration.
   Dead letter queue at `autoswarm:task-dlq` after 3 retries. Workers auto-claim

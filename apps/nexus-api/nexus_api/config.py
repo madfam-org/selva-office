@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # -- Gateway (GitHub webhooks) ---------------------------------------------
     github_webhook_secret: str = ""
 
+    # -- Enclii (deployment webhooks) ------------------------------------------
+    enclii_webhook_secret: str = ""
+
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None

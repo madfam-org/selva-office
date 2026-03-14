@@ -79,16 +79,17 @@ AutoSwarm Office runs six application services backed by PostgreSQL and Redis.
 
 Tasks flow through the system as follows:
 
-1. User dispatches a task via the UI or GitHub webhook triggers one
+1. User dispatches a task via the UI, GitHub webhook, or Enclii deployment webhook triggers one
 2. nexus-api creates a `SwarmTask` row in PostgreSQL (status: `queued`) and publishes to `autoswarm:task-stream` (Redis Streams)
 3. A worker reads from the consumer group, PATCHes the task to `running`, and executes the LangGraph agent graph
 4. For coding tasks: `plan()` creates a git worktree, `implement()` writes files (after permission check), `test()` runs pytest, `review()` self-reviews changes
 5. If a tool invocation requires approval, `interrupt()` pauses execution and creates an `ApprovalRequest`
 6. nexus-api broadcasts the approval request over WebSocket to connected clients
 7. The tactician approves or denies via the Phaser UI
-8. On approval: the worker commits and pushes to a feature branch, then resumes
-9. On completion: the worker PATCHes the task to `completed` or `failed` with result details
-10. On timeout or exception: the worker PATCHes the task to `failed` with error details
+8. On approval: the worker commits and pushes to a feature branch (using `GITHUB_TOKEN` for credential auth), then creates a GitHub PR via `gh` CLI
+9. For deployment tasks: `validate()` checks permissions, `deploy_gate()` requests HITL approval, `deploy()` triggers Enclii, `monitor()` checks deploy status
+10. On completion: the worker PATCHes the task to `completed` or `failed` with result details
+11. On timeout or exception: the worker PATCHes the task to `failed` with error details
 
 ---
 
@@ -891,6 +892,10 @@ Key environment variables referenced in this runbook. Secrets are stored in the
 | `SECRET_KEY` | nexus-api, workers | Application secret for token signing |
 | `JANUA_ISSUER_URL` | nexus-api, office-ui | Janua authentication issuer URL |
 | `GITHUB_WEBHOOK_SECRET` | nexus-api | HMAC key for verifying GitHub webhook signatures |
+| `GITHUB_TOKEN` | workers | PAT for git push credential helper and PR creation via `gh` CLI |
+| `ENCLII_WEBHOOK_SECRET` | nexus-api | Bearer token for verifying Enclii deployment webhooks |
+| `ENCLII_API_URL` | workers | Base URL of the Enclii deployment API |
+| `ENCLII_DEPLOY_TOKEN` | workers | Bearer token for authenticating with Enclii deploy API |
 | `ENVIRONMENT` | all | `development` / `production` |
 
 ---

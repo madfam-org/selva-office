@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     search_provider: str = "tavily"
     repo_base_path: str = "/tmp/autoswarm-repos"
 
+    # -- GitHub / Deployment ---------------------------------------------------
+    github_token: str | None = None
+    enclii_deploy_token: str | None = None
+
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None

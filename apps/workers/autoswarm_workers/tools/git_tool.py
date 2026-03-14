@@ -51,7 +51,25 @@ class GitTool:
             f"git -C {repo_path} commit -m '{safe_message}'"
         )
 
-    async def push(self, repo_path: str, branch_name: str) -> BashResult:
+    async def configure_credentials(self, repo_path: str, token: str) -> BashResult:
+        """Set a repo-local credential helper that provides the given token.
+
+        This configures ``credential.helper`` so that ``git push`` never
+        prompts for a password.  The helper is scoped to the repo
+        (``--local``) and does not pollute global git config.
+        """
+        helper = (
+            "!f() { echo protocol=https; echo host=github.com; "
+            f"echo username=x-access-token; echo password={token}; "
+            "}; f"
+        )
+        return await self.bash.execute(
+            f"git -C {repo_path} config --local credential.helper '{helper}'"
+        )
+
+    async def push(
+        self, repo_path: str, branch_name: str, *, token: str | None = None,
+    ) -> BashResult:
         """Push a branch to the remote.
 
         This is a destructive outbound action.  Callers must ensure
@@ -59,14 +77,53 @@ class GitTool:
         The ``push_gate`` node in the coding graph handles this via
         LangGraph's ``interrupt()`` mechanism.
 
+        Args:
+            repo_path: Path to the repository (or worktree).
+            branch_name: Branch to push.
+            token: Optional GitHub token.  When provided,
+                ``configure_credentials`` is called automatically.
+
         Returns:
             BashResult with the push output.
         """
+        if token:
+            cred_result = await self.configure_credentials(repo_path, token)
+            if not cred_result.success:
+                logger.warning("Failed to configure git credentials: %s", cred_result.stderr)
+
         logger.info(
             "Executing git push for branch '%s' in %s (approval assumed)", branch_name, repo_path
         )
         return await self.bash.execute(
             f"git -C {repo_path} push -u origin {branch_name}"
+        )
+
+    async def create_pr(
+        self,
+        repo_path: str,
+        branch: str,
+        title: str,
+        body: str,
+    ) -> BashResult:
+        """Create a GitHub pull request using the ``gh`` CLI.
+
+        Requires ``GH_TOKEN`` to be set in the environment (callers
+        should set it before invoking this method).
+
+        Args:
+            repo_path: Path to the repository (or worktree).
+            branch: The head branch for the PR.
+            title: PR title.
+            body: PR body/description.
+
+        Returns:
+            BashResult with the ``gh`` output.
+        """
+        safe_title = title.replace("'", "'\\''")
+        safe_body = body.replace("'", "'\\''")
+        return await self.bash.execute(
+            f"gh pr create -C {repo_path} --head {branch} "
+            f"--title '{safe_title}' --body '{safe_body}'"
         )
 
     async def create_worktree(self, repo_path: str, branch_name: str) -> str:
