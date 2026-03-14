@@ -424,15 +424,22 @@ def push_gate(state: CodingState) -> CodingState:
         # Commit and push before cleaning up the worktree.
         if worktree_path:
             try:
+                from ..config import get_settings as _get_worker_settings
                 from ..tools.git_tool import GitTool
 
+                settings = _get_worker_settings()
                 git_tool = GitTool()
                 commit_msg = f"autoswarm: {state.get('description', 'agent changes')[:200]}"
                 commit_result = _run_async(git_tool.commit(worktree_path, commit_msg))
                 if commit_result.return_code == 0:
-                    push_result = _run_async(git_tool.push(worktree_path, branch))
+                    push_result = _run_async(
+                        git_tool.push(worktree_path, branch, token=settings.github_token)
+                    )
                     if push_result.return_code != 0:
                         logger.error("Git push failed: %s", push_result.stderr)
+                    else:
+                        # Create a PR (fire-and-forget).
+                        _create_pr_after_push(git_tool, worktree_path, branch, state)
                 else:
                     logger.warning(
                         "Git commit failed (no changes?): %s", commit_result.stderr,
@@ -476,6 +483,44 @@ def push_gate(state: CodingState) -> CodingState:
         "status": "denied",
         "worktree_path": None,
     }
+
+
+def _create_pr_after_push(
+    git_tool,  # noqa: ANN001
+    worktree_path: str,
+    branch: str,
+    state: CodingState,
+) -> None:
+    """Create a GitHub PR after a successful push (fire-and-forget).
+
+    Failures are logged but never raised — PR creation is best-effort.
+    """
+    import os
+
+    try:
+        from ..config import get_settings as _get_worker_settings
+
+        settings = _get_worker_settings()
+        if settings.github_token:
+            os.environ["GH_TOKEN"] = settings.github_token
+
+        description = state.get("description", "Agent changes")
+        code_changes = state.get("code_changes", [])
+        file_count = sum(len(c.get("files_modified", [])) for c in code_changes)
+        title = f"autoswarm: {description[:60]}"
+        body = (
+            f"## AutoSwarm Agent PR\n\n"
+            f"**Task**: {state.get('task_id', 'unknown')}\n"
+            f"**Description**: {description}\n"
+            f"**Files changed**: {file_count}\n"
+        )
+        pr_result = _run_async(git_tool.create_pr(worktree_path, branch, title, body))
+        if pr_result.return_code == 0:
+            logger.info("PR created for branch %s: %s", branch, pr_result.stdout.strip())
+        else:
+            logger.warning("PR creation failed: %s", pr_result.stderr)
+    except Exception:
+        logger.warning("Failed to create PR for branch %s", branch, exc_info=True)
 
 
 # -- Conditional edge routing -------------------------------------------------

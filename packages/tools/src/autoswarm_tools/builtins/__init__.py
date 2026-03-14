@@ -6,6 +6,7 @@ from ..base import BaseTool
 from .code import BashExecTool, PythonExecTool
 from .communication import CreateReportTool, SendNotificationTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
+from .deploy import DeployStatusTool, DeployTool
 from .environment import EnvInfoTool, PackageInstallTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
@@ -43,4 +44,7 @@ def get_builtin_tools() -> list[BaseTool]:
         # Environment
         EnvInfoTool(),
         PackageInstallTool(),
+        # Deployment
+        DeployTool(),
+        DeployStatusTool(),
     ]
