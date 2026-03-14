@@ -12,6 +12,7 @@ members = [
     "autoswarm-orchestrator",
     "autoswarm-permissions",
     "autoswarm-redis-pool",
+    "autoswarm-sdk",
     "autoswarm-skills",
     "autoswarm-tools",
     "autoswarm-workers",
@@ -377,6 +378,7 @@ dependencies = [
     { name = "autoswarm-orchestrator" },
     { name = "autoswarm-permissions" },
     { name = "autoswarm-redis-pool" },
+    { name = "autoswarm-sdk" },
     { name = "autoswarm-skills" },
     { name = "autoswarm-tools" },
     { name = "autoswarm-workers" },
@@ -402,6 +404,7 @@ requires-dist = [
     { name = "autoswarm-orchestrator", editable = "packages/orchestrator" },
     { name = "autoswarm-permissions", editable = "packages/permissions" },
     { name = "autoswarm-redis-pool", editable = "packages/redis-pool" },
+    { name = "autoswarm-sdk", editable = "packages/sdk" },
     { name = "autoswarm-skills", editable = "packages/skills" },
     { name = "autoswarm-tools", editable = "packages/tools" },
     { name = "autoswarm-workers", editable = "apps/workers" },
@@ -450,6 +453,23 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "redis", specifier = ">=5.2.1" }]
+
+[[package]]
+name = "autoswarm-sdk"
+version = "0.1.0"
+source = { editable = "packages/sdk" }
+dependencies = [
+    { name = "click" },
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.1" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
 
 [[package]]
 name = "autoswarm-skills"
