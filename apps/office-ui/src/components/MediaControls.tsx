@@ -7,6 +7,10 @@ interface MediaControlsProps {
   videoEnabled: boolean;
   onToggleAudio: () => void;
   onToggleVideo: () => void;
+  screenSharing?: boolean;
+  onToggleScreenShare?: () => void;
+  bubbleLocked?: boolean;
+  onToggleLockBubble?: () => void;
   visible: boolean;
 }
 
@@ -19,6 +23,10 @@ export function MediaControls({
   videoEnabled,
   onToggleAudio,
   onToggleVideo,
+  screenSharing,
+  onToggleScreenShare,
+  bubbleLocked,
+  onToggleLockBubble,
   visible,
 }: MediaControlsProps) {
   // Keyboard shortcuts: M for mute, V for camera
@@ -39,11 +47,17 @@ export function MediaControls({
       if (e.key === 'v' || e.key === 'V') {
         onToggleVideo();
       }
+      if ((e.key === 's' || e.key === 'S') && onToggleScreenShare) {
+        onToggleScreenShare();
+      }
+      if ((e.key === 'l' || e.key === 'L') && onToggleLockBubble) {
+        onToggleLockBubble();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [visible, onToggleAudio, onToggleVideo]);
+  }, [visible, onToggleAudio, onToggleVideo, onToggleScreenShare, onToggleLockBubble]);
 
   if (!visible) return null;
 
@@ -74,6 +88,36 @@ export function MediaControls({
       >
         {videoEnabled ? 'CAM ON' : 'CAM OFF'}
       </button>
+
+      {onToggleScreenShare && (
+        <button
+          onClick={onToggleScreenShare}
+          className={`rounded px-2 py-1 text-xs font-mono transition-colors ${
+            screenSharing
+              ? 'bg-indigo-900/80 text-indigo-300 hover:bg-indigo-800'
+              : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600'
+          }`}
+          title={screenSharing ? 'Stop Sharing (S)' : 'Share Screen (S)'}
+          aria-label={screenSharing ? 'Stop screen sharing' : 'Start screen sharing'}
+        >
+          {screenSharing ? 'SHARING' : 'SCREEN'}
+        </button>
+      )}
+
+      {onToggleLockBubble && (
+        <button
+          onClick={onToggleLockBubble}
+          className={`rounded px-2 py-1 text-xs font-mono transition-colors ${
+            bubbleLocked
+              ? 'bg-amber-900/80 text-amber-300 hover:bg-amber-800'
+              : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600'
+          }`}
+          title={bubbleLocked ? 'Unlock Bubble (L)' : 'Lock Bubble (L)'}
+          aria-label={bubbleLocked ? 'Unlock proximity bubble' : 'Lock proximity bubble'}
+        >
+          {bubbleLocked ? 'LOCKED' : 'LOCK'}
+        </button>
+      )}
     </div>
   );
 }

@@ -27,8 +27,10 @@ export interface ProximityVideoState {
   localStream: MediaStream | null;
   audioEnabled: boolean;
   videoEnabled: boolean;
+  screenSharing: boolean;
   toggleAudio: () => void;
   toggleVideo: () => void;
+  toggleScreenShare: () => void;
   /** Call when receiving a proximity_players message from the server */
   handleProximityUpdate: (update: ProximityUpdate) => void;
   /** Call when receiving a webrtc_signal message from the server */
@@ -73,8 +75,10 @@ export function useProximityVideo({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [screenSharing, setScreenSharing] = useState(false);
 
   const connectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const errorTrackerRef = useRef<Map<string, { count: number; lastError: number; backoffUntil: number }>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const localSessionIdRef = useRef(localSessionId);
@@ -280,12 +284,14 @@ export function useProximityVideo({
     [createPeer],
   );
 
-  // Cleanup all peers on unmount
+  // Cleanup all peers and screen share on unmount
   useEffect(() => {
     return () => {
       connectionsRef.current.forEach((conn) => conn.peer.destroy());
       connectionsRef.current.clear();
       errorTrackerRef.current.clear();
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
     };
   }, []);
 
@@ -303,13 +309,70 @@ export function useProximityVideo({
     setVideoEnabled((prev) => !prev);
   }, []);
 
+  const restoreCameraTrack = useCallback(() => {
+    const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (cameraTrack) {
+      connectionsRef.current.forEach((conn) => {
+        const sender = (conn.peer as unknown as { _pc?: RTCPeerConnection })._pc
+          ?.getSenders?.()
+          ?.find((s: RTCRtpSender) => s.track?.kind === 'video');
+        if (sender) {
+          sender.replaceTrack(cameraTrack).catch(() => {});
+        }
+      });
+    }
+  }, []);
+
+  const toggleScreenShare = useCallback(async () => {
+    if (screenSharing) {
+      // Stop screen share -- restore camera track
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+      setScreenSharing(false);
+      restoreCameraTrack();
+      return;
+    }
+
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+      screenStreamRef.current = screenStream;
+      setScreenSharing(true);
+
+      const screenTrack = screenStream.getVideoTracks()[0];
+
+      // Auto-stop when user ends share via browser UI
+      screenTrack.onended = () => {
+        screenStreamRef.current = null;
+        setScreenSharing(false);
+        restoreCameraTrack();
+      };
+
+      // Replace video track on all existing peers
+      connectionsRef.current.forEach((conn) => {
+        const sender = (conn.peer as unknown as { _pc?: RTCPeerConnection })._pc
+          ?.getSenders?.()
+          ?.find((s: RTCRtpSender) => s.track?.kind === 'video');
+        if (sender) {
+          sender.replaceTrack(screenTrack).catch(() => {});
+        }
+      });
+    } catch (err) {
+      console.warn('[useProximityVideo] getDisplayMedia failed:', err);
+    }
+  }, [screenSharing, restoreCameraTrack]);
+
   return {
     peers,
     localStream,
     audioEnabled,
     videoEnabled,
+    screenSharing,
     toggleAudio,
     toggleVideo,
+    toggleScreenShare,
     handleProximityUpdate,
     handleWebRTCSignal,
   };

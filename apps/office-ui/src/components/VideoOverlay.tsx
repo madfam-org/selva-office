@@ -6,6 +6,7 @@ import type { ProximityPeer } from '@/hooks/useProximityVideo';
 interface VideoOverlayProps {
   peers: ProximityPeer[];
   localStream: MediaStream | null;
+  screenSharing?: boolean;
 }
 
 /**
@@ -13,7 +14,7 @@ interface VideoOverlayProps {
  * Positioned as an overlay above the Phaser canvas.
  * Each peer shows a 64px circular video element.
  */
-export function VideoOverlay({ peers, localStream }: VideoOverlayProps) {
+export function VideoOverlay({ peers, localStream, screenSharing }: VideoOverlayProps) {
   const activePeers = peers.filter((p) => p.stream);
   const [leaving, setLeaving] = useState<Set<string>>(new Set());
   const prevPeerIds = useRef<Set<string>>(new Set());
@@ -40,10 +41,15 @@ export function VideoOverlay({ peers, localStream }: VideoOverlayProps) {
 
   return (
     <div className="pointer-events-none absolute top-16 left-4 z-video flex flex-col gap-2">
-      {/* Local video preview (small) */}
+      {/* Local video preview (larger when screen sharing) */}
       {localStream && (
         <div className="relative animate-pop-in">
-          <VideoBubble stream={localStream} muted label="You" size={48} />
+          <VideoBubble
+            stream={localStream}
+            muted
+            label={screenSharing ? 'Screen' : 'You'}
+            size={screenSharing ? 128 : 48}
+          />
         </div>
       )}
 

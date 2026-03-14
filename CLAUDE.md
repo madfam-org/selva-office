@@ -530,6 +530,38 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `DeskInfoPanel` component shows agent name, role, status, and skills on
   desk interaction. Emits via `open_desk_info` gameEventBus event.
 
+### Screen Sharing
+
+- `toggleScreenShare()` in `useProximityVideo`: uses `getDisplayMedia()` to
+  capture screen, replaces video track on all active peers via
+  `RTCRtpSender.replaceTrack()`. Auto-stops on `track.onended` (browser UI).
+- Screen share button (S key) in `MediaControls.tsx`.
+- Local video preview shows "Screen" label at 128px when sharing.
+
+### Local Recording
+
+- `useRecording` hook (`apps/office-ui/src/hooks/useRecording.ts`): mixes local
+  + remote audio via `AudioContext.createMediaStreamDestination()`, records with
+  `MediaRecorder` (webm/vp9+opus). Downloads on stop. Browser-local only.
+- `RecordingControls` component: red pulsing record button with duration timer.
+- States: `idle` | `recording` | `processing`.
+
+### Locked Bubbles
+
+- Server-side locked groups in `proximity.ts`: `lockBubble()` captures current
+  nearby players into a locked set. Locked members only see each other in
+  proximity calculations. Outsiders cannot join locked groups.
+- `lock_bubble`/`unlock_bubble` Colyseus messages. Any member can unlock.
+- `removeFromLockedGroups()` called on player leave. Groups dissolve when < 2.
+- Lock button (L key) in `MediaControls.tsx` with amber highlight when active.
+
+### Area Access Restrictions
+
+- `restricted-zone` interactable type with `requiredTags` property (comma-separated).
+- `InteractableManager.setPlayerTags()` sets the player's tags for access checks.
+- Players without required tags are pushed out of restricted zones.
+- `access_denied` gameEventBus event emitted once per zone entry attempt.
+
 ### UI/UX Infrastructure
 
 - **ErrorBoundary** (`apps/office-ui/src/components/ErrorBoundary.tsx`) wraps the
