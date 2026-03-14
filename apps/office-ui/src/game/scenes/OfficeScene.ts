@@ -9,6 +9,7 @@ import { TouchActionButtons } from '../TouchActionButtons';
 import { InteractableManager } from '../InteractableManager';
 import { ScriptBridge } from '../scripting/ScriptBridge';
 import { AgentBehavior } from '../AgentBehavior';
+import { CompanionBehavior } from '../CompanionBehavior';
 import { Pathfinder } from '../Pathfinder';
 import type {
   OfficeState,
@@ -44,6 +45,15 @@ const EMOTE_FRAME_MAP: Record<string, number> = {
   fire: 6,
   sparkle: 7,
   coffee: 8,
+};
+
+/** Color mapping for companion types (used for simple rectangle sprites) */
+const COMPANION_COLORS: Record<string, number> = {
+  cat: 0xf59e0b,    // amber
+  dog: 0x92400e,    // brown
+  robot: 0x94a3b8,  // slate
+  dragon: 0x22c55e, // green
+  parrot: 0xef4444, // red
 };
 
 interface AgentSprite {
@@ -125,6 +135,8 @@ export class OfficeScene extends Phaser.Scene {
   private followLabel: Phaser.GameObjects.Text | null = null;
   private explorerMode: boolean = false;
   private explorerPrevZoom: number = 1;
+  private companionBehavior: CompanionBehavior = new CompanionBehavior();
+  private companionSprites: Map<string, Phaser.GameObjects.Rectangle> = new Map();
 
   constructor() {
     super({ key: 'OfficeScene' });
@@ -555,8 +567,23 @@ export class OfficeScene extends Phaser.Scene {
       this.tacticianLabel.setPosition(this.tactician.x, this.tactician.y - 24);
     }
 
+    // Update local player companion position
+    const localCompanionRect = this.companionSprites.get(this.localSessionId);
+    if (localCompanionRect) {
+      const localCompResult = this.companionBehavior.update(
+        this.localSessionId,
+        this.tactician.x,
+        this.tactician.y,
+        this.game.loop.delta,
+      );
+      if (localCompResult) {
+        localCompanionRect.setPosition(localCompResult.x, localCompResult.y);
+      }
+    }
+
     // Interpolate remote players toward their target positions
-    this.remotePlayers.forEach((remote) => {
+    const companionDelta = this.game.loop.delta;
+    this.remotePlayers.forEach((remote, sessionId) => {
       const lerpFactor = 0.15;
       remote.sprite.x += (remote.targetX - remote.sprite.x) * lerpFactor;
       remote.sprite.y += (remote.targetY - remote.sprite.y) * lerpFactor;
@@ -575,6 +602,20 @@ export class OfficeScene extends Phaser.Scene {
         const idleKey = `tactician-idle-${remote.direction}`;
         if (this.anims.exists(idleKey) && remote.sprite.anims.currentAnim?.key !== idleKey) {
           remote.sprite.play(idleKey);
+        }
+      }
+
+      // Update companion position (trail behind owner)
+      const companionRect = this.companionSprites.get(sessionId);
+      if (companionRect) {
+        const result = this.companionBehavior.update(
+          sessionId,
+          remote.sprite.x,
+          remote.sprite.y,
+          companionDelta,
+        );
+        if (result) {
+          companionRect.setPosition(result.x, result.y);
         }
       }
     });
@@ -737,6 +778,9 @@ export class OfficeScene extends Phaser.Scene {
       this.followLabel = null;
     }
     this.explorerMode = false;
+    // Clean up companion sprites
+    this.companionSprites.forEach((rect) => rect.destroy());
+    this.companionSprites.clear();
   }
 
   private createAnimations(): void {
@@ -1025,6 +1069,19 @@ export class OfficeScene extends Phaser.Scene {
     // Reconcile remote player sprites
     this.reconcileRemotePlayers(state.players ?? []);
 
+    // Reconcile local player companion
+    if (state.players && this.localSessionId) {
+      const localPlayer = state.players.find((p: Player) => p.sessionId === this.localSessionId);
+      if (localPlayer) {
+        this.reconcileCompanionSprite(
+          this.localSessionId,
+          localPlayer.companionType,
+          this.tactician.x,
+          this.tactician.y,
+        );
+      }
+    }
+
     // Reconcile agent sprites with current state
     const currentAgentIds = new Set<string>();
 
@@ -1121,6 +1178,8 @@ export class OfficeScene extends Phaser.Scene {
         existing.label.setText(player.name);
         // Update status dot color
         existing.statusDot.setFillStyle(this.getPlayerStatusColor(player.playerStatus));
+        // Update companion sprite
+        this.reconcileCompanionSprite(player.sessionId, player.companionType, player.x, player.y);
         // Update avatar texture if config changed
         if (player.avatarConfig) {
           try {
@@ -1165,6 +1224,9 @@ export class OfficeScene extends Phaser.Scene {
           targetY: player.y,
           direction: player.direction,
         });
+
+        // Create companion sprite if player has one
+        this.reconcileCompanionSprite(player.sessionId, player.companionType, player.x, player.y);
       }
     }
 
@@ -1175,8 +1237,52 @@ export class OfficeScene extends Phaser.Scene {
         remote.label.destroy();
         remote.statusDot.destroy();
         this.remotePlayers.delete(sessionId);
+        // Clean up companion
+        const companionSprite = this.companionSprites.get(sessionId);
+        if (companionSprite) {
+          companionSprite.destroy();
+          this.companionSprites.delete(sessionId);
+        }
+        this.companionBehavior.removeCompanion(sessionId);
       }
     });
+  }
+
+  /**
+   * Create, update, or remove a companion sprite for a given player session.
+   * Uses simple colored rectangles (8x8) as companion visuals.
+   */
+  private reconcileCompanionSprite(
+    sessionId: string,
+    companionType: string | undefined,
+    ownerX: number,
+    ownerY: number,
+  ): void {
+    const existing = this.companionSprites.get(sessionId);
+
+    if (!companionType || !COMPANION_COLORS[companionType]) {
+      // Remove companion if type is empty or invalid
+      if (existing) {
+        existing.destroy();
+        this.companionSprites.delete(sessionId);
+        this.companionBehavior.removeCompanion(sessionId);
+      }
+      return;
+    }
+
+    if (existing) {
+      // Update color if companion type changed
+      const color = COMPANION_COLORS[companionType];
+      existing.setFillStyle(color);
+    } else {
+      // Create new companion sprite
+      const color = COMPANION_COLORS[companionType];
+      const rect = this.add.rectangle(ownerX, ownerY + 28, 8, 8, color)
+        .setDepth(8)
+        .setAlpha(0.9);
+      this.companionSprites.set(sessionId, rect);
+      this.companionBehavior.initCompanion(sessionId, ownerX, ownerY);
+    }
   }
 
   private updateOrCreateAgentSprite(agent: Agent, dept: Department): void {

@@ -46,6 +46,9 @@ interface ColyseusState {
   sendAvatarConfig: (config: string) => void;
   sendStatus: (status: string) => void;
   sendSignal: (targetSessionId: string, signal: unknown) => void;
+  sendCompanion: (type: string) => void;
+  sendMegaphoneStart: () => void;
+  sendMegaphoneStop: () => void;
   sendLockBubble: () => void;
   sendUnlockBubble: () => void;
 }
@@ -131,6 +134,18 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
 
   const sendSignal = useCallback((targetSessionId: string, signal: unknown) => {
     roomRef.current?.send('webrtc_signal', { targetSessionId, signal });
+  }, []);
+
+  const sendCompanion = useCallback((type: string) => {
+    roomRef.current?.send('companion', { type });
+  }, []);
+
+  const sendMegaphoneStart = useCallback(() => {
+    roomRef.current?.send('megaphone_start', {});
+  }, []);
+
+  const sendMegaphoneStop = useCallback(() => {
+    roomRef.current?.send('megaphone_stop', {});
   }, []);
 
   const sendLockBubble = useCallback(() => {
@@ -254,6 +269,9 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
     sendAvatarConfig,
     sendStatus,
     sendSignal,
+    sendCompanion,
+    sendMegaphoneStart,
+    sendMegaphoneStop,
     sendLockBubble,
     sendUnlockBubble,
   };

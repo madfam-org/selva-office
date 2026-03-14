@@ -19,11 +19,22 @@ import accessoryTemplates from '@autoswarm/shared-types/src/sprite-data/accessor
 const HAIR_STYLE_KEYS = ['short', 'long', 'spiky', 'curly', 'ponytail', 'bob', 'mohawk', 'bun'] as const;
 const PLAYER_ACC_KEYS = ['glasses', 'crown', 'headphones', 'hat', 'scarf', 'backpack', 'badge', 'visor'] as const;
 
+const COMPANION_OPTIONS = [
+  { value: '', label: 'None' },
+  { value: 'cat', label: 'Cat' },
+  { value: 'dog', label: 'Dog' },
+  { value: 'robot', label: 'Robot' },
+  { value: 'dragon', label: 'Dragon' },
+  { value: 'parrot', label: 'Parrot' },
+] as const;
+
 interface AvatarEditorProps {
   open: boolean;
   initialConfig: AvatarConfig;
   onSave: (config: AvatarConfig) => void;
   onClose: () => void;
+  companionType?: string;
+  onCompanionChange?: (type: string) => void;
 }
 
 /** Draw the avatar onto a 2D canvas context at 32x32 resolution using shared templates */
@@ -130,7 +141,7 @@ function OptionButton({
   );
 }
 
-export function AvatarEditor({ open, initialConfig, onSave, onClose }: AvatarEditorProps) {
+export function AvatarEditor({ open, initialConfig, onSave, onClose, companionType = '', onCompanionChange }: AvatarEditorProps) {
   const [config, setConfig] = useState<AvatarConfig>(initialConfig);
   const trapRef = useFocusTrap<HTMLDivElement>(open);
 
@@ -239,7 +250,7 @@ export function AvatarEditor({ open, initialConfig, onSave, onClose }: AvatarEdi
         </div>
 
         {/* Accessory */}
-        <div className="mb-4">
+        <div className="mb-3">
           <label className="mb-1 block pixel-text text-retro-xs text-slate-400">Accessory</label>
           <div className="flex flex-wrap gap-1">
             {ACCESSORY_NAMES.map((name, i) => (
@@ -248,6 +259,21 @@ export function AvatarEditor({ open, initialConfig, onSave, onClose }: AvatarEdi
                 label={name}
                 selected={config.accessory === i - 1}
                 onClick={() => update({ accessory: i - 1 })}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Companion */}
+        <div className="mb-4">
+          <label className="mb-1 block pixel-text text-retro-xs text-slate-400">Companion</label>
+          <div className="flex flex-wrap gap-1">
+            {COMPANION_OPTIONS.map((opt) => (
+              <OptionButton
+                key={opt.value}
+                label={opt.label}
+                selected={companionType === opt.value}
+                onClick={() => onCompanionChange?.(opt.value)}
               />
             ))}
           </div>

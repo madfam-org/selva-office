@@ -26,6 +26,8 @@ import { usePlayerStatus } from '@/hooks/usePlayerStatus';
 import { StatusSelector } from '@/components/StatusSelector';
 import { useProximityVideo } from '@/hooks/useProximityVideo';
 import { useRecording } from '@/hooks/useRecording';
+import { MegaphoneControls } from '@/components/MegaphoneControls';
+import { RoomNavigator } from '@/components/RoomNavigator';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
 import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
@@ -88,6 +90,9 @@ export default function HomePage() {
     sendAvatarConfig,
     sendStatus,
     sendSignal,
+    sendCompanion,
+    sendMegaphoneStart,
+    sendMegaphoneStop,
     sendLockBubble,
     sendUnlockBubble,
   } = useColyseus({
@@ -108,9 +113,11 @@ export default function HomePage() {
     audioEnabled,
     videoEnabled,
     screenSharing,
+    noiseSuppression,
     toggleAudio,
     toggleVideo,
     toggleScreenShare,
+    toggleNoiseSuppression,
     handleProximityUpdate: videoHandleProximity,
     handleWebRTCSignal: videoHandleSignal,
   } = useProximityVideo({
@@ -158,6 +165,15 @@ export default function HomePage() {
   const [playerPosition, setPlayerPosition] = useState<{ x: number; y: number } | null>(null);
   const [deskInfo, setDeskInfo] = useState<{ assignedAgentId: string; title: string } | null>(null);
   const [bubbleLocked, setBubbleLocked] = useState(false);
+  const [megaphoneActive, setMegaphoneActive] = useState(false);
+  const [megaphoneSpeaker, setMegaphoneSpeaker] = useState<string | null>(null);
+  const [currentRoom, setCurrentRoom] = useState('office');
+  const [companionType, setCompanionType] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { return localStorage.getItem('autoswarm:companion-type') ?? ''; } catch { return ''; }
+    }
+    return '';
+  });
   const [followingPlayer, setFollowingPlayer] = useState<string | null>(null);
   const [explorerMode, setExplorerMode] = useState(false);
 
@@ -274,6 +290,13 @@ export default function HomePage() {
     }
   }, [colyseusConnected, avatarConfig, sendAvatarConfig]);
 
+  // Send companion type to server when connected
+  useEffect(() => {
+    if (colyseusConnected && companionType) {
+      sendCompanion(companionType);
+    }
+  }, [colyseusConnected, companionType, sendCompanion]);
+
   // Listen for desk info events from game
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -300,6 +323,26 @@ export default function HomePage() {
         }),
       );
     });
+    return () => cleanups.forEach((c) => c());
+  }, []);
+
+  // Listen for megaphone and room transition events
+  useEffect(() => {
+    const cleanups: Array<() => void> = [];
+    import('@/game/PhaserGame').then((mod) => {
+      cleanups.push(
+        mod.gameEventBus.on('room_transition', (detail: unknown) => {
+          const { roomId } = detail as { roomId: string };
+          setCurrentRoom(roomId);
+          // Update URL for map loading
+          const url = new URL(window.location.href);
+          url.searchParams.set('map', roomId);
+          window.history.replaceState({}, '', url.toString());
+        }),
+      );
+    });
+    // Listen for megaphone broadcasts from Colyseus
+    // This is done in the useColyseus onMessage handler
     return () => cleanups.forEach((c) => c());
   }, []);
 
@@ -376,6 +419,8 @@ export default function HomePage() {
         screenSharing={screenSharing}
         onToggleScreenShare={toggleScreenShare}
         bubbleLocked={bubbleLocked}
+        noiseSuppression={noiseSuppression}
+        onToggleNoiseSuppression={toggleNoiseSuppression}
         onToggleLockBubble={() => {
           if (bubbleLocked) {
             sendUnlockBubble();
@@ -394,6 +439,19 @@ export default function HomePage() {
         onStop={stopRecording}
         visible={peers.length > 0 || !!localStream}
       />
+      <MegaphoneControls
+        active={megaphoneActive}
+        speakerName={megaphoneSpeaker}
+        isLocalSpeaker={megaphoneActive && megaphoneSpeaker === (sessionUser?.name ?? sessionUser?.email ?? null)}
+        onStart={() => { sendMegaphoneStart(); setMegaphoneActive(true); setMegaphoneSpeaker(sessionUser?.name ?? sessionUser?.email ?? 'You'); }}
+        onStop={() => { sendMegaphoneStop(); setMegaphoneActive(false); setMegaphoneSpeaker(null); }}
+        visible={peers.length > 0 || !!localStream}
+      />
+      <RoomNavigator
+        currentRoom={currentRoom}
+        onChangeRoom={(roomId) => setCurrentRoom(roomId)}
+        visible={colyseusConnected}
+      />
 
       <EmotePicker onEmote={handleEmote} />
 
@@ -402,6 +460,12 @@ export default function HomePage() {
         initialConfig={avatarConfig}
         onSave={handleAvatarSave}
         onClose={() => setAvatarEditorOpen(false)}
+        companionType={companionType}
+        onCompanionChange={(type) => {
+          setCompanionType(type);
+          sendCompanion(type);
+          try { localStorage.setItem('autoswarm:companion-type', type); } catch { /* noop */ }
+        }}
       />
 
       <button

@@ -31,6 +31,7 @@ export interface Player {
   direction: 'up' | 'down' | 'left' | 'right';
   avatarConfig?: string;
   playerStatus?: 'online' | 'away' | 'busy' | 'dnd';
+  companionType?: string;
 }
 
 export interface ChatMessage {

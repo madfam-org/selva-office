@@ -18,8 +18,15 @@ import {
   removeFromLockedGroups,
   isInLockedBubble,
 } from "../handlers/proximity";
+import {
+  handleMegaphoneStart,
+  handleMegaphoneStop,
+  releaseMegaphone,
+  getMegaphoneSpeaker,
+} from "../handlers/megaphone";
 import { handleSignaling } from "../handlers/signaling";
 import type { WebRTCSignalMessage } from "../handlers/signaling";
+import { handleCompanion } from "../handlers/companion";
 import { createLogger } from "@autoswarm/config/logging";
 import { getRedisClient, closeRedisClient } from "../redis-client";
 import type { RedisClientType } from "redis";
@@ -203,6 +210,22 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       }
     });
 
+    this.onMessage("megaphone_start", (client: Client) => {
+      handleMegaphoneStart(this.state, client, (type, payload) =>
+        this.broadcast(type, payload)
+      );
+    });
+
+    this.onMessage("megaphone_stop", (client: Client) => {
+      handleMegaphoneStop(client, (type, payload) =>
+        this.broadcast(type, payload)
+      );
+    });
+
+    this.onMessage("companion", (client: Client, message: { type: string }) => {
+      handleCompanion(this.state, client, message);
+    });
+
     // Start proximity detection loop at 5Hz for WebRTC peer management
     this.stopProximityLoop = startProximityLoop(
       this.state,
@@ -254,6 +277,9 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     const name = player?.name ?? "Player";
     this.state.players.delete(client.sessionId);
     removeFromLockedGroups(client.sessionId);
+    releaseMegaphone(client.sessionId, (type, payload) =>
+      this.broadcast(type, payload)
+    );
 
     addSystemMessage(this.state, `${name} left`);
     this.broadcast("player_left", { sessionId: client.sessionId });
