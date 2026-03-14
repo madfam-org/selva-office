@@ -15,6 +15,8 @@ interface HUDProps {
   onApprovalClick?: () => void;
   followingPlayer?: string | null;
   explorerMode?: boolean;
+  viewMode?: 'game' | 'simple';
+  onToggleViewMode?: () => void;
 }
 
 const WORLD_WIDTH = 1600;
@@ -146,6 +148,8 @@ export const HUD: FC<HUDProps> = ({
   onApprovalClick,
   followingPlayer = null,
   explorerMode = false,
+  viewMode = 'game',
+  onToggleViewMode,
 }) => {
   const tokenPercent = computeTokens
     ? Math.min((computeTokens.used / computeTokens.limit) * 100, 100)
@@ -192,6 +196,15 @@ export const HUD: FC<HUDProps> = ({
           <div className="retro-panel px-3 py-1.5 font-mono text-[8px] text-slate-400">
             <span className="text-indigo-400">{userName}</span>
           </div>
+        )}
+        {onToggleViewMode && (
+          <button
+            onClick={onToggleViewMode}
+            className="retro-panel retro-btn px-3 py-1.5 font-mono text-[8px] text-slate-300 transition-colors hover:text-white"
+            aria-label={viewMode === 'game' ? 'Switch to simple view' : 'Switch to game view'}
+          >
+            {viewMode === 'game' ? 'Simple View' : 'Game View'}
+          </button>
         )}
       </div>
 
