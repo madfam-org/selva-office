@@ -57,4 +57,5 @@ export class OfficeStateSchema extends Schema {
   @type("number") pendingApprovalCount: number = 0;
   @type({ map: WhiteboardSchema }) whiteboards: MapSchema<WhiteboardSchema> =
     new MapSchema<WhiteboardSchema>();
+  @type("string") spotlightPresenter: string = "";
 }

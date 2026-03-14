@@ -21,14 +21,17 @@ import { RecordingControls } from '@/components/RecordingControls';
 import { useApprovals } from '@/hooks/useApprovals';
 import { useTaskDispatch } from '@/hooks/useTaskDispatch';
 import { useColyseus } from '@/hooks/useColyseus';
-import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal } from '@/hooks/useColyseus';
+import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal, SpotlightActiveEvent } from '@/hooks/useColyseus';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
 import { usePlayerStatus } from '@/hooks/usePlayerStatus';
 import { StatusSelector } from '@/components/StatusSelector';
 import { useProximityVideo } from '@/hooks/useProximityVideo';
 import { useRecording } from '@/hooks/useRecording';
 import { useWhiteboard } from '@/hooks/useWhiteboard';
+import { useSpotlight } from '@/hooks/useSpotlight';
 import { MegaphoneControls } from '@/components/MegaphoneControls';
+import { SpotlightControls } from '@/components/SpotlightControls';
+import { SpotlightView } from '@/components/SpotlightView';
 import { RoomNavigator } from '@/components/RoomNavigator';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
@@ -71,6 +74,7 @@ export default function HomePage() {
   // Refs for bridging proximity video callbacks (breaks circular dep between hooks)
   const proximityUpdateRef = useRef<(update: ProximityUpdate) => void>(() => {});
   const webrtcSignalRef = useRef<(signal: WebRTCSignal) => void>(() => {});
+  const spotlightActiveRef = useRef<(event: SpotlightActiveEvent) => void>(() => {});
 
   const handleProximityUpdate = useCallback((update: ProximityUpdate) => {
     proximityUpdateRef.current(update);
@@ -78,6 +82,10 @@ export default function HomePage() {
 
   const handleWebRTCSignal = useCallback((signal: WebRTCSignal) => {
     webrtcSignalRef.current(signal);
+  }, []);
+
+  const handleSpotlightActive = useCallback((event: SpotlightActiveEvent) => {
+    spotlightActiveRef.current(event);
   }, []);
 
   const sessionUser = useMemo(() => getSessionUser(), []);
@@ -96,6 +104,8 @@ export default function HomePage() {
     sendCompanion,
     sendMegaphoneStart,
     sendMegaphoneStop,
+    sendSpotlightStart,
+    sendSpotlightStop,
     sendLockBubble,
     sendUnlockBubble,
   } = useColyseus({
@@ -103,6 +113,7 @@ export default function HomePage() {
     onPlayerEmote: handlePlayerEmote,
     onProximityUpdate: handleProximityUpdate,
     onWebRTCSignal: handleWebRTCSignal,
+    onSpotlightActive: handleSpotlightActive,
   });
 
   const { status: playerStatus, changeStatus: changePlayerStatus } = usePlayerStatus({
@@ -151,9 +162,25 @@ export default function HomePage() {
     setWidth: whiteboardSetWidth,
   } = useWhiteboard({ room: colyseusConnected ? colyseusRoom : null });
 
-  // Wire up the refs now that both hooks are initialized
+  const {
+    active: spotlightActive,
+    isPresenting: spotlightIsPresenting,
+    presenterName: spotlightPresenterName,
+    presenterSessionId: spotlightPresenterSessionId,
+    startSpotlight,
+    stopSpotlight,
+    handleSpotlightActive: spotlightHandleActive,
+  } = useSpotlight({
+    localSessionId: sessionId,
+    sendSpotlightStart,
+    sendSpotlightStop,
+    enabled: colyseusConnected,
+  });
+
+  // Wire up the refs now that all hooks are initialized
   proximityUpdateRef.current = videoHandleProximity;
   webrtcSignalRef.current = videoHandleSignal;
+  spotlightActiveRef.current = spotlightHandleActive;
   const {
     pendingApprovals,
     approve,
@@ -194,6 +221,7 @@ export default function HomePage() {
   });
   const [followingPlayer, setFollowingPlayer] = useState<string | null>(null);
   const [explorerMode, setExplorerMode] = useState(false);
+  const [spotlightViewDismissed, setSpotlightViewDismissed] = useState(false);
 
   const handleApprovalOpen = useCallback(
     (agentId: string) => {
@@ -307,6 +335,13 @@ export default function HomePage() {
       gameEventBusRef.current?.emit('avatar-config', avatarConfig);
     }
   }, [colyseusConnected, avatarConfig, sendAvatarConfig]);
+
+  // Reset spotlight dismissed state when spotlight becomes inactive
+  useEffect(() => {
+    if (!spotlightActive) {
+      setSpotlightViewDismissed(false);
+    }
+  }, [spotlightActive]);
 
   // Send companion type to server when connected
   useEffect(() => {
@@ -479,6 +514,24 @@ export default function HomePage() {
         onStop={() => { sendMegaphoneStop(); setMegaphoneActive(false); setMegaphoneSpeaker(null); }}
         visible={peers.length > 0 || !!localStream}
       />
+      <SpotlightControls
+        active={spotlightActive}
+        presenterName={spotlightPresenterName}
+        isPresenting={spotlightIsPresenting}
+        onStart={startSpotlight}
+        onStop={stopSpotlight}
+        visible={peers.length > 0 || !!localStream}
+      />
+      {!spotlightViewDismissed && (
+        <SpotlightView
+          active={spotlightActive}
+          isPresenting={spotlightIsPresenting}
+          presenterName={spotlightPresenterName}
+          presenterSessionId={spotlightPresenterSessionId}
+          peers={peers}
+          onClose={() => setSpotlightViewDismissed(true)}
+        />
+      )}
       <RoomNavigator
         currentRoom={currentRoom}
         onChangeRoom={(roomId) => setCurrentRoom(roomId)}
