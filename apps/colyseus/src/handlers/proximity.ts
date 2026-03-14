@@ -1,5 +1,6 @@
 import type { Client } from "@colyseus/core";
 import type { OfficeStateSchema } from "../schema/OfficeState";
+import { getMegaphoneSpeaker } from "./megaphone";
 
 const PROXIMITY_RADIUS = 200; // pixels
 const MAX_PEERS = 6;
@@ -165,6 +166,16 @@ export function startProximityLoop(
   const interval = setInterval(() => {
     const groups = calculateProximity(state);
     const clients = getClients();
+
+    // Inject megaphone speaker into all players' nearby lists
+    const megaSpeaker = getMegaphoneSpeaker();
+    if (megaSpeaker) {
+      for (const group of groups) {
+        if (group.sessionId !== megaSpeaker && !group.nearbySessionIds.includes(megaSpeaker)) {
+          group.nearbySessionIds.push(megaSpeaker);
+        }
+      }
+    }
 
     for (const group of groups) {
       const client = clients.find(

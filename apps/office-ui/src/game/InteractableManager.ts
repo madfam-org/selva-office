@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { gameEventBus } from './PhaserGame';
 
-export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch' | 'blueprint' | 'desk' | 'restricted-zone';
+export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch' | 'blueprint' | 'desk' | 'restricted-zone' | 'room-transition';
 
 export interface InteractableDef {
   id: string;
@@ -28,7 +28,7 @@ interface ActiveZone {
   isOverlapping: boolean;
 }
 
-const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch', 'blueprint', 'desk', 'restricted-zone'];
+const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch', 'blueprint', 'desk', 'restricted-zone', 'room-transition'];
 
 /**
  * Manages interactive map objects parsed from Tiled object layer 'interactables'.
@@ -256,7 +256,13 @@ export class InteractableManager {
           y: def.y,
         });
         break;
-      // silent-zone handled in update() via enter/exit events
+      case 'room-transition':
+        gameEventBus.emit('room_transition', {
+          roomId: def.content,
+          title: def.label ?? 'Room Transition',
+        });
+        break;
+      // silent-zone and restricted-zone handled in update()
     }
   }
 

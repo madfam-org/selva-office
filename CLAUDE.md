@@ -431,7 +431,8 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `InteractableManager` (`apps/office-ui/src/game/InteractableManager.ts`) parses
   the `interactables` Tiled object layer and creates Phaser zones with overlap
   detection. Each object has an `interactType` property: `url`, `popup`,
-  `jitsi-zone`, `silent-zone`, `dispatch`, `blueprint`, or `desk`.
+  `jitsi-zone`, `silent-zone`, `dispatch`, `blueprint`, `desk`,
+  `restricted-zone`, or `room-transition`.
 - When the player overlaps an interactable zone, a `[E] label` prompt appears.
   Pressing E (buttonX) triggers the action.
 - `url` and `jitsi-zone` types emit `open_cowebsite` → `CoWebsitePanel.tsx`
@@ -561,6 +562,43 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `InteractableManager.setPlayerTags()` sets the player's tags for access checks.
 - Players without required tags are pushed out of restricted zones.
 - `access_denied` gameEventBus event emitted once per zone entry attempt.
+
+### Companions/Pets
+
+- `TacticianSchema.companionType` (`@type("string")`, default `""`): synced
+  via Colyseus. Values: `""`, `cat`, `dog`, `robot`, `dragon`, `parrot`.
+- `handleCompanion` handler validates against whitelist (follows emotes pattern).
+- `CompanionBehavior` class follows owner with lag (speed 180, follow distance
+  28px, lerp factor 0.08). Rendered as 8x8 colored rectangles in OfficeScene.
+- `reconcileCompanionSprite()` in OfficeScene creates/updates/removes companions
+  during remote player reconciliation.
+- Companion selection tab in `AvatarEditor.tsx`. Persisted to localStorage.
+- Companion sprite data in `packages/shared-types/src/sprite-data/companions.json`.
+
+### Megaphone/Broadcast
+
+- One speaker at a time (first-come-first-served). Module-level state in
+  `handlers/megaphone.ts`.
+- `megaphone_start`/`megaphone_stop` messages. `releaseMegaphone()` on disconnect.
+- Speaker's sessionId injected into ALL players' nearbySessionIds in
+  `startProximityLoop()`, enabling room-wide audio.
+- `MegaphoneControls.tsx` component with pulsing broadcast indicator.
+
+### Multi-Room Navigation
+
+- `room-transition` interactable type in InteractableManager. `content` field
+  specifies target room ID.
+- `room_transition` gameEventBus event updates URL `?map=` parameter.
+- `RoomNavigator.tsx` dropdown component (bottom-right) with 4 predefined rooms.
+- Room switching reloads the Tiled map via `?map=<name>` URL parameter.
+
+### Noise Suppression
+
+- `audio-processor.ts` utility: WebAudio filter chain with highpass(80Hz) +
+  DynamicsCompressor. Returns processed output stream.
+- `toggleNoiseSuppression()` in useProximityVideo: lazy-imports the audio
+  processor, replaces audio track on all peers via `replaceTrack()`.
+- Toggle button (N key) in MediaControls with emerald highlight when active.
 
 ### UI/UX Infrastructure
 

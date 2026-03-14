@@ -28,9 +28,11 @@ export interface ProximityVideoState {
   audioEnabled: boolean;
   videoEnabled: boolean;
   screenSharing: boolean;
+  noiseSuppression: boolean;
   toggleAudio: () => void;
   toggleVideo: () => void;
   toggleScreenShare: () => void;
+  toggleNoiseSuppression: () => void;
   /** Call when receiving a proximity_players message from the server */
   handleProximityUpdate: (update: ProximityUpdate) => void;
   /** Call when receiving a webrtc_signal message from the server */
@@ -76,9 +78,12 @@ export function useProximityVideo({
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
+  const [noiseSuppression, setNoiseSuppression] = useState(false);
 
   const connectionsRef = useRef<Map<string, PeerConnection>>(new Map());
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const noiseFilterRef = useRef<{ outputStream: MediaStream; context: AudioContext; destroy: () => void } | null>(null);
+  const rawAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const errorTrackerRef = useRef<Map<string, { count: number; lastError: number; backoffUntil: number }>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const localSessionIdRef = useRef(localSessionId);
@@ -284,7 +289,7 @@ export function useProximityVideo({
     [createPeer],
   );
 
-  // Cleanup all peers and screen share on unmount
+  // Cleanup all peers, screen share, and noise filter on unmount
   useEffect(() => {
     return () => {
       connectionsRef.current.forEach((conn) => conn.peer.destroy());
@@ -292,6 +297,10 @@ export function useProximityVideo({
       errorTrackerRef.current.clear();
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
+      if (noiseFilterRef.current) {
+        noiseFilterRef.current.destroy();
+        noiseFilterRef.current = null;
+      }
     };
   }, []);
 
@@ -364,15 +373,64 @@ export function useProximityVideo({
     }
   }, [screenSharing, restoreCameraTrack]);
 
+  const toggleNoiseSuppression = useCallback(async () => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+
+    if (noiseSuppression) {
+      // Disable: restore raw audio track
+      if (noiseFilterRef.current) {
+        noiseFilterRef.current.destroy();
+        noiseFilterRef.current = null;
+      }
+      if (rawAudioTrackRef.current) {
+        // Replace filtered track with raw track on all peers
+        connectionsRef.current.forEach((conn) => {
+          const sender = (conn.peer as unknown as { _pc?: RTCPeerConnection })._pc
+            ?.getSenders?.()
+            ?.find((s: RTCRtpSender) => s.track?.kind === 'audio');
+          if (sender) {
+            sender.replaceTrack(rawAudioTrackRef.current).catch(() => {});
+          }
+        });
+      }
+      setNoiseSuppression(false);
+      return;
+    }
+
+    // Enable: create filter chain and replace audio track
+    const { createNoiseFilter } = await import('./audio-processor');
+    const filter = createNoiseFilter(stream);
+    if (!filter) return;
+
+    noiseFilterRef.current = filter;
+    rawAudioTrackRef.current = stream.getAudioTracks()[0] ?? null;
+
+    const filteredTrack = filter.outputStream.getAudioTracks()[0];
+    if (filteredTrack) {
+      connectionsRef.current.forEach((conn) => {
+        const sender = (conn.peer as unknown as { _pc?: RTCPeerConnection })._pc
+          ?.getSenders?.()
+          ?.find((s: RTCRtpSender) => s.track?.kind === 'audio');
+        if (sender) {
+          sender.replaceTrack(filteredTrack).catch(() => {});
+        }
+      });
+    }
+    setNoiseSuppression(true);
+  }, [noiseSuppression]);
+
   return {
     peers,
     localStream,
     audioEnabled,
     videoEnabled,
     screenSharing,
+    noiseSuppression,
     toggleAudio,
     toggleVideo,
     toggleScreenShare,
+    toggleNoiseSuppression,
     handleProximityUpdate,
     handleWebRTCSignal,
   };

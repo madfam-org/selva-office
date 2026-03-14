@@ -11,6 +11,8 @@ interface MediaControlsProps {
   onToggleScreenShare?: () => void;
   bubbleLocked?: boolean;
   onToggleLockBubble?: () => void;
+  noiseSuppression?: boolean;
+  onToggleNoiseSuppression?: () => void;
   visible: boolean;
 }
 
@@ -27,6 +29,8 @@ export function MediaControls({
   onToggleScreenShare,
   bubbleLocked,
   onToggleLockBubble,
+  noiseSuppression,
+  onToggleNoiseSuppression,
   visible,
 }: MediaControlsProps) {
   // Keyboard shortcuts: M for mute, V for camera
@@ -53,11 +57,14 @@ export function MediaControls({
       if ((e.key === 'l' || e.key === 'L') && onToggleLockBubble) {
         onToggleLockBubble();
       }
+      if ((e.key === 'n' || e.key === 'N') && onToggleNoiseSuppression) {
+        onToggleNoiseSuppression();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [visible, onToggleAudio, onToggleVideo, onToggleScreenShare, onToggleLockBubble]);
+  }, [visible, onToggleAudio, onToggleVideo, onToggleScreenShare, onToggleLockBubble, onToggleNoiseSuppression]);
 
   if (!visible) return null;
 
@@ -116,6 +123,21 @@ export function MediaControls({
           aria-label={bubbleLocked ? 'Unlock proximity bubble' : 'Lock proximity bubble'}
         >
           {bubbleLocked ? 'LOCKED' : 'LOCK'}
+        </button>
+      )}
+
+      {onToggleNoiseSuppression && (
+        <button
+          onClick={onToggleNoiseSuppression}
+          className={`rounded px-2 py-1 text-xs font-mono transition-colors ${
+            noiseSuppression
+              ? 'bg-emerald-900/80 text-emerald-300 hover:bg-emerald-800'
+              : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600'
+          }`}
+          title={noiseSuppression ? 'Disable Noise Suppression (N)' : 'Enable Noise Suppression (N)'}
+          aria-label={noiseSuppression ? 'Disable noise suppression' : 'Enable noise suppression'}
+        >
+          {noiseSuppression ? 'DENOISE ON' : 'DENOISE'}
         </button>
       )}
     </div>
