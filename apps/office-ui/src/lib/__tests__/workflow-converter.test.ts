@@ -21,6 +21,8 @@ function makeWorkflow(nodes: Array<{ id: string; type: NodeType }>, edges: Array
       tools: [],
       interrupt_message: 'Awaiting human approval',
       max_iterations: 5,
+      batch_aggregate_strategy: 'collect' as const,
+      max_parallel: 5,
       context_policy: { type: 'keep_all' as const, n: 10 },
       thinking_stages: [],
       position_x: 100,

@@ -45,6 +45,7 @@ interface WorkflowEditorProps {
 
 const RF_TYPE_TO_NODE_TYPE: Record<string, string> = {
   agentNode: 'agent',
+  batchNode: 'batch',
   humanNode: 'human',
   passthroughNode: 'passthrough',
   subgraphNode: 'subgraph',

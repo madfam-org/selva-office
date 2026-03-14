@@ -12,7 +12,10 @@ export type NodeType =
   | 'subgraph'
   | 'python_runner'
   | 'literal'
-  | 'loop_counter';
+  | 'loop_counter'
+  | 'batch';
+
+export type BatchAggregateStrategy = 'collect' | 'merge' | 'vote';
 
 export type ContextWindowPolicy = 'keep_all' | 'keep_last_n' | 'clear_all' | 'sliding_window';
 
@@ -48,6 +51,12 @@ export interface NodeDefinition {
 
   // Loop counter config
   max_iterations: number;
+
+  // Batch node config
+  batch_split_key?: string | null;
+  batch_aggregate_strategy: BatchAggregateStrategy;
+  max_parallel: number;
+  delegate_node_id?: string | null;
 
   // Context policy
   context_policy: ContextPolicyConfig;
@@ -94,6 +103,8 @@ export function createDefaultNode(type: NodeType, id: string): NodeDefinition {
     tools: [],
     interrupt_message: 'Awaiting human approval',
     max_iterations: 5,
+    batch_aggregate_strategy: 'collect',
+    max_parallel: 5,
     context_policy: { type: 'keep_all', n: 10 },
     thinking_stages: [],
     position_x: 0,

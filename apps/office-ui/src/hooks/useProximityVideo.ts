@@ -73,6 +73,7 @@ export function useProximityVideo({
   const [videoEnabled, setVideoEnabled] = useState(true);
 
   const connectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+  const errorTrackerRef = useRef<Map<string, { count: number; lastError: number; backoffUntil: number }>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const localSessionIdRef = useRef(localSessionId);
   localSessionIdRef.current = localSessionId;
@@ -132,6 +133,7 @@ export function useProximityVideo({
     if (connection) {
       connection.peer.destroy();
       connectionsRef.current.delete(sessionId);
+      errorTrackerRef.current.delete(sessionId);
       updatePeersState();
     }
   }, [updatePeersState]);
@@ -176,8 +178,33 @@ export function useProximityVideo({
       });
 
       peer.on('error', (err: Error) => {
-        console.warn(`[useProximityVideo] Peer error with ${remoteSessionId}:`, err.message);
-        destroyPeer(remoteSessionId);
+        const now = Date.now();
+        const tracker = errorTrackerRef.current.get(remoteSessionId) ?? { count: 0, lastError: 0, backoffUntil: 0 };
+
+        // Reset counter if last error was >30s ago
+        if (now - tracker.lastError > 30_000) {
+          tracker.count = 0;
+        }
+
+        tracker.count++;
+        tracker.lastError = now;
+        errorTrackerRef.current.set(remoteSessionId, tracker);
+
+        if (tracker.count === 1) {
+          // Only warn on first error per peer per 30s window
+          console.warn(`[useProximityVideo] Peer error with ${remoteSessionId}:`, err.message);
+        }
+
+        if (tracker.count >= 3) {
+          // Too many errors — destroy and set exponential backoff
+          const backoffMs = Math.min(30_000, 2_000 * Math.pow(2, tracker.count - 3));
+          tracker.backoffUntil = now + backoffMs;
+          errorTrackerRef.current.set(remoteSessionId, tracker);
+          destroyPeer(remoteSessionId);
+          // Re-add tracker after destroyPeer cleared it
+          errorTrackerRef.current.set(remoteSessionId, tracker);
+        }
+        // count < 3: let ICE retry naturally, don't destroy
       });
 
       if (incomingSignal) {
@@ -199,8 +226,18 @@ export function useProximityVideo({
       const nearbySet = new Set(update.nearbySessionIds);
 
       // Create connections for new nearby players
+      const now = Date.now();
       for (const remoteSid of update.nearbySessionIds) {
         if (!currentPeerIds.has(remoteSid)) {
+          // Check backoff from prior errors
+          const tracker = errorTrackerRef.current.get(remoteSid);
+          if (tracker && tracker.backoffUntil > now) {
+            continue; // Still in backoff period
+          }
+          // Clear stale tracker if backoff expired
+          if (tracker && tracker.backoffUntil <= now) {
+            errorTrackerRef.current.delete(remoteSid);
+          }
           // Only initiate if our sessionId is lexicographically lower
           if (sid < remoteSid) {
             createPeer(remoteSid, true);
@@ -241,6 +278,7 @@ export function useProximityVideo({
     return () => {
       connectionsRef.current.forEach((conn) => conn.peer.destroy());
       connectionsRef.current.clear();
+      errorTrackerRef.current.clear();
     };
   }, []);
 

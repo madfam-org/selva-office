@@ -143,17 +143,19 @@ export default function HomePage() {
   );
 
   const handleApprove = useCallback(
-    (requestId: string, feedback?: string) => {
-      approve(requestId, feedback || undefined);
-      setActiveApproval(null);
+    async (requestId: string, feedback?: string): Promise<boolean> => {
+      const ok = await approve(requestId, feedback || undefined);
+      if (ok) setActiveApproval(null);
+      return ok;
     },
     [approve],
   );
 
   const handleDeny = useCallback(
-    (requestId: string, feedback?: string) => {
-      deny(requestId, feedback || undefined);
-      setActiveApproval(null);
+    async (requestId: string, feedback?: string): Promise<boolean> => {
+      const ok = await deny(requestId, feedback || undefined);
+      if (ok) setActiveApproval(null);
+      return ok;
     },
     [deny],
   );

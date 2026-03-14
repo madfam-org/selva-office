@@ -20,6 +20,7 @@ const GRID_OFFSET_Y = 120;
 /** Map NodeType → React Flow custom node type key */
 const NODE_TYPE_MAP: Record<NodeType, string> = {
   agent: 'agentNode',
+  batch: 'batchNode',
   human: 'humanNode',
   passthrough: 'passthroughNode',
   subgraph: 'subgraphNode',
@@ -92,6 +93,10 @@ export function reactFlowToWorkflow(
       code: data.code ?? null,
       literal_value: data.literal_value ?? null,
       max_iterations: (data.max_iterations as number) ?? 5,
+      batch_split_key: data.batch_split_key ?? null,
+      batch_aggregate_strategy: data.batch_aggregate_strategy ?? 'collect',
+      max_parallel: (data.max_parallel as number) ?? 5,
+      delegate_node_id: data.delegate_node_id ?? null,
       context_policy: data.context_policy ?? { type: 'keep_all', n: 10 },
       thinking_stages: (data.thinking_stages as string[]) ?? [],
       position_x: node.position.x,

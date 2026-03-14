@@ -49,8 +49,8 @@ interface ApprovalPanelProps {
   open: boolean;
   onClose: () => void;
   pendingApprovals: ApprovalRequest[];
-  onApprove: (requestId: string, feedback?: string) => void;
-  onDeny: (requestId: string, feedback?: string) => void;
+  onApprove: (requestId: string, feedback?: string) => Promise<boolean>;
+  onDeny: (requestId: string, feedback?: string) => Promise<boolean>;
   connected: boolean;
 }
 
@@ -96,29 +96,39 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
   }, []);
 
   const handleApprove = useCallback(
-    (request: ApprovalRequest) => {
+    async (request: ApprovalRequest) => {
       const feedback = feedbackMap[request.id];
-      onApprove(request.id, feedback || undefined);
-      addToast(`Approved: ${request.agentName}`, 'success');
-      setFeedbackMap((prev) => {
-        const next = { ...prev };
-        delete next[request.id];
-        return next;
-      });
+      const ok = await onApprove(request.id, feedback || undefined);
+      addToast(
+        ok ? `Approved: ${request.agentName}` : `Approval failed for ${request.agentName} — try again`,
+        ok ? 'success' : 'error',
+      );
+      if (ok) {
+        setFeedbackMap((prev) => {
+          const next = { ...prev };
+          delete next[request.id];
+          return next;
+        });
+      }
     },
     [feedbackMap, onApprove, addToast],
   );
 
   const handleDeny = useCallback(
-    (request: ApprovalRequest) => {
+    async (request: ApprovalRequest) => {
       const feedback = feedbackMap[request.id];
-      onDeny(request.id, feedback || undefined);
-      addToast(`Denied: ${request.agentName}`, 'warning');
-      setFeedbackMap((prev) => {
-        const next = { ...prev };
-        delete next[request.id];
-        return next;
-      });
+      const ok = await onDeny(request.id, feedback || undefined);
+      addToast(
+        ok ? `Denied: ${request.agentName}` : `Deny failed for ${request.agentName} — try again`,
+        ok ? 'warning' : 'error',
+      );
+      if (ok) {
+        setFeedbackMap((prev) => {
+          const next = { ...prev };
+          delete next[request.id];
+          return next;
+        });
+      }
     },
     [feedbackMap, onDeny, addToast],
   );

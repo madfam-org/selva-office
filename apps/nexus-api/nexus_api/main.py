@@ -22,6 +22,7 @@ from .middleware.security import SecurityHeadersMiddleware
 from .routers import (
     agents,
     approvals,
+    artifacts,
     billing,
     billing_internal,
     departments,
@@ -119,6 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(skills.router, prefix="/api/v1/skills")
     app.include_router(gateway.router, prefix="/api/v1/gateway")
     app.include_router(workflows.router, prefix="/api/v1/workflows")
+    app.include_router(artifacts.router, prefix="/api/v1/artifacts")
 
     return app
 
