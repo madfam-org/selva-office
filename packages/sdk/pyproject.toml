@@ -18,3 +18,7 @@ autoswarm = "autoswarm_sdk.cli:cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["autoswarm_sdk"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

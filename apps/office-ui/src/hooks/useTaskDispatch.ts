@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 
 export interface DispatchRequest {
   description: string;
-  graph_type: 'coding' | 'research' | 'crm' | 'deployment' | 'sequential' | 'parallel' | 'custom' | 'meeting';
+  graph_type: 'coding' | 'research' | 'crm' | 'deployment' | 'sequential' | 'parallel' | 'custom' | 'puppeteer' | 'meeting';
   assigned_agent_ids?: string[];
   required_skills?: string[];
   payload?: Record<string, unknown>;

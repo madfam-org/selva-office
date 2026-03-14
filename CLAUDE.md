@@ -21,6 +21,14 @@
 - `packages/workflows/src/autoswarm_workflows/nodes/batch.py` -- Batch processing node handler
 - `packages/tools/src/autoswarm_tools/builtins/image_analysis.py` -- Image analysis tool (multimodal)
 - `apps/nexus-api/nexus_api/routers/marketplace.py` -- Skill marketplace CRUD API
+- `packages/sdk/autoswarm_sdk/client.py` -- Python SDK async/sync clients
+- `packages/orchestrator/autoswarm_orchestrator/bandit.py` -- Thompson Sampling agent selection
+- `packages/orchestrator/autoswarm_orchestrator/puppeteer.py` -- RL orchestrator
+- `apps/workers/autoswarm_workers/graphs/puppeteer.py` -- Puppeteer graph (decompose/assign/execute/aggregate/feedback)
+- `apps/workers/autoswarm_workers/graphs/meeting.py` -- Meeting notes graph (transcribe/summarize/extract/save)
+- `packages/calendar/autoswarm_calendar/` -- Google/Microsoft calendar adapters
+- `apps/nexus-api/nexus_api/routers/maps.py` -- Map CRUD API
+- `apps/nexus-api/nexus_api/routers/calendar.py` -- Calendar connection API
 
 ## Port Assignments
 
@@ -249,6 +257,97 @@ The `packages/skills/` package implements the AgentSkills standard.
   sort, 2-column card grid, detail view with readme/YAML preview/rating form.
   `useMarketplace` hook (state machine). Accessed via "Skills" button in
   DashboardPanel header.
+
+### Python SDK (`packages/sdk`)
+- **AutoSwarm** async client: `dispatch()`, `list_agents()`, `get_task()`,
+  `wait_for_task()`. Uses `httpx.AsyncClient` with Bearer auth.
+- **AutoSwarmSync**: synchronous wrapper using `asyncio.run()`.
+- **CLI**: `autoswarm dispatch "desc" --graph-type coding`, `autoswarm agents list`,
+  `autoswarm tasks get <id>`, `autoswarm tasks wait <id>`. Click-based.
+  Reads `AUTOSWARM_API_URL` and `AUTOSWARM_TOKEN` env vars.
+- **Exceptions**: `AutoSwarmError`, `AuthenticationError`, `TaskTimeoutError`,
+  `NotFoundError` with `status_code` attribute.
+
+### Workflow Templates (`data/workflow-templates/`)
+- 5 domain YAML templates: `3d-modeling`, `video-production`, `data-analysis`,
+  `devops-pipeline`, `content-marketing`. Each includes `loop_counter` nodes
+  for cycle-safe review loops.
+- **API**: `GET /api/v1/workflows/templates` lists templates,
+  `POST /api/v1/workflows/from-template` creates a Workflow from a template.
+- **UI**: `TemplateGallery.tsx` full-screen modal with category filter tabs
+  (All/Development/Creative/Data/Operations), card grid, and preview.
+  Opened via "Templates" button in `EditorToolbar`.
+
+### RL Orchestration / Puppeteer Mode
+- **ThompsonBandit** (`packages/orchestrator`): Beta distribution multi-armed
+  bandit with `select(candidates)`, `update(agent_id, reward)`, and JSON
+  file persistence.
+- **PuppeteerOrchestrator**: Extends `SwarmOrchestrator` with bandit-based
+  `select_agent()` and `select_agents()` (without replacement).
+- **Puppeteer graph** (`apps/workers/graphs/puppeteer.py`):
+  `decompose` → `assign` (bandit) → `execute_parallel` (semaphore) →
+  `aggregate` → `feedback` → END. Graph type: `"puppeteer"`, timeout: 600s.
+
+### Whiteboards
+- **Schema**: `StrokeSchema` (x, y, toX, toY, color, width, tool, senderId) +
+  `WhiteboardSchema` (id, strokes ArraySchema). Part of `OfficeStateSchema`.
+- **Handler**: `handleWhiteboardDraw` validates and creates strokes; MAX_STROKES=5000
+  ring buffer. `handleWhiteboardClear` removes all strokes.
+- **UI**: `WhiteboardPanel.tsx` with HTML5 Canvas (800x600), pen/eraser tools,
+  8-color palette, 3 width sizes. `useWhiteboard` hook manages state.
+- **Interactable**: `whiteboard` is the 10th interactable type in
+  `InteractableManager`.
+
+### Spotlight/Presentation
+- **Server**: Module-level `currentPresenter` (follows megaphone pattern).
+  First-come-first-served. `handleSpotlightStart/Stop`, `releaseSpotlight`
+  on disconnect. `spotlightPresenter` field on `OfficeStateSchema`.
+- **UI**: `SpotlightView.tsx` (80vh video panel for audience),
+  `SpotlightControls.tsx` (start/stop), `useSpotlight` hook.
+
+### In-Browser Map Editor
+- **Backend**: `Map` model + migration `0008_add_maps_table`. CRUD API at
+  `/api/v1/maps` (follows `workflows.py` pattern). Import/export TMJ.
+- **UI**: `MapEditor.tsx` full-screen modal with `MapCanvas` (HTML5 Canvas tile
+  painter, 32x32 tiles, pan/zoom, multi-layer), `TilePalette`, `ObjectPalette`,
+  `MapToolbar` (New/Save/Load/Export/Import/Undo/Redo/Grid), `MapProperties`.
+- **Converter**: `map-converter.ts` — `internalToTmj()`/`tmjToInternal()`
+  matching `TiledMapLoader.ts` 9-layer contract.
+- **Hook**: `useMapEditor` with undo/redo stack (max 50), CRUD via maps API.
+- Accessed via "Map Editor" button in DashboardPanel header.
+
+### Calendar Integration (`packages/calendar`)
+- **Adapters**: `GoogleCalendarAdapter` (Calendar API v3),
+  `MicrosoftCalendarAdapter` (Graph API v1.0). Both expose `list_events()`
+  and `check_busy()` via `httpx.AsyncClient`.
+- **DB**: `CalendarConnection` model + migration `0009_add_calendar_connections`.
+- **API**: `GET /api/v1/calendar/events`, `POST /connect`, `DELETE /disconnect`,
+  `GET /status`.
+- **UI**: `CalendarPanel.tsx` sliding panel with event list and join-meeting
+  buttons. `useCalendar` hook polls every 60s, auto-sets playerStatus to "busy".
+
+### AI Meeting Notes
+- **Graph**: `build_meeting_graph()` — `transcribe` → `summarize` →
+  `extract_actions` → `save_artifact` → END. Graph type: `"meeting"`,
+  timeout: 300s. Saves results via `LocalFSStorage`.
+- **Template**: `meeting-notes.yaml` in `data/workflow-templates/`.
+- **UI**: `MeetingNotesPanel.tsx` with summary, action items, transcript.
+  `useMeetingNotes` hook dispatches meeting graph and polls for result.
+  "Generate Notes" button in `RecordingControls` after recording stops.
+
+### Music/Mood Status
+- `TacticianSchema.musicStatus` (`@type("string")`, default `""`). Synced via
+  Colyseus. Max 50 chars.
+- `handleMusicStatus` in `handlers/status.ts` validates length.
+- `MusicStatus.tsx`: text input with 6 mood presets, click-to-edit.
+- Rendered below player name labels in `OfficeScene`.
+
+### Simplified View
+- `SimplifiedView.tsx`: accessible HTML-only alternative to Phaser canvas.
+  Department cards (responsive grid), agent list with status badges, approval
+  queue with approve/deny buttons, inline chat. Semantic HTML + ARIA landmarks.
+- View mode toggle: `viewMode: 'game' | 'simple'` in `page.tsx`, persisted to
+  localStorage. Toggle button in HUD.
 
 ## Architecture Notes
 

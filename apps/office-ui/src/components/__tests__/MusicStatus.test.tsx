@@ -4,8 +4,10 @@ import { MusicStatus } from '../MusicStatus';
 
 describe('MusicStatus', () => {
   it('renders current status text', () => {
-    render(<MusicStatus currentStatus="\u{1F3B5} Working" onStatusChange={vi.fn()} />);
-    expect(screen.getByText('\u{1F3B5} Working')).toBeDefined();
+    render(<MusicStatus currentStatus="🎵 Working" onStatusChange={vi.fn()} />);
+    const button = screen.getByRole('button', { name: /music status.*working/i });
+    expect(button).toBeDefined();
+    expect(button.textContent).toContain('Working');
   });
 
   it('shows placeholder when no status set', () => {

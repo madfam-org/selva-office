@@ -186,7 +186,7 @@ class TestMeetingRegistration:
         from autoswarm_redis_pool.timeout import DEFAULT_TIMEOUTS
 
         assert "meeting" in DEFAULT_TIMEOUTS
-        assert DEFAULT_TIMEOUTS["meeting"] == 600
+        assert DEFAULT_TIMEOUTS["meeting"] == 300
 
 
 class TestParseActionItems:
