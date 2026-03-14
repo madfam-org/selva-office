@@ -431,7 +431,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `InteractableManager` (`apps/office-ui/src/game/InteractableManager.ts`) parses
   the `interactables` Tiled object layer and creates Phaser zones with overlap
   detection. Each object has an `interactType` property: `url`, `popup`,
-  `jitsi-zone`, `silent-zone`, or `dispatch`.
+  `jitsi-zone`, `silent-zone`, `dispatch`, `blueprint`, or `desk`.
 - When the player overlaps an interactable zone, a `[E] label` prompt appears.
   Pressing E (buttonX) triggers the action.
 - `url` and `jitsi-zone` types emit `open_cowebsite` → `CoWebsitePanel.tsx`
@@ -481,6 +481,54 @@ The `packages/skills/` package implements the AgentSkills standard.
   `OfficeScene` forwards these to `ScriptBridge.notifyAreaEvent()`.
 - Lifecycle: created on map load if `scriptUrl` property exists, destroyed on
   scene shutdown.
+
+### Click-to-Move & Pathfinding
+
+- `Pathfinder` (`apps/office-ui/src/game/Pathfinder.ts`): A* pathfinding on
+  the Tiled collision grid. Manhattan heuristic, 4-directional, 2000 iteration
+  safety cap. Falls back to direct line when no collision layer.
+- `pointerup` handler in `OfficeScene.createTactician()` computes path on left
+  click, spawns fading indigo marker at destination.
+- Click path followed in `update()` via normalized direction injection into
+  `stickX`/`stickY`. Keyboard/gamepad input immediately cancels click path.
+- `GamepadManager.isFocused()` suppresses clicks while chat/emote picker open.
+
+### Follow Player Camera
+
+- `F` key follows nearest remote player. Camera switches to track their sprite.
+- ESC or manual movement cancels follow.
+- `followLabel` text overlay shows "Following: [name]" while active.
+- `follow-status` gameEventBus event updates HUD badge in React.
+
+### Explorer Mode
+
+- `Tab` toggles explorer mode: zooms camera out to show full map, enables
+  scroll-to-pan with movement sticks, disables player movement.
+- `Tab` or `ESC` exits explorer mode, restoring previous zoom + camera follow.
+- `explorer-mode` gameEventBus event updates HUD badge in React.
+- Agent behavior continues running during explorer mode.
+
+### Player Status (Away/Busy/DND)
+
+- `TacticianSchema.playerStatus` (`@type("string")`, default `"online"`):
+  synced via Colyseus to all clients. Values: `online`, `away`, `busy`, `dnd`.
+- `handleStatus` (`apps/colyseus/src/handlers/status.ts`): validates against
+  whitelist, follows `emotes.ts` handler pattern.
+- `usePlayerStatus` hook: 5-min auto-away timer (30s check interval),
+  auto-restore on activity (mousemove/keydown/pointerdown).
+- `StatusSelector` component: dropdown with colored dots (green/amber/red/grey).
+- Status dot rendered next to remote player name labels in `OfficeScene`.
+- DND status suppresses proximity video connections in `useProximityVideo`.
+
+### Personal Desks
+
+- `desk` interactable type in `InteractableManager` with `assignedAgentId`
+  property parsed from Tiled objects.
+- `AgentBehavior.setDeskPosition()` overrides agent home position so idle
+  agents patrol around their assigned desk.
+- Desk positions wired in `OfficeScene.onStateUpdate()` after agent reconciliation.
+- `DeskInfoPanel` component shows agent name, role, status, and skills on
+  desk interaction. Emits via `open_desk_info` gameEventBus event.
 
 ### UI/UX Infrastructure
 

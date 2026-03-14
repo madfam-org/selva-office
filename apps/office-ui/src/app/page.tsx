@@ -13,6 +13,7 @@ import { AvatarEditor } from '@/components/AvatarEditor';
 import { CoWebsitePanel } from '@/components/CoWebsitePanel';
 import { PopupOverlay } from '@/components/PopupOverlay';
 import { SkillMarketplace } from '@/components/SkillMarketplace';
+import { DeskInfoPanel } from '@/components/DeskInfoPanel';
 import { VideoOverlay } from '@/components/VideoOverlay';
 import { MediaControls } from '@/components/MediaControls';
 import { useApprovals } from '@/hooks/useApprovals';
@@ -20,6 +21,8 @@ import { useTaskDispatch } from '@/hooks/useTaskDispatch';
 import { useColyseus } from '@/hooks/useColyseus';
 import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal } from '@/hooks/useColyseus';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
+import { usePlayerStatus } from '@/hooks/usePlayerStatus';
+import { StatusSelector } from '@/components/StatusSelector';
 import { useProximityVideo } from '@/hooks/useProximityVideo';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
@@ -81,12 +84,18 @@ export default function HomePage() {
     sendChat,
     sendEmote,
     sendAvatarConfig,
+    sendStatus,
     sendSignal,
   } = useColyseus({
     playerName: sessionUser?.name ?? sessionUser?.email ?? 'Tactician',
     onPlayerEmote: handlePlayerEmote,
     onProximityUpdate: handleProximityUpdate,
     onWebRTCSignal: handleWebRTCSignal,
+  });
+
+  const { status: playerStatus, changeStatus: changePlayerStatus } = usePlayerStatus({
+    sendStatus,
+    enabled: colyseusConnected,
   });
 
   const {
@@ -102,6 +111,7 @@ export default function HomePage() {
     localSessionId: sessionId,
     sendSignal,
     enabled: colyseusConnected,
+    playerStatus,
   });
 
   // Wire up the refs now that both hooks are initialized
@@ -133,6 +143,9 @@ export default function HomePage() {
   const [coWebsite, setCoWebsite] = useState<CoWebsiteEvent | null>(null);
   const [popup, setPopup] = useState<PopupEvent | null>(null);
   const [playerPosition, setPlayerPosition] = useState<{ x: number; y: number } | null>(null);
+  const [deskInfo, setDeskInfo] = useState<{ assignedAgentId: string; title: string } | null>(null);
+  const [followingPlayer, setFollowingPlayer] = useState<string | null>(null);
+  const [explorerMode, setExplorerMode] = useState(false);
 
   const handleApprovalOpen = useCallback(
     (agentId: string) => {
@@ -247,6 +260,35 @@ export default function HomePage() {
     }
   }, [colyseusConnected, avatarConfig, sendAvatarConfig]);
 
+  // Listen for desk info events from game
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    import('@/game/PhaserGame').then((mod) => {
+      cleanup = mod.gameEventBus.on('open_desk_info', (detail: unknown) => {
+        const event = detail as { title: string; assignedAgentId: string };
+        setDeskInfo({ assignedAgentId: event.assignedAgentId, title: event.title });
+      });
+    });
+    return () => cleanup?.();
+  }, []);
+
+  // Listen for follow/explorer mode events from game
+  useEffect(() => {
+    const cleanups: Array<() => void> = [];
+    import('@/game/PhaserGame').then((mod) => {
+      cleanups.push(
+        mod.gameEventBus.on('follow-status', (detail: unknown) => {
+          const { following, name } = detail as { following: boolean; name: string };
+          setFollowingPlayer(following ? name : null);
+        }),
+        mod.gameEventBus.on('explorer-mode', (detail: unknown) => {
+          setExplorerMode(detail as boolean);
+        }),
+      );
+    });
+    return () => cleanups.forEach((c) => c());
+  }, []);
+
   return (
     <ErrorBoundary>
     <ToastProvider>
@@ -273,6 +315,8 @@ export default function HomePage() {
         playerPosition={playerPosition}
         userName={sessionUser?.name ?? sessionUser?.email ?? null}
         onApprovalClick={handleApprovalPanelOpen}
+        followingPlayer={followingPlayer}
+        explorerMode={explorerMode}
       />
 
       <DashboardPanel
@@ -335,6 +379,13 @@ export default function HomePage() {
         Avatar
       </button>
 
+      <div className="absolute top-14 right-4 z-hud">
+        <StatusSelector
+          currentStatus={playerStatus}
+          onStatusChange={changePlayerStatus}
+        />
+      </div>
+
       <CoWebsitePanel
         url={coWebsite?.url ?? null}
         title={coWebsite?.title ?? ''}
@@ -352,6 +403,14 @@ export default function HomePage() {
         open={workflowEditorOpen}
         onClose={() => setWorkflowEditorOpen(false)}
         officeState={officeState}
+      />
+
+      <DeskInfoPanel
+        open={!!deskInfo}
+        onClose={() => setDeskInfo(null)}
+        assignedAgentId={deskInfo?.assignedAgentId ?? ''}
+        deskTitle={deskInfo?.title ?? 'Desk'}
+        departments={officeState?.departments ?? []}
       />
 
       <SkillMarketplace

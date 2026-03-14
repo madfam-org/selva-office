@@ -30,6 +30,7 @@ export interface Player {
   y: number;
   direction: 'up' | 'down' | 'left' | 'right';
   avatarConfig?: string;
+  playerStatus?: 'online' | 'away' | 'busy' | 'dnd';
 }
 
 export interface ChatMessage {

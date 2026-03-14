@@ -43,6 +43,11 @@ export class GamepadManager {
     this.emotePickerFocused = focused;
   }
 
+  /** Returns true if any UI element (chat, emote picker) has input focus. */
+  isFocused(): boolean {
+    return this.chatFocused || this.emotePickerFocused;
+  }
+
   destroy(): void {
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', this.onKeyDown);
@@ -123,9 +128,8 @@ export class GamepadManager {
     if (this.keysPressedThisFrame.has('KeyE')) {
       buttonX = true;
     }
-    if (this.keysPressedThisFrame.has('Tab')) {
-      buttonY = true;
-    }
+    // Tab now handled by OfficeScene for explorer mode
+    // buttonY is only triggered by gamepad Y button
 
     return {
       leftStickX,

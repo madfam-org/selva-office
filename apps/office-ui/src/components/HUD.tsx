@@ -13,6 +13,8 @@ interface HUDProps {
   playerPosition?: { x: number; y: number } | null;
   userName?: string | null;
   onApprovalClick?: () => void;
+  followingPlayer?: string | null;
+  explorerMode?: boolean;
 }
 
 const WORLD_WIDTH = 1600;
@@ -142,6 +144,8 @@ export const HUD: FC<HUDProps> = ({
   playerPosition = null,
   userName = null,
   onApprovalClick,
+  followingPlayer = null,
+  explorerMode = false,
 }) => {
   const tokenPercent = computeTokens
     ? Math.min((computeTokens.used / computeTokens.limit) * 100, 100)
@@ -191,7 +195,21 @@ export const HUD: FC<HUDProps> = ({
         )}
       </div>
 
-      {/* Center: Agent Count */}
+      {/* Center: Agent Count + Status Badges */}
+      <div className="pointer-events-auto flex flex-col items-center gap-2">
+        {followingPlayer && (
+          <div className="retro-panel px-3 py-1.5 font-mono text-[8px] text-emerald-400 animate-fade-in">
+            Following: {followingPlayer} <span className="text-slate-500">[ESC]</span>
+          </div>
+        )}
+        {explorerMode && (
+          <div className="retro-panel px-3 py-1.5 font-mono text-[8px] text-indigo-400 animate-fade-in">
+            EXPLORER MODE <span className="text-slate-500">[Tab/ESC]</span>
+          </div>
+        )}
+      </div>
+
+      {/* Agent Count */}
       <div className="pointer-events-auto retro-panel px-4 py-3 text-center font-mono">
         <span className="pixel-text text-[8px] uppercase text-slate-400">
           Active Agents

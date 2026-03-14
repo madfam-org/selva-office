@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { gameEventBus } from './PhaserGame';
 
-export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch' | 'blueprint';
+export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch' | 'blueprint' | 'desk';
 
 export interface InteractableDef {
   id: string;
@@ -15,6 +15,8 @@ export interface InteractableDef {
   content: string;
   /** Optional label shown when player is in proximity */
   label?: string;
+  /** Agent ID assigned to this desk (desk interactType only) */
+  assignedAgentId?: string;
 }
 
 interface ActiveZone {
@@ -24,7 +26,7 @@ interface ActiveZone {
   isOverlapping: boolean;
 }
 
-const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch', 'blueprint'];
+const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch', 'blueprint', 'desk'];
 
 /**
  * Manages interactive map objects parsed from Tiled object layer 'interactables'.
@@ -65,6 +67,7 @@ export class InteractableManager {
         height: obj.height ?? 32,
         content: (this.getProp(obj, 'content') as string) ?? '',
         label: (this.getProp(obj, 'label') as string) ?? undefined,
+        assignedAgentId: (this.getProp(obj, 'assignedAgentId') as string) ?? undefined,
       };
 
       this.createZone(def);
@@ -198,6 +201,14 @@ export class InteractableManager {
           title: def.label ?? 'Workflow Editor',
         });
         break;
+      case 'desk':
+        gameEventBus.emit('open_desk_info', {
+          title: def.label ?? 'Desk',
+          assignedAgentId: def.assignedAgentId ?? '',
+          x: def.x,
+          y: def.y,
+        });
+        break;
       // silent-zone handled in update() via enter/exit events
     }
   }
@@ -205,6 +216,23 @@ export class InteractableManager {
   /** Whether the player is currently overlapping any interactable */
   hasActiveOverlap(): boolean {
     return this.currentOverlap !== null;
+  }
+
+  /**
+   * Return a map of agentId -> desk center position for all desk interactables
+   * that have an assignedAgentId property.
+   */
+  getDeskPositions(): Map<string, { x: number; y: number }> {
+    const desks = new Map<string, { x: number; y: number }>();
+    for (const az of this.zones) {
+      if (az.def.interactType === 'desk' && az.def.assignedAgentId) {
+        desks.set(az.def.assignedAgentId, {
+          x: az.def.x + az.def.width / 2,
+          y: az.def.y + az.def.height / 2,
+        });
+      }
+    }
+    return desks;
   }
 
   destroy(): void {

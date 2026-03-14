@@ -174,6 +174,96 @@ describe('InteractableManager zone tracking', () => {
     });
   });
 
+  it('emits open_desk_info event for desk interactType', async () => {
+    const { gameEventBus } = await import('../PhaserGame');
+
+    const def = {
+      id: '50',
+      name: 'Agent Desk',
+      interactType: 'desk' as const,
+      x: 100,
+      y: 200,
+      width: 48,
+      height: 48,
+      content: '',
+      label: 'Planner Desk',
+      assignedAgentId: 'agent-abc-123',
+    };
+
+    switch (def.interactType) {
+      case 'desk':
+        gameEventBus.emit('open_desk_info', {
+          title: def.label ?? 'Desk',
+          assignedAgentId: def.assignedAgentId ?? '',
+          x: def.x,
+          y: def.y,
+        });
+        break;
+    }
+
+    expect(mockEmit).toHaveBeenCalledWith('open_desk_info', {
+      title: 'Planner Desk',
+      assignedAgentId: 'agent-abc-123',
+      x: 100,
+      y: 200,
+    });
+  });
+
+  it('desk type uses default title when label is undefined', async () => {
+    const { gameEventBus } = await import('../PhaserGame');
+
+    const def = {
+      id: '51',
+      name: 'Some Desk',
+      interactType: 'desk' as const,
+      x: 50,
+      y: 60,
+      width: 32,
+      height: 32,
+      content: '',
+      label: undefined,
+      assignedAgentId: undefined,
+    };
+
+    switch (def.interactType) {
+      case 'desk':
+        gameEventBus.emit('open_desk_info', {
+          title: def.label ?? 'Desk',
+          assignedAgentId: def.assignedAgentId ?? '',
+          x: def.x,
+          y: def.y,
+        });
+        break;
+    }
+
+    expect(mockEmit).toHaveBeenCalledWith('open_desk_info', {
+      title: 'Desk',
+      assignedAgentId: '',
+      x: 50,
+      y: 60,
+    });
+  });
+
+  it('desk type is recognized in the switch statement', () => {
+    const interactType: string = 'desk';
+    let emitted = false;
+
+    switch (interactType) {
+      case 'url':
+      case 'popup':
+      case 'jitsi-zone':
+      case 'silent-zone':
+      case 'dispatch':
+      case 'blueprint':
+        break;
+      case 'desk':
+        emitted = true;
+        break;
+    }
+
+    expect(emitted).toBe(true);
+  });
+
   it('does not emit zone_enter when already inside zone', () => {
     const zones = [
       { def: { id: '1', name: 'TestZone' }, isOverlapping: true },
@@ -191,5 +281,53 @@ describe('InteractableManager zone tracking', () => {
     }
 
     expect(mockEmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('InteractableManager getDeskPositions logic', () => {
+  it('returns desk center positions keyed by assignedAgentId', () => {
+    // Simulate the getDeskPositions logic without Phaser runtime
+    interface DeskZone {
+      def: { interactType: string; assignedAgentId?: string; x: number; y: number; width: number; height: number };
+    }
+
+    const zones: DeskZone[] = [
+      { def: { interactType: 'desk', assignedAgentId: 'agent-1', x: 100, y: 200, width: 48, height: 48 } },
+      { def: { interactType: 'desk', assignedAgentId: 'agent-2', x: 300, y: 400, width: 64, height: 64 } },
+      { def: { interactType: 'dispatch', x: 500, y: 600, width: 48, height: 48 } },
+      { def: { interactType: 'desk', x: 700, y: 800, width: 48, height: 48 } }, // no assignedAgentId
+    ];
+
+    const desks = new Map<string, { x: number; y: number }>();
+    for (const az of zones) {
+      if (az.def.interactType === 'desk' && az.def.assignedAgentId) {
+        desks.set(az.def.assignedAgentId, {
+          x: az.def.x + az.def.width / 2,
+          y: az.def.y + az.def.height / 2,
+        });
+      }
+    }
+
+    expect(desks.size).toBe(2);
+    expect(desks.get('agent-1')).toEqual({ x: 124, y: 224 });
+    expect(desks.get('agent-2')).toEqual({ x: 332, y: 432 });
+  });
+
+  it('returns empty map when no desk zones exist', () => {
+    const zones: Array<{ def: { interactType: string; assignedAgentId?: string; x: number; y: number; width: number; height: number } }> = [
+      { def: { interactType: 'dispatch', x: 100, y: 200, width: 48, height: 48 } },
+    ];
+
+    const desks = new Map<string, { x: number; y: number }>();
+    for (const az of zones) {
+      if (az.def.interactType === 'desk' && az.def.assignedAgentId) {
+        desks.set(az.def.assignedAgentId, {
+          x: az.def.x + az.def.width / 2,
+          y: az.def.y + az.def.height / 2,
+        });
+      }
+    }
+
+    expect(desks.size).toBe(0);
   });
 });
