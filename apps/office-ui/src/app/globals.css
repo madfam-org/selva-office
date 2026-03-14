@@ -1,3 +1,5 @@
+@import '@xyflow/react/dist/style.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -215,6 +217,50 @@
   box-shadow:
     inset 1px 1px 0px 0px rgba(0, 0, 0, 0.4),
     0 0 0 1px var(--pixelact-primary);
+}
+
+/* React Flow dark theme overrides for workflow editor */
+.workflow-editor .react-flow__background {
+  background-color: #0f172a;
+}
+
+.workflow-editor .react-flow__edge-path {
+  stroke: #6366f1;
+  stroke-width: 1.5;
+}
+
+.workflow-editor .react-flow__edge.selected .react-flow__edge-path {
+  stroke: #818cf8;
+  stroke-width: 2.5;
+}
+
+.workflow-editor .react-flow__handle {
+  border-color: #475569;
+}
+
+.workflow-editor .react-flow__controls {
+  background: #1e293b;
+  border-color: #475569;
+  box-shadow: 2px 2px 0px 0px #000;
+}
+
+.workflow-editor .react-flow__controls-button {
+  background: #1e293b;
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+.workflow-editor .react-flow__controls-button:hover {
+  background: #334155;
+}
+
+.workflow-editor .react-flow__minimap {
+  background: #0f172a;
+  border-color: #475569;
+}
+
+.workflow-editor .react-flow__attribution {
+  display: none;
 }
 
 /* CRT scanline overlay */

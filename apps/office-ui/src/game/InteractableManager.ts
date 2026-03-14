@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { gameEventBus } from './PhaserGame';
 
-export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch';
+export type InteractType = 'url' | 'popup' | 'jitsi-zone' | 'silent-zone' | 'dispatch' | 'blueprint';
 
 export interface InteractableDef {
   id: string;
@@ -24,7 +24,7 @@ interface ActiveZone {
   isOverlapping: boolean;
 }
 
-const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch'];
+const INTERACT_TYPES: InteractType[] = ['url', 'popup', 'jitsi-zone', 'silent-zone', 'dispatch', 'blueprint'];
 
 /**
  * Manages interactive map objects parsed from Tiled object layer 'interactables'.
@@ -191,6 +191,11 @@ export class InteractableManager {
       case 'dispatch':
         gameEventBus.emit('open_dispatch', {
           title: def.label ?? 'Dispatch Station',
+        });
+        break;
+      case 'blueprint':
+        gameEventBus.emit('open_blueprint', {
+          title: def.label ?? 'Workflow Editor',
         });
         break;
       // silent-zone handled in update() via enter/exit events

@@ -25,6 +25,11 @@ import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
 import type { ApprovalRequest, AvatarConfig } from '@autoswarm/shared-types';
 import { getSessionUser } from '@/lib/api';
 
+const WorkflowEditor = dynamic(
+  () => import('@/components/workflow-editor/WorkflowEditor').then((m) => ({ default: m.WorkflowEditor })),
+  { ssr: false },
+);
+
 const PhaserGame = dynamic(() => import('@/game/PhaserGame'), {
   ssr: false,
   loading: () => (
@@ -117,6 +122,7 @@ export default function HomePage() {
   const [avatarEditorOpen, setAvatarEditorOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [dispatchPanelOpen, setDispatchPanelOpen] = useState(false);
+  const [workflowEditorOpen, setWorkflowEditorOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -184,6 +190,12 @@ export default function HomePage() {
     setDispatchPanelOpen(true);
   }, []);
 
+  const handleBlueprintOpen = useCallback(() => {
+    setWorkflowEditorOpen(true);
+    setDashboardOpen(false);
+    setDispatchPanelOpen(false);
+  }, []);
+
   const handleDispatchClose = useCallback(() => {
     setDispatchPanelOpen(false);
   }, []);
@@ -227,6 +239,7 @@ export default function HomePage() {
         onCoWebsite={handleCoWebsite}
         onPopup={handlePopup}
         onDispatchOpen={handleDispatchOpen}
+        onBlueprintOpen={handleBlueprintOpen}
       />
 
       <HUD
@@ -301,6 +314,12 @@ export default function HomePage() {
         title={popup?.title ?? ''}
         content={popup?.content ?? ''}
         onClose={() => setPopup(null)}
+      />
+
+      <WorkflowEditor
+        open={workflowEditorOpen}
+        onClose={() => setWorkflowEditorOpen(false)}
+        officeState={officeState}
       />
 
       {activeApproval && (

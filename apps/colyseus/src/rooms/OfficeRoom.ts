@@ -91,6 +91,14 @@ const DEFAULT_DEPARTMENTS: Array<{
     x: 600,
     y: 400,
   },
+  {
+    id: "dept-blueprint",
+    name: "Blueprint Lab",
+    slug: "blueprint",
+    maxAgents: 0,
+    x: 800,
+    y: 260,
+  },
 ];
 
 export class OfficeRoom extends Room<OfficeStateSchema> {
@@ -326,12 +334,14 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
             status: string;
             task_id?: string;
             task_description?: string;
+            current_node_id?: string;
           };
           this.updateAgentInState(
             update.agent_id,
             update.status,
             update.task_id,
-            update.task_description
+            update.task_description,
+            update.current_node_id
           );
         } catch (err) {
           logger.error({ err }, "Bad agent-status message");
@@ -357,7 +367,8 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     agentId: string,
     status: string,
     taskId?: string,
-    taskDescription?: string
+    taskDescription?: string,
+    currentNodeId?: string
   ): void {
     const applyUpdate = (agent: AgentSchema): void => {
       agent.status = status;
@@ -367,10 +378,14 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       if (taskDescription !== undefined) {
         agent.currentTaskDescription = taskDescription;
       }
+      if (currentNodeId !== undefined) {
+        agent.currentNodeId = currentNodeId;
+      }
       // Clear task fields when agent returns to idle
       if (status === "idle" && taskId === undefined) {
         agent.currentTaskId = "";
         agent.currentTaskDescription = "";
+        agent.currentNodeId = "";
       }
       if (status === "waiting_approval") {
         this.state.pendingApprovalCount += 1;

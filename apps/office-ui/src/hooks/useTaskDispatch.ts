@@ -5,10 +5,11 @@ import { apiFetch } from '@/lib/api';
 
 export interface DispatchRequest {
   description: string;
-  graph_type: 'coding' | 'research' | 'crm' | 'sequential' | 'parallel';
+  graph_type: 'coding' | 'research' | 'crm' | 'sequential' | 'parallel' | 'custom';
   assigned_agent_ids?: string[];
   required_skills?: string[];
   payload?: Record<string, unknown>;
+  workflow_id?: string;
 }
 
 export interface DispatchResponse {

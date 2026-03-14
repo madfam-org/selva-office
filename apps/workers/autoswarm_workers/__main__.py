@@ -137,16 +137,23 @@ async def run_graph_with_interrupts(
     return result
 
 
-async def _publish_agent_status(agent_id: str, new_status: str) -> None:
+async def _publish_agent_status(
+    agent_id: str,
+    new_status: str,
+    current_node_id: str | None = None,
+) -> None:
     """Publish an agent status change to Redis for Colyseus consumption."""
     if agent_id == "unknown":
         return
     try:
         pool = get_redis_pool()
+        payload: dict[str, str] = {"agent_id": agent_id, "status": new_status}
+        if current_node_id is not None:
+            payload["current_node_id"] = current_node_id
         await pool.execute_with_retry(
             "publish",
             AGENT_STATUS_CHANNEL,
-            json.dumps({"agent_id": agent_id, "status": new_status}),
+            json.dumps(payload),
         )
     except Exception:
         logger.warning("Failed to publish agent status for %s", agent_id)
@@ -273,23 +280,100 @@ async def process_task(task_data: dict) -> None:
     try:
         # Apply per-graph-type timeout
         timeout = get_task_timeout(graph_type)
-        result = await asyncio.wait_for(
-            run_graph_with_interrupts(
-                compiled, initial_state, task_id, agent_id, handler
-            ),
-            timeout=timeout,
-        )
+
+        if graph_type == "custom":
+            # Stream node progress for custom workflows
+            result = await asyncio.wait_for(
+                _run_custom_with_streaming(
+                    compiled, initial_state, task_id, agent_id, handler
+                ),
+                timeout=timeout,
+            )
+        else:
+            result = await asyncio.wait_for(
+                run_graph_with_interrupts(
+                    compiled, initial_state, task_id, agent_id, handler
+                ),
+                timeout=timeout,
+            )
         logger.info("Task %s completed with status: %s", task_id, result.get("status"))
-        await _publish_agent_status(agent_id, "idle")
+        await _publish_agent_status(agent_id, "idle", current_node_id="")
     except TimeoutError:
         logger.error("Task %s timed out after %ds", task_id, timeout)
-        await _publish_agent_status(agent_id, "error")
+        await _publish_agent_status(agent_id, "error", current_node_id="")
     except Exception:
         logger.exception("Task %s failed", task_id)
-        await _publish_agent_status(agent_id, "error")
+        await _publish_agent_status(agent_id, "error", current_node_id="")
     finally:
         await handler.close()
         clear_context()
+
+
+async def _run_custom_with_streaming(
+    compiled,  # noqa: ANN001
+    initial_state: dict[str, object],
+    task_id: str,
+    agent_id: str,
+    handler: InterruptHandler,
+) -> dict[str, object]:
+    """Run a custom workflow graph with per-node status streaming.
+
+    Uses ``compiled.astream()`` to emit node progress events to Colyseus
+    via Redis pub/sub, enabling real-time execution visualization.
+    """
+    config: dict[str, dict[str, str]] = {"configurable": {"thread_id": task_id}}
+    result: dict[str, object] = {}
+
+    async for event in compiled.astream(initial_state, config, stream_mode="updates"):
+        if isinstance(event, dict):
+            for node_id, node_output in event.items():
+                logger.info("Task %s: node '%s' executed", task_id, node_id)
+                await _publish_agent_status(agent_id, "working", current_node_id=node_id)
+                if isinstance(node_output, dict):
+                    result.update(node_output)
+
+    # Check for interrupts after streaming completes
+    snapshot = compiled.get_state(config)
+    while snapshot.next:
+        interrupt_value = None
+        if snapshot.tasks and snapshot.tasks[0].interrupts:
+            interrupt_value = snapshot.tasks[0].interrupts[0].value
+
+        action_category = "api_call"
+        payload: dict[str, object] = {"task_id": task_id}
+        reasoning = f"Agent {agent_id} requires approval during task {task_id}."
+        if isinstance(interrupt_value, dict):
+            action_category = interrupt_value.get("action_category", action_category)
+            payload.update(interrupt_value)
+            reasoning = interrupt_value.get("reasoning", reasoning)
+
+        request_id = await handler.create_approval_request(
+            agent_id=agent_id,
+            action_category=action_category,
+            payload=payload,
+            reasoning=reasoning,
+        )
+        await _publish_agent_status(agent_id, "waiting_approval")
+        approval = await handler.wait_for_approval(request_id)
+        resume_value = {
+            "approved": approval.result == "approved",
+            "feedback": approval.feedback,
+        }
+        await _publish_agent_status(agent_id, "working")
+
+        async for event in compiled.astream(
+            Command(resume=resume_value), config, stream_mode="updates"
+        ):
+            if isinstance(event, dict):
+                for node_id, node_output in event.items():
+                    logger.info("Task %s: node '%s' executed (post-resume)", task_id, node_id)
+                    await _publish_agent_status(agent_id, "working", current_node_id=node_id)
+                    if isinstance(node_output, dict):
+                        result.update(node_output)
+
+        snapshot = compiled.get_state(config)
+
+    return result
 
 
 async def main() -> None:

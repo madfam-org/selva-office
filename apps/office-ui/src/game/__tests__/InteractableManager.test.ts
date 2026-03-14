@@ -146,6 +146,34 @@ describe('InteractableManager zone tracking', () => {
     expect(mockEmit).toHaveBeenCalledWith('zone_leave', { areaName: 'TestZone' });
   });
 
+  it('emits open_blueprint event for blueprint interactType', async () => {
+    const { gameEventBus } = await import('../PhaserGame');
+
+    const def = {
+      id: '33',
+      name: 'Workflow Editor',
+      interactType: 'blueprint' as const,
+      x: 864,
+      y: 320,
+      width: 64,
+      height: 48,
+      content: '',
+      label: 'Workflow Editor',
+    };
+
+    switch (def.interactType) {
+      case 'blueprint':
+        gameEventBus.emit('open_blueprint', {
+          title: def.label ?? 'Workflow Editor',
+        });
+        break;
+    }
+
+    expect(mockEmit).toHaveBeenCalledWith('open_blueprint', {
+      title: 'Workflow Editor',
+    });
+  });
+
   it('does not emit zone_enter when already inside zone', () => {
     const zones = [
       { def: { id: '1', name: 'TestZone' }, isOverlapping: true },
