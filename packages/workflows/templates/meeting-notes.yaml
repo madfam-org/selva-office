@@ -1,0 +1,24 @@
+name: Meeting Notes
+description: Transcribe audio recording, summarize discussion, and extract action items
+nodes:
+  - id: transcribe
+    type: agent
+    config:
+      system_prompt: "You are a transcription assistant. Transcribe the meeting recording accurately."
+      model: gpt-4o
+    next: summarize
+  - id: summarize
+    type: agent
+    config:
+      system_prompt: "You are a meeting summarizer. Create a concise summary of the key discussion points."
+      model: gpt-4o
+    next: extract_actions
+  - id: extract_actions
+    type: agent
+    config:
+      system_prompt: "You are a task extraction assistant. Extract action items with assignees and deadlines from the meeting transcript and summary."
+      model: gpt-4o
+    next: output
+  - id: output
+    type: passthrough
+entry_point: transcribe
