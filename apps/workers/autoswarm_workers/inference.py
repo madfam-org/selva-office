@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from autoswarm_inference import InferenceProvider, InferenceRequest, InferenceResponse, ModelRouter
 from autoswarm_inference.providers.anthropic import AnthropicProvider
+from autoswarm_inference.providers.generic import GenericOpenAIProvider
 from autoswarm_inference.providers.ollama import OllamaProvider
 from autoswarm_inference.providers.openai import OpenAIProvider
 from autoswarm_inference.providers.openrouter import OpenRouterProvider
@@ -31,6 +33,27 @@ def build_model_router() -> ModelRouter:
         providers["openai"] = OpenAIProvider(api_key=settings.openai_api_key)
     if settings.openrouter_api_key:
         providers["openrouter"] = OpenRouterProvider(api_key=settings.openrouter_api_key)
+    if settings.together_api_key:
+        providers["together"] = GenericOpenAIProvider(
+            base_url="https://api.together.xyz/v1",
+            api_key=settings.together_api_key,
+            model="meta-llama/Llama-3.3-70B-Instruct",
+            provider_name="together",
+        )
+    if settings.fireworks_api_key:
+        providers["fireworks"] = GenericOpenAIProvider(
+            base_url="https://api.fireworks.ai/inference/v1",
+            api_key=settings.fireworks_api_key,
+            model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+            provider_name="fireworks",
+        )
+    if settings.deepinfra_api_key:
+        providers["deepinfra"] = GenericOpenAIProvider(
+            base_url="https://api.deepinfra.com/v1/openai",
+            api_key=settings.deepinfra_api_key,
+            model="meta-llama/Llama-3.3-70B-Instruct",
+            provider_name="deepinfra",
+        )
 
     # Always include ollama as local provider.
     providers["ollama"] = OllamaProvider(base_url=settings.ollama_base_url)
@@ -51,7 +74,7 @@ def get_model_router() -> ModelRouter:
 
 async def call_llm(
     router: ModelRouter,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     system_prompt: str = "",
     sensitivity: Sensitivity = Sensitivity.INTERNAL,
     agent_id: str | None = None,

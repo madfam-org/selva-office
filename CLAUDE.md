@@ -14,11 +14,13 @@
 - `packages/inference/src/router.py` -- LLM model routing logic
 - `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
 - `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
-- `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (23 built-in tools)
+- `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (24 built-in tools)
 - `packages/memory/src/autoswarm_memory/store.py` -- Per-agent FAISS memory store
 - `packages/tools/src/autoswarm_tools/storage/local.py` -- Content-addressable artifact storage
 - `packages/tools/src/autoswarm_tools/builtins/artifact.py` -- Artifact management tools (save/retrieve/list)
 - `packages/workflows/src/autoswarm_workflows/nodes/batch.py` -- Batch processing node handler
+- `packages/tools/src/autoswarm_tools/builtins/image_analysis.py` -- Image analysis tool (multimodal)
+- `apps/nexus-api/nexus_api/routers/marketplace.py` -- Skill marketplace CRUD API
 
 ## Port Assignments
 
@@ -215,6 +217,38 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Validator**: checks `MISSING_BATCH_SPLIT_KEY`, `MISSING_BATCH_DELEGATE`,
   `INVALID_BATCH_DELEGATE`.
 - **UI**: `BatchNode` React Flow component, palette entry, PropertiesPanel fields.
+
+#### Multimodal Inference (5.3)
+- **Types**: `ContentType` enum (TEXT/IMAGE_URL/IMAGE_BASE64), `MediaContent` model
+  in `packages/inference/autoswarm_inference/types.py`. `InferenceRequest.messages`
+  accepts `list[dict[str, Any]]` for multimodal content blocks. `has_media()` helper.
+- **Provider vision**: `InferenceProvider.supports_vision` property (default False).
+  OpenAI, Anthropic, Ollama, Generic providers all support vision with
+  `_format_messages()` converting to native multimodal formats.
+- **Router**: Vision-aware provider selection — filters to `supports_vision=True`
+  providers when `request.has_media()`.
+- **Open-source providers**: Together AI, Fireworks AI, DeepInfra registered as
+  `GenericOpenAIProvider` instances in worker `build_model_router()`. Config fields
+  in both worker and nexus-api Settings. `CLOUD_PRIORITY` and `CHEAPEST_PRIORITY`
+  updated (deepinfra cheapest, anthropic highest quality).
+- **ImageAnalysisTool**: `builtins/image_analysis.py` — constructs multimodal
+  messages with image + prompt, returns `requires_inference: True` for worker dispatch.
+- **Tool count**: 24 built-in tools (was 23).
+
+#### Skill Marketplace (5.4)
+- **DB**: `SkillMarketplaceEntry` and `SkillRating` models in `models.py`.
+  Migration `0007_add_skill_marketplace` creates both tables with FK CASCADE,
+  unique constraint on `(entry_id, user_id)`.
+- **REST API**: `routers/marketplace.py` — `GET/POST/DELETE /api/v1/marketplace/skills`,
+  `POST .../rate`, `POST .../install`. Search, category filter, sort by
+  downloads/rating/newest. Install writes SKILL.md to `community-skills/` and
+  calls `registry.refresh()`.
+- **Registry**: `SkillRegistry.refresh()` clears caches and re-discovers skills.
+  `parse_skill_md_string()` validates YAML from raw strings (marketplace publish).
+- **UI**: `SkillMarketplace.tsx` full-screen modal with search, category tabs,
+  sort, 2-column card grid, detail view with readme/YAML preview/rating form.
+  `useMarketplace` hook (state machine). Accessed via "Skills" button in
+  DashboardPanel header.
 
 ## Architecture Notes
 

@@ -8,6 +8,7 @@ interface DashboardPanelProps {
   onToggle: () => void;
   departments: Department[];
   onNewTask?: () => void;
+  onOpenMarketplace?: () => void;
 }
 
 type TaskStatus = 'backlog' | 'in_progress' | 'review' | 'done';
@@ -83,6 +84,7 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
   onToggle,
   departments,
   onNewTask,
+  onOpenMarketplace,
 }) => {
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const tasks = deriveTasksFromAgents(departments);
@@ -136,14 +138,24 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
             <h2 className="pixel-text text-[10px] uppercase tracking-wider text-indigo-400">
               Dashboard
             </h2>
-            {onNewTask && (
-              <button
-                onClick={onNewTask}
-                className="rounded bg-indigo-600 px-2 py-1 font-mono text-[8px] text-white hover:bg-indigo-500 transition-colors"
-              >
-                + New Task
-              </button>
-            )}
+            <div className="flex gap-1.5">
+              {onOpenMarketplace && (
+                <button
+                  onClick={onOpenMarketplace}
+                  className="rounded bg-purple-600 px-2 py-1 font-mono text-[8px] text-white hover:bg-purple-500 transition-colors"
+                >
+                  Skills
+                </button>
+              )}
+              {onNewTask && (
+                <button
+                  onClick={onNewTask}
+                  className="rounded bg-indigo-600 px-2 py-1 font-mono text-[8px] text-white hover:bg-indigo-500 transition-colors"
+                >
+                  + New Task
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Department filter tabs */}

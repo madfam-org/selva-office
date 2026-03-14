@@ -29,6 +29,7 @@ class GenericOpenAIProvider(OpenAIProvider):
         model: str,
         timeout: float = 120.0,
         provider_name: str = "generic",
+        vision: bool = True,
     ) -> None:
         super().__init__(
             api_key,
@@ -37,3 +38,9 @@ class GenericOpenAIProvider(OpenAIProvider):
             timeout=timeout,
         )
         self.name = provider_name
+        self._vision = vision
+
+    @property
+    def supports_vision(self) -> bool:
+        """Whether this generic endpoint supports vision, configurable at init."""
+        return self._vision

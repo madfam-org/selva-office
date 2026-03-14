@@ -35,13 +35,60 @@ class OllamaProvider(InferenceProvider):
         self._model = model
         self._timeout = timeout
 
+    @property
+    def supports_vision(self) -> bool:
+        """Ollama supports vision for models like llava, bakllava, etc."""
+        return True
+
+    @staticmethod
+    def _format_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Convert multimodal message content to Ollama's format.
+
+        Ollama expects images as a list of base64 strings in an ``images``
+        field alongside the ``content`` text field per message.
+
+        - Plain string content is passed through unchanged.
+        - List content blocks are split into text (concatenated) and images
+          (base64 data extracted into the ``images`` list).
+        """
+        formatted: list[dict[str, Any]] = []
+        for msg in messages:
+            content = msg.get("content")
+            if isinstance(content, str) or content is None:
+                formatted.append(msg)
+                continue
+
+            # content is a list of blocks -- extract text and images separately
+            text_parts: list[str] = []
+            images: list[str] = []
+            for block in content:
+                block_type = block.get("type", "")
+                if block_type == "text":
+                    text_parts.append(block.get("content", ""))
+                elif block_type == "image_base64":
+                    images.append(block["content"])
+                elif block_type == "image_url":
+                    # Ollama does not natively support image URLs --
+                    # include a note in the text as a fallback.
+                    text_parts.append(f"[Image: {block['content']}]")
+
+            new_msg: dict[str, Any] = {
+                **msg,
+                "content": "\n".join(text_parts) if text_parts else "",
+            }
+            if images:
+                new_msg["images"] = images
+            formatted.append(new_msg)
+        return formatted
+
     def _build_body(
         self, request: InferenceRequest, *, stream: bool = False
     ) -> dict[str, Any]:
-        messages: list[dict[str, str]] = []
+        messages: list[dict[str, Any]] = []
         if request.system_prompt:
             messages.append({"role": "system", "content": request.system_prompt})
         messages.extend(request.messages)
+        messages = self._format_messages(messages)
 
         body: dict[str, Any] = {
             "model": self._model,

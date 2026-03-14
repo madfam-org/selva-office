@@ -31,6 +31,11 @@ class AnthropicProvider(InferenceProvider):
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
 
+    @property
+    def supports_vision(self) -> bool:
+        """Anthropic Claude models support vision natively."""
+        return True
+
     def _headers(self) -> dict[str, str]:
         return {
             "x-api-key": self._api_key,
@@ -38,12 +43,67 @@ class AnthropicProvider(InferenceProvider):
             "content-type": "application/json",
         }
 
+    @staticmethod
+    def _format_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Convert multimodal message content to Anthropic's native format.
+
+        - Plain string content is wrapped as ``[{"type": "text", "text": ...}]``.
+        - List content blocks are converted:
+          - ``text`` blocks -> ``{"type": "text", "text": ...}``
+          - ``image_base64`` blocks -> ``{"type": "image", "source":
+            {"type": "base64", "media_type": ..., "data": ...}}``
+          - ``image_url`` blocks -> ``{"type": "image", "source":
+            {"type": "url", "url": ...}}``
+        """
+        formatted: list[dict[str, Any]] = []
+        for msg in messages:
+            content = msg.get("content")
+            if isinstance(content, str) or content is None:
+                text = content or ""
+                formatted.append({
+                    **msg,
+                    "content": [{"type": "text", "text": text}],
+                })
+                continue
+
+            # content is a list of blocks
+            anthropic_blocks: list[dict[str, Any]] = []
+            for block in content:
+                block_type = block.get("type", "")
+                if block_type == "text":
+                    anthropic_blocks.append({"type": "text", "text": block["content"]})
+                elif block_type == "image_base64":
+                    mime = block.get("mime_type", "image/png")
+                    anthropic_blocks.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime,
+                            "data": block["content"],
+                        },
+                    })
+                elif block_type == "image_url":
+                    anthropic_blocks.append({
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": block["content"],
+                        },
+                    })
+                else:
+                    if "content" in block:
+                        anthropic_blocks.append({"type": "text", "text": block["content"]})
+
+            formatted.append({**msg, "content": anthropic_blocks})
+        return formatted
+
     def _build_body(self, request: InferenceRequest, *, stream: bool = False) -> dict[str, Any]:
+        messages = self._format_messages(request.messages)
         body: dict[str, Any] = {
             "model": self._model,
             "max_tokens": request.policy.max_tokens,
             "temperature": request.policy.temperature,
-            "messages": request.messages,
+            "messages": messages,
         }
         if request.system_prompt:
             body["system"] = request.system_prompt

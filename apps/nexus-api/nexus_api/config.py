@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     openrouter_api_key: str | None = None
+    together_api_key: str | None = None
+    fireworks_api_key: str | None = None
+    deepinfra_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
 
     # -- Phyne-CRM ------------------------------------------------------------

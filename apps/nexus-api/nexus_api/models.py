@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -215,3 +216,66 @@ class ComputeTokenLedger(Base):
         String(255), nullable=False, default="default", index=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class SkillMarketplaceEntry(Base):
+    """A published skill available in the marketplace for installation."""
+
+    __tablename__ = "skill_marketplace_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    author: Mapped[str] = mapped_column(String(255), nullable=False)
+    version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0.0")
+    yaml_content: Mapped[str] = mapped_column(Text, nullable=False)
+    readme: Mapped[str | None] = mapped_column(Text, nullable=True)
+    download_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    downloads: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="default", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    ratings: Mapped[list[SkillRating]] = relationship(
+        "SkillRating",
+        back_populates="entry",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+
+class SkillRating(Base):
+    """A user rating and optional review for a marketplace skill entry."""
+
+    __tablename__ = "skill_ratings"
+    __table_args__ = (
+        UniqueConstraint("entry_id", "user_id", name="uq_skill_rating_entry_user"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    entry_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("skill_marketplace_entries.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    review: Mapped[str | None] = mapped_column(Text, nullable=True)
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="default", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    entry: Mapped[SkillMarketplaceEntry] = relationship(
+        "SkillMarketplaceEntry", back_populates="ratings", lazy="selectin"
+    )
