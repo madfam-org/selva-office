@@ -33,6 +33,7 @@ export class TacticianSchema extends Schema {
   @type("number") y: number = 300;
   @type("string") direction: string = "down";
   @type("string") avatarConfig: string = "";
+  @type("string") playerStatus: string = "online";
 }
 
 export class ChatMessageSchema extends Schema {

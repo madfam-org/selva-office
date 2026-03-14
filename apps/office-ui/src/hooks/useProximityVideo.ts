@@ -19,6 +19,7 @@ interface ProximityVideoOptions {
   localSessionId: string | null;
   sendSignal: (targetSessionId: string, signal: unknown) => void;
   enabled: boolean;
+  playerStatus?: string;
 }
 
 export interface ProximityVideoState {
@@ -66,6 +67,7 @@ export function useProximityVideo({
   localSessionId,
   sendSignal,
   enabled,
+  playerStatus,
 }: ProximityVideoOptions): ProximityVideoState {
   const [peers, setPeers] = useState<ProximityPeer[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -79,6 +81,8 @@ export function useProximityVideo({
   localSessionIdRef.current = localSessionId;
   const sendSignalRef = useRef(sendSignal);
   sendSignalRef.current = sendSignal;
+  const playerStatusRef = useRef(playerStatus);
+  playerStatusRef.current = playerStatus;
   const SimplePeerRef = useRef<typeof SimplePeerType | null>(null);
 
   // Lazy-load simple-peer
@@ -222,12 +226,15 @@ export function useProximityVideo({
       const sid = localSessionIdRef.current;
       if (!sid) return;
 
+      // DND status suppresses all proximity connections
+      const effectiveNearby = playerStatusRef.current === 'dnd' ? [] : update.nearbySessionIds;
+
       const currentPeerIds = new Set(connectionsRef.current.keys());
-      const nearbySet = new Set(update.nearbySessionIds);
+      const nearbySet = new Set(effectiveNearby);
 
       // Create connections for new nearby players
       const now = Date.now();
-      for (const remoteSid of update.nearbySessionIds) {
+      for (const remoteSid of effectiveNearby) {
         if (!currentPeerIds.has(remoteSid)) {
           // Check backoff from prior errors
           const tracker = errorTrackerRef.current.get(remoteSid);

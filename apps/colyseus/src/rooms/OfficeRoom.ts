@@ -10,6 +10,7 @@ import { handleInteraction, handleApproval } from "../handlers/interaction";
 import { handleChat, addSystemMessage } from "../handlers/chat";
 import { handleEmote } from "../handlers/emotes";
 import { handleAvatar } from "../handlers/avatar";
+import { handleStatus } from "../handlers/status";
 import { startProximityLoop } from "../handlers/proximity";
 import { handleSignaling } from "../handlers/signaling";
 import type { WebRTCSignalMessage } from "../handlers/signaling";
@@ -44,6 +45,10 @@ interface EmoteMessage {
 
 interface AvatarMessage {
   config: string;
+}
+
+interface StatusMessage {
+  status: string;
 }
 
 interface RoomOptions {
@@ -171,6 +176,10 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
         handleSignaling(client, message, () => this.clients);
       }
     );
+
+    this.onMessage("status", (client: Client, message: StatusMessage) => {
+      handleStatus(this.state, client, message);
+    });
 
     // Start proximity detection loop at 5Hz for WebRTC peer management
     this.stopProximityLoop = startProximityLoop(

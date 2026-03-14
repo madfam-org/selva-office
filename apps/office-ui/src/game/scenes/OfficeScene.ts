@@ -9,6 +9,7 @@ import { TouchActionButtons } from '../TouchActionButtons';
 import { InteractableManager } from '../InteractableManager';
 import { ScriptBridge } from '../scripting/ScriptBridge';
 import { AgentBehavior } from '../AgentBehavior';
+import { Pathfinder } from '../Pathfinder';
 import type {
   OfficeState,
   Department,
@@ -64,6 +65,7 @@ interface AgentSprite {
 interface RemotePlayerSprite {
   sprite: Phaser.GameObjects.Sprite;
   label: Phaser.GameObjects.Text;
+  statusDot: Phaser.GameObjects.Arc;
   targetX: number;
   targetY: number;
   direction: string;
@@ -115,6 +117,14 @@ export class OfficeScene extends Phaser.Scene {
   private dustEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ambientEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private agentBehavior: AgentBehavior = new AgentBehavior();
+  private clickPath: Array<{ x: number; y: number }> = [];
+  private clickPathIndex: number = 0;
+  private pathfinder: Pathfinder | null = null;
+  private clickMarker: Phaser.GameObjects.Arc | null = null;
+  private followTarget: string | null = null;
+  private followLabel: Phaser.GameObjects.Text | null = null;
+  private explorerMode: boolean = false;
+  private explorerPrevZoom: number = 1;
 
   constructor() {
     super({ key: 'OfficeScene' });
@@ -215,8 +225,23 @@ export class OfficeScene extends Phaser.Scene {
     }
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      if (this.gamepadManager.isFocused()) return;
       if (event.key === '?') {
         this.helpOverlay.setVisible(!this.helpOverlay.visible);
+      }
+      // F = follow nearest player
+      if (event.code === 'KeyF') {
+        this.toggleFollowNearestPlayer();
+      }
+      // Tab = toggle explorer mode
+      if (event.code === 'Tab') {
+        event.preventDefault();
+        this.toggleExplorerMode();
+      }
+      // Escape cancels follow and explorer
+      if (event.code === 'Escape') {
+        if (this.followTarget) this.cancelFollow();
+        if (this.explorerMode) this.toggleExplorerMode();
       }
     });
 
@@ -412,6 +437,66 @@ export class OfficeScene extends Phaser.Scene {
       stickY = this.virtualJoystick.axisY;
     }
 
+    // Explorer mode: scroll-to-pan with sticks, skip player movement
+    if (this.explorerMode) {
+      if (stickX !== 0 || stickY !== 0) {
+        const panSpeed = 400 * (this.game.loop.delta / 1000);
+        this.cameras.main.scrollX += stickX * panSpeed;
+        this.cameras.main.scrollY += stickY * panSpeed;
+      }
+      // Still update interactables and agents in explorer mode
+      if (this.interactableManager) this.interactableManager.update();
+      const explorerDelta = this.game.loop.delta;
+      this.agentSprites.forEach((agentSprite) => {
+        const deptSlug = this.findAgentDepartmentSlug(agentSprite.agentId);
+        const layout = deptSlug ? this.departmentLayouts.get(deptSlug) : null;
+        const fallback = DEPARTMENT_LAYOUT[deptSlug?.replace('dept-', '') ?? ''];
+        const zoneW = layout?.w ?? fallback?.w ?? 640;
+        const zoneH = layout?.h ?? fallback?.h ?? 320;
+        const zoneBounds = layout ? { x: layout.x, y: layout.y, width: zoneW, height: zoneH } : null;
+        const stationSprite = deptSlug ? this.reviewStations.get(deptSlug) : null;
+        const reviewStation = stationSprite ? { x: stationSprite.x, y: stationSprite.y } : null;
+        const result = this.agentBehavior.update(agentSprite.agentId, agentSprite.sprite.x, agentSprite.sprite.y, explorerDelta, zoneBounds, reviewStation);
+        if (result) {
+          agentSprite.sprite.setPosition(result.x, result.y);
+          agentSprite.statusHalo.setPosition(result.x, result.y + 4);
+          agentSprite.nameLabel.setPosition(result.x, result.y + 20);
+          agentSprite.nameBackground.setPosition(result.x, result.y + 23);
+          agentSprite.alertIcon.setPosition(result.x + 12, result.y - 20);
+        }
+      });
+      return;
+    }
+
+    // Cancel follow on manual movement input
+    if (this.followTarget && (stickX !== 0 || stickY !== 0)) {
+      this.cancelFollow();
+    }
+
+    // Click-to-move: follow path (cancelled by keyboard/gamepad input)
+    if (this.clickPath.length > 0 && this.clickPathIndex < this.clickPath.length) {
+      if (stickX !== 0 || stickY !== 0) {
+        // Manual input cancels click path
+        this.clickPath = [];
+        this.clickPathIndex = 0;
+      } else {
+        const wp = this.clickPath[this.clickPathIndex];
+        const cdx = wp.x - this.tactician.x;
+        const cdy = wp.y - this.tactician.y;
+        const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+        if (cdist < 4) {
+          this.clickPathIndex++;
+          if (this.clickPathIndex >= this.clickPath.length) {
+            this.clickPath = [];
+            this.clickPathIndex = 0;
+          }
+        } else {
+          stickX = cdx / cdist;
+          stickY = cdy / cdist;
+        }
+      }
+    }
+
     // Move tactician based on input
     const dx = stickX * TACTICIAN_SPEED * (this.game.loop.delta / 1000);
     const dy = stickY * TACTICIAN_SPEED * (this.game.loop.delta / 1000);
@@ -476,6 +561,7 @@ export class OfficeScene extends Phaser.Scene {
       remote.sprite.x += (remote.targetX - remote.sprite.x) * lerpFactor;
       remote.sprite.y += (remote.targetY - remote.sprite.y) * lerpFactor;
       remote.label.setPosition(remote.sprite.x, remote.sprite.y - 24);
+      remote.statusDot.setPosition(remote.sprite.x - 20, remote.sprite.y - 24);
 
       // Play walk/idle animation based on movement
       const moving = Math.abs(remote.targetX - remote.sprite.x) > 0.5 ||
@@ -638,6 +724,19 @@ export class OfficeScene extends Phaser.Scene {
       this.touchButtons.destroy();
       this.touchButtons = null;
     }
+    this.clickPath = [];
+    this.clickPathIndex = 0;
+    this.pathfinder = null;
+    if (this.clickMarker) {
+      this.clickMarker.destroy();
+      this.clickMarker = null;
+    }
+    this.followTarget = null;
+    if (this.followLabel) {
+      this.followLabel.destroy();
+      this.followLabel = null;
+    }
+    this.explorerMode = false;
   }
 
   private createAnimations(): void {
@@ -809,6 +908,47 @@ export class OfficeScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.tactician, true, 0.08, 0.08);
     this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
 
+    // Click-to-move: pathfinder setup
+    this.pathfinder = new Pathfinder(this.collisionLayer, this.worldWidth, this.worldHeight);
+
+    // Click-to-move: pointer handler
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      // Ignore if UI is focused or help overlay visible
+      if (this.gamepadManager.isFocused() || this.helpOverlay.visible) return;
+      // Only left click
+      if (pointer.button !== 0) return;
+
+      const worldX = pointer.worldX;
+      const worldY = pointer.worldY;
+
+      if (this.pathfinder) {
+        this.clickPath = this.pathfinder.findPath(
+          this.tactician.x,
+          this.tactician.y,
+          worldX,
+          worldY,
+        );
+        this.clickPathIndex = 0;
+      } else {
+        this.clickPath = [{ x: worldX, y: worldY }];
+        this.clickPathIndex = 0;
+      }
+
+      // Visual marker at destination
+      if (this.clickMarker) this.clickMarker.destroy();
+      this.clickMarker = this.add.circle(worldX, worldY, 6, 0x6366f1, 0.5).setDepth(15);
+      this.tweens.add({
+        targets: this.clickMarker,
+        alpha: 0,
+        scale: 2,
+        duration: 800,
+        onComplete: () => {
+          this.clickMarker?.destroy();
+          this.clickMarker = null;
+        },
+      });
+    });
+
     // Label above tactician
     this.tacticianLabel = this.add
       .text(spawnX, spawnY - 24, 'YOU', {
@@ -825,7 +965,7 @@ export class OfficeScene extends Phaser.Scene {
 
     // Semi-transparent backdrop
     const backdrop = this.add.rectangle(0, 0, 1280, 720, 0x000000, 0.5);
-    const bg = this.add.rectangle(0, 0, 420, 340, 0x0f172a, 0.95);
+    const bg = this.add.rectangle(0, 0, 420, 420, 0x0f172a, 0.95);
 
     const title = this.add
       .text(0, -140, 'KEYBOARD SHORTCUTS', {
@@ -837,9 +977,12 @@ export class OfficeScene extends Phaser.Scene {
 
     const shortcuts = [
       'WASD / Arrows     Move',
+      'Click             Click-to-Move',
       'ENTER / A (pad)   Approve',
-      'ESC / B (pad)     Deny',
+      'ESC / B (pad)     Deny / Cancel',
       'E / X (pad)       Inspect / Interact',
+      'F                 Follow Nearest Player',
+      'Tab               Explorer Mode',
       'T or /            Chat',
       'R                 Emotes (1-9)',
       'M / V             Mic / Camera',
@@ -908,6 +1051,14 @@ export class OfficeScene extends Phaser.Scene {
       }
     });
 
+    // Apply desk positions as agent home positions
+    if (this.interactableManager) {
+      const deskPositions = this.interactableManager.getDeskPositions();
+      deskPositions.forEach((pos, agentId) => {
+        this.agentBehavior.setDeskPosition(agentId, pos.x, pos.y);
+      });
+    }
+
     // Update review station pending counts with glow
     if (state.reviewStations) {
       state.reviewStations.forEach((station: ReviewStation) => {
@@ -943,6 +1094,16 @@ export class OfficeScene extends Phaser.Scene {
     }
   }
 
+  private getPlayerStatusColor(status?: string): number {
+    switch (status) {
+      case 'online': return 0x10b981;
+      case 'away': return 0xfbbf24;
+      case 'busy': return 0xef4444;
+      case 'dnd': return 0x64748b;
+      default: return 0x10b981;
+    }
+  }
+
   private reconcileRemotePlayers(players: Player[]): void {
     const currentSessionIds = new Set<string>();
 
@@ -958,6 +1119,8 @@ export class OfficeScene extends Phaser.Scene {
         existing.targetY = player.y;
         existing.direction = player.direction;
         existing.label.setText(player.name);
+        // Update status dot color
+        existing.statusDot.setFillStyle(this.getPlayerStatusColor(player.playerStatus));
         // Update avatar texture if config changed
         if (player.avatarConfig) {
           try {
@@ -991,9 +1154,13 @@ export class OfficeScene extends Phaser.Scene {
           .setOrigin(0.5)
           .setDepth(9);
 
+        const statusDotColor = this.getPlayerStatusColor(player.playerStatus);
+        const statusDot = this.add.circle(player.x - 20, player.y - 24, 3, statusDotColor, 1).setDepth(9);
+
         this.remotePlayers.set(player.sessionId, {
           sprite,
           label,
+          statusDot,
           targetX: player.x,
           targetY: player.y,
           direction: player.direction,
@@ -1006,6 +1173,7 @@ export class OfficeScene extends Phaser.Scene {
       if (!currentSessionIds.has(sessionId)) {
         remote.sprite.destroy();
         remote.label.destroy();
+        remote.statusDot.destroy();
         this.remotePlayers.delete(sessionId);
       }
     });
@@ -1330,5 +1498,103 @@ export class OfficeScene extends Phaser.Scene {
         gameEventBus.emit('approval-open', nearestAgentId);
       }
     }
+  }
+
+  // === Follow Player Camera (PR 1.2) ===
+
+  private toggleFollowNearestPlayer(): void {
+    if (this.followTarget) {
+      this.cancelFollow();
+      return;
+    }
+
+    // Find nearest remote player
+    let nearestId: string | null = null;
+    let nearestDist = Infinity;
+    this.remotePlayers.forEach((remote, sessionId) => {
+      const dist = Phaser.Math.Distance.Between(
+        this.tactician.x, this.tactician.y,
+        remote.sprite.x, remote.sprite.y,
+      );
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestId = sessionId;
+      }
+    });
+
+    if (nearestId) {
+      this.startFollow(nearestId);
+    }
+  }
+
+  private startFollow(sessionId: string): void {
+    const remote = this.remotePlayers.get(sessionId);
+    if (!remote) return;
+
+    this.followTarget = sessionId;
+    this.cameras.main.stopFollow();
+    this.cameras.main.startFollow(remote.sprite, true, 0.08, 0.08);
+
+    // Show follow badge
+    if (this.followLabel) this.followLabel.destroy();
+    this.followLabel = this.add
+      .text(this.cameras.main.width / 2, 60, `Following: ${remote.label.text}`, {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '8px',
+        color: '#86efac',
+        backgroundColor: '#0f172aCC',
+        padding: { x: 6, y: 3 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(50);
+
+    gameEventBus.emit('follow-status', { following: true, name: remote.label.text });
+  }
+
+  private cancelFollow(): void {
+    this.followTarget = null;
+    this.cameras.main.stopFollow();
+    this.cameras.main.startFollow(this.tactician, true, 0.08, 0.08);
+    if (this.followLabel) {
+      this.followLabel.destroy();
+      this.followLabel = null;
+    }
+    gameEventBus.emit('follow-status', { following: false, name: '' });
+  }
+
+  // === Explorer Mode (PR 1.5) ===
+
+  private toggleExplorerMode(): void {
+    if (this.explorerMode) {
+      this.exitExplorerMode();
+    } else {
+      this.enterExplorerMode();
+    }
+  }
+
+  private enterExplorerMode(): void {
+    this.explorerMode = true;
+    this.explorerPrevZoom = this.cameras.main.zoom;
+
+    // Cancel follow if active
+    if (this.followTarget) this.cancelFollow();
+
+    // Zoom out to show full map
+    this.cameras.main.stopFollow();
+    const zoomX = this.cameras.main.width / this.worldWidth;
+    const zoomY = this.cameras.main.height / this.worldHeight;
+    const targetZoom = Math.min(zoomX, zoomY) * 0.95;
+    this.cameras.main.setZoom(targetZoom);
+    this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
+
+    gameEventBus.emit('explorer-mode', true);
+  }
+
+  private exitExplorerMode(): void {
+    this.explorerMode = false;
+    this.cameras.main.setZoom(this.explorerPrevZoom);
+    this.cameras.main.startFollow(this.tactician, true, 0.08, 0.08);
+    gameEventBus.emit('explorer-mode', false);
   }
 }

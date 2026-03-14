@@ -44,6 +44,7 @@ interface ColyseusState {
   sendChat: (content: string) => void;
   sendEmote: (type: string) => void;
   sendAvatarConfig: (config: string) => void;
+  sendStatus: (status: string) => void;
   sendSignal: (targetSessionId: string, signal: unknown) => void;
 }
 
@@ -120,6 +121,10 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
 
   const sendAvatarConfig = useCallback((config: string) => {
     roomRef.current?.send('avatar', { config });
+  }, []);
+
+  const sendStatus = useCallback((status: string) => {
+    roomRef.current?.send('status', { status });
   }, []);
 
   const sendSignal = useCallback((targetSessionId: string, signal: unknown) => {
@@ -237,6 +242,7 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
     sendChat,
     sendEmote,
     sendAvatarConfig,
+    sendStatus,
     sendSignal,
   };
 }

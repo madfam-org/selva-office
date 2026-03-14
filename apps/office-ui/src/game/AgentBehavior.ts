@@ -103,6 +103,24 @@ export class AgentBehavior {
     }
   }
 
+  /**
+   * Assign a desk position as the agent's home. When idle the agent will
+   * patrol around this position instead of their original spawn point.
+   */
+  setDeskPosition(agentId: string, x: number, y: number): void {
+    const state = this.states.get(agentId);
+    if (state) {
+      state.homeX = x;
+      state.homeY = y;
+      // If idle, start walking to the desk
+      if (state.state === 'idle') {
+        state.targetX = x;
+        state.targetY = y;
+        state.waypointTimer = 2000;
+      }
+    }
+  }
+
   removeAgent(agentId: string): void {
     this.states.delete(agentId);
   }

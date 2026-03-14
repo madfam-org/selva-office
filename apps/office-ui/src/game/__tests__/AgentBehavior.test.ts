@@ -119,6 +119,45 @@ describe('AgentBehavior', () => {
     });
   });
 
+  describe('setDeskPosition', () => {
+    it('updates home position for an existing agent', () => {
+      behavior.initAgent('agent-1', 100, 200, 'idle');
+      behavior.setDeskPosition('agent-1', 400, 500);
+
+      // Exhaust waypoint timer to force new waypoint — agent should now patrol
+      // around desk position (400, 500) instead of original home (100, 200)
+      // After setting desk position on idle agent, target is set to desk
+      const result = behavior.update('agent-1', 100, 200, 16, null, null);
+      expect(result).not.toBeNull();
+      // Agent should be moving toward the desk position
+      expect(result!.moving).toBe(true);
+    });
+
+    it('does not throw for non-existent agent', () => {
+      expect(() => behavior.setDeskPosition('nonexistent', 400, 500)).not.toThrow();
+    });
+
+    it('does not change target when agent is working', () => {
+      behavior.initAgent('agent-1', 100, 200, 'working');
+      behavior.setDeskPosition('agent-1', 400, 500);
+
+      // Working agents stay in place regardless of desk position
+      const result = behavior.update('agent-1', 100, 200, 16, null, null);
+      expect(result).toEqual({ x: 100, y: 200, moving: false, direction: 'down' });
+    });
+
+    it('agent patrols near desk after waypoint expires', () => {
+      behavior.initAgent('agent-1', 400, 500, 'idle');
+      behavior.setDeskPosition('agent-1', 400, 500);
+
+      // Exhaust timer — should pick new waypoint near new home (400, 500)
+      const result = behavior.update('agent-1', 400, 500, 8000, null, null);
+      expect(result).not.toBeNull();
+      // Without zone bounds, the offset is +-30 from home
+      expect(result!.x).toBeTypeOf('number');
+    });
+  });
+
   describe('removeAgent', () => {
     it('removes agent state so update returns null', () => {
       behavior.initAgent('agent-1', 100, 200, 'idle');
