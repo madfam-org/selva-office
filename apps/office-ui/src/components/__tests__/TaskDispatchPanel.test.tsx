@@ -47,6 +47,7 @@ describe('TaskDispatchPanel', () => {
     expect(screen.getByText('coding')).toBeInTheDocument();
     expect(screen.getByText('research')).toBeInTheDocument();
     expect(screen.getByText('crm')).toBeInTheDocument();
+    expect(screen.getByText('deployment')).toBeInTheDocument();
     expect(screen.getByText('sequential')).toBeInTheDocument();
     expect(screen.getByText('parallel')).toBeInTheDocument();
   });
@@ -164,5 +165,45 @@ describe('TaskDispatchPanel', () => {
     const textarea = screen.getByPlaceholderText('Describe the task...');
     fireEvent.change(textarea, { target: { value: 'Hello' } });
     expect(screen.getByText('5/2000')).toBeInTheDocument();
+  });
+
+  it('renders repo path input when no GITHUB_REPOS env configured', () => {
+    renderPanel();
+    expect(
+      screen.getByPlaceholderText('/path/to/repo or owner/repo...'),
+    ).toBeInTheDocument();
+  });
+
+  it('includes repo_path in dispatch payload when provided', async () => {
+    const onDispatch = vi.fn().mockResolvedValue({
+      id: 'task-repo',
+      description: 'With repo',
+      graph_type: 'coding',
+      status: 'queued',
+      assigned_agent_ids: [],
+      created_at: '2025-01-01T00:00:00Z',
+    } satisfies DispatchResponse);
+
+    renderPanel({ onDispatch });
+
+    const textarea = screen.getByPlaceholderText('Describe the task...');
+    fireEvent.change(textarea, { target: { value: 'Deploy to staging' } });
+
+    const repoInput = screen.getByPlaceholderText(
+      '/path/to/repo or owner/repo...',
+    );
+    fireEvent.change(repoInput, { target: { value: '/tmp/my-repo' } });
+
+    const submitBtn = screen.getByText('Dispatch');
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(onDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'Deploy to staging',
+          payload: { repo_path: '/tmp/my-repo' },
+        }),
+      );
+    });
   });
 });

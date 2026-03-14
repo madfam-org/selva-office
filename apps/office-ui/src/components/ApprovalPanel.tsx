@@ -1,0 +1,276 @@
+'use client';
+
+import { useState, useEffect, useCallback, type FC } from 'react';
+import type { ApprovalRequest, ActionCategory } from '@autoswarm/shared-types';
+import { gameEventBus } from '@/game/PhaserGame';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useToast } from '@/hooks/useToast';
+
+const ACTION_TAGS: Record<ActionCategory, string> = {
+  file_read: '[R]',
+  file_write: '[W]',
+  bash_execute: '[>]',
+  git_commit: '[C]',
+  git_push: '[P]',
+  email_send: '[@]',
+  crm_update: '[CRM]',
+  deploy: '[D]',
+  api_call: '[API]',
+};
+
+const URGENCY_ORDER: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+const URGENCY_STYLES: Record<string, string> = {
+  low: 'text-slate-400 bg-slate-800',
+  medium: 'text-amber-300 bg-amber-900/40',
+  high: 'text-orange-300 bg-orange-900/40',
+  critical: 'text-red-300 bg-red-900/40 animate-pulse',
+};
+
+function timeAgo(isoString: string): string {
+  const seconds = Math.floor(
+    (Date.now() - new Date(isoString).getTime()) / 1000,
+  );
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+interface ApprovalPanelProps {
+  open: boolean;
+  onClose: () => void;
+  pendingApprovals: ApprovalRequest[];
+  onApprove: (requestId: string, feedback?: string) => void;
+  onDeny: (requestId: string, feedback?: string) => void;
+  connected: boolean;
+}
+
+export const ApprovalPanel: FC<ApprovalPanelProps> = ({
+  open,
+  onClose,
+  pendingApprovals,
+  onApprove,
+  onDeny,
+  connected,
+}) => {
+  const [visible, setVisible] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
+  const trapRef = useFocusTrap<HTMLElement>(open);
+  const { addToast } = useToast();
+
+  // Slide animation
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => setVisible(true));
+    } else {
+      setVisible(false);
+    }
+  }, [open]);
+
+  // ESC to close
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
+  // Suppress game input while textarea focused
+  const handleFocus = useCallback(() => {
+    gameEventBus.emit('chat-focus', true);
+  }, []);
+  const handleBlur = useCallback(() => {
+    gameEventBus.emit('chat-focus', false);
+  }, []);
+
+  const handleApprove = useCallback(
+    (request: ApprovalRequest) => {
+      const feedback = feedbackMap[request.id];
+      onApprove(request.id, feedback || undefined);
+      addToast(`Approved: ${request.agentName}`, 'success');
+      setFeedbackMap((prev) => {
+        const next = { ...prev };
+        delete next[request.id];
+        return next;
+      });
+    },
+    [feedbackMap, onApprove, addToast],
+  );
+
+  const handleDeny = useCallback(
+    (request: ApprovalRequest) => {
+      const feedback = feedbackMap[request.id];
+      onDeny(request.id, feedback || undefined);
+      addToast(`Denied: ${request.agentName}`, 'warning');
+      setFeedbackMap((prev) => {
+        const next = { ...prev };
+        delete next[request.id];
+        return next;
+      });
+    },
+    [feedbackMap, onDeny, addToast],
+  );
+
+  const sortedApprovals = [...pendingApprovals].sort((a, b) => {
+    const urgencyDiff =
+      (URGENCY_ORDER[a.urgency] ?? 3) - (URGENCY_ORDER[b.urgency] ?? 3);
+    if (urgencyDiff !== 0) return urgencyDiff;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  if (!open) return null;
+
+  return (
+    <aside
+      ref={trapRef}
+      className={`fixed right-0 top-0 z-modal h-full w-full max-w-96 transform transition-transform duration-300 sm:w-96 ${
+        visible ? 'translate-x-0' : 'translate-x-full'
+      }`}
+      aria-label="Approval queue panel"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="flex h-full flex-col bg-slate-900/95 backdrop-blur-sm pixel-border-accent">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <h2 className="pixel-text text-[10px] uppercase tracking-wider text-indigo-400">
+              Approval Queue
+            </h2>
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${
+                connected ? 'bg-emerald-400' : 'bg-red-500 animate-pulse'
+              }`}
+              aria-label={connected ? 'Connected' : 'Disconnected'}
+            />
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            aria-label="Close approval panel"
+          >
+            ESC
+          </button>
+        </div>
+
+        {/* Content */}
+        {sortedApprovals.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center">
+            <p className="font-mono text-[10px] italic text-slate-600">
+              No pending approvals
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+            {sortedApprovals.map((request, idx) => {
+              const isExpanded = expandedId === request.id;
+              const feedback = feedbackMap[request.id] ?? '';
+              return (
+                <div
+                  key={request.id}
+                  className="retro-panel animate-fade-in-up"
+                  style={{ animationDelay: `${idx * 30}ms` }}
+                >
+                  {/* Collapsed header - click to expand */}
+                  <button
+                    onClick={() =>
+                      setExpandedId(isExpanded ? null : request.id)
+                    }
+                    className="w-full px-3 py-2 text-left"
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-[9px] text-cyan-400 shrink-0">
+                          {request.agentName}
+                        </span>
+                        <span className="font-mono text-[8px] text-slate-500 shrink-0">
+                          {ACTION_TAGS[request.actionCategory] ??
+                            `[${request.actionCategory}]`}
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 font-mono text-[7px] uppercase ${URGENCY_STYLES[request.urgency] ?? URGENCY_STYLES.low}`}
+                        >
+                          {request.urgency}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[7px] text-slate-600 shrink-0 ml-2">
+                        {timeAgo(request.createdAt)}
+                      </span>
+                    </div>
+                    {!isExpanded && (
+                      <p className="mt-1 font-mono text-[8px] text-slate-400 truncate">
+                        {request.reasoning.substring(0, 80)}
+                        {request.reasoning.length > 80 ? '...' : ''}
+                      </p>
+                    )}
+                  </button>
+
+                  {/* Expanded details */}
+                  {isExpanded && (
+                    <div className="px-3 pb-3 space-y-2">
+                      <div className="border-l-2 border-indigo-500 bg-slate-800/50 p-3">
+                        <p className="font-mono text-[9px] text-slate-300 whitespace-pre-wrap">
+                          {request.reasoning}
+                        </p>
+                      </div>
+
+                      {request.diff && (
+                        <pre className="max-h-48 overflow-auto bg-black p-3 font-mono text-[8px] text-slate-300">
+                          {request.diff}
+                        </pre>
+                      )}
+
+                      <textarea
+                        value={feedback}
+                        onChange={(e) =>
+                          setFeedbackMap((prev) => ({
+                            ...prev,
+                            [request.id]: e.target.value,
+                          }))
+                        }
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        placeholder="Feedback (optional)..."
+                        rows={2}
+                        className="w-full rounded bg-slate-800 border border-slate-700 px-3 py-2 font-mono text-[9px] text-slate-200 placeholder-slate-600 focus:border-indigo-500 focus:outline-none resize-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Approve / Deny buttons - always visible */}
+                  <div className="flex gap-2 px-3 pb-2">
+                    <button
+                      onClick={() => handleApprove(request)}
+                      className="flex-1 rounded bg-emerald-700 px-3 py-1.5 font-mono text-[9px] uppercase text-white transition-colors hover:bg-emerald-600"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleDeny(request)}
+                      className="flex-1 rounded bg-red-800 px-3 py-1.5 font-mono text-[9px] uppercase text-white transition-colors hover:bg-red-700"
+                    >
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+};

@@ -7,7 +7,11 @@ import { gameEventBus } from '@/game/PhaserGame';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 
-const GRAPH_TYPES = ['coding', 'research', 'crm', 'sequential', 'parallel'] as const;
+const GRAPH_TYPES = ['coding', 'research', 'crm', 'deployment', 'sequential', 'parallel'] as const;
+
+const GITHUB_REPOS = (process.env.NEXT_PUBLIC_GITHUB_REPOS ?? '')
+  .split(',')
+  .filter(Boolean);
 
 interface TaskDispatchPanelProps {
   open: boolean;
@@ -35,6 +39,7 @@ export const TaskDispatchPanel: FC<TaskDispatchPanelProps> = ({
   const [graphType, setGraphType] = useState<DispatchRequest['graph_type']>('sequential');
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [skillsInput, setSkillsInput] = useState('');
+  const [repoPath, setRepoPath] = useState('');
   const [agentsExpanded, setAgentsExpanded] = useState(false);
   const [skillsExpanded, setSkillsExpanded] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
@@ -103,14 +108,18 @@ export const TaskDispatchPanel: FC<TaskDispatchPanelProps> = ({
     if (skills.length > 0) {
       request.required_skills = skills;
     }
+    if (repoPath.trim()) {
+      request.payload = { ...request.payload, repo_path: repoPath.trim() };
+    }
 
     const result = await onDispatch(request);
     if (result) {
       setDescription('');
       setSelectedAgents([]);
       setSkillsInput('');
+      setRepoPath('');
     }
-  }, [description, graphType, selectedAgents, skillsInput, status, onDispatch]);
+  }, [description, graphType, selectedAgents, skillsInput, repoPath, status, onDispatch]);
 
   const toggleAgent = useCallback((agentId: string) => {
     setSelectedAgents((prev) =>
@@ -190,6 +199,39 @@ export const TaskDispatchPanel: FC<TaskDispatchPanelProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Target Repository */}
+          <div>
+            <label className="block font-mono text-[8px] uppercase text-slate-500 mb-1">
+              Target Repository (optional)
+            </label>
+            {GITHUB_REPOS.length > 0 ? (
+              <select
+                value={repoPath}
+                onChange={(e) => setRepoPath(e.target.value)}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                className="w-full rounded bg-slate-800 border border-slate-700 px-3 py-2 font-mono text-[10px] text-slate-200 focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="">None</option>
+                {GITHUB_REPOS.map((repo) => (
+                  <option key={repo} value={repo}>
+                    {repo}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={repoPath}
+                onChange={(e) => setRepoPath(e.target.value)}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                className="w-full rounded bg-slate-800 border border-slate-700 px-3 py-2 font-mono text-[10px] text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                placeholder="/path/to/repo or owner/repo..."
+              />
+            )}
           </div>
 
           {/* Agent Selection (collapsible) */}
