@@ -22,6 +22,7 @@ dependencies = [
   "autoswarm-workflows",
   "autoswarm-observability",
   "autoswarm-redis-pool",
+  "autoswarm-calendar",
   "structlog>=24.0",
   "sentry-sdk[fastapi]>=2.19.0",
   "prometheus-fastapi-instrumentator>=7.0.0",

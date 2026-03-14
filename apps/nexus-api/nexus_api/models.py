@@ -281,6 +281,27 @@ class SkillRating(Base):
     )
 
 
+class CalendarConnection(Base):
+    """A user's connected calendar (Google or Microsoft)."""
+
+    __tablename__ = "calendar_connections"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="default", index=True
+    )
+    connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
 class Map(Base):
     """A custom office map stored as TMJ (Tiled Map JSON)."""
 
