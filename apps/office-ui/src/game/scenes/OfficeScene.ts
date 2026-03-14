@@ -76,6 +76,7 @@ interface RemotePlayerSprite {
   sprite: Phaser.GameObjects.Sprite;
   label: Phaser.GameObjects.Text;
   statusDot: Phaser.GameObjects.Arc;
+  musicLabel: Phaser.GameObjects.Text | null;
   targetX: number;
   targetY: number;
   direction: string;
@@ -589,6 +590,9 @@ export class OfficeScene extends Phaser.Scene {
       remote.sprite.y += (remote.targetY - remote.sprite.y) * lerpFactor;
       remote.label.setPosition(remote.sprite.x, remote.sprite.y - 24);
       remote.statusDot.setPosition(remote.sprite.x - 20, remote.sprite.y - 24);
+      if (remote.musicLabel) {
+        remote.musicLabel.setPosition(remote.sprite.x, remote.sprite.y - 16);
+      }
 
       // Play walk/idle animation based on movement
       const moving = Math.abs(remote.targetX - remote.sprite.x) > 0.5 ||
@@ -1178,6 +1182,8 @@ export class OfficeScene extends Phaser.Scene {
         existing.label.setText(player.name);
         // Update status dot color
         existing.statusDot.setFillStyle(this.getPlayerStatusColor(player.playerStatus));
+        // Update music status label
+        this.reconcileMusicLabel(existing, player.musicStatus);
         // Update companion sprite
         this.reconcileCompanionSprite(player.sessionId, player.companionType, player.x, player.y);
         // Update avatar texture if config changed
@@ -1216,10 +1222,24 @@ export class OfficeScene extends Phaser.Scene {
         const statusDotColor = this.getPlayerStatusColor(player.playerStatus);
         const statusDot = this.add.circle(player.x - 20, player.y - 24, 3, statusDotColor, 1).setDepth(9);
 
+        // Music status label (below name)
+        let musicLabel: Phaser.GameObjects.Text | null = null;
+        if (player.musicStatus) {
+          musicLabel = this.add
+            .text(player.x, player.y - 16, player.musicStatus, {
+              fontFamily: '"Press Start 2P", monospace',
+              fontSize: '6px',
+              color: '#94a3b8',
+            })
+            .setOrigin(0.5)
+            .setDepth(9);
+        }
+
         this.remotePlayers.set(player.sessionId, {
           sprite,
           label,
           statusDot,
+          musicLabel,
           targetX: player.x,
           targetY: player.y,
           direction: player.direction,
@@ -1236,6 +1256,7 @@ export class OfficeScene extends Phaser.Scene {
         remote.sprite.destroy();
         remote.label.destroy();
         remote.statusDot.destroy();
+        remote.musicLabel?.destroy();
         this.remotePlayers.delete(sessionId);
         // Clean up companion
         const companionSprite = this.companionSprites.get(sessionId);
@@ -1246,6 +1267,30 @@ export class OfficeScene extends Phaser.Scene {
         this.companionBehavior.removeCompanion(sessionId);
       }
     });
+  }
+
+  /**
+   * Create, update, or remove the music status label beneath a remote player's name.
+   */
+  private reconcileMusicLabel(remote: RemotePlayerSprite, musicStatus: string | undefined): void {
+    const text = musicStatus ?? '';
+    if (text) {
+      if (remote.musicLabel) {
+        remote.musicLabel.setText(text);
+      } else {
+        remote.musicLabel = this.add
+          .text(remote.sprite.x, remote.sprite.y - 16, text, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '6px',
+            color: '#94a3b8',
+          })
+          .setOrigin(0.5)
+          .setDepth(9);
+      }
+    } else if (remote.musicLabel) {
+      remote.musicLabel.destroy();
+      remote.musicLabel = null;
+    }
   }
 
   /**

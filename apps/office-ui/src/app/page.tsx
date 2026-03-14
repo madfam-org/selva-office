@@ -24,6 +24,7 @@ import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal } from '@/hooks/us
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
 import { usePlayerStatus } from '@/hooks/usePlayerStatus';
 import { StatusSelector } from '@/components/StatusSelector';
+import { MusicStatus } from '@/components/MusicStatus';
 import { useProximityVideo } from '@/hooks/useProximityVideo';
 import { useRecording } from '@/hooks/useRecording';
 import { MegaphoneControls } from '@/components/MegaphoneControls';
@@ -91,6 +92,7 @@ export default function HomePage() {
     sendStatus,
     sendSignal,
     sendCompanion,
+    sendMusicStatus,
     sendMegaphoneStart,
     sendMegaphoneStop,
     sendLockBubble,
@@ -174,6 +176,7 @@ export default function HomePage() {
     }
     return '';
   });
+  const [musicStatus, setMusicStatus] = useState('');
   const [followingPlayer, setFollowingPlayer] = useState<string | null>(null);
   const [explorerMode, setExplorerMode] = useState(false);
 
@@ -476,10 +479,17 @@ export default function HomePage() {
         Avatar
       </button>
 
-      <div className="absolute top-14 right-4 z-hud">
+      <div className="absolute top-14 right-4 z-hud flex flex-col gap-1">
         <StatusSelector
           currentStatus={playerStatus}
           onStatusChange={changePlayerStatus}
+        />
+        <MusicStatus
+          currentStatus={musicStatus}
+          onStatusChange={(status) => {
+            setMusicStatus(status);
+            sendMusicStatus(status);
+          }}
         />
       </div>
 

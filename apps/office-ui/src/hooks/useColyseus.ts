@@ -47,6 +47,7 @@ interface ColyseusState {
   sendStatus: (status: string) => void;
   sendSignal: (targetSessionId: string, signal: unknown) => void;
   sendCompanion: (type: string) => void;
+  sendMusicStatus: (status: string) => void;
   sendMegaphoneStart: () => void;
   sendMegaphoneStop: () => void;
   sendLockBubble: () => void;
@@ -138,6 +139,10 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
 
   const sendCompanion = useCallback((type: string) => {
     roomRef.current?.send('companion', { type });
+  }, []);
+
+  const sendMusicStatus = useCallback((status: string) => {
+    roomRef.current?.send('music_status', { status });
   }, []);
 
   const sendMegaphoneStart = useCallback(() => {
@@ -270,6 +275,7 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
     sendStatus,
     sendSignal,
     sendCompanion,
+    sendMusicStatus,
     sendMegaphoneStart,
     sendMegaphoneStop,
     sendLockBubble,
