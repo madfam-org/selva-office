@@ -141,10 +141,15 @@ def seed_via_api() -> None:
         headers={"Authorization": "Bearer dev-token"},
     )
 
-    # Check API health first.
+    # Check API health first and acquire CSRF token.
     try:
         health = client.get("/health/health")
         health.raise_for_status()
+        # Acquire CSRF token from the response cookie (double-submit pattern).
+        csrf_token = health.cookies.get("csrf-token")
+        if csrf_token:
+            client.cookies.set("csrf-token", csrf_token)
+            client.headers["x-csrf-token"] = csrf_token
     except (httpx.ConnectError, httpx.HTTPStatusError):
         print(f"Cannot reach Nexus API at {API_BASE}")
         print("Start the server with 'make dev' or use --json-only to export JSON.\n")

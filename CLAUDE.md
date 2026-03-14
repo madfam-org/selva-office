@@ -61,7 +61,7 @@ pnpm lint             # ESLint
 pnpm test             # TypeScript tests (444 tests across 35 suites)
 pnpm typecheck        # TypeScript type checking
 
-uv run pytest packages/ apps/nexus-api/  # Python tests (399 tests)
+uv run pytest packages/ apps/nexus-api/  # Python tests (400 tests)
 uv run pytest apps/workers/tests/       # Worker tests (94 tests)
 uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
@@ -266,6 +266,11 @@ The `packages/skills/` package implements the AgentSkills standard.
   supports both dev bypass (dummy JWT) and Janua SSO redirect (when
   `NEXT_PUBLIC_JANUA_ISSUER_URL` is set). `apiFetch()` in `src/lib/api.ts`
   attaches Bearer token from cookie to all API calls.
+- **CSRF middleware** (`nexus_api/middleware/csrf.py`): double-submit cookie
+  pattern. Bearer-authenticated requests skip CSRF validation (Bearer tokens
+  are inherently CSRF-safe). Webhook endpoints (`/api/v1/gateway/`,
+  `/api/v1/billing/webhooks/`, `/api/v1/approvals/ws`, `/api/v1/health/`) are
+  also exempt.
 - Worker graph nodes (`plan`, `implement`, `review`) use `call_llm()` from
   `autoswarm_workers.inference` with a `ModelRouter` that auto-discovers providers
   from env vars. Graphs fall back to static logic when no LLM is configured.
