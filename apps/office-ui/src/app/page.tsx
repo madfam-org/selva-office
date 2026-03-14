@@ -44,6 +44,11 @@ const WorkflowEditor = dynamic(
   { ssr: false },
 );
 
+const MapEditor = dynamic(
+  () => import('@/components/map-editor/MapEditor').then((m) => ({ default: m.MapEditor })),
+  { ssr: false },
+);
+
 const PhaserGame = dynamic(() => import('@/game/PhaserGame'), {
   ssr: false,
   loading: () => (
@@ -202,6 +207,7 @@ export default function HomePage() {
   const [workflowEditorOpen, setWorkflowEditorOpen] = useState(false);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
+  const [mapEditorOpen, setMapEditorOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -301,6 +307,13 @@ export default function HomePage() {
 
   const handleMarketplaceOpen = useCallback(() => {
     setMarketplaceOpen(true);
+    setDashboardOpen(false);
+    setDispatchPanelOpen(false);
+    setApprovalPanelOpen(false);
+  }, []);
+
+  const handleMapEditorOpen = useCallback(() => {
+    setMapEditorOpen(true);
     setDashboardOpen(false);
     setDispatchPanelOpen(false);
     setApprovalPanelOpen(false);
@@ -449,6 +462,7 @@ export default function HomePage() {
         departments={officeState?.departments ?? []}
         onNewTask={handleDispatchOpen}
         onOpenMarketplace={handleMarketplaceOpen}
+        onOpenMapEditor={handleMapEditorOpen}
       />
 
       <TaskDispatchPanel
@@ -614,6 +628,11 @@ export default function HomePage() {
         onToolChange={whiteboardSetTool}
         onColorChange={whiteboardSetColor}
         onWidthChange={whiteboardSetWidth}
+      />
+
+      <MapEditor
+        open={mapEditorOpen}
+        onClose={() => setMapEditorOpen(false)}
       />
 
       {activeApproval && (

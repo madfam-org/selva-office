@@ -9,6 +9,7 @@ interface DashboardPanelProps {
   departments: Department[];
   onNewTask?: () => void;
   onOpenMarketplace?: () => void;
+  onOpenMapEditor?: () => void;
 }
 
 type TaskStatus = 'backlog' | 'in_progress' | 'review' | 'done';
@@ -85,6 +86,7 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
   departments,
   onNewTask,
   onOpenMarketplace,
+  onOpenMapEditor,
 }) => {
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const tasks = deriveTasksFromAgents(departments);
@@ -145,6 +147,14 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
                   className="rounded bg-purple-600 px-2 py-1 font-mono text-[8px] text-white hover:bg-purple-500 transition-colors"
                 >
                   Skills
+                </button>
+              )}
+              {onOpenMapEditor && (
+                <button
+                  onClick={onOpenMapEditor}
+                  className="rounded bg-teal-600 px-2 py-1 font-mono text-[8px] text-white hover:bg-teal-500 transition-colors"
+                >
+                  Map Editor
                 </button>
               )}
               {onNewTask && (

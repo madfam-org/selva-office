@@ -28,6 +28,7 @@ from .routers import (
     departments,
     gateway,
     health,
+    maps,
     marketplace,
     skills,
     swarms,
@@ -123,6 +124,7 @@ def create_app() -> FastAPI:
     app.include_router(workflows.router, prefix="/api/v1/workflows")
     app.include_router(artifacts.router, prefix="/api/v1/artifacts")
     app.include_router(marketplace.router, prefix="/api/v1/marketplace")
+    app.include_router(maps.router, prefix="/api/v1/maps")
 
     return app
 
