@@ -16,8 +16,8 @@ import bodyTemplates from '@autoswarm/shared-types/src/sprite-data/body.json';
 import hairTemplates from '@autoswarm/shared-types/src/sprite-data/hair.json';
 import accessoryTemplates from '@autoswarm/shared-types/src/sprite-data/accessories.json';
 
-const HAIR_STYLE_KEYS = ['short', 'long', 'spiky', 'curly'] as const;
-const PLAYER_ACC_KEYS = ['glasses', 'crown', 'headphones', 'hat'] as const;
+const HAIR_STYLE_KEYS = ['short', 'long', 'spiky', 'curly', 'ponytail', 'bob', 'mohawk', 'bun'] as const;
+const PLAYER_ACC_KEYS = ['glasses', 'crown', 'headphones', 'hat', 'scarf', 'backpack', 'badge', 'visor'] as const;
 
 interface AvatarEditorProps {
   open: boolean;

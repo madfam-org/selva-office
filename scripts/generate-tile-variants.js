@@ -2,9 +2,11 @@
 /**
  * generate-tile-variants.js
  *
- * Applies palette presets to tile templates from tiles.json to produce
- * themed tileset PNGs. Each preset generates a drop-in replacement
- * for office-tileset.png.
+ * Applies palette presets to tile templates to produce themed tileset PNGs.
+ * Each preset generates a drop-in replacement for office-tileset.png.
+ *
+ * New tiles use palette tokens (FL, WL, etc.) which are resolved to preset
+ * environment colors. Original tiles use hex colors which are tinted.
  *
  * Usage:
  *   node scripts/generate-tile-variants.js [--presets all|name1,name2] [--output dir]
@@ -14,7 +16,7 @@ const { createCanvas } = require('@napi-rs/canvas');
 const fs = require('node:fs');
 const path = require('node:path');
 const { renderPixelData } = require('./sprite-data/renderer');
-const tileTemplates = require('../packages/shared-types/src/sprite-data/tiles.json');
+const { getAllTiles, buildEnvColorMap, TILE_ORDER, TILE_COLUMNS } = require('./sprite-data/tile-definitions');
 const palettePresets = require('../packages/shared-types/src/sprite-data/palette-presets.json');
 
 const ALL_PRESETS = Object.keys(palettePresets.presets);
@@ -36,7 +38,7 @@ function parseArgs() {
 }
 
 /**
- * Tint a hex color used in the tile template toward the ambient tint.
+ * Tint a hex color toward the ambient tint.
  */
 function tintColor(hex, tintHex, factor) {
   if (!tintHex || !hex || !hex.startsWith('#')) return hex;
@@ -51,15 +53,22 @@ function tintColor(hex, tintHex, factor) {
 }
 
 /**
- * Create a tinted copy of a tile grid. Since tiles use direct hex colors,
- * we remap colors toward the preset's ambient tint.
+ * Resolve a tile grid's tokens to hex colors using the env color map,
+ * then tint any remaining hex colors toward the ambient tint.
  */
-function tintGrid(grid, tintHex, factor) {
-  if (!tintHex) return grid;
+function resolveAndTintGrid(grid, envColorMap, tintHex, tintFactor) {
   return grid.map((row) =>
     row.map((cell) => {
       if (cell === null) return null;
-      if (cell.startsWith('#')) return tintColor(cell, tintHex, factor);
+      // If it's a palette token, resolve it
+      if (envColorMap[cell]) {
+        const hex = envColorMap[cell];
+        return tintHex ? tintColor(hex, tintHex, tintFactor * 0.5) : hex;
+      }
+      // If it's a hex color, tint it
+      if (cell.startsWith('#')) {
+        return tintHex ? tintColor(cell, tintHex, tintFactor) : cell;
+      }
       return cell;
     }),
   );
@@ -70,11 +79,9 @@ async function main() {
 
   fs.mkdirSync(output, { recursive: true });
 
-  const tileOrder = [
-    'floor', 'wall', 'desk',
-    'dept_engineering', 'dept_sales', 'dept_support', 'dept_research',
-    'review_station',
-  ];
+  const allTiles = getAllTiles();
+  const cols = TILE_COLUMNS;
+  const rows = Math.ceil(TILE_ORDER.length / cols);
 
   let count = 0;
 
@@ -85,16 +92,22 @@ async function main() {
       continue;
     }
 
-    const canvas = createCanvas(256, 32);
+    const canvas = createCanvas(cols * 32, rows * 32);
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 256, 32);
+    ctx.clearRect(0, 0, cols * 32, rows * 32);
 
-    for (let i = 0; i < tileOrder.length; i++) {
-      const tileGrid = tileTemplates[tileOrder[i]];
+    const envColorMap = buildEnvColorMap(preset);
+    const tintHex = preset.ambientTint || null;
+
+    for (let i = 0; i < TILE_ORDER.length; i++) {
+      const name = TILE_ORDER[i];
+      const tileGrid = allTiles[name];
       if (!tileGrid) continue;
 
-      const tintedGrid = tintGrid(tileGrid, preset.ambientTint, 0.2);
-      renderPixelData(ctx, i * 32, 0, tintedGrid, {});
+      const resolvedGrid = resolveAndTintGrid(tileGrid, envColorMap, tintHex, 0.2);
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      renderPixelData(ctx, col * 32, row * 32, resolvedGrid, {});
     }
 
     const filepath = path.join(output, `office-tileset-${presetName}.png`);

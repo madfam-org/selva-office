@@ -48,7 +48,7 @@ export function MediaControls({
   if (!visible) return null;
 
   return (
-    <div className="absolute top-4 left-4 z-video flex gap-2">
+    <div className="absolute top-28 left-4 z-video flex gap-2">
       <button
         onClick={onToggleAudio}
         className={`rounded px-2 py-1 text-xs font-mono transition-colors ${

@@ -183,12 +183,12 @@ describe('metaTileToTileId', () => {
     expect(metaTileToTileId('wall')).toBe(1);
   });
 
-  it('maps corridor to tile 0', () => {
-    expect(metaTileToTileId('corridor')).toBe(0);
+  it('maps corridor to floor_corridor tile 20', () => {
+    expect(metaTileToTileId('corridor')).toBe(20);
   });
 
-  it('maps dept_0 to tile 3', () => {
-    expect(metaTileToTileId('dept_0')).toBe(3);
+  it('maps dept_0 to carpet tile 22', () => {
+    expect(metaTileToTileId('dept_0')).toBe(22);
   });
 
   it('maps dept_wall_N to tile 1 (wall)', () => {
@@ -196,9 +196,9 @@ describe('metaTileToTileId', () => {
     expect(metaTileToTileId('dept_wall_3')).toBe(1);
   });
 
-  it('cycles dept tiles for index >= 4', () => {
-    expect(metaTileToTileId('dept_4')).toBe(3); // 3 + (4 % 4) = 3
-    expect(metaTileToTileId('dept_5')).toBe(4); // 3 + (5 % 4) = 4
+  it('cycles dept carpet tiles for index >= 5', () => {
+    expect(metaTileToTileId('dept_5')).toBe(22); // cycles back to first carpet
+    expect(metaTileToTileId('dept_6')).toBe(23);
   });
 });
 
@@ -394,8 +394,8 @@ describe('buildTmj', () => {
     const grid = [['corridor']];
     const tmj = buildTmj(grid, [], []);
     const floorLayer = tmj.layers.find((l) => l.name === 'floor')!;
-    // corridor = tile 0, +1 = 1
-    expect(floorLayer.data![0]).toBe(1);
+    // corridor = tile index 20, +1 = 21
+    expect(floorLayer.data![0]).toBe(21);
   });
 
   it('tilesets reference office-tileset', () => {

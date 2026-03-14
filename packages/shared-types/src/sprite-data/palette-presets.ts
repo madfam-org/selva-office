@@ -19,6 +19,15 @@ export interface PalettePreset {
     deptResearch: string;
     reviewStation: string;
     ambientTint?: string;
+    corridor?: string;
+    lobby?: string;
+    furnitureBase?: string;
+    furnitureHighlight?: string;
+    carpetEngineering?: string;
+    carpetSales?: string;
+    carpetSupport?: string;
+    carpetResearch?: string;
+    carpetBlueprint?: string;
   };
   /** Override outfit colors (index 0-3) for the preset */
   outfitOverrides?: string[];

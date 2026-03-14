@@ -75,6 +75,9 @@ post-process:
 generate-map:
 	node scripts/generate-map.js
 
+generate-office-map:
+	node scripts/generate-office-map.js
+
 # ── Setup ───────────────────────────────────────────
 setup:
 	bash scripts/setup.sh

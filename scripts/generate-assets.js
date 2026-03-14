@@ -24,6 +24,7 @@ const hairTemplates = require('../packages/shared-types/src/sprite-data/hair.jso
 const accessories = require('../packages/shared-types/src/sprite-data/accessories.json');
 const emoteTemplates = require('../packages/shared-types/src/sprite-data/emotes.json');
 const tileTemplates = require('../packages/shared-types/src/sprite-data/tiles.json');
+const { getAllTiles, buildDefaultEnvColorMap, TILE_ORDER, TILE_COLUMNS } = require('./sprite-data/tile-definitions');
 const iconTemplates = require('../packages/shared-types/src/sprite-data/icons.json');
 
 // ---------------------------------------------------------------------------
@@ -181,25 +182,27 @@ function generateAgentSheet(role, color) {
 }
 
 // ---------------------------------------------------------------------------
-// Office tileset — 256x32, 8 tiles at 32px each
+// Office tileset — 512x128 grid layout, 16 columns x 4 rows = 54 tiles
 // ---------------------------------------------------------------------------
 function generateOfficeTileset() {
-  const width = 256;
-  const height = 32;
+  const cols = TILE_COLUMNS; // 16
+  const rows = Math.ceil(TILE_ORDER.length / cols); // 4
+  const width = cols * 32;   // 512
+  const height = rows * 32;  // 128
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, width, height);
 
-  const tileOrder = [
-    'floor', 'wall', 'desk',
-    'dept_engineering', 'dept_sales', 'dept_support', 'dept_research',
-    'review_station',
-  ];
+  const allTiles = getAllTiles();
+  const envColorMap = buildDefaultEnvColorMap();
 
-  for (let i = 0; i < tileOrder.length; i++) {
-    const tileGrid = tileTemplates[tileOrder[i]];
+  for (let i = 0; i < TILE_ORDER.length; i++) {
+    const name = TILE_ORDER[i];
+    const tileGrid = allTiles[name];
     if (tileGrid) {
-      renderPixelData(ctx, i * 32, 0, tileGrid, {});
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      renderPixelData(ctx, col * 32, row * 32, tileGrid, envColorMap);
     }
   }
 

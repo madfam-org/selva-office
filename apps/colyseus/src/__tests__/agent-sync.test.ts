@@ -537,7 +537,7 @@ describe("Blueprint Lab department", () => {
   it("dept-blueprint exists with maxAgents: 0", () => {
     // Import DEFAULT_DEPARTMENTS from OfficeRoom would require real module,
     // so we verify the schema supports it
-    const blueprintDept = makeDepartment("dept-blueprint", [], "blueprint", 800, 260);
+    const blueprintDept = makeDepartment("dept-blueprint", [], "blueprint", 1248, 384);
     blueprintDept.maxAgents = 0;
 
     const state = makeState(new Map([["dept-blueprint", blueprintDept]]));

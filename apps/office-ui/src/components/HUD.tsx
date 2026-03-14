@@ -14,10 +14,10 @@ interface HUDProps {
   userName?: string | null;
 }
 
-const WORLD_WIDTH = 1280;
-const WORLD_HEIGHT = 704;
-const MINIMAP_W = 128;
-const MINIMAP_H = 96;
+const WORLD_WIDTH = 1600;
+const WORLD_HEIGHT = 896;
+const MINIMAP_W = 160;
+const MINIMAP_H = 90;
 
 const DEPT_COLORS: Record<string, string> = {
   engineering: '#1e3a5f',
@@ -61,11 +61,27 @@ function Minimap({ departments, playerPosition }: { departments: Department[]; p
 
     // Draw department zones
     const DEPT_LAYOUT: Record<string, { x: number; y: number; w: number; h: number }> = {
-      engineering: { x: 96, y: 80, w: 192, h: 160 },
-      crm: { x: 480, y: 80, w: 192, h: 160 },
-      support: { x: 96, y: 400, w: 192, h: 160 },
-      research: { x: 480, y: 400, w: 192, h: 160 },
+      engineering: { x: 32, y: 32, w: 640, h: 320 },
+      crm: { x: 928, y: 32, w: 640, h: 320 },
+      support: { x: 32, y: 544, w: 640, h: 320 },
+      research: { x: 928, y: 544, w: 640, h: 320 },
     };
+
+    // Draw room outlines (wall borders)
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1;
+    for (const layout of Object.values(DEPT_LAYOUT)) {
+      ctx.strokeRect(layout.x * scaleX, layout.y * scaleY, layout.w * scaleX, layout.h * scaleY);
+    }
+
+    // Draw corridors as lighter background
+    ctx.fillStyle = '#1e293b';
+    ctx.globalAlpha = 0.4;
+    // Horizontal corridor
+    ctx.fillRect(0, 12 * 32 * scaleY, MINIMAP_W, 4 * 32 * scaleY);
+    // Vertical corridor
+    ctx.fillRect(22 * 32 * scaleX, 0, 6 * 32 * scaleX, MINIMAP_H);
+    ctx.globalAlpha = 1;
 
     for (const dept of departments) {
       const layout = DEPT_LAYOUT[dept.slug];

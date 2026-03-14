@@ -144,10 +144,10 @@ describe('body templates', () => {
 });
 
 describe('hair templates', () => {
-  const styles = ['short', 'long', 'spiky', 'curly'];
+  const styles = ['short', 'long', 'spiky', 'curly', 'ponytail', 'bob', 'mohawk', 'bun'];
   const directions = ['front', 'left', 'back', 'right'];
 
-  it('contains all 4 styles with 4 directions each', () => {
+  it('contains all 8 styles with 4 directions each', () => {
     for (const style of styles) {
       expect(hairTemplates).toHaveProperty(style);
       for (const dir of directions) {
@@ -183,20 +183,26 @@ describe('hair templates', () => {
 });
 
 describe('accessory templates', () => {
-  it('has player accessories: glasses, crown, headphones, hat', () => {
+  it('has player accessories: glasses, crown, headphones, hat, scarf, backpack, badge, visor', () => {
     expect(accessoryTemplates.player).toHaveProperty('glasses');
     expect(accessoryTemplates.player).toHaveProperty('crown');
     expect(accessoryTemplates.player).toHaveProperty('headphones');
     expect(accessoryTemplates.player).toHaveProperty('hat');
+    expect(accessoryTemplates.player).toHaveProperty('scarf');
+    expect(accessoryTemplates.player).toHaveProperty('backpack');
+    expect(accessoryTemplates.player).toHaveProperty('badge');
+    expect(accessoryTemplates.player).toHaveProperty('visor');
   });
 
-  it('has agent accessories: clipboard, laptop, magnifier, book, card, wrench', () => {
+  it('has agent accessories: clipboard, laptop, magnifier, book, card, wrench, headset, tablet', () => {
     expect(accessoryTemplates.agent).toHaveProperty('clipboard');
     expect(accessoryTemplates.agent).toHaveProperty('laptop');
     expect(accessoryTemplates.agent).toHaveProperty('magnifier');
     expect(accessoryTemplates.agent).toHaveProperty('book');
     expect(accessoryTemplates.agent).toHaveProperty('card');
     expect(accessoryTemplates.agent).toHaveProperty('wrench');
+    expect(accessoryTemplates.agent).toHaveProperty('headset');
+    expect(accessoryTemplates.agent).toHaveProperty('tablet');
   });
 
   it('each accessory is a 32x32 grid', () => {
@@ -249,7 +255,7 @@ describe('emote templates', () => {
 describe('tile templates', () => {
   const tileNames = ['floor', 'wall', 'desk', 'dept_engineering', 'dept_sales', 'dept_support', 'dept_research', 'review_station'];
 
-  it('contains all 8 tiles', () => {
+  it('contains all 8 base tiles', () => {
     for (const name of tileNames) {
       expect(tileTemplates).toHaveProperty(name);
     }

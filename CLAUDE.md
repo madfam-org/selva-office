@@ -41,6 +41,7 @@ make db-seed          # Seed departments and agents
 make generate-assets  # Regenerate pixel-art sprite PNGs
 make generate-variants # Generate palette-themed sprite/tile variants
 make generate-map     # Procedurally generate office map (WFC)
+make generate-office-map  # Generate hand-crafted 50x28 office map
 make post-process     # Optional ImageMagick upscale/WebP conversion
 make db-backup        # Backup PostgreSQL database
 make db-restore       # Restore from backup (BACKUP_FILE=<path>)
@@ -256,7 +257,7 @@ The `packages/skills/` package implements the AgentSkills standard.
   so multiple players move independently.
 - `chatMessages: ArraySchema<ChatMessageSchema>` holds the last 50 messages
   (user + system). The `chat` message handler validates content length (max 500).
-- Office world bounds are 1280x704 (40x22 tiles at 32px).
+- Office world bounds are 1600x896 (50x28 tiles at 32px).
 - `OfficeScene` renders remote players as interpolated sprites with name labels.
   Local player movement is broadcast via `GameEventBus` at ~15fps with a 1px
   dead-zone to avoid flooding.
@@ -520,7 +521,14 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `scripts/post-process-assets.sh` — optional ImageMagick 2x/4x upscale + WebP.
   Gracefully skips if ImageMagick not installed.
 - `generate-assets.js` extended with `--variants` (all presets) and
-  `--preset <name>` (single themed tileset) flags.
+  `--preset <name>` (single themed tileset) flags. Tileset is now 512x128
+  (16 columns x 4 rows = 54 tiles) using both hex colors and palette tokens.
+- `scripts/sprite-data/tile-definitions.js` generates 46 new tiles
+  programmatically (walls, floors, furniture, stations, decorations) using
+  palette tokens (FL, WL, WH, FN, etc.) for theme-ability.
+- `scripts/generate-office-map.js` constructs the hand-crafted 50x28
+  office-default.tmj with 9 layers (floor, walls, furniture, decorations,
+  collision, departments, review-stations, interactables, spawn-points).
 - Output: `apps/office-ui/public/assets/sprites/variants/<preset>/` and
   `apps/office-ui/public/assets/tilesets/variants/`.
 
@@ -538,6 +546,9 @@ The `packages/skills/` package implements the AgentSkills standard.
     spawn-points.
 - **CLI**: `scripts/generate-map.js` — `--seed`, `--departments`, `--width`,
   `--height`, `--output`. Default: 40x22, 4 depts, seed 42.
+- **Hand-crafted map**: `scripts/generate-office-map.js` — `--output`. Generates
+  50x28 map with 4 dept rooms, corridors, lobby, blueprint nook, furniture
+  clusters, collision layer. Default: `office-default.tmj`.
 - **BootScene integration**: `?map=<name>` URL parameter loads
   `/assets/maps/<name>.tmj`. Default: `office-default`.
 - Existing `loadTiledMap()` fallback handles any schema issues with generated maps.
