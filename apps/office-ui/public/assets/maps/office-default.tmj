@@ -108,6 +108,23 @@
           "width": 192,
           "x": 480,
           "y": 400
+        },
+        {
+          "height": 160,
+          "id": 32,
+          "name": "Blueprint Lab",
+          "properties": [
+            { "name": "slug", "type": "string", "value": "blueprint" },
+            { "name": "name", "type": "string", "value": "Blueprint Lab" },
+            { "name": "maxAgents", "type": "int", "value": 0 },
+            { "name": "color", "type": "string", "value": "#4f46e5" }
+          ],
+          "rotation": 0,
+          "type": "",
+          "visible": true,
+          "width": 192,
+          "x": 800,
+          "y": 260
         }
       ],
       "opacity": 1,
@@ -218,6 +235,21 @@
           "width": 48,
           "x": 544,
           "y": 296
+        },
+        {
+          "height": 48,
+          "id": 33,
+          "name": "Workflow Editor",
+          "properties": [
+            { "name": "interactType", "type": "string", "value": "blueprint" },
+            { "name": "label", "type": "string", "value": "Workflow Editor" }
+          ],
+          "rotation": 0,
+          "type": "",
+          "visible": true,
+          "width": 64,
+          "x": 864,
+          "y": 320
         }
       ],
       "opacity": 1,
@@ -262,7 +294,7 @@
     }
   ],
   "nextlayerid": 14,
-  "nextobjectid": 32,
+  "nextobjectid": 34,
   "orientation": "orthogonal",
   "renderorder": "right-down",
   "tiledversion": "1.10.2",

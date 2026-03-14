@@ -49,7 +49,7 @@ make db-verify-backup # Verify backup integrity (BACKUP_FILE=<path>)
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (405 tests across 31 suites)
+pnpm test             # TypeScript tests (432 tests across 34 suites)
 pnpm typecheck        # TypeScript type checking
 
 uv run pytest         # Python tests (390 tests)
@@ -155,6 +155,29 @@ The `packages/skills/` package implements the AgentSkills standard.
 ### Workflow CRUD API
 - `POST/GET/PUT/DELETE /api/v1/workflows` + `/validate`, `/import`, `/export`
 - Alembic migration `0005` adds `workflows` table + `workflow_id` FK on `swarm_tasks`
+
+### Visual Workflow Builder (Phase 4)
+- **Blueprint Room**: `dept-blueprint` department zone (maxAgents: 0) at (800,260).
+  `blueprint` interactable type emits `open_blueprint` event → opens WorkflowEditor.
+- **WorkflowEditor** (`apps/office-ui/src/components/workflow-editor/`): Full-screen
+  modal with React Flow canvas, 7 custom node types (Agent, Human, Passthrough,
+  Subgraph, PythonRunner, Literal, LoopCounter), conditional edges, NodePalette
+  (drag-and-drop), PropertiesPanel (dynamic form fields), EditorToolbar (New, Save,
+  Load, Export YAML, Import YAML, Validate, Run).
+- **workflow-converter** (`apps/office-ui/src/lib/workflow-converter.ts`): Bidirectional
+  YAML ↔ React Flow conversion. Preserves node positions in `position_x`/`position_y`.
+- **useWorkflow hook**: State machine (idle|loading|saving|validating|error) for
+  workflow CRUD operations via `/api/v1/workflows` API.
+- **Execution monitoring**: `AgentSchema.currentNodeId` (Colyseus) synced via Redis
+  pub/sub from worker `_publish_agent_status(current_node_id=...)`. Active nodes
+  highlighted in editor canvas. `[nodeId]` label rendered under agent sprites in
+  OfficeScene. `ExecutionLog` panel shows chronological events.
+- **Custom workflow dispatch**: `graph_type: 'custom'` + `workflow_id` in
+  `POST /api/v1/swarms/dispatch`. Worker uses `compiled.astream()` for node-level
+  progress streaming via `_run_custom_with_streaming()`.
+- **Shared types**: `packages/shared-types/src/workflow.ts` mirrors Python schema.
+  `Agent.currentNodeId` optional field.
+- **Dependencies**: `@xyflow/react`, `js-yaml` (office-ui).
 
 ## Architecture Notes
 

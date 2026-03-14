@@ -55,6 +55,7 @@ interface PhaserGameProps {
   onCoWebsite?: (event: CoWebsiteEvent) => void;
   onPopup?: (event: PopupEvent) => void;
   onDispatchOpen?: () => void;
+  onBlueprintOpen?: () => void;
 }
 
 export default function PhaserGame({
@@ -66,6 +67,7 @@ export default function PhaserGame({
   onCoWebsite,
   onPopup,
   onDispatchOpen,
+  onBlueprintOpen,
 }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
@@ -120,6 +122,14 @@ export default function PhaserGame({
       onDispatchOpen();
     });
   }, [onDispatchOpen]);
+
+  // Listen for blueprint events from InteractableManager
+  useEffect(() => {
+    if (!onBlueprintOpen) return;
+    return gameEventBus.on('open_blueprint', () => {
+      onBlueprintOpen();
+    });
+  }, [onBlueprintOpen]);
 
   // Forward session ID into Phaser via event bus
   useEffect(() => {

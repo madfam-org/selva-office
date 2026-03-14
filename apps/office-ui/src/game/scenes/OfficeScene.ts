@@ -51,6 +51,8 @@ interface AgentSprite {
   statusHalo: Phaser.GameObjects.Arc;
   nameLabel: Phaser.GameObjects.Text;
   nameBackground: Phaser.GameObjects.Rectangle;
+  nodeLabel: Phaser.GameObjects.Text | null;
+  nodeLabelBackground: Phaser.GameObjects.Rectangle | null;
   agentId: string;
   agentStatus: string;
   hasPendingApproval: boolean;
@@ -73,6 +75,7 @@ const DEPARTMENT_LAYOUT: Record<string, { x: number; y: number; label: string }>
   crm: { x: 480, y: 80, label: 'CRM' },
   support: { x: 96, y: 400, label: 'SUPPORT' },
   research: { x: 480, y: 400, label: 'RESEARCH' },
+  blueprint: { x: 800, y: 260, label: 'BLUEPRINT LAB' },
 };
 
 const AGENT_ROLES = ['planner', 'coder', 'reviewer', 'researcher', 'crm', 'support'] as const;
@@ -965,6 +968,11 @@ export class OfficeScene extends Phaser.Scene {
       if (this.anims.exists(animKey) && existing.sprite.anims.currentAnim?.key !== animKey) {
         existing.sprite.play(animKey);
       }
+
+      // Update currentNodeId label
+      const currentNodeId = (agent as unknown as Record<string, unknown>).currentNodeId as string | undefined;
+      this.updateNodeLabel(existing, currentNodeId ?? '');
+
       return;
     }
 
@@ -1054,6 +1062,8 @@ export class OfficeScene extends Phaser.Scene {
       statusHalo,
       nameLabel,
       nameBackground,
+      nodeLabel: null,
+      nodeLabelBackground: null,
       agentId: agent.id,
       agentStatus: agent.status,
       hasPendingApproval: hasPending,
@@ -1064,6 +1074,35 @@ export class OfficeScene extends Phaser.Scene {
 
     // Initialize movement behavior
     this.agentBehavior.initAgent(agent.id, spriteX, spriteY, agent.status);
+  }
+
+  private updateNodeLabel(agentSprite: AgentSprite, currentNodeId: string): void {
+    if (currentNodeId) {
+      const x = agentSprite.sprite.x;
+      const y = agentSprite.nameLabel.y + agentSprite.nameLabel.height + 4;
+      if (!agentSprite.nodeLabel) {
+        agentSprite.nodeLabel = this.add
+          .text(x, y, `[${currentNodeId}]`, {
+            fontFamily: '"Press Start 2P", monospace',
+            fontSize: '5px',
+            color: '#22d3ee',
+          })
+          .setOrigin(0.5, 0)
+          .setDepth(6);
+        agentSprite.nodeLabelBackground = this.add
+          .rectangle(x, y + 4, agentSprite.nodeLabel.width + 4, agentSprite.nodeLabel.height + 2, 0x000000, 0.6)
+          .setDepth(5);
+      } else {
+        agentSprite.nodeLabel.setText(`[${currentNodeId}]`).setPosition(x, y).setVisible(true);
+        agentSprite.nodeLabelBackground
+          ?.setPosition(x, y + 4)
+          .setSize(agentSprite.nodeLabel.width + 4, agentSprite.nodeLabel.height + 2)
+          .setVisible(true);
+      }
+    } else {
+      agentSprite.nodeLabel?.setVisible(false);
+      agentSprite.nodeLabelBackground?.setVisible(false);
+    }
   }
 
   private getHaloStyle(status: string): { color: number; alpha: number } {

@@ -11,6 +11,7 @@ export class AgentSchema extends Schema {
   @type(["string"]) skills = new ArraySchema<string>();
   @type("string") currentTaskId: string = "";
   @type("string") currentTaskDescription: string = "";
+  @type("string") currentNodeId: string = "";
   @type("string") departmentId: string = "";
 }
 

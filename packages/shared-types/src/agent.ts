@@ -10,6 +10,7 @@ export interface Agent {
   level: number;
   departmentId: string | null;
   currentTaskId: string | null;
+  currentNodeId?: string;
   synergyBonuses: SynergyBonus[];
   createdAt: string;
   updatedAt: string;
