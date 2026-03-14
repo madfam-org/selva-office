@@ -87,10 +87,24 @@ class TestCSRF:
     """CSRFMiddleware blocks state-changing requests without token."""
 
     @pytest.mark.asyncio
-    async def test_post_blocked_without_csrf_token(
+    async def test_post_blocked_without_csrf_or_bearer(
         self, override_get_db: None
     ) -> None:
-        """POST without CSRF token is rejected with 403."""
+        """POST without CSRF token or Bearer auth is rejected with 403."""
+        transport = httpx.ASGITransport(app=_fastapi_app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as raw_client:
+            resp = await raw_client.post(
+                "/api/v1/agents/",
+                json={"name": "TestAgent", "role": "coder"},
+            )
+            assert resp.status_code == 403
+            assert "CSRF" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_bearer_auth_bypasses_csrf(
+        self, override_get_db: None
+    ) -> None:
+        """Bearer-authenticated requests skip CSRF validation (tokens are CSRF-safe)."""
         transport = httpx.ASGITransport(app=_fastapi_app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as raw_client:
             resp = await raw_client.post(
@@ -98,8 +112,8 @@ class TestCSRF:
                 json={"name": "TestAgent", "role": "coder"},
                 headers={"Authorization": "Bearer test-token"},
             )
-            assert resp.status_code == 403
-            assert "CSRF" in resp.json()["detail"]
+            # Should not be 403 — Bearer token bypasses CSRF
+            assert resp.status_code != 403
 
     @pytest.mark.asyncio
     async def test_post_passes_with_csrf_token(
