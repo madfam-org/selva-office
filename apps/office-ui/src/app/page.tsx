@@ -12,6 +12,7 @@ import { EmotePicker } from '@/components/EmotePicker';
 import { AvatarEditor } from '@/components/AvatarEditor';
 import { CoWebsitePanel } from '@/components/CoWebsitePanel';
 import { PopupOverlay } from '@/components/PopupOverlay';
+import { SkillMarketplace } from '@/components/SkillMarketplace';
 import { VideoOverlay } from '@/components/VideoOverlay';
 import { MediaControls } from '@/components/MediaControls';
 import { useApprovals } from '@/hooks/useApprovals';
@@ -125,6 +126,7 @@ export default function HomePage() {
   const [dispatchPanelOpen, setDispatchPanelOpen] = useState(false);
   const [approvalPanelOpen, setApprovalPanelOpen] = useState(false);
   const [workflowEditorOpen, setWorkflowEditorOpen] = useState(false);
+  const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -208,6 +210,13 @@ export default function HomePage() {
     setApprovalPanelOpen(false);
   }, []);
 
+  const handleMarketplaceOpen = useCallback(() => {
+    setMarketplaceOpen(true);
+    setDashboardOpen(false);
+    setDispatchPanelOpen(false);
+    setApprovalPanelOpen(false);
+  }, []);
+
   const handleDispatchClose = useCallback(() => {
     setDispatchPanelOpen(false);
   }, []);
@@ -271,6 +280,7 @@ export default function HomePage() {
         onToggle={() => setDashboardOpen((prev) => { if (!prev) setApprovalPanelOpen(false); return !prev; })}
         departments={officeState?.departments ?? []}
         onNewTask={handleDispatchOpen}
+        onOpenMarketplace={handleMarketplaceOpen}
       />
 
       <TaskDispatchPanel
@@ -342,6 +352,11 @@ export default function HomePage() {
         open={workflowEditorOpen}
         onClose={() => setWorkflowEditorOpen(false)}
         officeState={officeState}
+      />
+
+      <SkillMarketplace
+        open={marketplaceOpen}
+        onClose={() => setMarketplaceOpen(false)}
       />
 
       {activeApproval && (

@@ -35,17 +35,67 @@ class OpenAIProvider(InferenceProvider):
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
 
+    @property
+    def supports_vision(self) -> bool:
+        """OpenAI models (gpt-4o, gpt-4-turbo, etc.) support vision."""
+        return True
+
     def _headers(self) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
 
+    @staticmethod
+    def _format_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Convert multimodal message content to OpenAI's format.
+
+        - Plain string content is passed through unchanged.
+        - List content blocks are converted:
+          - ``text`` blocks -> ``{"type": "text", "text": ...}``
+          - ``image_url`` blocks -> ``{"type": "image_url", "image_url": {"url": ...}}``
+          - ``image_base64`` blocks -> ``{"type": "image_url", "image_url": {"url":
+            "data:{mime};base64,{data}"}}``
+        """
+        formatted: list[dict[str, Any]] = []
+        for msg in messages:
+            content = msg.get("content")
+            if isinstance(content, str) or content is None:
+                formatted.append(msg)
+                continue
+
+            # content is a list of blocks
+            openai_blocks: list[dict[str, Any]] = []
+            for block in content:
+                block_type = block.get("type", "")
+                if block_type == "text":
+                    openai_blocks.append({"type": "text", "text": block["content"]})
+                elif block_type == "image_url":
+                    openai_blocks.append({
+                        "type": "image_url",
+                        "image_url": {"url": block["content"]},
+                    })
+                elif block_type == "image_base64":
+                    mime = block.get("mime_type", "image/png")
+                    data_uri = f"data:{mime};base64,{block['content']}"
+                    openai_blocks.append({
+                        "type": "image_url",
+                        "image_url": {"url": data_uri},
+                    })
+                else:
+                    # Unknown block type -- pass through as text if it has content
+                    if "content" in block:
+                        openai_blocks.append({"type": "text", "text": block["content"]})
+
+            formatted.append({**msg, "content": openai_blocks})
+        return formatted
+
     def _build_body(self, request: InferenceRequest, *, stream: bool = False) -> dict[str, Any]:
-        messages: list[dict[str, str]] = []
+        messages: list[dict[str, Any]] = []
         if request.system_prompt:
             messages.append({"role": "system", "content": request.system_prompt})
         messages.extend(request.messages)
+        messages = self._format_messages(messages)
 
         body: dict[str, Any] = {
             "model": self._model,

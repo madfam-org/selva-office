@@ -72,14 +72,18 @@ def _make_request(
 
 @pytest.fixture()
 def all_providers() -> dict[str, MockProvider]:
-    """All four provider types registered."""
-    return _make_providers("ollama", "anthropic", "openai", "openrouter")
+    """All provider types registered."""
+    return _make_providers(
+        "ollama", "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+    )
 
 
 @pytest.fixture()
 def cloud_only_providers() -> dict[str, MockProvider]:
     """Cloud providers only -- no Ollama."""
-    return _make_providers("anthropic", "openai", "openrouter")
+    return _make_providers(
+        "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+    )
 
 
 @pytest.fixture()
@@ -127,25 +131,27 @@ class TestRouteRestrictedToOllama:
 class TestRoutePublicPrefersCheap:
     """Public sensitivity should route to the cheapest available provider."""
 
-    async def test_public_selects_openrouter_first(
+    async def test_public_selects_deepinfra_first(
         self, all_providers: dict[str, MockProvider]
     ) -> None:
         router = ModelRouter(providers=all_providers)
         request = _make_request(sensitivity=Sensitivity.PUBLIC)
         response = await router.complete(request)
-        assert response.provider == "openrouter"
+        assert response.provider == "deepinfra"
 
     async def test_public_falls_through_when_cheapest_missing(self) -> None:
-        """Without openrouter, public should fall to next cheapest: openai."""
-        providers = _make_providers("anthropic", "openai")
+        """Without deepinfra/together/fireworks, public should fall to openrouter."""
+        providers = _make_providers("anthropic", "openai", "openrouter")
         router = ModelRouter(providers=providers)
         request = _make_request(sensitivity=Sensitivity.PUBLIC)
         response = await router.complete(request)
-        assert response.provider == "openai"
+        assert response.provider == "openrouter"
 
     async def test_public_cheapest_priority_order(self) -> None:
-        """Verify the CHEAPEST_PRIORITY constant is openrouter > openai > anthropic."""
-        assert CHEAPEST_PRIORITY == ["openrouter", "openai", "anthropic"]
+        """Verify the CHEAPEST_PRIORITY constant order."""
+        assert CHEAPEST_PRIORITY == [
+            "deepinfra", "together", "fireworks", "openrouter", "openai", "anthropic",
+        ]
 
     async def test_public_only_anthropic_available(self) -> None:
         providers = _make_providers("anthropic")
@@ -153,6 +159,14 @@ class TestRoutePublicPrefersCheap:
         request = _make_request(sensitivity=Sensitivity.PUBLIC)
         response = await router.complete(request)
         assert response.provider == "anthropic"
+
+    async def test_public_together_when_deepinfra_missing(self) -> None:
+        """Without deepinfra, public should fall to together."""
+        providers = _make_providers("together", "fireworks", "openrouter")
+        router = ModelRouter(providers=providers)
+        request = _make_request(sensitivity=Sensitivity.PUBLIC)
+        response = await router.complete(request)
+        assert response.provider == "together"
 
 
 class TestRouteInternalPrefersCloud:
@@ -167,7 +181,9 @@ class TestRouteInternalPrefersCloud:
         assert response.provider == "anthropic"
 
     async def test_internal_cloud_priority_order(self) -> None:
-        assert CLOUD_PRIORITY == ["anthropic", "openai", "openrouter"]
+        assert CLOUD_PRIORITY == [
+            "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+        ]
 
     async def test_internal_falls_through_to_openai(self) -> None:
         providers = _make_providers("openai", "openrouter")
@@ -175,6 +191,14 @@ class TestRouteInternalPrefersCloud:
         request = _make_request(sensitivity=Sensitivity.INTERNAL)
         response = await router.complete(request)
         assert response.provider == "openai"
+
+    async def test_internal_falls_through_to_fireworks(self) -> None:
+        """Without anthropic/openai, should fall to fireworks."""
+        providers = _make_providers("fireworks", "together", "openrouter")
+        router = ModelRouter(providers=providers)
+        request = _make_request(sensitivity=Sensitivity.INTERNAL)
+        response = await router.complete(request)
+        assert response.provider == "fireworks"
 
 
 class TestRequireLocalEnforced:
@@ -223,8 +247,8 @@ class TestPreferLocal:
         router = ModelRouter(providers=cloud_only_providers)
         request = _make_request(sensitivity=Sensitivity.PUBLIC, prefer_local=True)
         response = await router.complete(request)
-        # Should fall through to cheapest cloud: openrouter
-        assert response.provider == "openrouter"
+        # Should fall through to cheapest cloud: deepinfra
+        assert response.provider == "deepinfra"
 
 
 class TestRouterAvailableProviders:
@@ -235,7 +259,9 @@ class TestRouterAvailableProviders:
     ) -> None:
         router = ModelRouter(providers=all_providers)
         available = router.available_providers
-        assert set(available) == {"ollama", "anthropic", "openai", "openrouter"}
+        assert set(available) == {
+            "ollama", "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+        }
 
     def test_empty_providers(self) -> None:
         router = ModelRouter(providers={})

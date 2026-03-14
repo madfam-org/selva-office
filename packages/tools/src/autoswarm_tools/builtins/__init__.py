@@ -11,6 +11,7 @@ from .deploy import DeployStatusTool, DeployTool
 from .environment import EnvInfoTool, PackageInstallTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
+from .image_analysis import ImageAnalysisTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
 
 
@@ -52,4 +53,6 @@ def get_builtin_tools() -> list[BaseTool]:
         SaveArtifactTool(),
         RetrieveArtifactTool(),
         ListArtifactsTool(),
+        # Image analysis
+        ImageAnalysisTool(),
     ]

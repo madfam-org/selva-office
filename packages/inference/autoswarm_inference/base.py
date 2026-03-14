@@ -13,6 +13,14 @@ class InferenceProvider(ABC):
 
     name: str
 
+    @property
+    def supports_vision(self) -> bool:
+        """Whether this provider can process image content in messages.
+
+        Override in subclasses that support vision/multimodal models.
+        """
+        return False
+
     @abstractmethod
     async def complete(self, request: InferenceRequest) -> InferenceResponse:
         """Send a completion request and return the full response."""

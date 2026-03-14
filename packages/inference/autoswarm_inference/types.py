@@ -1,13 +1,38 @@
-from enum import Enum
+from __future__ import annotations
+
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class Sensitivity(str, Enum):
+class Sensitivity(StrEnum):
     PUBLIC = "public"
     INTERNAL = "internal"
     CONFIDENTIAL = "confidential"
     RESTRICTED = "restricted"
+
+
+class ContentType(StrEnum):
+    """Content block types for multimodal messages."""
+
+    TEXT = "text"
+    IMAGE_URL = "image_url"
+    IMAGE_BASE64 = "image_base64"
+
+
+class MediaContent(BaseModel):
+    """A single content block within a multimodal message.
+
+    For TEXT blocks, ``content`` holds the text string.
+    For IMAGE_URL blocks, ``content`` holds the URL.
+    For IMAGE_BASE64 blocks, ``content`` holds the base64-encoded data
+    and ``mime_type`` indicates the image format.
+    """
+
+    type: ContentType
+    content: str
+    mime_type: str | None = None
 
 
 class RoutingPolicy(BaseModel):
@@ -19,10 +44,30 @@ class RoutingPolicy(BaseModel):
 
 
 class InferenceRequest(BaseModel):
-    messages: list[dict[str, str]]
+    messages: list[dict[str, Any]]
     policy: RoutingPolicy = Field(default_factory=RoutingPolicy)
     system_prompt: str | None = None
     tools: list[dict] | None = None
+
+    def has_media(self) -> bool:
+        """Return True if any message contains image content blocks.
+
+        Detects multimodal content by checking for messages whose ``content``
+        field is a list containing blocks with ``type`` equal to
+        ``image_url`` or ``image_base64``.
+        """
+        for msg in self.messages:
+            content = msg.get("content")
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") in (
+                        ContentType.IMAGE_URL,
+                        ContentType.IMAGE_URL.value,
+                        ContentType.IMAGE_BASE64,
+                        ContentType.IMAGE_BASE64.value,
+                    ):
+                        return True
+        return False
 
 
 class InferenceResponse(BaseModel):

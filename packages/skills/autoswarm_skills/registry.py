@@ -72,6 +72,19 @@ class SkillRegistry:
             except Exception:
                 logger.warning("Failed to parse %s", skill_md, exc_info=True)
 
+    # -- Refresh ---------------------------------------------------------------
+
+    def refresh(self) -> None:
+        """Re-discover all skills, clearing caches.
+
+        Useful after installing a new community skill at runtime so that
+        the registry picks up newly added ``SKILL.md`` files.
+        """
+        self._metadata.clear()
+        self._definitions.clear()
+        self._skill_source.clear()
+        self._discover()
+
     # -- Queries ---------------------------------------------------------------
 
     def list_skills(self, tier: SkillTier | None = None) -> list[SkillMetadata]:

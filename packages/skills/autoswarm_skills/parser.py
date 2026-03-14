@@ -52,3 +52,36 @@ def parse_skill_md(path: Path) -> tuple[SkillMetadata, str]:
         )
 
     return meta, body
+
+
+def parse_skill_md_string(content: str) -> tuple[SkillMetadata, str]:
+    """Parse YAML frontmatter from a raw string (no file/directory validation).
+
+    Unlike :func:`parse_skill_md`, this function does not require a file on disk
+    and does not validate that the skill ``name`` matches a parent directory.
+
+    Args:
+        content: Raw SKILL.md text with ``---`` delimited YAML frontmatter.
+
+    Returns:
+        A tuple of (SkillMetadata, instructions_body).
+
+    Raises:
+        ValueError: If the content format is invalid.
+    """
+    if not content.startswith("---"):
+        raise ValueError("Content must start with '---' YAML frontmatter fence")
+
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        raise ValueError("Content must have opening and closing '---' fences")
+
+    frontmatter_raw = parts[1].strip()
+    body = parts[2].strip()
+
+    frontmatter = yaml.safe_load(frontmatter_raw)
+    if not isinstance(frontmatter, dict):
+        raise ValueError("YAML frontmatter must be a mapping")
+
+    meta = SkillMetadata(**frontmatter)
+    return meta, body

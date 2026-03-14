@@ -9,8 +9,8 @@ from .types import InferenceRequest, InferenceResponse, Sensitivity
 # Provider names expected by the router.  The keys in the providers dict
 # passed to ModelRouter should use these identifiers.
 LOCAL_PROVIDER = "ollama"
-CLOUD_PRIORITY = ["anthropic", "openai", "openrouter"]
-CHEAPEST_PRIORITY = ["openrouter", "openai", "anthropic"]
+CLOUD_PRIORITY = ["anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter"]
+CHEAPEST_PRIORITY = ["deepinfra", "together", "fireworks", "openrouter", "openai", "anthropic"]
 
 
 class ModelRouter:
@@ -64,6 +64,15 @@ class ModelRouter:
         elif policy.prefer_local and LOCAL_PROVIDER in candidates:
             candidates.remove(LOCAL_PROVIDER)
             candidates.insert(0, LOCAL_PROVIDER)
+
+        # For multimodal requests, prefer vision-capable providers
+        if request.has_media():
+            vision_candidates = [
+                n for n in candidates
+                if self._providers.get(n) and self._providers[n].supports_vision
+            ]
+            if vision_candidates:
+                candidates = vision_candidates
 
         for name in candidates:
             provider = self._providers.get(name)
