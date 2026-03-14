@@ -26,6 +26,7 @@ from .config import get_settings
 from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
 from .graphs.deployment import build_deployment_graph
+from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.research import build_research_graph
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
@@ -43,6 +44,7 @@ GRAPH_BUILDERS = {
     "research": build_research_graph,
     "crm": build_crm_graph,
     "deployment": build_deployment_graph,
+    "puppeteer": build_puppeteer_graph,
     # "custom" is handled dynamically via WorkflowCompiler — see process_task()
 }
 
@@ -277,6 +279,13 @@ async def process_task(task_data: dict) -> None:
         initial_state["service"] = payload.get("service", "")
         initial_state["environment"] = payload.get("environment", "staging")
         initial_state["image_tag"] = payload.get("image_tag", "latest")
+    elif graph_type == "puppeteer":
+        payload = task_data.get("payload", {})
+        initial_state["subtasks"] = []
+        initial_state["subtask_results"] = []
+        initial_state["aggregated_result"] = None
+        initial_state["max_parallel"] = payload.get("max_parallel", 3)
+        initial_state["selected_agents"] = []
 
     handler = InterruptHandler(
         nexus_api_url=settings.nexus_api_url,
