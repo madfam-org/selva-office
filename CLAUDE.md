@@ -4,6 +4,10 @@
 
 - `apps/nexus-api/src/main.py` -- FastAPI application entry point
 - `apps/office-ui/src/app/page.tsx` -- Office UI root page
+- `apps/workers/autoswarm_workers/__main__.py` -- Worker process entry (task status lifecycle)
+- `apps/workers/autoswarm_workers/task_status.py` -- Fire-and-forget task PATCH to nexus-api
+- `apps/workers/autoswarm_workers/graphs/coding.py` -- Coding graph (plan/implement/test/review/push)
+- `apps/workers/autoswarm_workers/graphs/base.py` -- Shared graph state, permission checks
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
@@ -53,7 +57,8 @@ pnpm lint             # ESLint
 pnpm test             # TypeScript tests (432 tests across 34 suites)
 pnpm typecheck        # TypeScript type checking
 
-uv run pytest         # Python tests (390 tests)
+uv run pytest packages/ apps/nexus-api/  # Python tests (390 tests)
+uv run pytest apps/workers/tests/       # Worker tests (65 tests)
 uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```
@@ -182,6 +187,24 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 ## Architecture Notes
 
+- **Worker execution pipeline**: `process_task()` in `__main__.py` drives the
+  full task lifecycle: (1) set status to `"running"` via `task_status.py`, (2)
+  execute the LangGraph graph, (3) map graph status → API status
+  (`pushed`/`completed` → `"completed"`, `blocked`/`denied`/`error` → `"failed"`)
+  and PATCH to `nexus-api`, (4) publish agent status to Colyseus via Redis
+  pub/sub. Timeouts and exceptions also PATCH `"failed"` with error details.
+  All status updates are fire-and-forget (failures logged, never raised).
+- **Coding graph execution**: `plan()` creates a git worktree and sets
+  `branch_name: "autoswarm/task-{id}"`. `implement()` calls the LLM requesting
+  JSON `{"files": [...]}`, parses the response, and writes files to the worktree
+  via `_write_files_to_worktree()` (with path traversal security checks). Falls
+  back to a placeholder file when no LLM is configured. `push_gate()` calls
+  `git_tool.commit()` + `git_tool.push()` before worktree cleanup on approval.
+- **Permission engine wiring**: `check_permission()` in `base.py` evaluates an
+  `ActionCategory` against the `PermissionEngine`. Called by `implement()`
+  (`file_write`) and CRM `send()` (`email_send`). Returns `DENY` → node returns
+  `status: "blocked"`. The `push_gate` already uses `interrupt()` for ASK-level
+  gating. Skill-based overrides apply when `agent_skill_ids` are present.
 - **Task queue**: Redis Streams (`autoswarm:task-stream`) with consumer groups
   (`autoswarm-workers`). Legacy `autoswarm:tasks` LIST is dual-written for migration.
   Dead letter queue at `autoswarm:task-dlq` after 3 retries. Workers auto-claim

@@ -72,16 +72,21 @@ Nexus API (REST endpoint or WebSocket message)
 Redis Task Queue (LPUSH to autoswarm:tasks)
     |
     v
-Worker Process (BRPOP from queue)
+Worker Process (XREADGROUP from stream)
+    |
+    v
+PATCH task status to "running" (fire-and-forget via task_status.py)
     |
     v
 LangGraph Execution (agent graph with tool nodes)
+    |  Coding: plan -> implement -> test -> review -> push_gate
+    |  implement() writes files to worktree after permission check
+    |  push_gate() commits + pushes on approval
+    v
+Permission Check (check_permission() evaluates action category)
     |
     v
-Tool Execution (file write, git commit, email send, etc.)
-    |
-    v
-Permission Check (evaluate action against permission matrix)
+PATCH task status to "completed" or "failed" with result
     |
     +-- ALLOW --> Execute immediately, report result
     |

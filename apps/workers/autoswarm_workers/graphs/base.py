@@ -18,7 +18,7 @@ from autoswarm_permissions import (
     PermissionEngine,
     RoleMatrixRule,
 )
-from autoswarm_permissions.types import ActionCategory, PermissionLevel
+from autoswarm_permissions.types import ActionCategory, PermissionLevel, PermissionResult
 
 from ..tools.bash_tool import BashTool
 from ..tools.git_tool import GitTool
@@ -89,6 +89,33 @@ def _build_engine_for_state(state: BaseGraphState) -> PermissionEngine:
         logger.warning("Failed to build skill-based permission overrides", exc_info=True)
 
     return _engine
+
+
+def check_permission(
+    state: BaseGraphState,
+    action_category_str: str,
+) -> PermissionResult:
+    """Check if an action is permitted for the current agent.
+
+    Returns a ``PermissionResult`` with ``level`` of ALLOW, ASK, or DENY.
+    For ASK-level actions, the calling node should use ``interrupt()``
+    separately to request human approval.
+    """
+    from datetime import datetime
+
+    engine = _build_engine_for_state(state)
+    try:
+        category = ActionCategory(action_category_str)
+    except ValueError:
+        category = ActionCategory.API_CALL
+
+    perm_context = PermissionContext(
+        time_utc=datetime.now(UTC),
+        agent_level=state.get("agent_level"),  # type: ignore[arg-type]
+        risk_score=state.get("risk_score"),  # type: ignore[arg-type]
+        agent_role=state.get("agent_role"),  # type: ignore[arg-type]
+    )
+    return engine.evaluate(category, context=perm_context)
 
 
 def permission_check(state: BaseGraphState) -> BaseGraphState:

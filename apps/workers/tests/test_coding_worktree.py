@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from langchain_core.messages import AIMessage
 
 
@@ -48,8 +47,11 @@ class TestCodingWorktree:
 
         assert result["worktree_path"] == "/existing/worktree"
 
-    def test_implement_sets_bash_cwd_to_worktree(self) -> None:
+    def test_implement_sets_bash_cwd_to_worktree(self, tmp_path) -> None:
         from autoswarm_workers.graphs.coding import _bash_tool, implement
+
+        worktree = str(tmp_path / "worktree")
+        (tmp_path / "worktree").mkdir()
 
         original_cwd = getattr(_bash_tool, "allowed_cwd", None)
         try:
@@ -58,10 +60,10 @@ class TestCodingWorktree:
                     content="Plan ready",
                     additional_kwargs={"plan": {"steps": ["step1"]}}
                 )],
-                "worktree_path": "/tmp/worktrees/task-t1",
+                "worktree_path": worktree,
                 "iteration": 0,
             })
-            assert _bash_tool.allowed_cwd == "/tmp/worktrees/task-t1"
+            assert _bash_tool.allowed_cwd == worktree
         finally:
             _bash_tool.allowed_cwd = original_cwd
 
@@ -130,3 +132,114 @@ class TestCodingWorktree:
 
         # Should complete without error (falls back to simulated results).
         assert result["status"] == "testing"
+
+    def test_plan_sets_branch_name(self) -> None:
+        from autoswarm_workers.graphs.coding import plan
+
+        result = plan({
+            "messages": [AIMessage(content="Build a feature")],
+            "task_id": "t1",
+        })
+
+        assert result["branch_name"] == "autoswarm/task-t1"
+
+
+class TestPushGateCommitPush:
+    """push_gate commits and pushes on approval (Gap 3)."""
+
+    def test_approved_commits_and_pushes_before_cleanup(self) -> None:
+        from autoswarm_workers.graphs.coding import push_gate
+
+        mock_git = MagicMock()
+        mock_git.commit = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
+        mock_git.push = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
+        mock_git.cleanup_worktree = AsyncMock()
+
+        with (
+            patch(
+                "autoswarm_workers.graphs.coding.interrupt",
+                return_value={"approved": True},
+            ),
+            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+        ):
+            result = push_gate({
+                "messages": [],
+                "code_changes": [{"iteration": 1}],
+                "worktree_path": "/tmp/worktrees/task-t1",
+                "task_id": "t1",
+                "description": "Add feature X",
+                "branch_name": "autoswarm/task-t1",
+            })
+
+        assert result["status"] == "pushed"
+        mock_git.commit.assert_called_once_with(
+            "/tmp/worktrees/task-t1", "autoswarm: Add feature X",
+        )
+        mock_git.push.assert_called_once_with(
+            "/tmp/worktrees/task-t1", "autoswarm/task-t1",
+        )
+        # Cleanup should still happen after commit+push.
+        mock_git.cleanup_worktree.assert_called_once()
+
+    def test_denied_does_not_commit_or_push(self) -> None:
+        from autoswarm_workers.graphs.coding import push_gate
+
+        mock_git = MagicMock()
+        mock_git.commit = AsyncMock()
+        mock_git.push = AsyncMock()
+        mock_git.cleanup_worktree = AsyncMock()
+
+        with (
+            patch(
+                "autoswarm_workers.graphs.coding.interrupt",
+                return_value={"approved": False, "feedback": "Needs work"},
+            ),
+            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+        ):
+            result = push_gate({
+                "messages": [],
+                "code_changes": [],
+                "worktree_path": "/tmp/worktrees/task-t1",
+                "task_id": "t1",
+            })
+
+        assert result["status"] == "denied"
+        mock_git.commit.assert_not_called()
+        mock_git.push.assert_not_called()
+        # Cleanup still happens on deny.
+        mock_git.cleanup_worktree.assert_called_once()
+
+    def test_commit_failure_does_not_prevent_cleanup(self) -> None:
+        from autoswarm_workers.graphs.coding import push_gate
+
+        mock_git = MagicMock()
+        mock_git.commit = AsyncMock(
+            return_value=MagicMock(return_code=1, stderr="nothing to commit"),
+        )
+        mock_git.push = AsyncMock()
+        mock_git.cleanup_worktree = AsyncMock()
+
+        with (
+            patch(
+                "autoswarm_workers.graphs.coding.interrupt",
+                return_value={"approved": True},
+            ),
+            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+        ):
+            result = push_gate({
+                "messages": [],
+                "code_changes": [{"iteration": 1}],
+                "worktree_path": "/tmp/worktrees/task-t1",
+                "task_id": "t1",
+                "branch_name": "autoswarm/task-t1",
+            })
+
+        assert result["status"] == "pushed"
+        # Push should NOT be called when commit fails.
+        mock_git.push.assert_not_called()
+        # Cleanup should still happen.
+        mock_git.cleanup_worktree.assert_called_once()
