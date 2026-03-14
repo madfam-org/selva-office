@@ -38,6 +38,7 @@ import { MegaphoneControls } from '@/components/MegaphoneControls';
 import { SpotlightControls } from '@/components/SpotlightControls';
 import { SpotlightView } from '@/components/SpotlightView';
 import { RoomNavigator } from '@/components/RoomNavigator';
+import { SimplifiedView } from '@/components/SimplifiedView';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
 import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
@@ -262,6 +263,20 @@ export default function HomePage() {
   const [followingPlayer, setFollowingPlayer] = useState<string | null>(null);
   const [explorerMode, setExplorerMode] = useState(false);
   const [spotlightViewDismissed, setSpotlightViewDismissed] = useState(false);
+  const [viewMode, setViewMode] = useState<'game' | 'simple'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('autoswarm:view-mode') as 'game' | 'simple') ?? 'game';
+    }
+    return 'game';
+  });
+
+  const handleToggleViewMode = useCallback(() => {
+    setViewMode((prev) => {
+      const next = prev === 'game' ? 'simple' : 'game';
+      try { localStorage.setItem('autoswarm:view-mode', next); } catch { /* noop */ }
+      return next;
+    });
+  }, []);
 
   const handleApprovalOpen = useCallback(
     (agentId: string) => {
@@ -471,41 +486,218 @@ export default function HomePage() {
     <ErrorBoundary>
     <ToastProvider>
     <main className="relative h-screen w-screen overflow-hidden bg-slate-900 scanline-overlay">
-      <PhaserGame
-        onApprovalOpen={handleApprovalOpen}
-        officeState={officeState}
-        sessionId={sessionId}
-        onPlayerMove={handlePlayerMove}
-        onEmote={handleEmote}
-        onCoWebsite={handleCoWebsite}
-        onPopup={handlePopup}
-        onDispatchOpen={handleDispatchOpen}
-        onBlueprintOpen={handleBlueprintOpen}
-      />
+      {viewMode === 'game' ? (
+        <>
+          <PhaserGame
+            onApprovalOpen={handleApprovalOpen}
+            officeState={officeState}
+            sessionId={sessionId}
+            onPlayerMove={handlePlayerMove}
+            onEmote={handleEmote}
+            onCoWebsite={handleCoWebsite}
+            onPopup={handlePopup}
+            onDispatchOpen={handleDispatchOpen}
+            onBlueprintOpen={handleBlueprintOpen}
+          />
 
-      <HUD
-        activeAgentCount={officeState?.activeAgentCount ?? 0}
-        pendingApprovalCount={pendingApprovals.length}
-        computeTokens={officeState ? { used: 0, limit: 10000 } : undefined}
-        colyseusConnected={colyseusConnected}
-        approvalsConnected={approvalsConnected}
-        departments={officeState?.departments ?? []}
-        playerPosition={playerPosition}
-        userName={sessionUser?.name ?? sessionUser?.email ?? null}
-        onApprovalClick={handleApprovalPanelOpen}
-        followingPlayer={followingPlayer}
-        explorerMode={explorerMode}
-      />
+          <HUD
+            activeAgentCount={officeState?.activeAgentCount ?? 0}
+            pendingApprovalCount={pendingApprovals.length}
+            computeTokens={officeState ? { used: 0, limit: 10000 } : undefined}
+            colyseusConnected={colyseusConnected}
+            approvalsConnected={approvalsConnected}
+            departments={officeState?.departments ?? []}
+            playerPosition={playerPosition}
+            userName={sessionUser?.name ?? sessionUser?.email ?? null}
+            onApprovalClick={handleApprovalPanelOpen}
+            followingPlayer={followingPlayer}
+            explorerMode={explorerMode}
+            viewMode={viewMode}
+            onToggleViewMode={handleToggleViewMode}
+          />
 
-      <DashboardPanel
-        open={dashboardOpen}
-        onToggle={() => setDashboardOpen((prev) => { if (!prev) setApprovalPanelOpen(false); return !prev; })}
-        departments={officeState?.departments ?? []}
-        onNewTask={handleDispatchOpen}
-        onOpenMarketplace={handleMarketplaceOpen}
-        onOpenMapEditor={handleMapEditorOpen}
-      />
+          <DashboardPanel
+            open={dashboardOpen}
+            onToggle={() => setDashboardOpen((prev) => { if (!prev) setApprovalPanelOpen(false); return !prev; })}
+            departments={officeState?.departments ?? []}
+            onNewTask={handleDispatchOpen}
+            onOpenMarketplace={handleMarketplaceOpen}
+            onOpenMapEditor={handleMapEditorOpen}
+          />
 
+          <ApprovalPanel
+            open={approvalPanelOpen}
+            onClose={() => setApprovalPanelOpen(false)}
+            pendingApprovals={pendingApprovals}
+            onApprove={handleApprove}
+            onDeny={handleDeny}
+            connected={approvalsConnected}
+          />
+
+          <ChatPanel
+            messages={officeState?.chatMessages ?? []}
+            onSend={sendChat}
+            localSessionId={sessionId ?? ''}
+          />
+
+          <VideoOverlay peers={peers} localStream={localStream} screenSharing={screenSharing} />
+          <MediaControls
+            audioEnabled={audioEnabled}
+            videoEnabled={videoEnabled}
+            onToggleAudio={toggleAudio}
+            onToggleVideo={toggleVideo}
+            screenSharing={screenSharing}
+            onToggleScreenShare={toggleScreenShare}
+            bubbleLocked={bubbleLocked}
+            noiseSuppression={noiseSuppression}
+            onToggleNoiseSuppression={toggleNoiseSuppression}
+            onToggleLockBubble={() => {
+              if (bubbleLocked) {
+                sendUnlockBubble();
+                setBubbleLocked(false);
+              } else {
+                sendLockBubble();
+                setBubbleLocked(true);
+              }
+            }}
+            visible={peers.length > 0 || !!localStream}
+          />
+          <RecordingControls
+            recordingState={recordingState}
+            formattedDuration={formattedDuration}
+            onStart={startRecording}
+            onStop={stopRecording}
+            visible={peers.length > 0 || !!localStream}
+            lastRecordingUrl={lastRecordingUrl}
+            onGenerateNotes={handleGenerateNotes}
+          />
+          <MegaphoneControls
+            active={megaphoneActive}
+            speakerName={megaphoneSpeaker}
+            isLocalSpeaker={megaphoneActive && megaphoneSpeaker === (sessionUser?.name ?? sessionUser?.email ?? null)}
+            onStart={() => { sendMegaphoneStart(); setMegaphoneActive(true); setMegaphoneSpeaker(sessionUser?.name ?? sessionUser?.email ?? 'You'); }}
+            onStop={() => { sendMegaphoneStop(); setMegaphoneActive(false); setMegaphoneSpeaker(null); }}
+            visible={peers.length > 0 || !!localStream}
+          />
+          <SpotlightControls
+            active={spotlightActive}
+            presenterName={spotlightPresenterName}
+            isPresenting={spotlightIsPresenting}
+            onStart={startSpotlight}
+            onStop={stopSpotlight}
+            visible={peers.length > 0 || !!localStream}
+          />
+          {!spotlightViewDismissed && (
+            <SpotlightView
+              active={spotlightActive}
+              isPresenting={spotlightIsPresenting}
+              presenterName={spotlightPresenterName}
+              presenterSessionId={spotlightPresenterSessionId}
+              peers={peers}
+              onClose={() => setSpotlightViewDismissed(true)}
+            />
+          )}
+          <RoomNavigator
+            currentRoom={currentRoom}
+            onChangeRoom={(roomId) => setCurrentRoom(roomId)}
+            visible={colyseusConnected}
+          />
+
+          <EmotePicker onEmote={handleEmote} />
+
+          <AvatarEditor
+            open={avatarEditorOpen}
+            initialConfig={avatarConfig}
+            onSave={handleAvatarSave}
+            onClose={() => setAvatarEditorOpen(false)}
+            companionType={companionType}
+            onCompanionChange={(type) => {
+              setCompanionType(type);
+              sendCompanion(type);
+              try { localStorage.setItem('autoswarm:companion-type', type); } catch { /* noop */ }
+            }}
+          />
+
+          <button
+            onClick={() => setAvatarEditorOpen(true)}
+            className="absolute top-4 right-4 z-hud rounded bg-slate-800/90 px-3 py-1 text-xs text-slate-300 retro-btn hover:bg-slate-700"
+            aria-label="Open avatar editor"
+          >
+            Avatar
+          </button>
+
+          <div className="absolute top-14 right-4 z-hud flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setCalendarPanelOpen((prev) => !prev);
+                  setDashboardOpen(false);
+                  setDispatchPanelOpen(false);
+                  setApprovalPanelOpen(false);
+                }}
+                className={`rounded bg-slate-800/90 px-3 py-1 text-xs retro-btn ${
+                  calendarConnected
+                    ? calendarBusy
+                      ? 'text-amber-400 hover:bg-amber-900/40'
+                      : 'text-emerald-400 hover:bg-emerald-900/40'
+                    : 'text-slate-300 hover:bg-slate-700'
+                }`}
+                aria-label="Toggle calendar panel"
+              >
+                Calendar{calendarBusy ? ' (busy)' : ''}
+              </button>
+            </div>
+            <StatusSelector
+              currentStatus={playerStatus}
+              onStatusChange={changePlayerStatus}
+            />
+            <MusicStatus
+              currentStatus={musicStatus}
+              onStatusChange={(status) => {
+                setMusicStatus(status);
+                sendMusicStatus(status);
+              }}
+            />
+          </div>
+
+          <CoWebsitePanel
+            url={coWebsite?.url ?? null}
+            title={coWebsite?.title ?? ''}
+            onClose={() => setCoWebsite(null)}
+          />
+
+          <PopupOverlay
+            open={!!popup}
+            title={popup?.title ?? ''}
+            content={popup?.content ?? ''}
+            onClose={() => setPopup(null)}
+          />
+
+          <DeskInfoPanel
+            open={!!deskInfo}
+            onClose={() => setDeskInfo(null)}
+            assignedAgentId={deskInfo?.assignedAgentId ?? ''}
+            deskTitle={deskInfo?.title ?? 'Desk'}
+            departments={officeState?.departments ?? []}
+          />
+        </>
+      ) : (
+        <SimplifiedView
+          departments={officeState?.departments ?? []}
+          pendingApprovals={pendingApprovals}
+          chatMessages={officeState?.chatMessages ?? []}
+          onSendChat={sendChat}
+          onApprove={handleApprove}
+          onDeny={handleDeny}
+          onDispatchTask={handleDispatchOpen}
+          onOpenMarketplace={handleMarketplaceOpen}
+          onToggleViewMode={handleToggleViewMode}
+          colyseusConnected={colyseusConnected}
+          approvalsConnected={approvalsConnected}
+        />
+      )}
+
+      {/* Shared modals — available in both game and simplified view */}
       <TaskDispatchPanel
         open={dispatchPanelOpen}
         onClose={handleDispatchClose}
@@ -517,166 +709,10 @@ export default function HomePage() {
         onReset={resetDispatch}
       />
 
-      <ApprovalPanel
-        open={approvalPanelOpen}
-        onClose={() => setApprovalPanelOpen(false)}
-        pendingApprovals={pendingApprovals}
-        onApprove={handleApprove}
-        onDeny={handleDeny}
-        connected={approvalsConnected}
-      />
-
-      <ChatPanel
-        messages={officeState?.chatMessages ?? []}
-        onSend={sendChat}
-        localSessionId={sessionId ?? ''}
-      />
-
-      <VideoOverlay peers={peers} localStream={localStream} screenSharing={screenSharing} />
-      <MediaControls
-        audioEnabled={audioEnabled}
-        videoEnabled={videoEnabled}
-        onToggleAudio={toggleAudio}
-        onToggleVideo={toggleVideo}
-        screenSharing={screenSharing}
-        onToggleScreenShare={toggleScreenShare}
-        bubbleLocked={bubbleLocked}
-        noiseSuppression={noiseSuppression}
-        onToggleNoiseSuppression={toggleNoiseSuppression}
-        onToggleLockBubble={() => {
-          if (bubbleLocked) {
-            sendUnlockBubble();
-            setBubbleLocked(false);
-          } else {
-            sendLockBubble();
-            setBubbleLocked(true);
-          }
-        }}
-        visible={peers.length > 0 || !!localStream}
-      />
-      <RecordingControls
-        recordingState={recordingState}
-        formattedDuration={formattedDuration}
-        onStart={startRecording}
-        onStop={stopRecording}
-        visible={peers.length > 0 || !!localStream}
-        lastRecordingUrl={lastRecordingUrl}
-        onGenerateNotes={handleGenerateNotes}
-      />
-      <MegaphoneControls
-        active={megaphoneActive}
-        speakerName={megaphoneSpeaker}
-        isLocalSpeaker={megaphoneActive && megaphoneSpeaker === (sessionUser?.name ?? sessionUser?.email ?? null)}
-        onStart={() => { sendMegaphoneStart(); setMegaphoneActive(true); setMegaphoneSpeaker(sessionUser?.name ?? sessionUser?.email ?? 'You'); }}
-        onStop={() => { sendMegaphoneStop(); setMegaphoneActive(false); setMegaphoneSpeaker(null); }}
-        visible={peers.length > 0 || !!localStream}
-      />
-      <SpotlightControls
-        active={spotlightActive}
-        presenterName={spotlightPresenterName}
-        isPresenting={spotlightIsPresenting}
-        onStart={startSpotlight}
-        onStop={stopSpotlight}
-        visible={peers.length > 0 || !!localStream}
-      />
-      {!spotlightViewDismissed && (
-        <SpotlightView
-          active={spotlightActive}
-          isPresenting={spotlightIsPresenting}
-          presenterName={spotlightPresenterName}
-          presenterSessionId={spotlightPresenterSessionId}
-          peers={peers}
-          onClose={() => setSpotlightViewDismissed(true)}
-        />
-      )}
-      <RoomNavigator
-        currentRoom={currentRoom}
-        onChangeRoom={(roomId) => setCurrentRoom(roomId)}
-        visible={colyseusConnected}
-      />
-
-      <EmotePicker onEmote={handleEmote} />
-
-      <AvatarEditor
-        open={avatarEditorOpen}
-        initialConfig={avatarConfig}
-        onSave={handleAvatarSave}
-        onClose={() => setAvatarEditorOpen(false)}
-        companionType={companionType}
-        onCompanionChange={(type) => {
-          setCompanionType(type);
-          sendCompanion(type);
-          try { localStorage.setItem('autoswarm:companion-type', type); } catch { /* noop */ }
-        }}
-      />
-
-      <button
-        onClick={() => setAvatarEditorOpen(true)}
-        className="absolute top-4 right-4 z-hud rounded bg-slate-800/90 px-3 py-1 text-xs text-slate-300 retro-btn hover:bg-slate-700"
-        aria-label="Open avatar editor"
-      >
-        Avatar
-      </button>
-
-      <div className="absolute top-14 right-4 z-hud flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setCalendarPanelOpen((prev) => !prev);
-              setDashboardOpen(false);
-              setDispatchPanelOpen(false);
-              setApprovalPanelOpen(false);
-            }}
-            className={`rounded bg-slate-800/90 px-3 py-1 text-xs retro-btn ${
-              calendarConnected
-                ? calendarBusy
-                  ? 'text-amber-400 hover:bg-amber-900/40'
-                  : 'text-emerald-400 hover:bg-emerald-900/40'
-                : 'text-slate-300 hover:bg-slate-700'
-            }`}
-            aria-label="Toggle calendar panel"
-          >
-            Calendar{calendarBusy ? ' (busy)' : ''}
-          </button>
-        </div>
-        <StatusSelector
-          currentStatus={playerStatus}
-          onStatusChange={changePlayerStatus}
-        />
-        <MusicStatus
-          currentStatus={musicStatus}
-          onStatusChange={(status) => {
-            setMusicStatus(status);
-            sendMusicStatus(status);
-          }}
-        />
-      </div>
-
-      <CoWebsitePanel
-        url={coWebsite?.url ?? null}
-        title={coWebsite?.title ?? ''}
-        onClose={() => setCoWebsite(null)}
-      />
-
-      <PopupOverlay
-        open={!!popup}
-        title={popup?.title ?? ''}
-        content={popup?.content ?? ''}
-        onClose={() => setPopup(null)}
-      />
-
       <WorkflowEditor
         open={workflowEditorOpen}
         onClose={() => setWorkflowEditorOpen(false)}
         officeState={officeState}
-      />
-
-      <DeskInfoPanel
-        open={!!deskInfo}
-        onClose={() => setDeskInfo(null)}
-        assignedAgentId={deskInfo?.assignedAgentId ?? ''}
-        deskTitle={deskInfo?.title ?? 'Desk'}
-        departments={officeState?.departments ?? []}
       />
 
       <MeetingNotesPanel
