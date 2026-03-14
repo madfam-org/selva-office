@@ -25,6 +25,7 @@ from .routers import (
     artifacts,
     billing,
     billing_internal,
+    calendar,
     departments,
     gateway,
     health,
@@ -125,6 +126,7 @@ def create_app() -> FastAPI:
     app.include_router(artifacts.router, prefix="/api/v1/artifacts")
     app.include_router(marketplace.router, prefix="/api/v1/marketplace")
     app.include_router(maps.router, prefix="/api/v1/maps")
+    app.include_router(calendar.router, prefix="/api/v1/calendar")
 
     return app
 

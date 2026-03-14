@@ -16,6 +16,7 @@ dependencies = [
   "autoswarm-tools",
   "autoswarm-memory",
   "autoswarm-sdk",
+  "autoswarm-calendar",
 ]
 
 [tool.uv.workspace]
@@ -32,6 +33,7 @@ members = [
   "packages/tools",
   "packages/memory",
   "packages/sdk",
+  "packages/calendar",
 ]
 
 [tool.uv.sources]
@@ -47,6 +49,7 @@ autoswarm-workflows = { workspace = true }
 autoswarm-tools = { workspace = true }
 autoswarm-memory = { workspace = true }
 autoswarm-sdk = { workspace = true }
+autoswarm-calendar = { workspace = true }
 
 [tool.uv]
 dev-dependencies = [
@@ -67,7 +70,7 @@ extend-exclude = ["packages/skills/community-skills"]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["autoswarm_orchestrator", "autoswarm_inference", "autoswarm_permissions", "nexus_api", "autoswarm_workers", "autoswarm_skills", "autoswarm_observability", "autoswarm_redis_pool", "autoswarm_workflows", "autoswarm_tools", "autoswarm_memory", "autoswarm_sdk"]
+known-first-party = ["autoswarm_orchestrator", "autoswarm_inference", "autoswarm_permissions", "nexus_api", "autoswarm_workers", "autoswarm_skills", "autoswarm_observability", "autoswarm_redis_pool", "autoswarm_workflows", "autoswarm_tools", "autoswarm_memory", "autoswarm_sdk", "autoswarm_calendar"]
 
 [tool.mypy]
 python_version = "3.12"

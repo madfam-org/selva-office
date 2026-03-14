@@ -13,6 +13,7 @@ import { AvatarEditor } from '@/components/AvatarEditor';
 import { CoWebsitePanel } from '@/components/CoWebsitePanel';
 import { PopupOverlay } from '@/components/PopupOverlay';
 import { SkillMarketplace } from '@/components/SkillMarketplace';
+import { CalendarPanel } from '@/components/CalendarPanel';
 import { WhiteboardPanel } from '@/components/WhiteboardPanel';
 import { DeskInfoPanel } from '@/components/DeskInfoPanel';
 import { VideoOverlay } from '@/components/VideoOverlay';
@@ -20,6 +21,7 @@ import { MediaControls } from '@/components/MediaControls';
 import { RecordingControls } from '@/components/RecordingControls';
 import { useApprovals } from '@/hooks/useApprovals';
 import { useTaskDispatch } from '@/hooks/useTaskDispatch';
+import { useCalendar } from '@/hooks/useCalendar';
 import { useColyseus } from '@/hooks/useColyseus';
 import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal, SpotlightActiveEvent } from '@/hooks/useColyseus';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
@@ -199,6 +201,22 @@ export default function HomePage() {
     lastDispatchedTask,
     reset: resetDispatch,
   } = useTaskDispatch();
+  const {
+    events: calendarEvents,
+    isBusy: calendarBusy,
+    connected: calendarConnected,
+    status: calendarStatus,
+    error: calendarError,
+    connect: connectCalendar,
+    disconnect: disconnectCalendar,
+    refresh: refreshCalendar,
+  } = useCalendar({
+    onBusyChange: useCallback((busy: boolean) => {
+      if (busy && colyseusConnected) {
+        changePlayerStatus('busy');
+      }
+    }, [colyseusConnected, changePlayerStatus]),
+  });
   const { config: avatarConfig, saveConfig: saveAvatarConfig, isFirstVisit } = useAvatarConfig();
   const [avatarEditorOpen, setAvatarEditorOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
@@ -208,6 +226,7 @@ export default function HomePage() {
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [mapEditorOpen, setMapEditorOpen] = useState(false);
+  const [calendarPanelOpen, setCalendarPanelOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -575,7 +594,25 @@ export default function HomePage() {
         Avatar
       </button>
 
-      <div className="absolute top-14 right-4 z-hud">
+      <div className="absolute top-14 right-4 z-hud flex items-center gap-2">
+        <button
+          onClick={() => {
+            setCalendarPanelOpen((prev) => !prev);
+            setDashboardOpen(false);
+            setDispatchPanelOpen(false);
+            setApprovalPanelOpen(false);
+          }}
+          className={`rounded bg-slate-800/90 px-3 py-1 text-xs retro-btn ${
+            calendarConnected
+              ? calendarBusy
+                ? 'text-amber-400 hover:bg-amber-900/40'
+                : 'text-emerald-400 hover:bg-emerald-900/40'
+              : 'text-slate-300 hover:bg-slate-700'
+          }`}
+          aria-label="Toggle calendar panel"
+        >
+          Calendar{calendarBusy ? ' (busy)' : ''}
+        </button>
         <StatusSelector
           currentStatus={playerStatus}
           onStatusChange={changePlayerStatus}
@@ -612,6 +649,19 @@ export default function HomePage() {
       <SkillMarketplace
         open={marketplaceOpen}
         onClose={() => setMarketplaceOpen(false)}
+      />
+
+      <CalendarPanel
+        open={calendarPanelOpen}
+        onClose={() => setCalendarPanelOpen(false)}
+        events={calendarEvents}
+        isBusy={calendarBusy}
+        connected={calendarConnected}
+        status={calendarStatus}
+        error={calendarError}
+        onConnect={connectCalendar}
+        onDisconnect={disconnectCalendar}
+        onRefresh={refreshCalendar}
       />
 
       <WhiteboardPanel
