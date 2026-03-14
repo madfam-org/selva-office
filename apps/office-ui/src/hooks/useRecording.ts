@@ -13,6 +13,7 @@ interface UseRecordingOptions {
 export function useRecording({ localStream, peers }: UseRecordingOptions) {
   const [state, setState] = useState<RecordingState>('idle');
   const [duration, setDuration] = useState(0);
+  const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -84,7 +85,8 @@ export function useRecording({ localStream, peers }: UseRecordingOptions) {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // Keep the URL for meeting notes generation instead of revoking
+        setLastRecordingUrl(url);
         chunksRef.current = [];
         mixedStreamRef.current = null;
         setState('idle');
@@ -126,6 +128,7 @@ export function useRecording({ localStream, peers }: UseRecordingOptions) {
     recordingState: state,
     duration,
     formattedDuration: formatDuration(duration),
+    lastRecordingUrl,
     startRecording,
     stopRecording,
   };

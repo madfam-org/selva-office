@@ -27,6 +27,7 @@ from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
 from .graphs.deployment import build_deployment_graph
 from .graphs.puppeteer import build_puppeteer_graph
+from .graphs.meeting import build_meeting_graph
 from .graphs.research import build_research_graph
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
@@ -45,6 +46,7 @@ GRAPH_BUILDERS = {
     "crm": build_crm_graph,
     "deployment": build_deployment_graph,
     "puppeteer": build_puppeteer_graph,
+    "meeting": build_meeting_graph,
     # "custom" is handled dynamically via WorkflowCompiler — see process_task()
 }
 
@@ -286,6 +288,12 @@ async def process_task(task_data: dict) -> None:
         initial_state["aggregated_result"] = None
         initial_state["max_parallel"] = payload.get("max_parallel", 3)
         initial_state["selected_agents"] = []
+    elif graph_type == "meeting":
+        payload = task_data.get("payload", {})
+        initial_state["transcript"] = ""
+        initial_state["summary"] = ""
+        initial_state["action_items"] = []
+        initial_state["recording_url"] = payload.get("recording_url", "")
 
     handler = InterruptHandler(
         nexus_api_url=settings.nexus_api_url,

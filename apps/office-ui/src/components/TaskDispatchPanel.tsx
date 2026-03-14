@@ -7,7 +7,7 @@ import { gameEventBus } from '@/game/PhaserGame';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 
-const GRAPH_TYPES = ['coding', 'research', 'crm', 'deployment', 'puppeteer', 'sequential', 'parallel'] as const;
+const GRAPH_TYPES = ['coding', 'research', 'crm', 'deployment', 'puppeteer', 'meeting', 'sequential', 'parallel'] as const;
 
 const GITHUB_REPOS = (process.env.NEXT_PUBLIC_GITHUB_REPOS ?? '')
   .split(',')

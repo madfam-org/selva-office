@@ -8,6 +8,8 @@ interface RecordingControlsProps {
   onStart: () => void;
   onStop: () => void;
   visible: boolean;
+  lastRecordingUrl?: string | null;
+  onGenerateNotes?: () => void;
 }
 
 export const RecordingControls: FC<RecordingControlsProps> = ({
@@ -16,6 +18,8 @@ export const RecordingControls: FC<RecordingControlsProps> = ({
   onStart,
   onStop,
   visible,
+  lastRecordingUrl,
+  onGenerateNotes,
 }) => {
   if (!visible) return null;
 
@@ -29,6 +33,17 @@ export const RecordingControls: FC<RecordingControlsProps> = ({
           aria-label="Start recording"
         >
           REC
+        </button>
+      )}
+
+      {recordingState === 'idle' && lastRecordingUrl && onGenerateNotes && (
+        <button
+          onClick={onGenerateNotes}
+          className="rounded px-2 py-1 text-xs font-mono bg-indigo-700/80 text-indigo-200 hover:bg-indigo-600 transition-colors"
+          title="Generate meeting notes from last recording"
+          aria-label="Generate meeting notes"
+        >
+          Notes
         </button>
       )}
 

@@ -19,9 +19,11 @@ import { DeskInfoPanel } from '@/components/DeskInfoPanel';
 import { VideoOverlay } from '@/components/VideoOverlay';
 import { MediaControls } from '@/components/MediaControls';
 import { RecordingControls } from '@/components/RecordingControls';
+import { MeetingNotesPanel } from '@/components/MeetingNotesPanel';
 import { useApprovals } from '@/hooks/useApprovals';
 import { useTaskDispatch } from '@/hooks/useTaskDispatch';
 import { useCalendar } from '@/hooks/useCalendar';
+import { useMeetingNotes } from '@/hooks/useMeetingNotes';
 import { useColyseus } from '@/hooks/useColyseus';
 import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal, SpotlightActiveEvent } from '@/hooks/useColyseus';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
@@ -153,6 +155,7 @@ export default function HomePage() {
   const {
     recordingState,
     formattedDuration,
+    lastRecordingUrl,
     startRecording,
     stopRecording,
   } = useRecording({ localStream, peers });
@@ -185,6 +188,14 @@ export default function HomePage() {
     sendSpotlightStop,
     enabled: colyseusConnected,
   });
+
+  const {
+    status: meetingNotesStatus,
+    notes: meetingNotes,
+    error: meetingNotesError,
+    dispatchMeetingNotes,
+    reset: resetMeetingNotes,
+  } = useMeetingNotes();
 
   // Wire up the refs now that all hooks are initialized
   proximityUpdateRef.current = videoHandleProximity;
@@ -229,6 +240,7 @@ export default function HomePage() {
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [mapEditorOpen, setMapEditorOpen] = useState(false);
   const [calendarPanelOpen, setCalendarPanelOpen] = useState(false);
+  const [meetingNotesPanelOpen, setMeetingNotesPanelOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -326,6 +338,13 @@ export default function HomePage() {
     setDispatchPanelOpen(false);
     setApprovalPanelOpen(false);
   }, []);
+
+  const handleGenerateNotes = useCallback(() => {
+    if (lastRecordingUrl) {
+      void dispatchMeetingNotes(lastRecordingUrl);
+      setMeetingNotesPanelOpen(true);
+    }
+  }, [lastRecordingUrl, dispatchMeetingNotes]);
 
   const handleMarketplaceOpen = useCallback(() => {
     setMarketplaceOpen(true);
@@ -541,6 +560,8 @@ export default function HomePage() {
         onStart={startRecording}
         onStop={stopRecording}
         visible={peers.length > 0 || !!localStream}
+        lastRecordingUrl={lastRecordingUrl}
+        onGenerateNotes={handleGenerateNotes}
       />
       <MegaphoneControls
         active={megaphoneActive}
@@ -656,6 +677,14 @@ export default function HomePage() {
         assignedAgentId={deskInfo?.assignedAgentId ?? ''}
         deskTitle={deskInfo?.title ?? 'Desk'}
         departments={officeState?.departments ?? []}
+      />
+
+      <MeetingNotesPanel
+        open={meetingNotesPanelOpen}
+        onClose={() => { setMeetingNotesPanelOpen(false); resetMeetingNotes(); }}
+        status={meetingNotesStatus}
+        notes={meetingNotes}
+        error={meetingNotesError}
       />
 
       <SkillMarketplace
