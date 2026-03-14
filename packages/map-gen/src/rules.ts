@@ -78,22 +78,46 @@ export function buildOfficeRules(departmentCount: number): {
 
 /**
  * Tile ID mapping from meta-tile to Tiled tileset index.
- * Matches the order in office-tileset.png:
- *   0=floor, 1=wall, 2=desk, 3=dept_engineering, 4=dept_sales,
- *   5=dept_support, 6=dept_research, 7=review_station
+ *
+ * Tileset grid layout: 16 columns × 4 rows (512×128px)
+ * Indices 0-7: original tiles (floor, wall, desk, dept_*, review_station)
+ * Indices 8-19: wall variants (top, bottom, left, right, corners, inner corners)
+ * Indices 20-27: floor variants (corridor, lobby, carpets, grid)
+ * Indices 28-42: furniture
+ * Indices 43-45: stations (review_v2, dispatch, blueprint)
+ * Indices 46-53: decorations (rug, posters, clock, lights, doors, mat)
  */
 export const TILE_ID_MAP: Record<string, number> = {
   wall: 1,
-  corridor: 0,
-  // dept_N maps to tile IDs 3-6 (cycling if more than 4 depts)
+  corridor: 20,       // floor_corridor (was 0)
+  wall_top: 8,
+  wall_bottom: 9,
+  wall_left: 10,
+  wall_right: 11,
+  wall_corner_tl: 12,
+  wall_corner_tr: 13,
+  wall_corner_bl: 14,
+  wall_corner_br: 15,
+  wall_inner_tl: 16,
+  wall_inner_tr: 17,
+  wall_inner_bl: 18,
+  wall_inner_br: 19,
+  floor_corridor: 20,
+  floor_lobby: 21,
+  floor_grid: 27,
+  door_h: 51,
+  door_v: 52,
 };
+
+/** Department carpet tile IDs by index */
+const DEPT_CARPET_IDS = [22, 23, 24, 25, 26]; // blue, purple, green, brown, indigo
 
 export function metaTileToTileId(metaTile: string): number {
   if (TILE_ID_MAP[metaTile] !== undefined) return TILE_ID_MAP[metaTile];
-  if (metaTile.startsWith('dept_wall_')) return 1; // wall tile
+  if (metaTile.startsWith('dept_wall_')) return 1; // generic wall tile
   if (metaTile.startsWith('dept_')) {
     const n = parseInt(metaTile.split('_')[1], 10);
-    return 3 + (n % 4); // cycle through dept tiles 3-6
+    return DEPT_CARPET_IDS[n % DEPT_CARPET_IDS.length];
   }
   return 0; // default to floor
 }

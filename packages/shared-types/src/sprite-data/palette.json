@@ -14,7 +14,22 @@
     "P": "pants",
     "K": "skin_shadow",
     "R": "shoe",
-    "T": null
+    "T": null,
+    "FL": "floor",
+    "FD": "floor_dark",
+    "WL": "wall",
+    "WD": "wall_dark",
+    "WH": "wall_highlight",
+    "FN": "furniture",
+    "FH": "furniture_highlight",
+    "FS": "furniture_shadow",
+    "AC": "accent",
+    "DP": "door",
+    "CE": "carpet_engineering",
+    "CS": "carpet_sales",
+    "CU": "carpet_support",
+    "CR": "carpet_research",
+    "CB": "carpet_blueprint"
   },
   "fixed": {
     "crown_gold": "#fbbf24",

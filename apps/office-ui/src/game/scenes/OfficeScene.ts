@@ -69,13 +69,13 @@ interface RemotePlayerSprite {
   direction: string;
 }
 
-/** Department zone layout positions on the office grid (procedural fallback) */
-const DEPARTMENT_LAYOUT: Record<string, { x: number; y: number; label: string }> = {
-  engineering: { x: 96, y: 80, label: 'ENGINEERING' },
-  crm: { x: 480, y: 80, label: 'CRM' },
-  support: { x: 96, y: 400, label: 'SUPPORT' },
-  research: { x: 480, y: 400, label: 'RESEARCH' },
-  blueprint: { x: 800, y: 260, label: 'BLUEPRINT LAB' },
+/** Department zone layout positions on the office grid (procedural fallback, 50x28 map) */
+const DEPARTMENT_LAYOUT: Record<string, { x: number; y: number; w: number; h: number; label: string }> = {
+  engineering: { x: 32, y: 32, w: 640, h: 320, label: 'ENGINEERING' },
+  crm: { x: 928, y: 32, w: 640, h: 320, label: 'CRM' },
+  support: { x: 32, y: 544, w: 640, h: 320, label: 'SUPPORT' },
+  research: { x: 928, y: 544, w: 640, h: 320, label: 'RESEARCH' },
+  blueprint: { x: 1248, y: 384, w: 320, h: 128, label: 'BLUEPRINT LAB' },
 };
 
 const AGENT_ROLES = ['planner', 'coder', 'reviewer', 'researcher', 'crm', 'support'] as const;
@@ -87,7 +87,7 @@ export class OfficeScene extends Phaser.Scene {
   private agentSprites: Map<string, AgentSprite> = new Map();
   private remotePlayers: Map<string, RemotePlayerSprite> = new Map();
   private departmentZones: Phaser.GameObjects.Image[] = [];
-  private departmentLayouts: Map<string, { x: number; y: number; label: string }> = new Map();
+  private departmentLayouts: Map<string, { x: number; y: number; w?: number; h?: number; label: string }> = new Map();
   private reviewStations: Map<string, Phaser.GameObjects.Image> = new Map();
   private officeState: OfficeState | null = null;
   private localSessionId: string = '';
@@ -110,8 +110,8 @@ export class OfficeScene extends Phaser.Scene {
   private lastSentX: number = 0;
   private lastSentY: number = 0;
   private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-  private worldWidth: number = 1280;
-  private worldHeight: number = 720;
+  private worldWidth: number = 1600;
+  private worldHeight: number = 896;
   private dustEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private ambientEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private agentBehavior: AgentBehavior = new AgentBehavior();
@@ -220,9 +220,9 @@ export class OfficeScene extends Phaser.Scene {
       }
     });
 
-    // === Post-FX: CRT vignette ===
+    // === Post-FX: CRT vignette (lighter) ===
     if (ENABLE_POST_FX && this.cameras.main.postFX) {
-      this.cameras.main.postFX.addVignette(0.5, 0.5, 0.85, 0.25);
+      this.cameras.main.postFX.addVignette(0.5, 0.5, 0.9, 0.15);
     }
 
     // === Ambient dust particles ===
@@ -267,6 +267,8 @@ export class OfficeScene extends Phaser.Scene {
         this.departmentLayouts.set(dept.slug, {
           x: dept.x,
           y: dept.y,
+          w: dept.width,
+          h: dept.height,
           label: dept.name.toUpperCase(),
         });
       }
@@ -284,9 +286,91 @@ export class OfficeScene extends Phaser.Scene {
     // Always render department zone overlays (Tiled object layer doesn't create visuals)
     this.createDepartmentZones();
 
+    // Create animated furniture overlays (monitor flicker, plant sway)
+    if (data.furnitureLayer) {
+      this.createAnimatedProps(data.furnitureLayer);
+    }
+
     // Load interactables from Tiled object layer (manager created after tactician)
     // Deferred to after createTactician, but we store the tilemap reference
     this._pendingTilemap = data.tilemap;
+  }
+
+  /**
+   * Scan the furniture tilemap layer and add animated overlays at specific
+   * tile positions (monitor flicker, plant sway, server LED blinks).
+   */
+  private createAnimatedProps(furnitureLayer: Phaser.Tilemaps.TilemapLayer): void {
+    if (!ENABLE_PARTICLES) return;
+
+    // Tile IDs (1-indexed): monitor_on=33, plant_small=35, plant_large=36,
+    // server_rack=41, coffee_machine=39
+    const MONITOR_ON_ID = 33;
+    const PLANT_SMALL_ID = 35;
+    const PLANT_LARGE_ID = 36;
+    const SERVER_RACK_ID = 41;
+    const COFFEE_MACHINE_ID = 39;
+
+    furnitureLayer.forEachTile((tile) => {
+      if (!tile || tile.index <= 0) return;
+      const worldX = tile.pixelX + 16;
+      const worldY = tile.pixelY + 16;
+
+      if (tile.index === MONITOR_ON_ID) {
+        // Monitor screen flicker: subtle alpha glow rectangle
+        const glow = this.add.rectangle(worldX, worldY - 4, 12, 8, 0x67e8f9, 0.15);
+        glow.setDepth(3);
+        this.tweens.add({
+          targets: glow,
+          alpha: { from: 0.05, to: 0.2 },
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+
+      if (tile.index === PLANT_SMALL_ID || tile.index === PLANT_LARGE_ID) {
+        // Plant sway: gentle oscillation overlay
+        const leaf = this.add.rectangle(worldX, worldY - 6, 6, 4, 0x2d8a4e, 0.2);
+        leaf.setDepth(3);
+        this.tweens.add({
+          targets: leaf,
+          x: worldX + 1.5,
+          duration: 3000 + Math.random() * 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+
+      if (tile.index === SERVER_RACK_ID && this.textures.exists('particle-dot')) {
+        // Server LED blinks
+        this.add.particles(worldX + 6, worldY - 8, 'particle-dot', {
+          lifespan: 600,
+          frequency: 500,
+          alpha: { start: 0.8, end: 0 },
+          scale: 0.5,
+          tint: [0x22c55e, 0xf59e0b],
+          speedY: 0,
+          speedX: 0,
+          blendMode: 'ADD',
+        }).setDepth(3);
+      }
+
+      if (tile.index === COFFEE_MACHINE_ID && this.textures.exists('particle-dot')) {
+        // Coffee steam
+        this.add.particles(worldX, worldY - 10, 'particle-dot', {
+          lifespan: 1500,
+          frequency: 400,
+          alpha: { start: 0.3, end: 0 },
+          scale: { start: 0.3, end: 0.8 },
+          speedY: { min: -15, max: -8 },
+          speedX: { min: -3, max: 3 },
+          tint: 0x94a3b8,
+        }).setDepth(3);
+      }
+    });
   }
 
   /** Tilemap reference for deferred interactable loading */
@@ -333,8 +417,19 @@ export class OfficeScene extends Phaser.Scene {
     const dy = stickY * TACTICIAN_SPEED * (this.game.loop.delta / 1000);
 
     if (dx !== 0 || dy !== 0) {
-      this.tactician.x = Phaser.Math.Clamp(this.tactician.x + dx, 16, this.worldWidth - 16);
-      this.tactician.y = Phaser.Math.Clamp(this.tactician.y + dy, 16, this.worldHeight - 16);
+      const newX = Phaser.Math.Clamp(this.tactician.x + dx, 16, this.worldWidth - 16);
+      const newY = Phaser.Math.Clamp(this.tactician.y + dy, 16, this.worldHeight - 16);
+
+      // Tile-based collision: check if destination is blocked
+      if (this.collisionLayer) {
+        const tileX = this.collisionLayer.getTileAtWorldXY(newX, this.tactician.y);
+        const tileY = this.collisionLayer.getTileAtWorldXY(this.tactician.x, newY);
+        if (!tileX) this.tactician.x = newX;
+        if (!tileY) this.tactician.y = newY;
+      } else {
+        this.tactician.x = newX;
+        this.tactician.y = newY;
+      }
 
       // Determine direction for walk animation
       if (Math.abs(dx) > Math.abs(dy)) {
@@ -421,7 +516,10 @@ export class OfficeScene extends Phaser.Scene {
     this.agentSprites.forEach((agentSprite) => {
       const deptSlug = this.findAgentDepartmentSlug(agentSprite.agentId);
       const layout = deptSlug ? this.departmentLayouts.get(deptSlug) : null;
-      const zoneBounds = layout ? { x: layout.x, y: layout.y, width: 192, height: 160 } : null;
+      const fallback = DEPARTMENT_LAYOUT[deptSlug?.replace('dept-', '') ?? ''];
+      const zoneW = layout?.w ?? fallback?.w ?? 640;
+      const zoneH = layout?.h ?? fallback?.h ?? 320;
+      const zoneBounds = layout ? { x: layout.x, y: layout.y, width: zoneW, height: zoneH } : null;
 
       const stationSprite = deptSlug ? this.reviewStations.get(deptSlug) : null;
       const reviewStation = stationSprite ? { x: stationSprite.x, y: stationSprite.y } : null;
@@ -642,18 +740,20 @@ export class OfficeScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       });
 
-      // Department label
+      // Department label (centered in zone)
+      const zoneW = layout.w ?? 640;
+      const zoneH = layout.h ?? 320;
       this.add
-        .text(layout.x + 96, layout.y + 8, layout.label, {
+        .text(layout.x + zoneW / 2, layout.y + 8, layout.label, {
           fontFamily: '"Press Start 2P", monospace',
           fontSize: responsiveFontSize(10),
           color: '#94a3b8',
         })
         .setOrigin(0.5, 0);
 
-      // Review station for each department (placed at bottom-right of zone)
-      const stationX = layout.x + TILE_SIZE * 5;
-      const stationY = layout.y + TILE_SIZE * 4;
+      // Review station for each department (placed near center-right of zone)
+      const stationX = layout.x + zoneW * 0.75;
+      const stationY = layout.y + zoneH * 0.6;
       const stationTexture = this.textures.exists('review-station') ? 'review-station' : 'office-tileset';
       const station = this.add.image(stationX, stationY, stationTexture, stationTexture === 'office-tileset' ? 7 : 0);
       this.reviewStations.set(slug, station);
@@ -670,7 +770,10 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private createTactician(): void {
-    this.tactician = this.add.sprite(400, 300, 'tactician').setDepth(10).setAlpha(0).setScale(0.5);
+    // Default spawn position (lobby center of 50x28 map)
+    const spawnX = 768;
+    const spawnY = 432;
+    this.tactician = this.add.sprite(spawnX, spawnY, 'tactician').setDepth(10).setAlpha(0).setScale(0.5);
 
     // Play initial idle animation if available
     if (this.anims.exists('tactician-idle-down')) {
@@ -689,7 +792,7 @@ export class OfficeScene extends Phaser.Scene {
 
     // Indigo particle burst at spawn
     if (ENABLE_PARTICLES && this.textures.exists('particle-dot')) {
-      const burst = this.add.particles(400, 300, 'particle-dot', {
+      const burst = this.add.particles(spawnX, spawnY, 'particle-dot', {
         speed: { min: 20, max: 60 },
         angle: { min: 0, max: 360 },
         lifespan: 500,
@@ -708,7 +811,7 @@ export class OfficeScene extends Phaser.Scene {
 
     // Label above tactician
     this.tacticianLabel = this.add
-      .text(400, 276, 'YOU', {
+      .text(spawnX, spawnY - 24, 'YOU', {
         fontFamily: '"Press Start 2P", monospace',
         fontSize: '8px',
         color: '#a5b4fc',

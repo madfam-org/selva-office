@@ -12,6 +12,14 @@ interface DashboardPanelProps {
 
 type TaskStatus = 'backlog' | 'in_progress' | 'review' | 'done';
 
+const DEPARTMENT_ICONS: Record<string, string> = {
+  engineering: '\uD83D\uDD27',
+  sales: '\uD83D\uDCCA',
+  support: '\uD83C\uDFA7',
+  research: '\uD83D\uDD2C',
+  blueprint: '\uD83D\uDCD0',
+};
+
 interface KanbanTask {
   id: string;
   agentName: string;
@@ -160,6 +168,9 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
                     : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
+                {DEPARTMENT_ICONS[dept.slug] && (
+                  <span className="mr-0.5">{DEPARTMENT_ICONS[dept.slug]}</span>
+                )}
                 {dept.name}
               </button>
             ))}
@@ -190,6 +201,9 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
                       style={{ animationDelay: `${departments.indexOf(dept) * 50}ms` }}
                     >
                       <p className="pixel-text text-[6px] uppercase text-slate-500">
+                        {DEPARTMENT_ICONS[dept.slug] && (
+                          <span className="mr-0.5">{DEPARTMENT_ICONS[dept.slug]}</span>
+                        )}
                         {dept.name.substring(0, 5)}
                       </p>
                       <div className="mt-1 space-y-0.5 font-mono text-[9px]">

@@ -6,7 +6,7 @@ import bodyTemplates from '@autoswarm/shared-types/src/sprite-data/body.json';
 import hairTemplates from '@autoswarm/shared-types/src/sprite-data/hair.json';
 import accessoryTemplates from '@autoswarm/shared-types/src/sprite-data/accessories.json';
 
-const HAIR_STYLE_KEYS = ['short', 'long', 'spiky', 'curly'] as const;
+const HAIR_STYLE_KEYS = ['short', 'long', 'spiky', 'curly', 'ponytail', 'bob', 'mohawk', 'bun'] as const;
 
 /**
  * Generates a unique texture key for a given avatar configuration.
@@ -51,7 +51,7 @@ export function compositeAvatar(scene: Phaser.Scene, config: AvatarConfig): stri
   }
 
   // Accessory overlay
-  const PLAYER_ACC_KEYS = ['glasses', 'crown', 'headphones', 'hat'] as const;
+  const PLAYER_ACC_KEYS = ['glasses', 'crown', 'headphones', 'hat', 'scarf', 'backpack', 'badge', 'visor'] as const;
   if (config.accessory >= 0 && config.accessory < PLAYER_ACC_KEYS.length) {
     const accKey = PLAYER_ACC_KEYS[config.accessory];
     const accGrid = accessoryTemplates.player?.[accKey];

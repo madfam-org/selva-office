@@ -112,10 +112,12 @@ export function ChatPanel({ messages, onSend, localSessionId }: ChatPanelProps) 
             return (
               <div
                 key={msg.id}
-                className="text-center text-slate-500 italic text-[9px] py-0.5 animate-fade-in-up"
+                className="text-center text-slate-500 italic text-[9px] py-0.5 animate-fade-in-up flex items-center justify-center gap-1"
                 style={{ animationDelay: `${Math.min(i, 5) * 50}ms` }}
               >
-                {msg.content}
+                <span className="text-slate-600 not-italic">--</span>
+                <span>{msg.content}</span>
+                <span className="text-[7px] text-slate-600 not-italic">{formatTime(msg.timestamp)}</span>
               </div>
             );
           }
@@ -125,7 +127,7 @@ export function ChatPanel({ messages, onSend, localSessionId }: ChatPanelProps) 
               className={`flex ${isLocal ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
               style={{ animationDelay: `${Math.min(i, 5) * 50}ms` }}
             >
-              <div className={`max-w-[85%] rounded px-2 py-1 ${isLocal ? 'bg-indigo-900/50' : 'bg-slate-800/60'}`}>
+              <div className={`max-w-[85%] px-2 py-1 pixel-border ${isLocal ? 'bg-indigo-900/50' : 'bg-slate-800/60'}`}>
                 <div className="flex items-baseline gap-1.5">
                   <span className={`font-semibold text-[9px] ${isLocal ? 'text-indigo-400' : 'text-emerald-400'}`}>
                     {msg.senderName}

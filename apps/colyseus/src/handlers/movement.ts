@@ -21,8 +21,8 @@ interface ProximityResult {
 const OFFICE_BOUNDS: Bounds = {
   minX: 0,
   minY: 0,
-  maxX: 1280,
-  maxY: 704,
+  maxX: 1600,
+  maxY: 896,
 };
 
 const DEFAULT_PROXIMITY_THRESHOLD = 64;

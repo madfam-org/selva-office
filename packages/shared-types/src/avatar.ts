@@ -23,5 +23,5 @@ export const DEFAULT_AVATAR_CONFIG: AvatarConfig = {
 export const SKIN_TONES = ['#fcd5b0', '#d4a574', '#a67c52', '#6b4423'] as const;
 export const HAIR_COLORS = ['#4a3728', '#d4a017', '#c0392b', '#2c3e50'] as const;
 export const OUTFIT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444'] as const;
-export const HAIR_STYLE_NAMES = ['Short', 'Long', 'Spiky', 'Curly'] as const;
-export const ACCESSORY_NAMES = ['None', 'Glasses', 'Crown', 'Headphones', 'Hat'] as const;
+export const HAIR_STYLE_NAMES = ['Short', 'Long', 'Spiky', 'Curly', 'Ponytail', 'Bob', 'Mohawk', 'Bun'] as const;
+export const ACCESSORY_NAMES = ['None', 'Glasses', 'Crown', 'Headphones', 'Hat', 'Scarf', 'Backpack', 'Badge', 'Visor'] as const;

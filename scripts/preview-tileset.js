@@ -15,7 +15,7 @@ const { createCanvas } = require('@napi-rs/canvas');
 const fs = require('node:fs');
 const path = require('node:path');
 const { renderPixelData } = require('./sprite-data/renderer');
-const tileTemplates = require('../packages/shared-types/src/sprite-data/tiles.json');
+const { getAllTiles, buildEnvColorMap, TILE_ORDER: FULL_TILE_ORDER } = require('./sprite-data/tile-definitions');
 const palettePresets = require('../packages/shared-types/src/sprite-data/palette-presets.json');
 
 function parseArgs() {
@@ -50,31 +50,42 @@ function tintGrid(grid, tintHex, factor) {
   );
 }
 
-const TILE_ORDER = ['floor', 'wall', 'desk', 'dept_engineering', 'dept_sales', 'dept_support', 'dept_research', 'review_station'];
 const SCALE = 4;
 
 async function main() {
   const { output } = parseArgs();
 
+  const allTiles = getAllTiles();
   const sections = [];
 
   for (const [presetName, preset] of Object.entries(palettePresets.presets)) {
+    const envColorMap = buildEnvColorMap(preset);
     const images = [];
-    for (const tileName of TILE_ORDER) {
-      const tileGrid = tileTemplates[tileName];
+    for (const tileName of FULL_TILE_ORDER) {
+      const tileGrid = allTiles[tileName];
       if (!tileGrid) continue;
 
-      const tinted = tintGrid(tileGrid, preset.ambientTint, 0.2);
+      // Resolve palette tokens and tint hex colors
+      const resolved = tileGrid.map((row) =>
+        row.map((cell) => {
+          if (cell === null) return null;
+          if (envColorMap[cell]) {
+            const hex = envColorMap[cell];
+            return preset.ambientTint ? tintColor(hex, preset.ambientTint, 0.1) : hex;
+          }
+          if (cell.startsWith('#')) return tintColor(cell, preset.ambientTint, 0.2);
+          return cell;
+        }),
+      );
+
       const size = 32;
       const canvas = createCanvas(size * SCALE, size * SCALE);
       const ctx = canvas.getContext('2d');
 
-      // Render at 1x to a temp canvas, then scale up
       const tmpCanvas = createCanvas(size, size);
       const tmpCtx = tmpCanvas.getContext('2d');
-      renderPixelData(tmpCtx, 0, 0, tinted, {});
+      renderPixelData(tmpCtx, 0, 0, resolved, {});
 
-      // Scale up with nearest-neighbor
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(tmpCanvas, 0, 0, size * SCALE, size * SCALE);
 
