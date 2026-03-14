@@ -221,6 +221,20 @@ def send(state: CRMState) -> CRMState:
     if state.get("status") == "denied":
         return {**state, "status": "cancelled"}
 
+    # Permission check before sending outbound communication.
+    from autoswarm_permissions.types import PermissionLevel
+
+    from .base import check_permission
+
+    perm = check_permission(state, "email_send")
+    if perm.level == PermissionLevel.DENY:
+        deny_msg = AIMessage(content="Email send denied by permission engine.")
+        return {
+            **state,
+            "messages": [*messages, deny_msg],
+            "status": "blocked",
+        }
+
     send_result: dict = {
         "action": crm_action,
         "recipient": recipient,

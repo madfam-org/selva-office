@@ -6,6 +6,7 @@ import asyncio
 import concurrent.futures
 import json as _json
 import logging
+from pathlib import Path
 from typing import Any, TypedDict
 
 from langchain_core.messages import AIMessage
@@ -13,7 +14,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
 from ..tools.bash_tool import BashTool
-from .base import BaseGraphState
+from .base import BaseGraphState, check_permission
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,9 @@ def plan(state: CodingState) -> CodingState:
         except Exception:
             logger.warning("Failed to create worktree; working in-place", exc_info=True)
 
+    task_id = state.get("task_id", "unknown")
+    branch = state.get("branch_name") or f"autoswarm/task-{task_id}"
+
     return {
         **state,
         "messages": [*messages, plan_message],
@@ -121,6 +125,7 @@ def plan(state: CodingState) -> CodingState:
         "code_changes": [],
         "iteration": state.get("iteration", 0),
         "worktree_path": worktree_path,
+        "branch_name": branch,
     }
 
 
@@ -139,6 +144,19 @@ def implement(state: CodingState) -> CodingState:
     if worktree_path:
         _bash_tool.allowed_cwd = worktree_path
 
+    # Permission check before writing files.
+    from autoswarm_permissions.types import PermissionLevel
+
+    perm = check_permission(state, "file_write")
+    if perm.level == PermissionLevel.DENY:
+        deny_msg = AIMessage(content="File write denied by permission engine.")
+        return {
+            **state,
+            "messages": [*messages, deny_msg],
+            "status": "blocked",
+        }
+
+    code_output: str | None = None
     try:
         from ..inference import call_llm, get_model_router
 
@@ -157,7 +175,10 @@ def implement(state: CodingState) -> CodingState:
         skill_ctx = state.get("agent_system_prompt", "")
         base_prompt = (
             "You are a senior developer. Write production-ready code for the "
-            "requested change. Return the code with file paths clearly marked."
+            "requested change. Return a JSON object with key 'files' containing "
+            "an array of objects, each with 'path' (relative to project root) "
+            "and 'content' (full file text). Example: "
+            '{\"files\": [{\"path\": \"src/main.py\", \"content\": \"...\"}]}'
         )
         system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
         code_output = _run_async(call_llm(
@@ -165,20 +186,23 @@ def implement(state: CodingState) -> CodingState:
             messages=[{"role": "user", "content": f"Implement step {iteration}: {current_step}"}],
             system_prompt=system_prompt,
         ))
-        change_record: dict[str, Any] = {
-            "iteration": iteration,
-            "files_modified": [],
-            "summary": code_output[:500],
-        }
     except Exception:
-        change_record = {
-            "iteration": iteration,
-            "files_modified": [],
-            "summary": f"Implementation iteration {iteration}",
-        }
+        pass  # Fall through to placeholder path
+
+    # Write files to worktree from LLM output or placeholder.
+    files_written = _write_files_to_worktree(worktree_path, code_output, state)
+
+    summary = code_output[:500] if code_output else f"Implementation iteration {iteration}"
+
+    change_record: dict[str, Any] = {
+        "iteration": iteration,
+        "files_modified": files_written,
+        "summary": summary,
+    }
 
     impl_message = AIMessage(
-        content=f"Code changes applied (iteration {iteration}).",
+        content=f"Code changes applied (iteration {iteration}): "
+        f"{len(files_written)} files written.",
         additional_kwargs={"action_category": "file_write"},
     )
 
@@ -191,6 +215,54 @@ def implement(state: CodingState) -> CodingState:
         "code_changes": [*existing_changes, change_record],
         "iteration": iteration,
     }
+
+
+def _write_files_to_worktree(
+    worktree_path: str | None,
+    code_output: str | None,
+    state: CodingState,
+) -> list[str]:
+    """Parse LLM JSON output and write files to the worktree.
+
+    Returns a list of relative paths written. Falls back to writing a
+    placeholder file when no valid JSON is produced.
+    """
+    if not worktree_path:
+        return []
+
+    wt = Path(worktree_path)
+    files_written: list[str] = []
+
+    if code_output:
+        try:
+            parsed = _json.loads(code_output)
+            for entry in parsed.get("files", []):
+                rel_path = entry.get("path", "")
+                content = entry.get("content", "")
+                if not rel_path or not isinstance(content, str):
+                    continue
+                # Security: reject absolute paths and directory traversals.
+                if rel_path.startswith("/") or ".." in rel_path.split("/"):
+                    logger.warning("Rejected unsafe path: %s", rel_path)
+                    continue
+                target = wt / rel_path
+                if not target.resolve().is_relative_to(wt.resolve()):
+                    logger.warning("Rejected path escaping worktree: %s", rel_path)
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content)
+                files_written.append(rel_path)
+        except (_json.JSONDecodeError, KeyError, TypeError):
+            pass  # Fall through to placeholder
+
+    # Placeholder when LLM produced no parseable files.
+    if not files_written:
+        desc = state.get("description", "Agent task")
+        placeholder = wt / "AUTOSWARM_PLACEHOLDER.md"
+        placeholder.write_text(f"# AutoSwarm Placeholder\n\nTask: {desc}\n")
+        files_written.append("AUTOSWARM_PLACEHOLDER.md")
+
+    return files_written
 
 
 def test(state: CodingState) -> CodingState:
@@ -349,13 +421,29 @@ def push_gate(state: CodingState) -> CodingState:
             content=f"Push approved. Pushing to branch '{branch}'.",
             additional_kwargs={"action_category": "git_push"},
         )
-        # Cleanup worktree after push.
+        # Commit and push before cleaning up the worktree.
         if worktree_path:
             try:
                 from ..tools.git_tool import GitTool
 
                 git_tool = GitTool()
-                _run_async(git_tool.cleanup_worktree(worktree_path))
+                commit_msg = f"autoswarm: {state.get('description', 'agent changes')[:200]}"
+                commit_result = _run_async(git_tool.commit(worktree_path, commit_msg))
+                if commit_result.return_code == 0:
+                    push_result = _run_async(git_tool.push(worktree_path, branch))
+                    if push_result.return_code != 0:
+                        logger.error("Git push failed: %s", push_result.stderr)
+                else:
+                    logger.warning(
+                        "Git commit failed (no changes?): %s", commit_result.stderr,
+                    )
+            except Exception:
+                logger.warning("Failed to commit/push", exc_info=True)
+
+            # Cleanup worktree after commit+push.
+            try:
+                git_tool_cleanup = GitTool()
+                _run_async(git_tool_cleanup.cleanup_worktree(worktree_path))
                 logger.info("Cleaned up worktree at %s", worktree_path)
             except Exception:
                 logger.warning("Failed to cleanup worktree", exc_info=True)

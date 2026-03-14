@@ -28,6 +28,21 @@ Permission levels:
 The matrix is defined in `packages/permissions/src/matrix.py` and can be customized
 per-organization or per-department.
 
+### Permission Enforcement in Graph Nodes
+
+The permission engine is wired into graph execution nodes via the
+`check_permission()` helper in `apps/workers/autoswarm_workers/graphs/base.py`:
+
+- **Coding graph `implement()`**: Checks `file_write` before writing files to the
+  worktree. Returns `status: "blocked"` on DENY.
+- **CRM graph `send()`**: Checks `email_send` before sending outbound communication.
+  Returns `status: "blocked"` on DENY.
+- **Coding graph `push_gate()`**: Uses `interrupt()` for ASK-level approval of
+  `git_push`. On approval, calls `git_tool.commit()` + `git_tool.push()`.
+- **Skill overrides**: When `agent_skill_ids` are present, `_build_engine_for_state()`
+  creates a `PermissionEngine` with skill-based overrides that can ALLOW actions
+  that would otherwise require approval.
+
 ## Interrupt Mechanism
 
 When an agent attempts an action classified as `ask`, the following occurs inside

@@ -80,12 +80,15 @@ AutoSwarm Office runs six application services backed by PostgreSQL and Redis.
 Tasks flow through the system as follows:
 
 1. User dispatches a task via the UI or GitHub webhook triggers one
-2. nexus-api creates a `SwarmTask` row in PostgreSQL and publishes to `autoswarm:task-stream` (Redis Streams)
-3. A worker reads from the consumer group, executes the LangGraph agent graph
-4. If a tool invocation requires approval, `interrupt()` pauses execution and creates an `ApprovalRequest`
-5. nexus-api broadcasts the approval request over WebSocket to connected clients
-6. The tactician approves or denies via the Phaser UI
-7. The worker resumes or aborts based on the decision
+2. nexus-api creates a `SwarmTask` row in PostgreSQL (status: `queued`) and publishes to `autoswarm:task-stream` (Redis Streams)
+3. A worker reads from the consumer group, PATCHes the task to `running`, and executes the LangGraph agent graph
+4. For coding tasks: `plan()` creates a git worktree, `implement()` writes files (after permission check), `test()` runs pytest, `review()` self-reviews changes
+5. If a tool invocation requires approval, `interrupt()` pauses execution and creates an `ApprovalRequest`
+6. nexus-api broadcasts the approval request over WebSocket to connected clients
+7. The tactician approves or denies via the Phaser UI
+8. On approval: the worker commits and pushes to a feature branch, then resumes
+9. On completion: the worker PATCHes the task to `completed` or `failed` with result details
+10. On timeout or exception: the worker PATCHes the task to `failed` with error details
 
 ---
 
