@@ -284,3 +284,35 @@ This reduces per-tick cost from O(n^2) to approximately O(n * k) where k is the
 average number of players per neighborhood -- typically 5-10 even at high density.
 The optimization is independent of the scaling option chosen and benefits all
 configurations.
+
+---
+
+## Quick Reference: Clustering Checklist
+
+When you are ready to move from single-instance to multi-process Colyseus:
+
+1. **Install packages**: `pnpm add @colyseus/redis-presence @colyseus/redis-driver`
+2. **Update `index.ts`**:
+   ```ts
+   import { RedisPresence } from "@colyseus/redis-presence";
+   import { RedisDriver } from "@colyseus/redis-driver";
+
+   const server = new Server({
+     presence: new RedisPresence({ url: process.env.REDIS_URL }),
+     driver: new RedisDriver({ url: process.env.REDIS_URL }),
+     transport: new WebSocketTransport({ ... }),
+   });
+   ```
+3. **Configure sticky sessions** (see K8s configuration above)
+4. **Scale replicas**: `kubectl scale deployment/colyseus --replicas=3`
+5. **Verify**: each replica should appear in Redis presence and rooms should be
+   correctly distributed
+
+### Capacity Planning
+
+| Users | Recommended Setup |
+|-------|-------------------|
+| < 50 | Single instance |
+| 50-200 | Room-per-org (Option 1) |
+| 200-1000 | Redis Presence + 3-5 replicas (Option 2) |
+| 1000+ | Sharding with Redis relay (Option 3) |

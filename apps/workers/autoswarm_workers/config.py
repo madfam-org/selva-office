@@ -38,7 +38,9 @@ class Settings(BaseSettings):
     github_token: str | None = None
     enclii_deploy_token: str | None = None
 
-    # -- Approval / Timeouts --------------------------------------------------
+    # -- Concurrency / Timeouts -----------------------------------------------
+    max_concurrent_tasks: int = 3
+    worktree_stale_hours: int = 24
     approval_timeout: int = 300
 
     # -- AI Inference ---------------------------------------------------------

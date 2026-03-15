@@ -854,6 +854,89 @@ redis-cli -n 1 FLUSHDB
 
 ---
 
+## Running Multiple Workers
+
+### How Consumer Group Sharing Works
+
+All worker instances share the Redis Streams consumer group `autoswarm-workers`.
+Each worker registers as a unique consumer (hostname + PID). Redis guarantees
+that each stream message is delivered to exactly one consumer within the group,
+providing automatic work distribution.
+
+### Concurrency Within a Single Worker
+
+Each worker process runs up to `MAX_CONCURRENT_TASKS` (default 3) tasks in
+parallel using an `asyncio.Semaphore`. The worker reads `count=MAX_CONCURRENT_TASKS`
+messages per stream read and processes them concurrently.
+
+Set this via the `MAX_CONCURRENT_TASKS` environment variable:
+
+```bash
+MAX_CONCURRENT_TASKS=5  # Allow 5 concurrent tasks per worker
+```
+
+### Starting Multiple Workers
+
+```bash
+# K8s: scale the deployment
+kubectl scale deployment/workers --replicas=3 -n autoswarm
+
+# Local: run multiple processes
+MAX_CONCURRENT_TASKS=3 uv run python -m autoswarm_workers &
+MAX_CONCURRENT_TASKS=3 uv run python -m autoswarm_workers &
+```
+
+### Verifying Consumer Group Membership
+
+```bash
+# List all consumers and their status
+redis-cli XINFO CONSUMERS autoswarm:task-stream autoswarm-workers
+```
+
+Each consumer entry shows:
+- **name**: unique consumer ID (hostname + PID)
+- **pending**: number of messages currently being processed
+- **idle**: milliseconds since last interaction
+
+### Graceful Shutdown
+
+Workers drain active tasks on shutdown. When receiving SIGTERM or SIGINT:
+1. The worker stops reading new messages from the stream.
+2. Active tasks continue until completion (or graph timeout).
+3. The process exits after all active tasks finish.
+
+Unacknowledged messages from a killed worker (SIGKILL) are reclaimed by other
+workers via `XAUTOCLAIM` on their next startup.
+
+### Worktree Cleanup on Startup
+
+Workers automatically clean up stale worktrees (older than `WORKTREE_STALE_HOURS`,
+default 24h) from `REPO_BASE_PATH` on startup. This prevents disk exhaustion from
+accumulated worktrees after crashes.
+
+```bash
+# Manual cleanup
+make worktree-cleanup STALE_HOURS=12
+```
+
+### Stale Task Reaping
+
+Workers periodically call `POST /api/v1/swarms/tasks/reap-stale` to auto-fail
+tasks stuck in `queued` or `pending` status for more than 1 hour.
+
+### DLQ Monitoring
+
+Check the DLQ depth via the health endpoint:
+
+```bash
+curl -sf http://nexus-api:4300/api/v1/health/dlq-stats | jq .
+```
+
+A non-zero `depth` indicates tasks that failed after 3 retries. Investigate the
+`recent` entries to determine root cause before re-dispatching.
+
+---
+
 ## Appendix: Environment Variables
 
 Key environment variables referenced in this runbook. Secrets are stored in the

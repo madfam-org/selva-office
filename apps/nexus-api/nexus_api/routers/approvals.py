@@ -57,6 +57,7 @@ class ApprovalRequestResponse(BaseModel):
     urgency: str
     status: str
     feedback: str | None
+    responded_by: str | None = None
     created_at: datetime
     responded_at: datetime | None
 
@@ -78,6 +79,7 @@ def _approval_to_response(req: ApprovalRequest) -> ApprovalRequestResponse:
         urgency=req.urgency,
         status=req.status,
         feedback=req.feedback,
+        responded_by=req.responded_by,
         created_at=req.created_at,
         responded_at=req.responded_at,
     )
@@ -105,6 +107,7 @@ async def _respond_to_request(
     decision: str,
     feedback: str | None,
     db: AsyncSession,
+    responded_by: str | None = None,
 ) -> ApprovalRequestResponse:
     """Apply an approve/deny decision to a pending request."""
     approval_req = await _get_request_or_404(request_id, db)
@@ -117,6 +120,7 @@ async def _respond_to_request(
 
     approval_req.status = decision
     approval_req.feedback = feedback
+    approval_req.responded_by = responded_by
     approval_req.responded_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(approval_req)
@@ -222,31 +226,39 @@ async def get_approval_request(
 @router.post(
     "/{request_id}/approve",
     response_model=ApprovalRequestResponse,
-    dependencies=[Depends(get_current_user), Depends(require_non_guest)],
 )
 async def approve_request(
     request_id: str,
     body: ApprovalAction | None = None,
-    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),  # noqa: B008
+    _: None = Depends(require_non_guest),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ApprovalRequestResponse:
     """Approve a pending request (the Tactician presses 'A')."""
     feedback = body.feedback if body else None
-    return await _respond_to_request(request_id, "approved", feedback, db)
+    return await _respond_to_request(
+        request_id, "approved", feedback, db,
+        responded_by=user.get("sub"),
+    )
 
 
 @router.post(
     "/{request_id}/deny",
     response_model=ApprovalRequestResponse,
-    dependencies=[Depends(get_current_user), Depends(require_non_guest)],
 )
 async def deny_request(
     request_id: str,
     body: ApprovalAction | None = None,
-    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),  # noqa: B008
+    _: None = Depends(require_non_guest),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ApprovalRequestResponse:
     """Deny a pending request with optional feedback (the Tactician presses 'B')."""
     feedback = body.feedback if body else None
-    return await _respond_to_request(request_id, "denied", feedback, db)
+    return await _respond_to_request(
+        request_id, "denied", feedback, db,
+        responded_by=user.get("sub"),
+    )
 
 
 @router.websocket("/ws")

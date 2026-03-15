@@ -38,6 +38,31 @@
 - `apps/nexus-api/nexus_api/routers/maps.py` -- Map CRUD API
 - `apps/nexus-api/nexus_api/routers/calendar.py` -- Calendar connection API
 
+## Production Hardening (v0.3.0)
+
+- **Worker Concurrency**: `MAX_CONCURRENT_TASKS` env var (default 3). Semaphore-bounded
+  `asyncio.create_task()` with graceful shutdown drain.
+- **LLM JSON Retry**: `implement()` retries LLM up to 2 times on `JSONDecodeError`,
+  re-prompting with error context. Returns `status: "error"` on exhaustion (not
+  placeholder). Conditional edge `implement → END` when `status == "error"`.
+- **Git Credential Isolation**: `BashTool.execute()` accepts `env` kwarg. Token passed
+  to `create_pr()` via subprocess env instead of `os.environ`.
+- **Worktree Cleanup**: `_cleanup_stale_worktrees()` runs on startup, removes
+  worktrees older than `WORKTREE_STALE_HOURS` (default 24).
+- **Dispatch Rate Limiting**: Per-user sliding window via `MessageRateLimiter` on
+  `POST /dispatch` (default 10 req/60s). Config: `DISPATCH_RATE_LIMIT`,
+  `DISPATCH_RATE_WINDOW`.
+- **BashTool Sandbox**: Blocks `cd ..` when `allowed_cwd` is set.
+- **Approval Polling Jitter**: `poll_interval * (0.5 + random())` to avoid
+  thundering herd.
+- **DLQ Monitoring**: `GET /api/v1/health/dlq-stats` returns depth and recent entries.
+- **Stale Task Reaper**: `POST /api/v1/swarms/tasks/reap-stale` auto-fails
+  queued/pending tasks older than 1 hour.
+- **Inference Retry + Fallback**: `ModelRouter.complete()` retries primary once (1s
+  delay), then falls through to alternative providers.
+- **Approval Audit Trail**: `responded_by` column on `approval_requests` (migration
+  0012). Populated from JWT `sub` claim.
+
 ## Port Assignments
 
 | Port | Service | Notes |

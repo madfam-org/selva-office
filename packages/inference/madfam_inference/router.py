@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 
@@ -140,10 +141,57 @@ class ModelRouter:
             f"Tried: {candidates}. Registered: {self.available_providers}"
         )
 
+    def _get_fallback_candidates(
+        self, request: InferenceRequest, exclude: InferenceProvider,
+    ) -> list[str]:
+        """Return provider names suitable for fallback, excluding the primary."""
+        policy = request.policy
+        if policy.sensitivity in (Sensitivity.RESTRICTED, Sensitivity.CONFIDENTIAL):
+            return []  # Cannot fall back from local-only constraint
+
+        if policy.sensitivity == Sensitivity.INTERNAL:
+            candidates = list(CLOUD_PRIORITY)
+        else:
+            candidates = list(CHEAPEST_PRIORITY)
+        return [
+            n for n in candidates
+            if self._providers.get(n) is not None
+            and self._providers[n] is not exclude
+        ]
+
     async def complete(self, request: InferenceRequest) -> InferenceResponse:
-        """Route the request to the appropriate provider and return the response."""
+        """Route the request to the appropriate provider and return the response.
+
+        Retries once on the primary provider (with 1s delay), then falls
+        through to alternative providers before raising.
+        """
         provider = self._select_provider(request)
-        return await provider.complete(request)
+
+        # Try primary provider with 1 retry.
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                return await provider.complete(request)
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Provider %s failed (attempt %d/2): %s",
+                    type(provider).__name__, attempt + 1, exc,
+                )
+                if attempt == 0:
+                    await asyncio.sleep(1.0)
+
+        # Fallback: try remaining candidates.
+        for name in self._get_fallback_candidates(request, exclude=provider):
+            try:
+                logger.info("Falling back to provider: %s", name)
+                return await self._providers[name].complete(request)
+            except Exception as exc:
+                logger.warning("Fallback provider %s also failed: %s", name, exc)
+
+        raise RuntimeError(
+            f"All providers failed for request. Last error: {last_exc}"
+        )
 
     async def stream(self, request: InferenceRequest) -> AsyncIterator[str]:
         """Route the request to the appropriate provider and stream the response."""

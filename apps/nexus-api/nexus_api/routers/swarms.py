@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -19,8 +20,28 @@ from ..config import get_settings
 from ..database import get_db
 from ..models import Agent, ComputeTokenLedger, SwarmTask, TaskEvent, Workflow
 from ..tenant import TenantContext, get_tenant
+from ..ws import MessageRateLimiter
 
 router = APIRouter(tags=["swarms"], dependencies=[Depends(get_current_user)])
+
+# -- Per-user dispatch rate limiter -------------------------------------------
+_settings = get_settings()
+_dispatch_limiter = MessageRateLimiter(
+    max_messages=_settings.dispatch_rate_limit,
+    window_seconds=float(_settings.dispatch_rate_window),
+)
+
+
+async def require_dispatch_rate_limit(
+    user: dict = Depends(get_current_user),  # noqa: B008
+) -> None:
+    """Reject dispatch requests that exceed the per-user rate limit."""
+    user_sub = user.get("sub", "anonymous")
+    if not _dispatch_limiter.check(user_sub):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Dispatch rate limit exceeded",
+        )
 
 
 # -- Request / Response schemas -----------------------------------------------
@@ -84,7 +105,7 @@ def _task_to_response(task: SwarmTask) -> SwarmTaskResponse:
     "/dispatch",
     response_model=SwarmTaskResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_non_guest)],
+    dependencies=[Depends(require_non_guest), Depends(require_dispatch_rate_limit)],
 )
 async def dispatch_task(
     body: DispatchRequest,
@@ -437,3 +458,35 @@ async def update_task_status(
     await db.refresh(task)
 
     return _task_to_response(task)
+
+
+@router.post("/tasks/reap-stale")
+async def reap_stale_tasks(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, int]:
+    """Auto-fail queued/pending tasks older than 1 hour.
+
+    Called periodically by workers to prevent indefinite queue buildup.
+    No auth required (internal endpoint).
+    """
+    from datetime import timedelta
+
+    cutoff = datetime.now(UTC) - timedelta(hours=1)
+    result = await db.execute(
+        select(SwarmTask)
+        .where(SwarmTask.status.in_(["queued", "pending"]))
+        .where(SwarmTask.created_at < cutoff)
+    )
+    stale_tasks = result.scalars().all()
+
+    for task in stale_tasks:
+        task.status = "failed"
+        task.error_message = "Reaped: stale task older than 1 hour"
+        task.completed_at = datetime.now(UTC)
+
+    await db.flush()
+
+    if stale_tasks:
+        logging.getLogger(__name__).warning("Reaped %d stale task(s)", len(stale_tasks))
+
+    return {"reaped": len(stale_tasks)}
