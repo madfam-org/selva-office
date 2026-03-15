@@ -11,8 +11,9 @@
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
-- `packages/inference/autoswarm_inference/org_config.py` -- Org-level config (task types, model assignments)
-- `packages/inference/src/router.py` -- LLM model routing logic
+- `packages/inference/madfam_inference/org_config.py` -- Org-level config (task types, model assignments)
+- `packages/inference/madfam_inference/router.py` -- LLM model routing logic
+- `apps/nexus-api/nexus_api/routers/intelligence.py` -- Intelligence config API
 - `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
 - `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
 - `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (24 built-in tools)
@@ -229,7 +230,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 #### Multimodal Inference (5.3)
 - **Types**: `ContentType` enum (TEXT/IMAGE_URL/IMAGE_BASE64), `MediaContent` model
-  in `packages/inference/autoswarm_inference/types.py`. `InferenceRequest.messages`
+  in `packages/inference/madfam_inference/types.py`. `InferenceRequest.messages`
   accepts `list[dict[str, Any]]` for multimodal content blocks. `has_media()` helper.
 - **Provider vision**: `InferenceProvider.supports_vision` property (default False).
   OpenAI, Anthropic, Ollama, Generic providers all support vision with

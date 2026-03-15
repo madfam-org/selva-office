@@ -8,7 +8,7 @@ dependencies = [
   "pyyaml>=6.0",
   "langgraph>=0.2.60",
   "langchain-core>=0.3.28",
-  "autoswarm-inference",
+  "madfam-inference",
   "autoswarm-permissions",
 ]
 
