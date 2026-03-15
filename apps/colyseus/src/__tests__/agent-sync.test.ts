@@ -61,7 +61,8 @@ function makeState(departments: Map<string, any>, pendingApprovalCount = 0) {
 // ---------------------------------------------------------------------------
 async function simulateFetchAgentsFromApi(
   state: any,
-  nexusApiUrl: string
+  nexusApiUrl: string,
+  token: string = "dev-token"
 ): Promise<void> {
   const slugToDept = new Map<string, { stateKey: string; dept: any }>();
   state.departments.forEach((dept: any, key: string) => {
@@ -71,7 +72,7 @@ async function simulateFetchAgentsFromApi(
   let apiDepts: Array<Record<string, any>>;
   try {
     const listResp = await fetch(`${nexusApiUrl}/api/v1/departments/`, {
-      headers: { Authorization: "Bearer dev-token" },
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!listResp.ok) return;
     apiDepts = (await listResp.json()) as Array<Record<string, any>>;
@@ -87,7 +88,7 @@ async function simulateFetchAgentsFromApi(
     try {
       const resp = await fetch(
         `${nexusApiUrl}/api/v1/departments/${apiDept.id}`,
-        { headers: { Authorization: "Bearer dev-token" } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!resp.ok) continue;
       const detail = (await resp.json()) as Record<string, any>;

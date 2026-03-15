@@ -187,8 +187,8 @@ in PostgreSQL.
    async def reenqueue():
        r = redis.from_url('redis://redis:6379')
        # Fetch tasks that were queued or in_progress
-       # Re-push to autoswarm:tasks
-       print('Re-enqueue via API or direct Redis LPUSH')
+       # Re-add to autoswarm:task-stream
+       print('Re-enqueue via API or direct Redis XADD')
 
    asyncio.run(reenqueue())
    "
@@ -211,7 +211,7 @@ in PostgreSQL.
 4. **Verify the queue**:
 
    ```bash
-   kubectl -n autoswarm exec -it deploy/redis -- redis-cli LLEN autoswarm:tasks
+   kubectl -n autoswarm exec -it deploy/redis -- redis-cli XLEN autoswarm:task-stream
    ```
 
 **Estimated Recovery Time**: 5-15 minutes.
@@ -353,7 +353,7 @@ After any recovery operation, confirm each item:
 - [ ] office-ui loads in browser
 - [ ] Colyseus accepts WebSocket connections
 - [ ] Redis is accessible and `PING` returns `PONG`
-- [ ] Workers are running and processing tasks from `autoswarm:tasks` queue
+- [ ] Workers are running and processing tasks from `autoswarm:task-stream`
 - [ ] Gateway heartbeat service is operational
 - [ ] Janua authentication flow works (login and token validation)
 - [ ] A test task can be dispatched and completed end-to-end

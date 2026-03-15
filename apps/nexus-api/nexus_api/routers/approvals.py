@@ -16,15 +16,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoswarm_redis_pool import get_redis_pool
 
 from ..approval_notifier import notify_approval_decision
-from ..auth import get_current_user
+from ..auth import get_current_user, require_non_guest
 from ..config import get_settings
 from ..database import async_session_factory, get_db
 from ..models import ApprovalRequest, SwarmTask
-from ..ws import manager
+from ..ws import MessageRateLimiter, manager
 
 _wave_logger = logging.getLogger(__name__ + ".wave")
 
 router = APIRouter(tags=["approvals"])
+
+_ws_rate_limiter = MessageRateLimiter(max_messages=30, window_seconds=60.0)
 
 
 # -- Request / Response schemas -----------------------------------------------
@@ -220,7 +222,7 @@ async def get_approval_request(
 @router.post(
     "/{request_id}/approve",
     response_model=ApprovalRequestResponse,
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user), Depends(require_non_guest)],
 )
 async def approve_request(
     request_id: str,
@@ -235,7 +237,7 @@ async def approve_request(
 @router.post(
     "/{request_id}/deny",
     response_model=ApprovalRequestResponse,
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(get_current_user), Depends(require_non_guest)],
 )
 async def deny_request(
     request_id: str,
@@ -283,6 +285,9 @@ async def approval_websocket(websocket: WebSocket) -> None:
     try:
         while True:
             data = await websocket.receive_text()
+            if not _ws_rate_limiter.check(client_id):
+                await websocket.send_json({"type": "rate_limited"})
+                continue
             if data == "ping":
                 await websocket.send_json({"type": "pong"})
                 continue
@@ -293,6 +298,7 @@ async def approval_websocket(websocket: WebSocket) -> None:
             except json.JSONDecodeError:
                 pass
     except WebSocketDisconnect:
+        _ws_rate_limiter.remove(client_id)
         manager.disconnect(client_id)
 
 
@@ -341,8 +347,6 @@ async def _handle_wave(wave_data: dict[str, Any]) -> None:
                 "assigned_agent_ids": [],
             })
             try:
-                # Dual-write: LPUSH (legacy) + XADD (stream)
-                await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
                 await pool.execute_with_retry(
                     "xadd", "autoswarm:task-stream", {"data": task_msg}
                 )

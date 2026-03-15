@@ -22,6 +22,6 @@ curl -sf "$API/api/v1/health/ready" | python3 -c "import sys,json; d=json.load(s
 curl -sf "$API/api/v1/health/queue-stats" | python3 -c "import sys,json; d=json.load(sys.stdin); print('✅ Stream:', d.get('stream_length',0), '| DLQ:', d.get('dlq_depth',0))" 2>/dev/null || echo "❌ queue stats unavailable"
 
 # Agent count
-curl -sf -H "Authorization: Bearer dev" "$API/api/v1/agents" | python3 -c "import sys,json; agents=json.load(sys.stdin); print(f'✅ {len(agents)} agents seeded')" 2>/dev/null || echo "⚠️  No agents (run: make dev-seed)"
+curl -sf -H "Authorization: Bearer dev" "$API/api/v1/agents" | python3 -c "import sys,json; agents=json.load(sys.stdin); n=len(agents); print(f'✅ {n} agents seeded') if n > 0 else (print('❌ No agents seeded (run: make dev-seed)'), sys.exit(1))" 2>/dev/null || { echo "❌ No agents (run: make dev-seed)"; exit 1; }
 
 echo "=== Done ==="

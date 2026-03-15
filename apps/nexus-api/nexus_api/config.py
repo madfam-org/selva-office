@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 # Resolve project root so env_file works regardless of CWD.
@@ -20,6 +22,10 @@ class Settings(BaseSettings):
 
     # -- Infrastructure -------------------------------------------------------
     database_url: str = "postgresql+asyncpg://autoswarm:autoswarm@localhost:5432/autoswarm"
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_recycle: int = 1800  # 30 minutes
+    db_pool_timeout: int = 30
     redis_url: str = "redis://localhost:6379"
 
     # -- Auth (Janua OIDC) ----------------------------------------------------
@@ -66,6 +72,7 @@ class Settings(BaseSettings):
     # -- Security -------------------------------------------------------------
     dev_auth_bypass: bool = False
     rate_limit_per_minute: int = 60
+    csp_extra_sources: str = ""
     log_format: str = "json"
 
     model_config = {
@@ -73,6 +80,39 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
+
+    @model_validator(mode="after")
+    def _validate_config(self) -> Settings:
+        """Validate configuration values and warn about insecure defaults."""
+        if self.dev_auth_bypass and self.environment != "development":
+            warnings.warn(
+                "DEV_AUTH_BYPASS is enabled in a non-development environment! "
+                "This is a security risk.",
+                stacklevel=2,
+            )
+
+        if not self.database_url.startswith(("postgresql", "sqlite")):
+            raise ValueError(
+                f"DATABASE_URL must start with 'postgresql' or 'sqlite', "
+                f"got: {self.database_url[:20]}..."
+            )
+
+        if not self.redis_url.startswith("redis"):
+            raise ValueError(
+                f"REDIS_URL must start with 'redis://' or 'rediss://', "
+                f"got: {self.redis_url[:20]}..."
+            )
+
+        if (
+            self.colyseus_secret == "change-me-in-production"
+            and self.environment != "development"
+        ):
+            warnings.warn(
+                "COLYSEUS_SECRET is set to default value in non-development environment!",
+                stacklevel=2,
+            )
+
+        return self
 
 
 def get_settings() -> Settings:

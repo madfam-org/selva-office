@@ -50,7 +50,7 @@ polyglot monorepo with TypeScript frontend services and Python backend services.
 | **Workers** | LangGraph, Python | Execute agent tasks in isolated environments with HITL interrupts |
 | **Gateway** | OpenClaw (Node.js) | Persistent daemon for scheduled heartbeats and memory management |
 | **PostgreSQL** | PostgreSQL 16 | Persistent storage for agents, departments, tasks, approvals, ledger |
-| **Redis** | Redis 7 | Task queue (`autoswarm:tasks`), pub/sub for real-time events, caching |
+| **Redis** | Redis 7 | Task stream (`autoswarm:task-stream`), pub/sub for real-time events, caching |
 
 ## Data Flow
 
@@ -69,7 +69,7 @@ Colyseus Room (state sync to all connected clients)
 Nexus API (REST endpoint or WebSocket message)
     |
     v
-Redis Task Queue (LPUSH to autoswarm:tasks)
+Redis Task Stream (XADD to autoswarm:task-stream)
     |
     v
 Worker Process (XREADGROUP from stream)

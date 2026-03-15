@@ -375,8 +375,13 @@ The `packages/skills/` package implements the AgentSkills standard.
   `POST /api/v1/admin/kick` (publish to Redis channel),
   `POST /api/v1/admin/room-config`. All require `admin` JWT role.
 - **AdminPanel component**: user list with kick, MOTD config form.
-- **Guest access**: Deferred — requires Janua-side changes (guest tokens,
-  limited-permission roles).
+- **Guest access**: Implemented via Janua `POST /api/v1/auth/guest` endpoint.
+  `GuestInvite` model for invite links. `require_non_guest()` FastAPI dependency
+  blocks guests from dispatch, approve/deny, workflow/map CRUD, marketplace
+  publish/rate/install, calendar connect/disconnect. Colyseus `onAuth` verifies
+  JWT via `jose` + JWKS, blocks guests from `approve`, `deny`,
+  `megaphone_start`, `spotlight_start`. Frontend `/guest` page, `useUserPermissions`
+  hook, `isGuest()` helper in `api.ts`. `TacticianSchema.isGuest` field.
 
 ### Meeting Title Badge
 - `TacticianSchema.meetingTitle` (`@type("string")`, default `""`). Set by
@@ -456,9 +461,9 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Enclii webhook**: `POST /api/v1/gateway/enclii` receives deployment events
   from Enclii. Bearer token auth via `enclii_webhook_secret`. Maps
   `deploy_failed`/`deploy_rollback` → `coding`, `deploy_succeeded` → `research`.
-  Creates SwarmTasks and dual-writes to Redis.
+  Creates SwarmTasks and enqueues to Redis.
 - **Task queue**: Redis Streams (`autoswarm:task-stream`) with consumer groups
-  (`autoswarm-workers`). Legacy `autoswarm:tasks` LIST is dual-written for migration.
+  (`autoswarm-workers`).
   Dead letter queue at `autoswarm:task-dlq` after 3 retries. Workers auto-claim
   stalled messages on startup via XAUTOCLAIM.
 - **Redis pool**: `packages/redis-pool/` provides a singleton `RedisPool` with circuit
@@ -471,8 +476,6 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Health endpoints**: nexus-api (`/api/v1/health/*`), gateway (`:4304/health`),
   workers (`:4305/health`), colyseus (`:4303/health`). Queue stats at
   `/api/v1/health/queue-stats`.
-- Legacy: The Redis queue key `autoswarm:tasks` (LPUSH to enqueue, BRPOP to dequeue)
-  is still dual-written but workers now consume from the stream.
 - WebSocket approval events use the `ConnectionManager` singleton in
   `apps/nexus-api/src/ws.py`.
 - LangGraph `interrupt()` is used to pause agent execution for HITL approval.
@@ -499,11 +502,32 @@ The `packages/skills/` package implements the AgentSkills standard.
   supports both dev bypass (dummy JWT) and Janua SSO redirect (when
   `NEXT_PUBLIC_JANUA_ISSUER_URL` is set). `apiFetch()` in `src/lib/api.ts`
   attaches Bearer token from cookie to all API calls.
+- **Security middleware** (`nexus_api/middleware/security.py`): Adds CSP header
+  (configurable via `csp_extra_sources` setting), `Permissions-Policy` allowing
+  camera/mic for own origin (WebRTC), and standard security headers. CSP
+  `connect-src` auto-includes CORS origins and `ws:/wss:`.
 - **CSRF middleware** (`nexus_api/middleware/csrf.py`): double-submit cookie
   pattern. Bearer-authenticated requests skip CSRF validation (Bearer tokens
   are inherently CSRF-safe). Webhook endpoints (`/api/v1/gateway/`,
   `/api/v1/billing/webhooks/`, `/api/v1/approvals/ws`, `/api/v1/health/`) are
   also exempt.
+- **WebSocket rate limiting**: `MessageRateLimiter` in `ws.py` (30 msg/60s
+  per client). Used by events and approvals WS endpoints. Colyseus uses
+  `MessageThrottler` (30 msg/sec, exempt: `move`, `webrtc_signal`).
+- **Fire-and-forget retry**: `http_retry.py` provides `fire_and_forget_request()`
+  with exponential backoff (0.5s→1s→2s) and per-host circuit breaker (5
+  failures→30s cooldown). Used by `task_status.py` and `event_emitter.py`.
+- **Database pool**: Configurable via `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`,
+  `DB_POOL_RECYCLE`, `DB_POOL_TIMEOUT` env vars. Pool stats at
+  `/api/v1/health/pool-stats`.
+- **Env validation**: `@model_validator` on both nexus-api and worker `Settings`.
+  Validates URL formats, warns on insecure defaults in non-dev environments.
+- **OpenTelemetry**: Optional tracing via `OTEL_EXPORTER_OTLP_ENDPOINT` env var.
+  No-op when unset. W3C Trace Context propagation. Redis pool OTel spans.
+- **Colyseus auth**: `onAuth` verifies JWT via `jose` + Janua JWKS.
+  `filterBy(["orgId"])` for room-per-org isolation. Dev bypass preserved.
+- **Playwright E2E**: `tests/e2e/` with login, dispatch, and approval specs.
+  Run with `make test-e2e` (requires `npx playwright install chromium`).
 - Worker graph nodes (`plan`, `implement`, `review`) use `call_llm()` from
   `autoswarm_workers.inference` with a `ModelRouter` that auto-discovers providers
   from env vars. Graphs fall back to static logic when no LLM is configured.

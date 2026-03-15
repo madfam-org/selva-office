@@ -167,13 +167,12 @@ class TestGitHubWebhookEvents:
         assert resp.json()["status"] == "ok"
         assert resp.json()["tasks_created"] == 1
 
-        # Verify Redis enqueue was attempted (dual-write: lpush + xadd)
+        # Verify Redis enqueue was attempted (xadd to stream)
         assert mock_pool.execute_with_retry.call_count >= 1
-        # First call is lpush
         first_call = mock_pool.execute_with_retry.call_args_list[0]
-        assert first_call[0][0] == "lpush"
-        assert first_call[0][1] == "autoswarm:tasks"
-        enqueued = json.loads(first_call[0][2])
+        assert first_call[0][0] == "xadd"
+        assert first_call[0][1] == "autoswarm:task-stream"
+        enqueued = json.loads(first_call[0][2]["data"])
         assert enqueued["graph_type"] == "coding"
         assert "PR #42" in enqueued["description"]
 
@@ -217,7 +216,7 @@ class TestGitHubWebhookEvents:
 
         # Verify the first enqueue call has research graph type
         first_call = mock_pool.execute_with_retry.call_args_list[0]
-        enqueued = json.loads(first_call[0][2])
+        enqueued = json.loads(first_call[0][2]["data"])
         assert enqueued["graph_type"] == "research"
         assert "Issue #99" in enqueued["description"]
 

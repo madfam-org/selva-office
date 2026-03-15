@@ -82,6 +82,22 @@ def build_model_router() -> ModelRouter:
             provider_name="moonshot",
         )
 
+    if settings.groq_api_key:
+        providers["groq"] = GenericOpenAIProvider(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=settings.groq_api_key,
+            model="llama-3.3-70b-versatile",
+            provider_name="groq",
+        )
+    if settings.mistral_api_key:
+        providers["mistral"] = GenericOpenAIProvider(
+            base_url="https://api.mistral.ai/v1",
+            api_key=settings.mistral_api_key,
+            model="mistral-large-latest",
+            provider_name="mistral",
+            vision=True,
+        )
+
     # Register additional providers from org config (skip already registered).
     for name, cfg in org_config.providers.items():
         if name not in providers:
@@ -100,6 +116,24 @@ def build_model_router() -> ModelRouter:
     providers["ollama"] = OllamaProvider(base_url=settings.ollama_base_url)
 
     return ModelRouter(providers=providers, org_config=org_config)
+
+
+def validate_providers() -> None:
+    """Log which providers are available. Warns if only Ollama is registered."""
+    try:
+        router = build_model_router()
+        providers = router.available_providers
+        cloud = [p for p in providers if p != "ollama"]
+        if cloud:
+            logger.info("LLM providers available: %s", ", ".join(providers))
+        else:
+            logger.warning(
+                "No cloud LLM API keys configured — only Ollama is available. "
+                "Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or other provider keys "
+                "in .env to enable cloud inference."
+            )
+    except Exception as exc:
+        logger.warning("Failed to validate providers: %s", exc)
 
 
 _router: ModelRouter | None = None

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import get_current_user
+from ..auth import get_current_user, require_non_guest
 from ..database import get_db
 from ..models import Workflow
 from ..tenant import TenantContext, get_tenant
@@ -130,7 +130,12 @@ def _validate_yaml(yaml_content: str) -> WorkflowValidationResponse:
 # -- Endpoints -----------------------------------------------------------------
 
 
-@router.post("", response_model=WorkflowResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=WorkflowResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_non_guest)],
+)
 async def create_workflow(
     body: WorkflowCreateRequest,
     db: AsyncSession = Depends(get_db),  # noqa: B008
@@ -275,7 +280,11 @@ async def get_workflow(
     return _workflow_to_response(wf)
 
 
-@router.put("/{workflow_id}", response_model=WorkflowResponse)
+@router.put(
+    "/{workflow_id}",
+    response_model=WorkflowResponse,
+    dependencies=[Depends(require_non_guest)],
+)
 async def update_workflow(
     workflow_id: str,
     body: WorkflowUpdateRequest,
@@ -309,7 +318,11 @@ async def update_workflow(
     return _workflow_to_response(wf)
 
 
-@router.delete("/{workflow_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{workflow_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_non_guest)],
+)
 async def delete_workflow(
     workflow_id: str,
     db: AsyncSession = Depends(get_db),  # noqa: B008

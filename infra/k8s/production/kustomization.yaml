@@ -17,6 +17,7 @@ resources:
   - hpa.yaml
   - networkpolicy.yaml
   - backup-cronjob.yaml
+  - keda-scaledobject.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: autoswarm-office

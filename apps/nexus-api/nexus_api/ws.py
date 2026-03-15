@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import time
+from collections import deque
 from typing import Any
 
 from fastapi import WebSocket
@@ -66,6 +68,36 @@ class ConnectionManager:
     async def send_approval_response(self, response: dict[str, Any]) -> None:
         """Broadcast an approval response notification to all connected clients."""
         await self.broadcast({"type": "approval_resolved", "payload": response})
+
+
+class MessageRateLimiter:
+    """Sliding-window rate limiter for WebSocket messages.
+
+    Each client is tracked independently.  Messages older than
+    *window_seconds* are purged on every ``check()`` call so that
+    memory stays bounded even for long-lived connections.
+    """
+
+    def __init__(self, max_messages: int = 30, window_seconds: float = 60.0) -> None:
+        self._max = max_messages
+        self._window = window_seconds
+        self._messages: dict[str, deque[float]] = {}
+
+    def check(self, client_id: str) -> bool:
+        """Return ``True`` if the message is allowed, ``False`` if rate-limited."""
+        now = time.monotonic()
+        q = self._messages.setdefault(client_id, deque())
+        # Purge expired entries
+        while q and (now - q[0]) > self._window:
+            q.popleft()
+        if len(q) >= self._max:
+            return False
+        q.append(now)
+        return True
+
+    def remove(self, client_id: str) -> None:
+        """Clean up state for a disconnected client."""
+        self._messages.pop(client_id, None)
 
 
 # Singleton instance shared across the application.

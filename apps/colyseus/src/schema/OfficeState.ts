@@ -38,6 +38,7 @@ export class TacticianSchema extends Schema {
   @type("string") companionType: string = "";
   @type("string") musicStatus: string = "";
   @type("string") meetingTitle: string = "";
+  @type("boolean") isGuest: boolean = false;
 }
 
 export class ChatMessageSchema extends Schema {

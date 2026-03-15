@@ -335,10 +335,10 @@ Connect to `ws://localhost:4300/api/v1/approvals/ws?client_id=<uuid>`
 "ping"
 ```
 
-## Redis Queue Format
+## Redis Task Stream Format
 
-Tasks are enqueued via `LPUSH autoswarm:tasks <json>` and dequeued by workers
-via `BRPOP autoswarm:tasks 0`.
+Tasks are enqueued via `XADD autoswarm:task-stream * data <json>` and consumed
+by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
 
 ```json
 {

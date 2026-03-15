@@ -293,12 +293,6 @@ redis-cli XPENDING autoswarm:task-stream autoswarm-workers - + 10
 redis-cli XLEN autoswarm:task-dlq
 ```
 
-**Legacy list queue (migration period)**:
-
-```bash
-redis-cli LLEN autoswarm:tasks
-```
-
 **API endpoint** (aggregated view):
 
 ```bash
@@ -319,7 +313,6 @@ Example response:
       "last_delivered_id": "1710300000000-0"
     }
   ],
-  "legacy_queue_depth": 0,
   "redis_pool": { ... }
 }
 ```
@@ -330,7 +323,6 @@ Example response:
 |--------|---------|----------|--------|
 | `stream_length` | > 25 | > 50 | Scale workers |
 | `dlq_depth` | > 0 | > 10 | Inspect DLQ, fix root cause |
-| `legacy_queue_depth` | > 0 | > 10 | Investigate; should be 0 post-migration |
 | `pending` per consumer | > 10 | > 25 | Check for stalled consumers |
 
 ### Scaling Workers for High Queue Depth
@@ -817,19 +809,6 @@ redis-cli XDEL autoswarm:task-dlq <message-id>
 
 # Clear entire DLQ (use with caution)
 redis-cli XTRIM autoswarm:task-dlq MAXLEN 0
-```
-
-### Legacy Queue (Migration Period)
-
-```bash
-# Queue depth
-redis-cli LLEN autoswarm:tasks
-
-# Peek at the next item without removing it
-redis-cli LINDEX autoswarm:tasks 0
-
-# View all items (caution: blocks if large)
-redis-cli LRANGE autoswarm:tasks 0 -1
 ```
 
 ### Pub/Sub Debugging

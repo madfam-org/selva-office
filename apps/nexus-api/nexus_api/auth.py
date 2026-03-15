@@ -149,3 +149,18 @@ def require_role(role: str):
         return user
 
     return _role_checker
+
+
+async def require_non_guest(
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Reject guest users from performing write/privileged operations.
+
+    Applied per-endpoint (not router-level) to preserve GET access for guests.
+    """
+    if "guest" in user.get("roles", []):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Guest users cannot perform this action",
+        )
+    return user

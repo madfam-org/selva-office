@@ -3,15 +3,33 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import time
+from collections.abc import Iterator
 from enum import Enum
 
 import redis.asyncio as aioredis
 from redis.asyncio import ConnectionPool, Redis
 
 logger = logging.getLogger(__name__)
+
+
+@contextlib.contextmanager
+def _redis_span(command: str) -> Iterator[None]:
+    """Wrap a Redis command in an OTel span if OpenTelemetry is available."""
+    try:
+        from opentelemetry import trace
+
+        tracer = trace.get_tracer("autoswarm-redis-pool")
+        with tracer.start_as_current_span(
+            f"redis.{command}",
+            attributes={"db.system": "redis", "db.operation": command},
+        ):
+            yield
+    except ImportError:
+        yield
 
 
 class CircuitState(Enum):
@@ -132,26 +150,27 @@ class RedisPool:
         client = await self._ensure_pool()
 
         last_exc: Exception | None = None
-        for attempt in range(max_retries + 1):
-            try:
-                method = getattr(client, operation)
-                result = await method(*args, **kwargs)
-                self._record_success()
-                return result
-            except (aioredis.ConnectionError, aioredis.TimeoutError, OSError) as exc:
-                last_exc = exc
-                self._record_failure()
-                if attempt < max_retries:
-                    delay = min(base_delay * (2 ** attempt), max_delay)
-                    logger.warning(
-                        "Redis %s failed (attempt %d/%d), retrying in %.1fs: %s",
-                        operation,
-                        attempt + 1,
-                        max_retries + 1,
-                        delay,
-                        exc,
-                    )
-                    await asyncio.sleep(delay)
+        with _redis_span(operation):
+            for attempt in range(max_retries + 1):
+                try:
+                    method = getattr(client, operation)
+                    result = await method(*args, **kwargs)
+                    self._record_success()
+                    return result
+                except (aioredis.ConnectionError, aioredis.TimeoutError, OSError) as exc:
+                    last_exc = exc
+                    self._record_failure()
+                    if attempt < max_retries:
+                        delay = min(base_delay * (2**attempt), max_delay)
+                        logger.warning(
+                            "Redis %s failed (attempt %d/%d), retrying in %.1fs: %s",
+                            operation,
+                            attempt + 1,
+                            max_retries + 1,
+                            delay,
+                            exc,
+                        )
+                        await asyncio.sleep(delay)
 
         raise last_exc  # type: ignore[misc]
 

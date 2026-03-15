@@ -9,10 +9,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from autoswarm_observability import init_sentry
+from autoswarm_observability import init_sentry, init_tracing
 from autoswarm_redis_pool import get_redis_pool
 
-from .analytics import init_posthog, shutdown as shutdown_posthog
+from .analytics import init_posthog
+from .analytics import shutdown as shutdown_posthog
 from .config import get_settings
 from .database import engine
 from .logging_config import configure_logging
@@ -85,10 +86,12 @@ def create_app() -> FastAPI:
 
     configure_logging(settings.log_format)
     init_sentry("nexus-api")
+    init_tracing("nexus-api")
+    logger.info("Configuration validated for environment=%s", settings.environment)
 
     app = FastAPI(
         title="AutoSwarm Nexus API",
-        version="0.1.0",
+        version="0.2.0",
         description="Core orchestration API for the AutoSwarm Office platform",
         lifespan=lifespan,
         docs_url="/api/v1/docs",
@@ -113,7 +116,11 @@ def create_app() -> FastAPI:
     )
 
     # -- Middleware stack (outermost first) ------------------------------------
-    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        SecurityHeadersMiddleware,
+        cors_origins=settings.cors_origins,
+        csp_extra_sources=settings.csp_extra_sources,
+    )
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(
         RateLimitMiddleware,

@@ -11,8 +11,9 @@ logger = logging.getLogger(__name__)
 
 # Commands that are unconditionally blocked regardless of permissions.
 _BLOCKED_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\brm\s+(-rf?|--recursive)\s+/\s*$", re.IGNORECASE),
-    re.compile(r"\brm\s+(-rf?|--recursive)\s+/\*", re.IGNORECASE),
+    re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\s+/", re.IGNORECASE),
+    re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\s+~", re.IGNORECASE),
+    re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\s+\$", re.IGNORECASE),
     re.compile(r"\bsudo\b"),
     re.compile(r"\bchmod\s+777\b"),
     re.compile(r"\bmkfs\b"),

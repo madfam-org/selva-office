@@ -42,6 +42,8 @@ import type {
   ClearWhiteboardMessage,
 } from "../handlers/whiteboard";
 import { WhiteboardSchema } from "../schema/Whiteboard";
+import { MessageThrottler } from "../throttle";
+import { verifyToken, type AuthResult } from "../auth";
 import { createLogger } from "@autoswarm/config/logging";
 import { getRedisClient, closeRedisClient } from "../redis-client";
 import type { RedisClientType } from "redis";
@@ -82,7 +84,14 @@ interface StatusMessage {
 interface RoomOptions {
   nexusApiUrl?: string;
   name?: string;
+  token?: string;
+  orgId?: string;
 }
+
+/** Message types that guests are blocked from sending. */
+const GUEST_BLOCKED_MESSAGES = new Set([
+  "approve", "deny", "megaphone_start", "spotlight_start",
+]);
 
 const DEFAULT_DEPARTMENTS: Array<{
   id: string;
@@ -139,6 +148,61 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   private stopProximityLoop: (() => void) | null = null;
   private agentIndex = new Map<string, { deptId: string; agentIndex: number }>();
   private redisSubscriber: RedisClientType | null = null;
+  private throttler = new MessageThrottler();
+
+  /**
+   * Return the service-to-service auth token for nexus-api calls.
+   * Falls back to "dev-token" only when DEV_AUTH_BYPASS is enabled.
+   */
+  private getServiceToken(): string {
+    if (process.env.COLYSEUS_SERVICE_TOKEN) {
+      return process.env.COLYSEUS_SERVICE_TOKEN;
+    }
+    if (process.env.DEV_AUTH_BYPASS === "true") {
+      return "dev-token";
+    }
+    logger.warn("COLYSEUS_SERVICE_TOKEN not set and DEV_AUTH_BYPASS is not enabled — using empty token");
+    return "";
+  }
+
+  /**
+   * Register a message handler that is subject to per-session throttling.
+   * If the session exceeds the rate limit the handler is skipped and a
+   * ``rate_limited`` message is sent back to the client instead.
+   */
+  private throttledMessage<T>(
+    type: string,
+    handler: (client: Client, message: T) => void,
+  ): void {
+    this.onMessage(type, (client: Client, message: T) => {
+      if (!this.throttler.check(client.sessionId, type)) {
+        client.send("rate_limited", { type });
+        return;
+      }
+      handler(client, message);
+    });
+  }
+
+  /**
+   * Authenticate the client before allowing them to join.
+   * Verifies the JWT from Janua. Returns auth data stored on `client.auth`.
+   */
+  async onAuth(_client: Client, options: RoomOptions): Promise<AuthResult> {
+    return verifyToken(options.token, { name: options.name });
+  }
+
+  /** Check if a client is a guest and send a permission error if so. */
+  private isGuestBlocked(client: Client, action: string): boolean {
+    const auth = client.auth as AuthResult | undefined;
+    if (auth?.isGuest) {
+      client.send("error", {
+        type: "permission_denied",
+        message: `Guests cannot use ${action}`,
+      });
+      return true;
+    }
+    return false;
+  }
 
   onCreate(options: RoomOptions): void {
     logger.info("Room created");
@@ -165,18 +229,20 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       handleMovement(this.state, client, message);
     });
 
-    this.onMessage("interact", (client: Client, message: InteractMessage) => {
+    this.throttledMessage("interact", (client: Client, message: InteractMessage) => {
       handleInteraction(this.state, client, message);
     });
 
-    this.onMessage("approve", (client: Client, message: ApproveMessage) => {
+    this.throttledMessage("approve", (client: Client, message: ApproveMessage) => {
+      if (this.isGuestBlocked(client, "approve")) return;
       handleApproval(this.state, client, {
         ...message,
         nexusApiUrl: this.nexusApiUrl,
       });
     });
 
-    this.onMessage("deny", (client: Client, message: ApproveMessage) => {
+    this.throttledMessage("deny", (client: Client, message: ApproveMessage) => {
+      if (this.isGuestBlocked(client, "deny")) return;
       handleApproval(this.state, client, {
         ...message,
         result: "denied",
@@ -184,20 +250,21 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       });
     });
 
-    this.onMessage("chat", (client: Client, message: ChatMessage) => {
+    this.throttledMessage("chat", (client: Client, message: ChatMessage) => {
       handleChat(this.state, client, message);
     });
 
-    this.onMessage("emote", (client: Client, message: EmoteMessage) => {
+    this.throttledMessage("emote", (client: Client, message: EmoteMessage) => {
       handleEmote(this.state, client, message, (type, payload) =>
         this.broadcast(type, payload)
       );
     });
 
-    this.onMessage("avatar", (client: Client, message: AvatarMessage) => {
+    this.throttledMessage("avatar", (client: Client, message: AvatarMessage) => {
       handleAvatar(this.state, client, message);
     });
 
+    // "webrtc_signal" is exempt from throttling (high-frequency by design).
     this.onMessage(
       "webrtc_signal",
       (client: Client, message: WebRTCSignalMessage) => {
@@ -205,19 +272,19 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       }
     );
 
-    this.onMessage("status", (client: Client, message: StatusMessage) => {
+    this.throttledMessage("status", (client: Client, message: StatusMessage) => {
       handleStatus(this.state, client, message);
     });
 
-    this.onMessage("music_status", (client: Client, message: { status: string }) => {
+    this.throttledMessage("music_status", (client: Client, message: { status: string }) => {
       handleMusicStatus(this.state, client, message);
     });
 
-    this.onMessage("meeting_title", (client: Client, message: { title: string }) => {
+    this.throttledMessage("meeting_title", (client: Client, message: { title: string }) => {
       handleMeetingTitle(this.state, client, message);
     });
 
-    this.onMessage("lock_bubble", (client: Client) => {
+    this.throttledMessage("lock_bubble", (client: Client) => {
       const locked = lockBubble(client.sessionId, this.state);
       client.send("bubble_lock_status", { locked });
       if (locked) {
@@ -225,7 +292,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       }
     });
 
-    this.onMessage("unlock_bubble", (client: Client) => {
+    this.throttledMessage("unlock_bubble", (client: Client) => {
       const unlocked = unlockBubble(client.sessionId);
       client.send("bubble_lock_status", { locked: false });
       if (unlocked) {
@@ -233,46 +300,48 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       }
     });
 
-    this.onMessage("megaphone_start", (client: Client) => {
+    this.throttledMessage("megaphone_start", (client: Client) => {
+      if (this.isGuestBlocked(client, "megaphone")) return;
       handleMegaphoneStart(this.state, client, (type, payload) =>
         this.broadcast(type, payload)
       );
     });
 
-    this.onMessage("megaphone_stop", (client: Client) => {
+    this.throttledMessage("megaphone_stop", (client: Client) => {
       handleMegaphoneStop(client, (type, payload) =>
         this.broadcast(type, payload)
       );
     });
 
-    this.onMessage("spotlight_start", (client: Client) => {
+    this.throttledMessage("spotlight_start", (client: Client) => {
+      if (this.isGuestBlocked(client, "spotlight")) return;
       handleSpotlightStart(this.state, client, (type, payload) =>
         this.broadcast(type, payload)
       );
     });
 
-    this.onMessage("spotlight_stop", (client: Client) => {
+    this.throttledMessage("spotlight_stop", (client: Client) => {
       handleSpotlightStop(client, this.state, (type, payload) =>
         this.broadcast(type, payload)
       );
     });
 
-    this.onMessage("companion", (client: Client, message: { type: string }) => {
+    this.throttledMessage("companion", (client: Client, message: { type: string }) => {
       handleCompanion(this.state, client, message);
     });
 
-    this.onMessage("teleport", (client: Client, message: { targetSessionId: string }) => {
+    this.throttledMessage("teleport", (client: Client, message: { targetSessionId: string }) => {
       handleTeleport(this.state, client, message);
     });
 
-    this.onMessage(
+    this.throttledMessage(
       "draw_stroke",
       (client: Client, message: DrawStrokeMessage) => {
         handleWhiteboardDraw(this.state.whiteboards, client, message);
       },
     );
 
-    this.onMessage(
+    this.throttledMessage(
       "clear_whiteboard",
       (client: Client, message: ClearWhiteboardMessage) => {
         handleWhiteboardClear(this.state.whiteboards, client, message);
@@ -296,9 +365,9 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       "Initialized with departments"
     );
 
-    // Fire-and-forget: populate agents from nexus-api database.
-    this.fetchAgentsFromApi().catch((err) =>
-      logger.error({ err }, "Failed to fetch agents")
+    // Fire-and-forget: populate agents with retry logic.
+    this.fetchAgentsWithRetry().catch((err) =>
+      logger.error({ err }, "Failed to fetch agents after retries")
     );
 
     // Fire-and-forget: subscribe to real-time agent status updates via Redis.
@@ -308,20 +377,29 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   }
 
   onJoin(client: Client, options?: RoomOptions & { name?: string }): void {
-    logger.info({ sessionId: client.sessionId }, "Client joined");
+    const auth = client.auth as AuthResult | undefined;
+    const isGuest = auth?.isGuest ?? false;
+    const playerName = auth?.name ?? options?.name ?? "Player";
+
+    logger.info(
+      { sessionId: client.sessionId, isGuest, orgId: auth?.orgId },
+      "Client joined",
+    );
 
     const player = new TacticianSchema();
     player.sessionId = client.sessionId;
-    player.name = options?.name ?? "Player";
+    player.name = playerName;
     player.x = 400;
     player.y = 300;
     player.direction = "down";
+    player.isGuest = isGuest;
     this.state.players.set(client.sessionId, player);
 
-    addSystemMessage(this.state, `${player.name} joined`);
+    addSystemMessage(this.state, `${playerName} joined`);
     this.broadcast("player_joined", {
       sessionId: client.sessionId,
-      name: player.name,
+      name: playerName,
+      isGuest,
     });
   }
 
@@ -334,6 +412,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     const player = this.state.players.get(client.sessionId);
     const name = player?.name ?? "Player";
     this.state.players.delete(client.sessionId);
+    this.throttler.remove(client.sessionId);
     removeFromLockedGroups(client.sessionId);
     releaseMegaphone(client.sessionId, (type, payload) =>
       this.broadcast(type, payload)
@@ -359,7 +438,38 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
   // -- Agent sync from database -----------------------------------------------
 
+  /**
+   * Retry wrapper: attempts fetchAgentsFromApi with exponential backoff.
+   * 3 immediate retries (1s, 2s, 4s), then a deferred retry after 30s.
+   */
+  private async fetchAgentsWithRetry(): Promise<void> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.fetchAgentsFromApi();
+        return;
+      } catch (err) {
+        const delay = Math.pow(2, attempt - 1) * 1000;
+        logger.warn(
+          { attempt, maxAttempts, delay },
+          "Agent fetch failed, retrying..."
+        );
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, delay));
+        }
+      }
+    }
+    // All immediate retries failed — schedule a deferred retry.
+    logger.warn("All agent fetch retries exhausted — scheduling deferred retry in 30s");
+    setTimeout(() => {
+      this.fetchAgentsFromApi().catch((err) =>
+        logger.error({ err }, "Deferred agent fetch also failed")
+      );
+    }, 30_000);
+  }
+
   private async fetchAgentsFromApi(): Promise<void> {
+    const token = this.getServiceToken();
     // Build a slug->colyseus-dept map for matching API departments to state.
     const slugToDept = new Map<string, { stateKey: string; dept: DepartmentSchema }>();
     this.state.departments.forEach((dept, key) => {
@@ -371,7 +481,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     try {
       const listResp = await fetch(
         `${this.nexusApiUrl}/api/v1/departments/`,
-        { headers: { Authorization: "Bearer dev-token" } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!listResp.ok) {
         logger.error(
@@ -383,7 +493,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       apiDepts = (await listResp.json()) as Array<Record<string, any>>;
     } catch (err) {
       logger.error({ err }, "Failed to fetch department list");
-      return;
+      throw err;
     }
 
     // For each API department, fetch its detail (with agents) and populate state.
@@ -395,7 +505,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       try {
         const resp = await fetch(
           `${this.nexusApiUrl}/api/v1/departments/${apiDept.id}`,
-          { headers: { Authorization: "Bearer dev-token" } }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!resp.ok) continue;
         const detail = (await resp.json()) as Record<string, any>;

@@ -115,6 +115,26 @@ async def health_detail(response: Response) -> dict[str, object]:
     }
 
 
+@router.get("/pool-stats")
+async def pool_stats() -> dict[str, object]:
+    """Return database connection pool statistics."""
+    from sqlalchemy.pool import QueuePool
+
+    from ..database import get_engine
+
+    eng = get_engine()
+    pool = eng.pool
+    if not isinstance(pool, QueuePool):
+        return {"error": "pool is not a QueuePool", "status": pool.status()}
+    return {
+        "pool_size": pool.size(),
+        "checked_in": pool.checkedin(),
+        "checked_out": pool.checkedout(),
+        "overflow": pool.overflow(),
+        "invalid": pool.status(),
+    }
+
+
 @router.get("/queue-stats")
 async def queue_stats() -> dict[str, object]:
     """Return Redis task stream and queue statistics."""
@@ -150,12 +170,6 @@ async def queue_stats() -> dict[str, object]:
             ]
         except Exception:
             stats["consumer_groups"] = []
-
-        # Legacy queue depth (for migration period)
-        try:
-            stats["legacy_queue_depth"] = await client.llen("autoswarm:tasks")
-        except Exception:
-            stats["legacy_queue_depth"] = 0
 
     except Exception as exc:
         logger.warning("Failed to fetch queue stats: %s", exc)

@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 # passed to ModelRouter should use these identifiers.
 LOCAL_PROVIDER = "ollama"
 CLOUD_PRIORITY = [
-    "anthropic", "openai", "moonshot", "siliconflow",
+    "anthropic", "openai", "groq", "mistral", "moonshot", "siliconflow",
     "fireworks", "together", "deepinfra", "openrouter",
 ]
 CHEAPEST_PRIORITY = [
-    "deepinfra", "together", "siliconflow", "fireworks",
+    "deepinfra", "groq", "together", "siliconflow", "fireworks", "mistral",
     "moonshot", "openrouter", "openai", "anthropic",
 ]
 
