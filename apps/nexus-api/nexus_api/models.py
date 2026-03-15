@@ -9,6 +9,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -321,6 +322,46 @@ class Map(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
+
+
+class TaskEvent(Base):
+    """INSERT-only event record for full-stack task observability."""
+
+    __tablename__ = "task_events"
+    __table_args__ = (
+        Index("ix_task_events_task_created", "task_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    task_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("swarm_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("agents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    event_category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    node_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    graph_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="default", index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class ChatMessage(Base):

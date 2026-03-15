@@ -70,3 +70,6 @@ class ConnectionManager:
 
 # Singleton instance shared across the application.
 manager = ConnectionManager()
+
+# Event stream WebSocket manager (observability).
+event_manager = ConnectionManager()

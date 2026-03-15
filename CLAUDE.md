@@ -6,6 +6,9 @@
 - `apps/office-ui/src/app/page.tsx` -- Office UI root page
 - `apps/workers/autoswarm_workers/__main__.py` -- Worker process entry (task status lifecycle)
 - `apps/workers/autoswarm_workers/task_status.py` -- Fire-and-forget task PATCH to nexus-api
+- `apps/workers/autoswarm_workers/event_emitter.py` -- Fire-and-forget event POST + Redis PUBLISH
+- `apps/nexus-api/nexus_api/routers/events.py` -- Events REST API + WebSocket stream
+- `apps/nexus-api/nexus_api/routers/metrics.py` -- Ops metrics dashboard aggregation API
 - `apps/workers/autoswarm_workers/graphs/coding.py` -- Coding graph (plan/implement/test/review/push)
 - `apps/workers/autoswarm_workers/graphs/base.py` -- Shared graph state, permission checks
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
@@ -966,3 +969,56 @@ The `packages/skills/` package implements the AgentSkills standard.
 - Exported from `packages/ui/src/index.ts`.
 - **Preview tool**: `scripts/preview-tileset.js` generates an HTML catalog of
   all tiles across all presets at 4x scale.
+
+### Full-Stack Observability ("The All Seeing Eye")
+
+- **TaskEvent model** (`models.py`): INSERT-only event record with task_id,
+  agent_id, event_type, event_category, node_id, graph_type, payload,
+  duration_ms, provider, model, token_count, error_message, request_id,
+  org_id, created_at. Migration `0011`.
+- **Event emitter** (`apps/workers/autoswarm_workers/event_emitter.py`):
+  `emit_event()` — fire-and-forget POST to `/api/v1/events` + Redis PUBLISH
+  to `autoswarm:events`. 2s HTTP timeout. Follows `task_status.py` pattern.
+  `@instrumented_node` decorator wraps graph nodes to emit `node.entered`,
+  `node.exited`, `node.error` events with `duration_ms` measurement.
+- **Worker instrumentation**: All 6 graph types (coding, research, CRM,
+  deployment, puppeteer, meeting) decorated with `@instrumented_node` on
+  every node function. `__main__.py` emits `task.started`, `task.completed`,
+  `task.failed`, `task.timeout` events. `inference.py` emits `llm.response`
+  events with provider, model, token_count, duration_ms.
+- **Events REST API** (`routers/events.py`): `POST /api/v1/events` (no auth,
+  worker-to-API), `GET /api/v1/events` (paginated, filtered by task_id,
+  agent_id, event_type, event_category, since, until),
+  `GET /api/v1/events/tasks/{id}/timeline` (chronological with aggregates).
+  `WS /api/v1/events/ws` (initial 50-event batch + real-time relay via
+  `event_manager` ConnectionManager singleton).
+- **Server-side emission**: `swarms.py` emits `task.dispatched` on dispatch,
+  `approvals.py` emits `approval.approved`/`approval.denied` on decision.
+  Uses `emit_event_db()` (direct DB insert, no HTTP).
+- **Task board API**: `GET /api/v1/swarms/tasks/board` — DB-backed kanban
+  with columns (queued/running/completed/failed), aggregated event data
+  (duration_ms, total_tokens, event_count), agent name resolution.
+- **Metrics API** (`routers/metrics.py`): `GET /api/v1/metrics/dashboard` —
+  agent utilization %, task throughput (status counts, avg duration),
+  approval latency (avg, pending), cost breakdown (by provider/model),
+  error rate, trend sparklines (hourly buckets), recent errors. Period
+  options: 1h, 6h, 24h, 7d, 30d.
+- **OpsFeed component** (`OpsFeed.tsx`): Sliding panel (left side) with
+  real-time event stream via `useEventStream` WebSocket hook. Category
+  filter pills, text search, auto-scroll, color-coded event cards.
+  Capped at 500 in-memory events. "Load more" pagination.
+- **Enhanced DashboardPanel**: Rewritten to use `useTaskBoard` hook (DB-backed)
+  instead of `deriveTasksFromAgents()` (snapshot-derived). TaskCard shows
+  description, graph_type badge, agent names, duration, token count, event
+  count. Click-to-expand timeline view shows chronological events.
+- **MetricsDashboard component** (`MetricsDashboard.tsx`): Full-screen modal
+  with period selector, stat cards (utilization, throughput, approval queue,
+  error rate), SVG sparklines (zero-dependency), CSS bar chart for cost
+  breakdown, task status breakdown, recent errors list.
+- **Page integration**: "Ops Feed" and "Metrics" buttons in top-left HUD.
+  OpsFeed opens left panel; MetricsDashboard opens full-screen modal.
+- **Shared types** (`packages/shared-types/src/events.ts`): EventCategory,
+  EventType, TaskEvent, TaskTimeline, TaskBoardItem, TaskBoardResponse,
+  TrendPoint, MetricsDashboard TypeScript interfaces.
+- **CSRF**: `/api/v1/events/` and `/api/v1/events/ws` exempt from CSRF
+  middleware (worker-to-API calls don't carry cookies).

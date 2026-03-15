@@ -127,6 +127,24 @@ async def _respond_to_request(
     # Notify workers waiting on Redis pub/sub for this decision.
     await notify_approval_decision(request_id, decision, feedback)
 
+    # Emit approval event for observability
+    try:
+        from .events import emit_event_db
+
+        await emit_event_db(
+            db,
+            event_type=f"approval.{decision}",
+            event_category="approval",
+            agent_id=approval_req.agent_id,
+            payload={
+                "action_category": approval_req.action_category,
+                "action_type": approval_req.action_type,
+                "feedback": feedback,
+            },
+        )
+    except Exception:
+        pass  # Never block approval on event emission
+
     return response_data
 
 

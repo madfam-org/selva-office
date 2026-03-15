@@ -13,6 +13,7 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
+from ..event_emitter import instrumented_node
 from ..tools.bash_tool import BashTool
 from .base import BaseGraphState, check_permission
 
@@ -49,6 +50,7 @@ class CodingState(BaseGraphState, TypedDict, total=False):
 # -- Node functions -----------------------------------------------------------
 
 
+@instrumented_node
 def plan(state: CodingState) -> CodingState:
     """Generate an implementation plan from the task description.
 
@@ -130,6 +132,7 @@ def plan(state: CodingState) -> CodingState:
     }
 
 
+@instrumented_node
 def implement(state: CodingState) -> CodingState:
     """Write code changes based on the implementation plan.
 
@@ -267,6 +270,7 @@ def _write_files_to_worktree(
     return files_written
 
 
+@instrumented_node
 def test(state: CodingState) -> CodingState:
     """Run the test suite against the current code changes.
 
@@ -347,6 +351,7 @@ def test(state: CodingState) -> CodingState:
     }
 
 
+@instrumented_node
 def review(state: CodingState) -> CodingState:
     """Self-review the accumulated code changes.
 
@@ -397,6 +402,7 @@ def review(state: CodingState) -> CodingState:
     }
 
 
+@instrumented_node
 def push_gate(state: CodingState) -> CodingState:
     """Interrupt execution before git push to require human approval.
 

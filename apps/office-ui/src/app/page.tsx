@@ -40,6 +40,8 @@ import { SpotlightControls } from '@/components/SpotlightControls';
 import { SpotlightView } from '@/components/SpotlightView';
 import { RoomNavigator } from '@/components/RoomNavigator';
 import { SimplifiedView } from '@/components/SimplifiedView';
+import { OpsFeed } from '@/components/OpsFeed';
+import { MetricsDashboard } from '@/components/MetricsDashboard';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ApprovalModal } from '@autoswarm/ui';
 import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
@@ -249,6 +251,8 @@ export default function HomePage() {
   const [mapEditorOpen, setMapEditorOpen] = useState(false);
   const [calendarPanelOpen, setCalendarPanelOpen] = useState(false);
   const [meetingNotesPanelOpen, setMeetingNotesPanelOpen] = useState(false);
+  const [opsFeedOpen, setOpsFeedOpen] = useState(false);
+  const [metricsDashboardOpen, setMetricsDashboardOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
   );
@@ -523,6 +527,31 @@ export default function HomePage() {
             onToggleViewMode={handleToggleViewMode}
           />
 
+          {/* Ops controls (left side) */}
+          <div className="absolute top-4 left-4 z-hud flex gap-1">
+            <button
+              onClick={() => { setOpsFeedOpen((prev) => !prev); setDashboardOpen(false); }}
+              className={`rounded px-2 py-1 font-mono text-[8px] retro-btn ${
+                opsFeedOpen ? 'bg-emerald-600 text-white' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
+              }`}
+              aria-label="Toggle ops feed"
+            >
+              Ops Feed
+            </button>
+            <button
+              onClick={() => { setMetricsDashboardOpen(true); }}
+              className="rounded bg-slate-800/90 px-2 py-1 font-mono text-[8px] text-slate-300 retro-btn hover:bg-slate-700"
+              aria-label="Open metrics dashboard"
+            >
+              Metrics
+            </button>
+          </div>
+
+          <OpsFeed
+            open={opsFeedOpen}
+            onClose={() => setOpsFeedOpen(false)}
+          />
+
           <DashboardPanel
             open={dashboardOpen}
             onToggle={() => setDashboardOpen((prev) => { if (!prev) setApprovalPanelOpen(false); return !prev; })}
@@ -767,6 +796,11 @@ export default function HomePage() {
       <MapEditor
         open={mapEditorOpen}
         onClose={() => setMapEditorOpen(false)}
+      />
+
+      <MetricsDashboard
+        open={metricsDashboardOpen}
+        onClose={() => setMetricsDashboardOpen(false)}
       />
 
       {activeApproval && (

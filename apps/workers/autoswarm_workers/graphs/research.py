@@ -10,6 +10,7 @@ from typing import Any, TypedDict
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 
+from ..event_emitter import instrumented_node
 from .base import BaseGraphState
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class ResearchState(BaseGraphState, TypedDict, total=False):
 # -- Node functions -----------------------------------------------------------
 
 
+@instrumented_node
 def formulate_query(state: ResearchState) -> ResearchState:
     """Refine the raw task description into a structured search query.
 
@@ -80,6 +82,7 @@ def formulate_query(state: ResearchState) -> ResearchState:
     }
 
 
+@instrumented_node
 def search(state: ResearchState) -> ResearchState:
     """Execute the search strategy and collect source material.
 
@@ -143,6 +146,7 @@ def search(state: ResearchState) -> ResearchState:
     }
 
 
+@instrumented_node
 def synthesize(state: ResearchState) -> ResearchState:
     """Synthesize collected sources into a coherent analysis.
 
@@ -194,6 +198,7 @@ def synthesize(state: ResearchState) -> ResearchState:
     }
 
 
+@instrumented_node
 def format_report(state: ResearchState) -> ResearchState:
     """Format the synthesis into a final structured report.
 

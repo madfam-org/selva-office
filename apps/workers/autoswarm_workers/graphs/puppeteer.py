@@ -10,6 +10,7 @@ from typing import Any, TypedDict
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 
+from ..event_emitter import instrumented_node
 from .base import BaseGraphState
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class PuppeteerState(BaseGraphState, TypedDict, total=False):
 # -- Node functions -----------------------------------------------------------
 
 
+@instrumented_node
 def decompose(state: PuppeteerState) -> PuppeteerState:
     """Decompose the main task into subtasks.
 
@@ -102,6 +104,7 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
     }
 
 
+@instrumented_node
 def assign(state: PuppeteerState) -> PuppeteerState:
     """Assign agents to subtasks using Thompson Sampling."""
     messages = state.get("messages", [])
@@ -149,6 +152,7 @@ def assign(state: PuppeteerState) -> PuppeteerState:
     }
 
 
+@instrumented_node
 def execute_parallel(state: PuppeteerState) -> PuppeteerState:
     """Execute subtasks in parallel with semaphore-based concurrency control."""
     messages = state.get("messages", [])
@@ -220,6 +224,7 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
     }
 
 
+@instrumented_node
 def aggregate(state: PuppeteerState) -> PuppeteerState:
     """Aggregate subtask results into a unified result."""
     messages = state.get("messages", [])
@@ -273,6 +278,7 @@ def aggregate(state: PuppeteerState) -> PuppeteerState:
     }
 
 
+@instrumented_node
 def feedback(state: PuppeteerState) -> PuppeteerState:
     """Record outcomes in the bandit for future learning."""
     messages = state.get("messages", [])

@@ -13,6 +13,8 @@ _EXEMPT_PREFIXES = (
     "/api/v1/gateway/",
     "/api/v1/billing/webhooks/",
     "/api/v1/approvals/ws",
+    "/api/v1/events/ws",
+    "/api/v1/events/",
     "/api/v1/health/",
 )
 

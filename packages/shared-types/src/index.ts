@@ -5,3 +5,4 @@ export * from './billing';
 export * from './avatar';
 export * from './sprite-data';
 export * from './workflow';
+export * from './events';
