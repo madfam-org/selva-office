@@ -1,0 +1,198 @@
+# ═══════════════════════════════════════════════════════════════════════
+# AutoSwarm Org Config Template
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Copy this file to ~/.autoswarm/org-config.yaml and customise.
+# API keys are referenced by env var name — never paste plaintext here.
+#
+# This file is committed as a reference; the ACTUAL config lives
+# outside the repo at ~/.autoswarm/org-config.yaml.
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Provider definitions ──────────────────────────────────────────────
+# Each entry registers an OpenAI-compatible endpoint.
+# api_key_env: the *name* of the environment variable holding the key.
+providers:
+  siliconflow:
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    vision: true
+    timeout: 120.0
+
+  moonshot:
+    base_url: https://api.moonshot.cn/v1
+    api_key_env: MOONSHOT_API_KEY
+    vision: false
+    timeout: 120.0
+
+  # deepinfra, together, fireworks, anthropic, openai, openrouter, ollama
+  # are registered automatically from env vars — only add them here
+  # if you need to override base_url or timeout.
+
+# ── Task-type model assignments ───────────────────────────────────────
+# When a graph node declares a task_type, the router uses this table
+# to pick the provider and model.  Unmatched task types fall through
+# to the default priority-list routing.
+model_assignments:
+  planning:
+    provider: siliconflow
+    model: THUDM/GLM-5
+    max_tokens: 8192
+    temperature: 0.6
+
+  coding:
+    provider: moonshot
+    model: kimi-k2.5
+    max_tokens: 8192
+    temperature: 0.4
+
+  fast_coding:
+    provider: deepinfra
+    model: MiMo-V2-Flash
+    max_tokens: 4096
+    temperature: 0.3
+
+  review:
+    provider: deepinfra
+    model: gpt-oss-120b
+    max_tokens: 4096
+    temperature: 0.5
+
+  research:
+    provider: deepinfra
+    model: deepseek-ai/DeepSeek-V3.2
+    max_tokens: 8192
+    temperature: 0.7
+
+  crm:
+    provider: ollama
+    model: qwen3-30b-a3b
+    max_tokens: 4096
+    temperature: 0.7
+
+  support:
+    provider: ollama
+    model: qwen3-8b
+    max_tokens: 2048
+    temperature: 0.7
+
+  vision:
+    provider: siliconflow
+    model: GLM-4.5V
+    max_tokens: 4096
+    temperature: 0.5
+
+  embedding:
+    provider: deepinfra
+    model: nvidia/Llama-Embed-Nemotron-8B
+    max_tokens: 512
+    temperature: 0.0
+
+# ── Priority lists (optional overrides) ───────────────────────────────
+# When no model_assignment matches, these lists control provider order.
+# Omit to use the built-in defaults.
+cloud_priority:
+  - anthropic
+  - openai
+  - moonshot
+  - siliconflow
+  - fireworks
+  - together
+  - deepinfra
+  - openrouter
+
+cheapest_priority:
+  - deepinfra
+  - together
+  - siliconflow
+  - fireworks
+  - moonshot
+  - openrouter
+  - openai
+  - anthropic
+
+# ── Embedding config ──────────────────────────────────────────────────
+embedding_provider: openai
+embedding_model: text-embedding-3-small
+
+# ── Agent roster ──────────────────────────────────────────────────────
+# Declarative agent templates for `make db-seed`.
+# skill_ids reference SKILL.md names in packages/skills/skill-definitions/.
+agents:
+  - name: ByteForge
+    role: coder
+    level: 2
+    department_slug: engineering
+    skill_ids: [coding, madfam-api]
+
+  - name: Hexcraft
+    role: coder
+    level: 1
+    department_slug: engineering
+    skill_ids: [coding, webapp-testing]
+
+  - name: Gatekeeper
+    role: reviewer
+    level: 2
+    department_slug: engineering
+    skill_ids: [code-review, webapp-testing]
+
+  - name: Vanguard
+    role: planner
+    level: 3
+    department_slug: engineering
+    skill_ids: [strategic-planning, research]
+
+  - name: Stackburn
+    role: coder
+    level: 1
+    department_slug: engineering
+    skill_ids: [coding, madfam-api]
+
+  - name: Veritas
+    role: reviewer
+    level: 1
+    department_slug: engineering
+    skill_ids: [code-review, doc-coauthoring]
+
+  - name: DeepDive
+    role: researcher
+    level: 2
+    department_slug: research
+    skill_ids: [research, doc-coauthoring]
+
+  - name: Cerebrix
+    role: researcher
+    level: 1
+    department_slug: research
+    skill_ids: [research, madfam-api]
+
+  - name: Archon
+    role: researcher
+    level: 1
+    department_slug: research
+    skill_ids: [research, coding]
+
+  - name: ClientPulse
+    role: crm
+    level: 2
+    department_slug: crm
+    skill_ids: [crm-outreach, madfam-api]
+
+  - name: DealForge
+    role: crm
+    level: 1
+    department_slug: crm
+    skill_ids: [crm-outreach, research]
+
+  - name: Responder
+    role: support
+    level: 2
+    department_slug: support
+    skill_ids: [customer-support, madfam-api]
+
+  - name: SafeHarbor
+    role: support
+    level: 1
+    department_slug: support
+    skill_ids: [customer-support, doc-coauthoring]

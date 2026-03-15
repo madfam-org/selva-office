@@ -41,6 +41,8 @@ class RoutingPolicy(BaseModel):
     temperature: float = 0.7
     prefer_local: bool = False
     require_local: bool = False
+    task_type: str | None = None
+    model_override: str | None = None
 
 
 class InferenceRequest(BaseModel):

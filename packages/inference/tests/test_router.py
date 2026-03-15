@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from autoswarm_inference.base import InferenceProvider
+from autoswarm_inference.org_config import ModelAssignment, OrgConfig, TaskType
 from autoswarm_inference.router import CHEAPEST_PRIORITY, CLOUD_PRIORITY, LOCAL_PROVIDER, ModelRouter
 from autoswarm_inference.types import (
     InferenceRequest,
@@ -150,7 +151,8 @@ class TestRoutePublicPrefersCheap:
     async def test_public_cheapest_priority_order(self) -> None:
         """Verify the CHEAPEST_PRIORITY constant order."""
         assert CHEAPEST_PRIORITY == [
-            "deepinfra", "together", "fireworks", "openrouter", "openai", "anthropic",
+            "deepinfra", "together", "siliconflow", "fireworks",
+            "moonshot", "openrouter", "openai", "anthropic",
         ]
 
     async def test_public_only_anthropic_available(self) -> None:
@@ -182,7 +184,8 @@ class TestRouteInternalPrefersCloud:
 
     async def test_internal_cloud_priority_order(self) -> None:
         assert CLOUD_PRIORITY == [
-            "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+            "anthropic", "openai", "moonshot", "siliconflow",
+            "fireworks", "together", "deepinfra", "openrouter",
         ]
 
     async def test_internal_falls_through_to_openai(self) -> None:
@@ -280,3 +283,124 @@ class TestRouterStream:
         async for chunk in router.stream(request):
             chunks.append(chunk)
         assert chunks == ["mock chunk"]
+
+
+# ---------------------------------------------------------------------------
+# Task-type routing tests
+# ---------------------------------------------------------------------------
+
+
+class TestTaskTypeRouting:
+    """Task-type model assignments override default provider selection."""
+
+    def _make_org_config(self) -> OrgConfig:
+        return OrgConfig(
+            model_assignments={
+                TaskType.PLANNING: ModelAssignment(
+                    provider="deepinfra", model="GLM-5", max_tokens=8192, temperature=0.5
+                ),
+                TaskType.CODING: ModelAssignment(
+                    provider="together", model="kimi-k2.5",
+                ),
+            },
+        )
+
+    async def test_task_type_selects_assigned_provider(
+        self, all_providers: dict[str, MockProvider]
+    ) -> None:
+        org_config = self._make_org_config()
+        router = ModelRouter(providers=all_providers, org_config=org_config)
+        request = InferenceRequest(
+            messages=[{"role": "user", "content": "plan"}],
+            policy=RoutingPolicy(task_type="planning"),
+        )
+        response = await router.complete(request)
+        assert response.provider == "deepinfra"
+
+    async def test_task_type_sets_model_override(
+        self, all_providers: dict[str, MockProvider]
+    ) -> None:
+        org_config = self._make_org_config()
+        router = ModelRouter(providers=all_providers, org_config=org_config)
+        request = InferenceRequest(
+            messages=[{"role": "user", "content": "plan"}],
+            policy=RoutingPolicy(task_type="planning"),
+        )
+        # After routing, the policy should have model_override set
+        router._select_provider(request)
+        assert request.policy.model_override == "GLM-5"
+        assert request.policy.max_tokens == 8192
+        assert request.policy.temperature == 0.5
+
+    async def test_task_type_fallback_without_config(
+        self, all_providers: dict[str, MockProvider]
+    ) -> None:
+        """Without org config, task_type is ignored and default routing applies."""
+        router = ModelRouter(providers=all_providers)
+        request = InferenceRequest(
+            messages=[{"role": "user", "content": "plan"}],
+            policy=RoutingPolicy(
+                sensitivity=Sensitivity.PUBLIC,
+                task_type="planning",
+            ),
+        )
+        response = await router.complete(request)
+        # Falls through to cheapest priority (deepinfra)
+        assert response.provider == "deepinfra"
+
+    async def test_task_type_missing_provider_falls_through(self) -> None:
+        """When assigned provider isn't registered, fall through to defaults."""
+        org_config = OrgConfig(
+            model_assignments={
+                TaskType.PLANNING: ModelAssignment(
+                    provider="nonexistent", model="some-model"
+                ),
+            },
+        )
+        providers = _make_providers("anthropic", "openai")
+        router = ModelRouter(providers=providers, org_config=org_config)
+        request = InferenceRequest(
+            messages=[{"role": "user", "content": "plan"}],
+            policy=RoutingPolicy(
+                sensitivity=Sensitivity.INTERNAL,
+                task_type="planning",
+            ),
+        )
+        response = await router.complete(request)
+        # Falls through to cloud priority (anthropic first)
+        assert response.provider == "anthropic"
+
+    async def test_org_config_priority_override(self) -> None:
+        """Org config can override cloud/cheapest priority lists."""
+        org_config = OrgConfig(
+            cloud_priority=["openai", "anthropic"],
+            cheapest_priority=["together", "deepinfra"],
+        )
+        providers = _make_providers("anthropic", "openai", "together", "deepinfra")
+        router = ModelRouter(providers=providers, org_config=org_config)
+
+        # Internal should use org cloud_priority (openai first)
+        internal_req = _make_request(sensitivity=Sensitivity.INTERNAL)
+        resp = await router.complete(internal_req)
+        assert resp.provider == "openai"
+
+        # Public should use org cheapest_priority (together first)
+        public_req = _make_request(sensitivity=Sensitivity.PUBLIC)
+        resp = await router.complete(public_req)
+        assert resp.provider == "together"
+
+    async def test_unknown_task_type_falls_through(
+        self, all_providers: dict[str, MockProvider]
+    ) -> None:
+        """An unrecognised task_type value falls through to default routing."""
+        org_config = self._make_org_config()
+        router = ModelRouter(providers=all_providers, org_config=org_config)
+        request = InferenceRequest(
+            messages=[{"role": "user", "content": "test"}],
+            policy=RoutingPolicy(
+                sensitivity=Sensitivity.PUBLIC,
+                task_type="unknown_task_type",
+            ),
+        )
+        response = await router.complete(request)
+        assert response.provider == "deepinfra"

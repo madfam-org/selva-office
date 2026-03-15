@@ -97,8 +97,9 @@ class OpenAIProvider(InferenceProvider):
         messages.extend(request.messages)
         messages = self._format_messages(messages)
 
+        model = request.policy.model_override or self._model
         body: dict[str, Any] = {
-            "model": self._model,
+            "model": model,
             "messages": messages,
             "max_tokens": request.policy.max_tokens,
             "temperature": request.policy.temperature,

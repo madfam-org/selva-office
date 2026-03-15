@@ -70,6 +70,7 @@ def transcribe(state: MeetingState) -> MeetingState:
                     "You are a transcription assistant. "
                     "Transcribe the meeting recording accurately."
                 ),
+                task_type="research",
                 agent_id=state.get("agent_id"),
                 task_id=state.get("task_id"),
             )
@@ -134,6 +135,7 @@ def summarize(state: MeetingState) -> MeetingState:
                     "You are a meeting summarizer. Create a concise summary "
                     "of the key discussion points."
                 ),
+                task_type="research",
                 agent_id=state.get("agent_id"),
                 task_id=state.get("task_id"),
             )
@@ -190,6 +192,7 @@ def extract_actions(state: MeetingState) -> MeetingState:
                     "with assignees and deadlines from the meeting transcript "
                     "and summary. Return valid JSON only."
                 ),
+                task_type="research",
                 agent_id=state.get("agent_id"),
                 task_id=state.get("task_id"),
             )

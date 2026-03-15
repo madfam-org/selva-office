@@ -188,7 +188,8 @@ class TestSkillBasedSynergies:
         skills = ["coding", "code-review", "webapp-testing", "madfam-api"]
         effective = calculator.get_effective_multiplier(roles, agent_skills=skills)
         # Full Stack Review (1.25) * Full Coverage (1.35) * MADFAM Expert (1.15)
-        expected = 1.25 * 1.35 * 1.15
+        # * MADFAM Specialists (1.2, coding+madfam-api) * Quality Pipeline (1.3, coding+webapp-testing)
+        expected = 1.25 * 1.35 * 1.15 * 1.2 * 1.3
         assert effective == pytest.approx(expected)
 
     def test_custom_skill_rule(self, calculator: SynergyCalculator) -> None:
@@ -203,3 +204,19 @@ class TestSkillBasedSynergies:
         calculator.add_rule(custom)
         active = calculator.calculate([], agent_skills=["custom-a", "custom-b"])
         assert "Custom Skill Synergy" in {name for name, _ in active}
+
+    def test_madfam_specialists_synergy(self, calculator: SynergyCalculator) -> None:
+        """madfam-api + coding skills triggers MADFAM Specialists at 1.2x."""
+        skills = ["madfam-api", "coding"]
+        active = calculator.calculate([], agent_skills=skills)
+        synergy_names = {name for name, _ in active}
+        assert "MADFAM Specialists" in synergy_names
+        assert dict(active)["MADFAM Specialists"] == pytest.approx(1.2)
+
+    def test_quality_pipeline_synergy(self, calculator: SynergyCalculator) -> None:
+        """coding + webapp-testing skills triggers Quality Pipeline at 1.3x."""
+        skills = ["coding", "webapp-testing"]
+        active = calculator.calculate([], agent_skills=skills)
+        synergy_names = {name for name, _ in active}
+        assert "Quality Pipeline" in synergy_names
+        assert dict(active)["Quality Pipeline"] == pytest.approx(1.3)

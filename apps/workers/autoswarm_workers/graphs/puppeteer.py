@@ -53,8 +53,9 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
     try:
         import json as json_mod
 
-        from autoswarm_workers.inference import call_llm
+        from autoswarm_workers.inference import call_llm, get_model_router
 
+        router = get_model_router()
         prompt = (
             "Decompose this task into 2-5 independent subtasks. "
             "Return a JSON array of objects with 'description' and 'type' fields.\n\n"
@@ -62,10 +63,12 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
         )
         response = _run_async(
             call_llm(
-                prompt,
+                router,
+                messages=[{"role": "user", "content": prompt}],
                 system_prompt=(
                     "You are a task decomposition assistant. Return valid JSON only."
                 ),
+                task_type="planning",
             )
         )
 
@@ -168,13 +171,18 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
         ) -> dict[str, Any]:
             async with semaphore:
                 try:
-                    from autoswarm_workers.inference import call_llm
+                    from autoswarm_workers.inference import call_llm, get_model_router
 
+                    router = get_model_router()
                     prompt = (
                         "Execute this subtask and provide a result summary:\n\n"
                         f"{subtask.get('description', '')}"
                     )
-                    response = await call_llm(prompt)
+                    response = await call_llm(
+                        router,
+                        messages=[{"role": "user", "content": prompt}],
+                        task_type="fast_coding",
+                    )
                     return {
                         "index": index,
                         "description": subtask.get("description", ""),
@@ -226,8 +234,9 @@ def aggregate(state: PuppeteerState) -> PuppeteerState:
 
     # Try LLM-based aggregation
     try:
-        from autoswarm_workers.inference import call_llm
+        from autoswarm_workers.inference import call_llm, get_model_router
 
+        router = get_model_router()
         results_text = "\n".join(
             f"Subtask {r['index']}: {r.get('result', 'no result')}" for r in results
         )
@@ -235,7 +244,11 @@ def aggregate(state: PuppeteerState) -> PuppeteerState:
             "Aggregate these subtask results into a coherent summary:\n\n"
             f"{results_text}"
         )
-        response = _run_async(call_llm(prompt))
+        response = _run_async(call_llm(
+            router,
+            messages=[{"role": "user", "content": prompt}],
+            task_type="planning",
+        ))
 
         aggregated: dict[str, Any] = {
             "summary": response,

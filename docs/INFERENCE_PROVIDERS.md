@@ -11,6 +11,8 @@ model catalogs, and routing configuration.
 |----------|------|------------|---------------|----------------|
 | Anthropic | Proprietary | Anthropic Messages | claude-sonnet-4-20250514 | Yes |
 | OpenAI | Proprietary | OpenAI Chat | gpt-4o | Yes |
+| SiliconFlow | Open-source host | OpenAI-compat | THUDM/GLM-5 | Yes (GLM-4.5V) |
+| Moonshot | Open-source host | OpenAI-compat | kimi-k2.5 | No |
 | Together AI | Open-source host | OpenAI-compat | Llama-3.3-70B-Instruct | Qwen3-VL |
 | Fireworks AI | Open-source host | OpenAI-compat | Llama-3.1-70B-Instruct | Qwen2.5-VL, Llama 4 Vision |
 | DeepInfra | Open-source host | OpenAI-compat | Llama-3.3-70B-Instruct | Llama 3.2 Vision, Qwen3-VL |
@@ -68,12 +70,26 @@ These three open-source providers were selected from a broader evaluation based 
 
 ## Routing Configuration
 
+### Task-Type Routing (Highest Priority)
+
+When a graph node declares a `task_type` (e.g. `planning`, `coding`, `review`),
+the router checks `org_config.model_assignments` first. If a matching assignment
+exists and its provider is registered, that provider is selected and
+`policy.model_override` is set to the assigned model. Falls through to priority-list
+routing when no assignment matches.
+
+Supported task types: `planning`, `coding`, `fast_coding`, `review`, `research`,
+`crm`, `support`, `vision`, `embedding`.
+
+Configure assignments in `~/.autoswarm/org-config.yaml` (template at
+`data/org-config-template.yaml`).
+
 ### Cloud Priority (Internal sensitivity)
 
 Quality-first ordering for internal/non-sensitive workloads:
 
 ```
-anthropic > openai > fireworks > together > deepinfra > openrouter
+anthropic > openai > moonshot > siliconflow > fireworks > together > deepinfra > openrouter
 ```
 
 ### Cheapest Priority (Public sensitivity)
@@ -81,7 +97,7 @@ anthropic > openai > fireworks > together > deepinfra > openrouter
 Cost-first ordering for public/non-sensitive workloads:
 
 ```
-deepinfra > together > fireworks > openrouter > openai > anthropic
+deepinfra > together > siliconflow > fireworks > moonshot > openrouter > openai > anthropic
 ```
 
 ### Sensitivity Routing
@@ -112,16 +128,21 @@ OPENAI_API_KEY=sk-...
 TOGETHER_API_KEY=...
 FIREWORKS_API_KEY=...
 DEEPINFRA_API_KEY=...
+SILICONFLOW_API_KEY=...
+MOONSHOT_API_KEY=...
 
 # Aggregator
 OPENROUTER_API_KEY=sk-or-...
 
 # Local
 OLLAMA_BASE_URL=http://localhost:11434
+
+# Org config (task-type routing, custom providers)
+ORG_CONFIG_PATH=~/.autoswarm/org-config.yaml
 ```
 
 Providers without API keys are silently skipped. The router selects from whatever
-providers are registered.
+providers are registered. Additional providers can be defined in the org config.
 
 ## Top Models by Use Case
 

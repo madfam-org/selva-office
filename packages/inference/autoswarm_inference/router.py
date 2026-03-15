@@ -1,34 +1,50 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 
 from .base import InferenceProvider
 from .types import InferenceRequest, InferenceResponse, Sensitivity
 
+logger = logging.getLogger(__name__)
 
 # Provider names expected by the router.  The keys in the providers dict
 # passed to ModelRouter should use these identifiers.
 LOCAL_PROVIDER = "ollama"
-CLOUD_PRIORITY = ["anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter"]
-CHEAPEST_PRIORITY = ["deepinfra", "together", "fireworks", "openrouter", "openai", "anthropic"]
+CLOUD_PRIORITY = [
+    "anthropic", "openai", "moonshot", "siliconflow",
+    "fireworks", "together", "deepinfra", "openrouter",
+]
+CHEAPEST_PRIORITY = [
+    "deepinfra", "together", "siliconflow", "fireworks",
+    "moonshot", "openrouter", "openai", "anthropic",
+]
 
 
 class ModelRouter:
     """Routes inference requests to providers based on sensitivity policy.
 
-    Routing rules:
-    - require_local=True  -> only use Ollama (local).
-    - restricted / confidential sensitivity -> prefer Ollama, fail if unavailable.
-    - internal -> first available cloud provider (anthropic > openai > openrouter).
-    - public   -> cheapest available (openrouter > openai > anthropic).
-    - prefer_local=True adds Ollama as the first candidate regardless of sensitivity.
+    Routing rules (applied in order):
+    1. ``task_type`` — if the org config has a model assignment for the
+       request's task type, jump directly to that provider and override
+       the model name.
+    2. ``require_local=True``  -> only use Ollama (local).
+    3. ``restricted`` / ``confidential`` sensitivity -> Ollama only.
+    4. ``internal`` -> first available cloud provider (CLOUD_PRIORITY).
+    5. ``public``   -> cheapest available (CHEAPEST_PRIORITY).
+    6. ``prefer_local=True`` prepends Ollama to the candidate list.
 
-    If the primary candidate is unavailable the router falls through to the
-    next candidate in the list.
+    If the primary candidate is unavailable the router falls through to
+    the next candidate in the list.
     """
 
-    def __init__(self, providers: dict[str, InferenceProvider]) -> None:
+    def __init__(
+        self,
+        providers: dict[str, InferenceProvider],
+        org_config: object | None = None,
+    ) -> None:
         self._providers = providers
+        self._org_config = org_config
 
     @property
     def available_providers(self) -> list[str]:
@@ -37,6 +53,35 @@ class ModelRouter:
     def _select_provider(self, request: InferenceRequest) -> InferenceProvider:
         """Determine which provider to use for the given request."""
         policy = request.policy
+
+        # ── Task-type routing (highest priority after require_local) ──
+        if policy.task_type and self._org_config is not None:
+            from .org_config import TaskType
+
+            try:
+                task_enum = TaskType(policy.task_type)
+                assignments = getattr(self._org_config, "model_assignments", {})
+                if task_enum in assignments:
+                    assignment = assignments[task_enum]
+                    provider = self._providers.get(assignment.provider)
+                    if provider is not None:
+                        policy.model_override = assignment.model
+                        if assignment.max_tokens:
+                            policy.max_tokens = assignment.max_tokens
+                        if assignment.temperature is not None:
+                            policy.temperature = assignment.temperature
+                        logger.debug(
+                            "Task-type routing: %s → %s/%s",
+                            policy.task_type, assignment.provider, assignment.model,
+                        )
+                        return provider
+                    logger.debug(
+                        "Task-type assignment for %s points to %s, "
+                        "but provider is not registered — falling through",
+                        policy.task_type, assignment.provider,
+                    )
+            except ValueError:
+                pass  # Unknown task type — fall through to default routing
 
         # Hard constraint: local only
         if policy.require_local:
@@ -47,16 +92,27 @@ class ModelRouter:
                 )
             return provider
 
+        # Determine priority lists — org config can override defaults
+        cloud_priority = CLOUD_PRIORITY
+        cheapest_priority = CHEAPEST_PRIORITY
+        if self._org_config is not None:
+            org_cloud = getattr(self._org_config, "cloud_priority", None)
+            org_cheap = getattr(self._org_config, "cheapest_priority", None)
+            if org_cloud:
+                cloud_priority = org_cloud
+            if org_cheap:
+                cheapest_priority = org_cheap
+
         candidates: list[str] = []
 
         if policy.sensitivity in (Sensitivity.RESTRICTED, Sensitivity.CONFIDENTIAL):
             # Sensitive data must stay local
             candidates = [LOCAL_PROVIDER]
         elif policy.sensitivity == Sensitivity.INTERNAL:
-            candidates = list(CLOUD_PRIORITY)
+            candidates = list(cloud_priority)
         else:
             # PUBLIC -> cheapest first
-            candidates = list(CHEAPEST_PRIORITY)
+            candidates = list(cheapest_priority)
 
         # If prefer_local, prepend Ollama so it's tried first
         if policy.prefer_local and LOCAL_PROVIDER not in candidates:

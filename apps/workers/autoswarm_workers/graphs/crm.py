@@ -135,6 +135,7 @@ def draft_communication(state: CRMState) -> CRMState:
                 ),
             }],
             system_prompt=system_prompt,
+            task_type="crm",
         ))
     except Exception:
         draft = (

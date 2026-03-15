@@ -77,6 +77,7 @@ def plan(state: CodingState) -> CodingState:
             router,
             messages=[{"role": "user", "content": task_description.strip()}],
             system_prompt=system_prompt,
+            task_type="planning",
         ))
         plan_output = _json.loads(llm_response)
         if not isinstance(plan_output.get("steps"), list):
@@ -185,6 +186,7 @@ def implement(state: CodingState) -> CodingState:
             router,
             messages=[{"role": "user", "content": f"Implement step {iteration}: {current_step}"}],
             system_prompt=system_prompt,
+            task_type="coding",
         ))
     except Exception:
         pass  # Fall through to placeholder path
@@ -370,6 +372,7 @@ def review(state: CodingState) -> CodingState:
             router,
             messages=[{"role": "user", "content": f"Review these changes:\n{changes_text}"}],
             system_prompt=system_prompt,
+            task_type="review",
         ))
         review_summary = _json.loads(review_text)
     except Exception:
