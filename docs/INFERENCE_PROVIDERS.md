@@ -144,6 +144,18 @@ ORG_CONFIG_PATH=~/.autoswarm/org-config.yaml
 Providers without API keys are silently skipped. The router selects from whatever
 providers are registered. Additional providers can be defined in the org config.
 
+### Intelligence Config API
+
+The current org configuration is available via the nexus-api control plane:
+
+```
+GET /api/v1/intelligence/config
+Authorization: Bearer <token>
+```
+
+Returns providers (without API keys), model assignments, priority lists, and
+embedding config. Agent templates are excluded from the response.
+
 ## Top Models by Use Case
 
 ### Code Generation

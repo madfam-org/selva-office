@@ -6,14 +6,14 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from autoswarm_inference import InferenceProvider, InferenceRequest, InferenceResponse, ModelRouter
-from autoswarm_inference.org_config import load_org_config
-from autoswarm_inference.providers.anthropic import AnthropicProvider
-from autoswarm_inference.providers.generic import GenericOpenAIProvider
-from autoswarm_inference.providers.ollama import OllamaProvider
-from autoswarm_inference.providers.openai import OpenAIProvider
-from autoswarm_inference.providers.openrouter import OpenRouterProvider
-from autoswarm_inference.types import RoutingPolicy, Sensitivity
+from madfam_inference import InferenceProvider, InferenceRequest, InferenceResponse, ModelRouter
+from madfam_inference.org_config import load_org_config
+from madfam_inference.providers.anthropic import AnthropicProvider
+from madfam_inference.providers.generic import GenericOpenAIProvider
+from madfam_inference.providers.ollama import OllamaProvider
+from madfam_inference.providers.openai import OpenAIProvider
+from madfam_inference.providers.openrouter import OpenRouterProvider
+from madfam_inference.types import RoutingPolicy, Sensitivity
 
 from .config import get_settings
 

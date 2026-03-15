@@ -62,7 +62,7 @@ def fetch_context(state: CRMState) -> CRMState:
         phyne_url = os.environ.get("PHYNE_CRM_URL")
         phyne_token = os.environ.get("PHYNE_CRM_TOKEN", "")
         if phyne_url:
-            from autoswarm_inference.adapters.crm import PhyneCRMAdapter
+            from madfam_inference.adapters.crm import PhyneCRMAdapter
 
             adapter = PhyneCRMAdapter(base_url=phyne_url, token=phyne_token)
             profile = _run_async(adapter.get_unified_profile(recipient))
@@ -250,7 +250,7 @@ def send(state: CRMState) -> CRMState:
         phyne_url = os.environ.get("PHYNE_CRM_URL")
         phyne_token = os.environ.get("PHYNE_CRM_TOKEN", "")
         if phyne_url:
-            from autoswarm_inference.adapters.crm import PhyneCRMAdapter
+            from madfam_inference.adapters.crm import PhyneCRMAdapter
 
             adapter = PhyneCRMAdapter(base_url=phyne_url, token=phyne_token)
             draft = state.get("draft_content", "")

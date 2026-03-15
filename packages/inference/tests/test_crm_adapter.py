@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from autoswarm_inference.adapters.crm import PhyneCRMAdapter
-from autoswarm_inference.adapters.crm_types import (
+from madfam_inference.adapters.crm import PhyneCRMAdapter
+from madfam_inference.adapters.crm_types import (
     PhyneActivity,
     PhyneContact,
     PhyneDashboard,
@@ -37,7 +37,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000", token="test-token")
             contacts = await adapter.list_contacts()
 
@@ -58,7 +58,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000", token="t")
             profile = await adapter.get_unified_profile("c1")
 
@@ -80,7 +80,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000", token="t")
             activity = await adapter.create_activity(
                 type="email",
@@ -105,7 +105,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000", token="t")
             score = await adapter.compute_lead_score("l1")
 
@@ -119,7 +119,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000", token="my-jwt-token")
             await adapter.list_contacts()
 
@@ -144,7 +144,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
         with (
-            patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client),
+            patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client),
             pytest.raises(httpx.ConnectError),
         ):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000")
@@ -161,7 +161,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000")
             leads = await adapter.list_leads(status="open")
 
@@ -181,7 +181,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000")
             dashboard = await adapter.get_dashboard()
 
@@ -195,7 +195,7 @@ class TestPhyneCRMAdapter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
+        with patch("madfam_inference.adapters.crm.httpx.AsyncClient", return_value=mock_client):
             adapter = PhyneCRMAdapter(base_url="http://crm:3000", token="")
             await adapter.list_contacts()
 
