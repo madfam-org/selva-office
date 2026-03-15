@@ -11,6 +11,7 @@
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
+- `packages/inference/autoswarm_inference/org_config.py` -- Org-level config (task types, model assignments)
 - `packages/inference/src/router.py` -- LLM model routing logic
 - `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
 - `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
@@ -348,6 +349,35 @@ The `packages/skills/` package implements the AgentSkills standard.
   queue with approve/deny buttons, inline chat. Semantic HTML + ARIA landmarks.
 - View mode toggle: `viewMode: 'game' | 'simple'` in `page.tsx`, persisted to
   localStorage. Toggle button in HUD.
+
+### MADFAM Intelligence Architecture
+
+- **Org config** (`~/.autoswarm/org-config.yaml`): Secure, per-org configuration
+  outside the repo. Defines providers, task-type model assignments, priority
+  lists, embedding config, and agent templates. Template at
+  `data/org-config-template.yaml`. Loaded by `load_org_config()` (cached via
+  `@lru_cache`). API keys referenced by env var name, never plaintext.
+- **Task-type routing**: `TaskType` enum (9 values: planning, coding, fast_coding,
+  review, research, crm, support, vision, embedding). Graph nodes pass
+  `task_type` to `call_llm()` → `RoutingPolicy.task_type` → router checks
+  `org_config.model_assignments` → sets `policy.model_override` + selects
+  provider. Falls through to default priority-list routing when no assignment
+  matches.
+- **Model override**: All providers (OpenAI, Anthropic, Ollama) honor
+  `request.policy.model_override` in `_build_body()`, falling back to
+  `self._model` when not set.
+- **New providers**: SiliconFlow (`SILICONFLOW_API_KEY`, GLM-5) and Moonshot
+  (`MOONSHOT_API_KEY`, Kimi K2.5) registered in `build_model_router()`.
+  Org config can define additional providers dynamically.
+- **Agent roster**: 13 agents across 4 departments (Engineering×6, Research×3,
+  CRM×2, Support×2) with cross-functional skills. Seed script is idempotent
+  (skips existing agents by name).
+- **New synergy rules**: "MADFAM Specialists" (madfam-api+coding, 1.2×) and
+  "Quality Pipeline" (coding+webapp-testing, 1.3×). Total: 10 default rules.
+- **Configurable embeddings**: `EmbeddingProvider` accepts optional
+  `provider_name`, `model`, `base_url` for org-config-driven embedding
+  providers (e.g. DeepInfra Nemotron). Falls back to OpenAI
+  text-embedding-3-small.
 
 ## Architecture Notes
 

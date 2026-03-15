@@ -61,6 +61,7 @@ def formulate_query(state: ResearchState) -> ResearchState:
             router,
             messages=[{"role": "user", "content": raw_text.strip()}],
             system_prompt=system_prompt,
+            task_type="research",
         ))
     except Exception:
         refined_query = raw_text.strip() or state.get("query", "")
@@ -171,6 +172,7 @@ def synthesize(state: ResearchState) -> ResearchState:
             router,
             messages=[{"role": "user", "content": prompt}],
             system_prompt=system_prompt,
+            task_type="research",
         ))
     except Exception:
         synthesis_text = (
@@ -213,6 +215,7 @@ def format_report(state: ResearchState) -> ResearchState:
             router,
             messages=[{"role": "user", "content": f"Format this into a report:\n{synthesis}"}],
             system_prompt=system_prompt,
+            task_type="research",
         ))
         report_sections = {
             "executive_summary": formatted[:500],

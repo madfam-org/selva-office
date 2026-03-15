@@ -44,7 +44,10 @@ class Settings(BaseSettings):
     together_api_key: str | None = None
     fireworks_api_key: str | None = None
     deepinfra_api_key: str | None = None
+    siliconflow_api_key: str | None = None
+    moonshot_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
+    org_config_path: str = "~/.autoswarm/org-config.yaml"
 
     # -- Phyne-CRM ------------------------------------------------------------
     phyne_crm_url: str | None = None

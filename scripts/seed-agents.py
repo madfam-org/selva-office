@@ -41,7 +41,7 @@ DEPARTMENTS = [
         "name": "Research",
         "slug": "research",
         "description": "Market research, data analysis, and strategic intelligence.",
-        "max_agents": 4,
+        "max_agents": 6,
         "position_x": 400,
         "position_y": 100,
     },
@@ -63,15 +63,39 @@ DEPARTMENTS = [
     },
 ]
 
-# ── Starter Agent Templates ─────────────────────────────────────────
+# ── Agent Templates ──────────────────────────────────────────────────
 
 AGENT_TEMPLATES = [
-    {"name": "Archie", "role": "planner", "level": 2, "department_slug": "engineering"},
-    {"name": "Nova", "role": "coder", "level": 1, "department_slug": "engineering"},
-    {"name": "Sentinel", "role": "reviewer", "level": 1, "department_slug": "engineering"},
-    {"name": "Iris", "role": "researcher", "level": 1, "department_slug": "research"},
-    {"name": "Pulse", "role": "crm", "level": 1, "department_slug": "crm"},
-    {"name": "Echo", "role": "support", "level": 1, "department_slug": "support"},
+    # Engineering (6)
+    {"name": "ByteForge", "role": "coder", "level": 2, "department_slug": "engineering",
+     "skill_ids": ["coding", "madfam-api"]},
+    {"name": "Hexcraft", "role": "coder", "level": 1, "department_slug": "engineering",
+     "skill_ids": ["coding", "webapp-testing"]},
+    {"name": "Gatekeeper", "role": "reviewer", "level": 2, "department_slug": "engineering",
+     "skill_ids": ["code-review", "webapp-testing"]},
+    {"name": "Vanguard", "role": "planner", "level": 3, "department_slug": "engineering",
+     "skill_ids": ["strategic-planning", "research"]},
+    {"name": "Stackburn", "role": "coder", "level": 1, "department_slug": "engineering",
+     "skill_ids": ["coding", "madfam-api"]},
+    {"name": "Veritas", "role": "reviewer", "level": 1, "department_slug": "engineering",
+     "skill_ids": ["code-review", "doc-coauthoring"]},
+    # Research (3)
+    {"name": "DeepDive", "role": "researcher", "level": 2, "department_slug": "research",
+     "skill_ids": ["research", "doc-coauthoring"]},
+    {"name": "Cerebrix", "role": "researcher", "level": 1, "department_slug": "research",
+     "skill_ids": ["research", "madfam-api"]},
+    {"name": "Archon", "role": "researcher", "level": 1, "department_slug": "research",
+     "skill_ids": ["research", "coding"]},
+    # CRM (2)
+    {"name": "ClientPulse", "role": "crm", "level": 2, "department_slug": "crm",
+     "skill_ids": ["crm-outreach", "madfam-api"]},
+    {"name": "DealForge", "role": "crm", "level": 1, "department_slug": "crm",
+     "skill_ids": ["crm-outreach", "research"]},
+    # Support (2)
+    {"name": "Responder", "role": "support", "level": 2, "department_slug": "support",
+     "skill_ids": ["customer-support", "madfam-api"]},
+    {"name": "SafeHarbor", "role": "support", "level": 1, "department_slug": "support",
+     "skill_ids": ["customer-support", "doc-coauthoring"]},
 ]
 
 # ── Default Permission Matrix ───────────────────────────────────────
@@ -179,19 +203,32 @@ def seed_via_api() -> None:
 
     print()
 
-    # Seed agents.
+    # Fetch existing agents for idempotent seeding.
+    existing_agents: set[str] = set()
+    try:
+        agents_resp = client.get("/agents/")
+        if agents_resp.status_code == 200:
+            for a in agents_resp.json():
+                existing_agents.add(a.get("name", ""))
+    except Exception:
+        pass
+
+    # Seed agents (skip duplicates by name).
     for tmpl in AGENT_TEMPLATES:
         dept_slug = tmpl.pop("department_slug")
         dept_id = dept_ids.get(dept_slug)
         if dept_id:
             tmpl["department_id"] = dept_id
 
-        resp = client.post("/agents/", json=tmpl)
-        if resp.status_code == 201:
-            data = resp.json()
-            print(f"  Created agent: {tmpl['name']} [{tmpl['role']}] ({data['id']})")
+        if tmpl["name"] in existing_agents:
+            print(f"  Agent already exists: {tmpl['name']}")
         else:
-            print(f"  Failed to create agent {tmpl['name']}: {resp.status_code} {resp.text}")
+            resp = client.post("/agents/", json=tmpl)
+            if resp.status_code == 201:
+                data = resp.json()
+                print(f"  Created agent: {tmpl['name']} [{tmpl['role']}] ({data['id']})")
+            else:
+                print(f"  Failed to create agent {tmpl['name']}: {resp.status_code} {resp.text}")
 
         # Restore the slug for potential re-run.
         tmpl["department_slug"] = dept_slug

@@ -45,9 +45,13 @@ htmlcov/
 # Next.js generated
 next-env.d.ts
 
-# Seed data exports (except workflow templates)
+# Seed data exports (except workflow templates and org config template)
 data/*
 !data/workflow-templates/
+!data/org-config-template.yaml
+
+# Org config (secrets outside repo)
+.autoswarm/
 
 # Misc
 *.tsbuildinfo

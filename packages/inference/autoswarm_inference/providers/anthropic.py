@@ -99,8 +99,9 @@ class AnthropicProvider(InferenceProvider):
 
     def _build_body(self, request: InferenceRequest, *, stream: bool = False) -> dict[str, Any]:
         messages = self._format_messages(request.messages)
+        model = request.policy.model_override or self._model
         body: dict[str, Any] = {
-            "model": self._model,
+            "model": model,
             "max_tokens": request.policy.max_tokens,
             "temperature": request.policy.temperature,
             "messages": messages,

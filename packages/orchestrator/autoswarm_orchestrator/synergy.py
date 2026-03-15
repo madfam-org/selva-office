@@ -72,6 +72,20 @@ _DEFAULT_SYNERGY_RULES: list[SynergyRule] = [
         required_skills=frozenset({"research", "doc-coauthoring"}),
         multiplier=1.2,
     ),
+    SynergyRule(
+        name="MADFAM Specialists",
+        description="Multiple agents with MADFAM API knowledge amplify ecosystem integration.",
+        required_roles=frozenset(),
+        required_skills=frozenset({"madfam-api", "coding"}),
+        multiplier=1.2,
+    ),
+    SynergyRule(
+        name="Quality Pipeline",
+        description="Coding and testing skills achieve comprehensive quality coverage.",
+        required_roles=frozenset(),
+        required_skills=frozenset({"coding", "webapp-testing"}),
+        multiplier=1.3,
+    ),
 ]
 
 
