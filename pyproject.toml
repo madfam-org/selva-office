@@ -81,3 +81,20 @@ warn_unused_configs = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = [
+  "packages/",
+  "apps/nexus-api/nexus_api",
+  "apps/workers/autoswarm_workers",
+]
+omit = [
+  "*/tests/*",
+  "*/__pycache__/*",
+  "packages/skills/community-skills/*",
+]
+
+[tool.coverage.report]
+fail_under = 55
+show_missing = true
+skip_empty = true

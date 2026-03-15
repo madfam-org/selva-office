@@ -72,3 +72,31 @@ export function handleMusicStatus(
 
   player.musicStatus = status;
 }
+
+interface MeetingTitleMessage {
+  title: string;
+}
+
+/**
+ * Handle an incoming "meeting_title" message from a client.
+ *
+ * Meeting title is set by the calendar integration to show the current
+ * meeting name on the player's avatar. Max 100 chars.
+ */
+export function handleMeetingTitle(
+  state: OfficeStateSchema,
+  client: Client,
+  data: MeetingTitleMessage,
+): void {
+  const title = typeof data.title === "string" ? data.title : "";
+
+  if (title.length > 100) {
+    client.send("error", { message: "Meeting title too long (max 100 chars)" });
+    return;
+  }
+
+  const player = state.players.get(client.sessionId);
+  if (!player) return;
+
+  player.meetingTitle = title;
+}

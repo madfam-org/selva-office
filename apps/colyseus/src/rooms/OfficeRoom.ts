@@ -10,7 +10,7 @@ import { handleInteraction, handleApproval } from "../handlers/interaction";
 import { handleChat, addSystemMessage } from "../handlers/chat";
 import { handleEmote } from "../handlers/emotes";
 import { handleAvatar } from "../handlers/avatar";
-import { handleStatus, handleMusicStatus } from "../handlers/status";
+import { handleStatus, handleMusicStatus, handleMeetingTitle } from "../handlers/status";
 import {
   startProximityLoop,
   lockBubble,
@@ -32,6 +32,7 @@ import {
 import { handleSignaling } from "../handlers/signaling";
 import type { WebRTCSignalMessage } from "../handlers/signaling";
 import { handleCompanion } from "../handlers/companion";
+import { handleTeleport } from "../handlers/teleport";
 import {
   handleWhiteboardDraw,
   handleWhiteboardClear,
@@ -212,6 +213,10 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       handleMusicStatus(this.state, client, message);
     });
 
+    this.onMessage("meeting_title", (client: Client, message: { title: string }) => {
+      handleMeetingTitle(this.state, client, message);
+    });
+
     this.onMessage("lock_bubble", (client: Client) => {
       const locked = lockBubble(client.sessionId, this.state);
       client.send("bubble_lock_status", { locked });
@@ -254,6 +259,10 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
     this.onMessage("companion", (client: Client, message: { type: string }) => {
       handleCompanion(this.state, client, message);
+    });
+
+    this.onMessage("teleport", (client: Client, message: { targetSessionId: string }) => {
+      handleTeleport(this.state, client, message);
     });
 
     this.onMessage(

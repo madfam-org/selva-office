@@ -53,3 +53,11 @@ export function getSessionUser(): { sub: string; email: string; name?: string; r
     return null;
   }
 }
+
+/**
+ * Check if the current session user has the admin role.
+ */
+export function isAdmin(): boolean {
+  const user = getSessionUser();
+  return user?.roles.includes('admin') ?? false;
+}

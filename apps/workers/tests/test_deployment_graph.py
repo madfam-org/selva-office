@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from langchain_core.messages import AIMessage
-from langgraph.graph import END
+from unittest.mock import MagicMock, patch
 
 
 class TestDeploymentGraphStructure:
@@ -56,12 +53,22 @@ class TestValidateNode:
     def test_valid_service_passes(self) -> None:
         from autoswarm_workers.graphs.deployment import validate
 
-        result = validate({
-            "messages": [],
-            "service": "web-api",
-            "environment": "staging",
-            "image_tag": "v1.0",
-        })
+        mock_result = MagicMock()
+        mock_result.level = MagicMock()
+        mock_result.level.name = "ALLOW"
+
+        with patch("autoswarm_workers.graphs.deployment.check_permission") as mock_check:
+            from autoswarm_permissions.types import PermissionLevel
+
+            mock_result.level = PermissionLevel.ALLOW
+            mock_check.return_value = mock_result
+
+            result = validate({
+                "messages": [],
+                "service": "web-api",
+                "environment": "staging",
+                "image_tag": "v1.0",
+            })
 
         assert result["status"] == "validated"
 
