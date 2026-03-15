@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Inter } from 'next/font/google';
 import { JanuaProvider } from '@janua/nextjs-sdk';
+import { PostHogProvider } from '@/components/PostHogProvider';
 import './globals.css';
 
 const inter = Inter({
@@ -21,11 +23,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans">
-        <JanuaProvider
-          config={{ baseURL: process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ?? '' }}
-        >
-          {children}
-        </JanuaProvider>
+        <Suspense>
+          <PostHogProvider>
+            <JanuaProvider
+              config={{ baseURL: process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ?? '' }}
+            >
+              {children}
+            </JanuaProvider>
+          </PostHogProvider>
+        </Suspense>
       </body>
     </html>
   );
