@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from autoswarm_observability import init_sentry
 from autoswarm_redis_pool import get_redis_pool
 
+from .analytics import init_posthog, shutdown as shutdown_posthog
 from .config import get_settings
 from .database import engine
 from .logging_config import configure_logging
@@ -20,12 +21,14 @@ from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.request_id import RequestIdMiddleware
 from .middleware.security import SecurityHeadersMiddleware
 from .routers import (
+    admin,
     agents,
     approvals,
     artifacts,
     billing,
     billing_internal,
     calendar,
+    chat,
     departments,
     gateway,
     health,
@@ -50,6 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
 
     # -- Startup --------------------------------------------------------------
+    init_posthog()
     logger.info("Nexus API starting on port %d", settings.port)
 
     # Verify database engine connectivity.
@@ -67,6 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # -- Shutdown -------------------------------------------------------------
+    shutdown_posthog()
     await pool.close()
     await engine.dispose()
     logger.info("Nexus API shut down")
@@ -84,6 +89,8 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="Core orchestration API for the AutoSwarm Office platform",
         lifespan=lifespan,
+        docs_url="/api/v1/docs",
+        openapi_url="/api/v1/openapi.json",
     )
 
     # -- Prometheus metrics ----------------------------------------------------
@@ -129,6 +136,8 @@ def create_app() -> FastAPI:
     app.include_router(maps.router, prefix="/api/v1/maps")
     app.include_router(calendar.router, prefix="/api/v1/calendar")
     app.include_router(intelligence.router, prefix="/api/v1/intelligence")
+    app.include_router(chat.router, prefix="/api/v1/chat")
+    app.include_router(admin.router, prefix="/api/v1/admin")
 
     return app
 

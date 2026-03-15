@@ -34,6 +34,7 @@ import { useProximityVideo } from '@/hooks/useProximityVideo';
 import { useRecording } from '@/hooks/useRecording';
 import { useWhiteboard } from '@/hooks/useWhiteboard';
 import { useSpotlight } from '@/hooks/useSpotlight';
+import { useNotifications } from '@/hooks/useNotifications';
 import { MegaphoneControls } from '@/components/MegaphoneControls';
 import { SpotlightControls } from '@/components/SpotlightControls';
 import { SpotlightView } from '@/components/SpotlightView';
@@ -132,6 +133,12 @@ export default function HomePage() {
     sendStatus,
     enabled: colyseusConnected,
   });
+
+  // Desktop notifications for chat messages when tab is unfocused
+  useNotifications(
+    sessionUser?.name ?? sessionUser?.email ?? 'Tactician',
+    playerStatus
+  );
 
   const {
     peers,

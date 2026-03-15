@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback, useState, type FC, type MouseEvent, type WheelEvent } from 'react';
+import { useRef, useEffect, useCallback, useState, type FC, type MouseEvent, type WheelEvent, type DragEvent } from 'react';
 import type { EditorMap, EditorLayer, EditorObject } from './map-converter';
 
 interface MapCanvasProps {
@@ -14,6 +14,7 @@ interface MapCanvasProps {
   onTileErase: (x: number, y: number) => void;
   onObjectSelect: (id: string | null) => void;
   onPushUndo: (label: string) => void;
+  onImport?: (content: string) => void;
 }
 
 // Tile palette colors for visualization (indexed by tile ID)
@@ -62,12 +63,14 @@ export const MapCanvas: FC<MapCanvasProps> = ({
   onTileErase,
   onObjectSelect,
   onPushUndo,
+  onImport,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [isPainting, setIsPainting] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const panStart = useRef({ x: 0, y: 0 });
   const hasPushedUndo = useRef(false);
 
@@ -284,11 +287,55 @@ export const MapCanvas: FC<MapCanvasProps> = ({
     e.preventDefault();
   }, []);
 
+  // -- Drag-and-drop for .tmj/.json file import ----------------------------
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      if (!onImport) return;
+
+      const file = e.dataTransfer.files?.[0];
+      if (!file) return;
+
+      const isValid = file.name.endsWith('.tmj') || file.name.endsWith('.json');
+      if (!isValid) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          onImport(reader.result);
+        }
+      };
+      reader.readAsText(file);
+    },
+    [onImport],
+  );
+
   return (
     <div
       ref={containerRef}
-      className="flex-1 relative overflow-hidden bg-slate-950 cursor-crosshair"
+      className={`flex-1 relative overflow-hidden bg-slate-950 cursor-crosshair ${isDragOver ? 'ring-2 ring-dashed ring-indigo-400' : ''}`}
       data-testid="map-canvas-container"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <canvas
         ref={canvasRef}
@@ -301,6 +348,12 @@ export const MapCanvas: FC<MapCanvasProps> = ({
         onContextMenu={handleContextMenu}
         className="block"
       />
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 flex items-center justify-center bg-indigo-900/30 pointer-events-none">
+          <span className="text-retro-base text-indigo-200">Drop .tmj / .json to import</span>
+        </div>
+      )}
       {/* Zoom indicator */}
       <div className="absolute bottom-2 right-2 text-xs text-slate-500 font-mono">
         {Math.round(camera.zoom * 100)}%

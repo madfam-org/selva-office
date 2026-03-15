@@ -14,6 +14,9 @@
 - `packages/inference/madfam_inference/org_config.py` -- Org-level config (task types, model assignments)
 - `packages/inference/madfam_inference/router.py` -- LLM model routing logic
 - `apps/nexus-api/nexus_api/routers/intelligence.py` -- Intelligence config API
+- `apps/nexus-api/nexus_api/routers/chat.py` -- Chat history persistence API
+- `apps/nexus-api/nexus_api/routers/admin.py` -- Admin controls (kick, room config)
+- `apps/colyseus/src/handlers/teleport.ts` -- Player teleport handler
 - `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
 - `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
 - `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (24 built-in tools)
@@ -73,11 +76,11 @@ make worktree-cleanup # Remove stale git worktrees (STALE_HOURS=24)
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
 pnpm lint             # ESLint
-pnpm test             # TypeScript tests (444 tests across 35 suites)
+pnpm test             # TypeScript tests (660+ tests across 55+ suites)
 pnpm typecheck        # TypeScript type checking
 
-uv run pytest packages/ apps/nexus-api/  # Python tests (400 tests)
-uv run pytest apps/workers/tests/       # Worker tests (94 tests)
+uv run pytest packages/ apps/nexus-api/  # Python tests (670+ tests)
+uv run pytest apps/workers/tests/       # Worker tests (140+ tests)
 uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```
@@ -343,6 +346,42 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `handleMusicStatus` in `handlers/status.ts` validates length.
 - `MusicStatus.tsx`: text input with 6 mood presets, click-to-edit.
 - Rendered below player name labels in `OfficeScene`.
+
+### Chat Persistence
+- **DB model**: `ChatMessage` in `models.py` (room_id, sender_session_id,
+  sender_name, content, is_system, org_id, created_at). Migration `0010`.
+- **REST API**: `apps/nexus-api/nexus_api/routers/chat.py` —
+  `GET /api/v1/chat/history?room_id=&limit=&before=` (paginated, org-scoped),
+  `POST /api/v1/chat/messages` (fire-and-forget from Colyseus).
+- **Colyseus integration**: `handleChat()` and `addSystemMessage()` in
+  `handlers/chat.ts` fire-and-forget POST to nexus-api after pushing to
+  state schema.
+- **Browser notifications**: `useNotifications` hook requests permission,
+  shows desktop notifications for chat messages when tab is unfocused.
+  Respects DND status. Detects @mentions.
+
+### Teleport & Player List
+- **Teleport handler**: `handlers/teleport.ts` — `handleTeleport(state,
+  client, { targetSessionId })` moves player to target position + 40px offset.
+- **PlayerList component**: sliding panel listing connected players with
+  Teleport and Follow buttons per player.
+
+### Admin Controls
+- **REST API**: `apps/nexus-api/nexus_api/routers/admin.py` —
+  `GET /api/v1/admin/users` (connected users from Redis),
+  `POST /api/v1/admin/kick` (publish to Redis channel),
+  `POST /api/v1/admin/room-config`. All require `admin` JWT role.
+- **AdminPanel component**: user list with kick, MOTD config form.
+- **Guest access**: Deferred — requires Janua-side changes (guest tokens,
+  limited-permission roles).
+
+### Meeting Title Badge
+- `TacticianSchema.meetingTitle` (`@type("string")`, default `""`). Set by
+  calendar integration via `meeting_title` Colyseus message. Max 100 chars.
+- `handleMeetingTitle` in `handlers/status.ts`.
+
+### OpenAPI Documentation
+- Swagger UI at `/api/v1/docs`, OpenAPI JSON at `/api/v1/openapi.json`.
 
 ### Simplified View
 - `SimplifiedView.tsx`: accessible HTML-only alternative to Phaser canvas.
