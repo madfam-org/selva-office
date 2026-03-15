@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoswarm_redis_pool import get_redis_pool
 
-from ..auth import get_current_user
+from ..auth import get_current_user, require_non_guest
 from ..config import get_settings
 from ..database import get_db
 from ..models import Agent, ComputeTokenLedger, SwarmTask, TaskEvent, Workflow
@@ -80,7 +80,12 @@ def _task_to_response(task: SwarmTask) -> SwarmTaskResponse:
 # -- Endpoints ----------------------------------------------------------------
 
 
-@router.post("/dispatch", response_model=SwarmTaskResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/dispatch",
+    response_model=SwarmTaskResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_non_guest)],
+)
 async def dispatch_task(
     body: DispatchRequest,
     request: Request,
@@ -207,8 +212,6 @@ async def dispatch_task(
         if workflow_yaml is not None:
             task_msg_data["workflow_yaml"] = workflow_yaml
         task_msg = json.dumps(task_msg_data)
-        # Dual-write: LPUSH (legacy) + XADD (stream) for migration
-        await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
         await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
     except Exception:
         # If Redis is unavailable the task is still persisted in the DB.

@@ -1,7 +1,7 @@
 """Gateway webhook endpoints for external event ingestion.
 
 GitHub webhooks are received here and converted into SwarmTasks
-that are enqueued on the Redis task queue.
+that are enqueued on the Redis task stream.
 """
 
 from __future__ import annotations
@@ -119,8 +119,6 @@ async def github_webhook(
                         "request_id": request_id,
                     }
                 )
-                # Dual-write: LPUSH (legacy) + XADD (stream)
-                await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
                 await pool.execute_with_retry(
                     "xadd", "autoswarm:task-stream", {"data": task_msg}
                 )
@@ -213,7 +211,6 @@ async def enclii_webhook(
                         "request_id": request_id,
                     }
                 )
-                await pool.execute_with_retry("lpush", "autoswarm:tasks", task_msg)
                 await pool.execute_with_retry(
                     "xadd", "autoswarm:task-stream", {"data": task_msg}
                 )

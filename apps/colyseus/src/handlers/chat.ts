@@ -17,8 +17,33 @@ function generateMessageId(): string {
 }
 
 /**
+ * Fetch with retry: retries on network errors and 5xx responses.
+ * Returns the response on success (< 500), or null after exhausting retries.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+  delays = [500, 1000],
+): Promise<Response | null> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const resp = await fetch(url, options);
+      if (resp.ok || resp.status < 500) return resp;
+    } catch {
+      // network error, retry
+    }
+    if (i < retries - 1 && delays[i]) {
+      await new Promise((r) => setTimeout(r, delays[i]));
+    }
+  }
+  return null;
+}
+
+/**
  * Fire-and-forget POST to nexus-api to persist a chat message.
  * Follows the same pattern as task_status.py — failures are logged, never raised.
+ * Retries once on network errors or 5xx responses.
  */
 function persistMessage(
   roomId: string,
@@ -27,7 +52,7 @@ function persistMessage(
   content: string,
   isSystem: boolean
 ): void {
-  fetch(`${NEXUS_API_URL}/api/v1/chat/messages`, {
+  fetchWithRetry(`${NEXUS_API_URL}/api/v1/chat/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

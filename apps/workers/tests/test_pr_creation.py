@@ -16,6 +16,7 @@ class TestCreatePr:
 
         tool = GitTool()
         tool.bash = MagicMock()
+        # First call: `command -v gh` (check), second: `gh pr create ...`
         tool.bash.execute = AsyncMock(
             return_value=MagicMock(
                 success=True,
@@ -27,8 +28,8 @@ class TestCreatePr:
 
         result = await tool.create_pr("/repo", "feat/x", "Title", "Body text")
 
-        tool.bash.execute.assert_called_once()
-        cmd = tool.bash.execute.call_args[0][0]
+        assert tool.bash.execute.call_count == 2
+        cmd = tool.bash.execute.call_args_list[1][0][0]
         assert "gh pr create" in cmd
         assert "--head feat/x" in cmd
         assert "Title" in cmd
@@ -47,7 +48,8 @@ class TestCreatePr:
 
         await tool.create_pr("/repo", "feat/x", "It's a title", "It's a body")
 
-        cmd = tool.bash.execute.call_args[0][0]
+        # Second call is the actual gh pr create (first is `command -v gh`)
+        cmd = tool.bash.execute.call_args_list[1][0][0]
         # Single quotes should be escaped
         assert "'\\''" in cmd
 

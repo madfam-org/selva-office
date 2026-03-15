@@ -25,9 +25,21 @@ providers:
     vision: false
     timeout: 120.0
 
-  # deepinfra, together, fireworks, anthropic, openai, openrouter, ollama
-  # are registered automatically from env vars — only add them here
-  # if you need to override base_url or timeout.
+  # groq:
+  #   base_url: https://api.groq.com/openai/v1
+  #   api_key_env: GROQ_API_KEY
+  #   vision: false
+  #   timeout: 60.0
+
+  # mistral:
+  #   base_url: https://api.mistral.ai/v1
+  #   api_key_env: MISTRAL_API_KEY
+  #   vision: true
+  #   timeout: 120.0
+
+  # deepinfra, together, fireworks, anthropic, openai, openrouter, ollama,
+  # groq, mistral are registered automatically from env vars — only add
+  # them here if you need to override base_url or timeout.
 
 # ── Task-type model assignments ───────────────────────────────────────
 # When a graph node declares a task_type, the router uses this table

@@ -15,11 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..auth import get_current_user
 from ..database import async_session_factory, get_db
 from ..models import TaskEvent
-from ..ws import event_manager
+from ..ws import MessageRateLimiter, event_manager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["events"])
+
+_ws_rate_limiter = MessageRateLimiter(max_messages=30, window_seconds=60.0)
 
 
 # -- Request / Response schemas -----------------------------------------------
@@ -263,9 +265,13 @@ async def events_websocket(websocket: WebSocket) -> None:
     try:
         while True:
             data = await websocket.receive_text()
+            if not _ws_rate_limiter.check(client_id):
+                await websocket.send_json({"type": "rate_limited"})
+                continue
             if data == "ping":
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
+        _ws_rate_limiter.remove(client_id)
         event_manager.disconnect(client_id)
 
 

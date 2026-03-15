@@ -10,9 +10,9 @@ import time
 import uuid
 from typing import Any
 
-import httpx
-
 from autoswarm_redis_pool import get_redis_pool
+
+from .http_retry import fire_and_forget_request
 
 logger = logging.getLogger(__name__)
 
@@ -71,20 +71,10 @@ async def emit_event(
     if org_id != "default":
         body["org_id"] = org_id
 
-    # POST to nexus-api
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            resp = await client.post(f"{nexus_url}/api/v1/events", json=body)
-            if resp.status_code not in (200, 201, 204):
-                logger.warning(
-                    "Event POST rejected (status %d): %s",
-                    resp.status_code,
-                    resp.text[:200],
-                )
-    except Exception:
-        logger.warning(
-            "Failed to POST event %s for task %s", event_type, task_id, exc_info=True
-        )
+    # POST to nexus-api (with retry and circuit breaker)
+    await fire_and_forget_request(
+        "POST", f"{nexus_url}/api/v1/events", json=body, timeout=2.0
+    )
 
     # Also PUBLISH to Redis for real-time WS relay
     try:

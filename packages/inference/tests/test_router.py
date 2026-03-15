@@ -151,7 +151,7 @@ class TestRoutePublicPrefersCheap:
     async def test_public_cheapest_priority_order(self) -> None:
         """Verify the CHEAPEST_PRIORITY constant order."""
         assert CHEAPEST_PRIORITY == [
-            "deepinfra", "together", "siliconflow", "fireworks",
+            "deepinfra", "groq", "together", "siliconflow", "fireworks", "mistral",
             "moonshot", "openrouter", "openai", "anthropic",
         ]
 
@@ -184,7 +184,7 @@ class TestRouteInternalPrefersCloud:
 
     async def test_internal_cloud_priority_order(self) -> None:
         assert CLOUD_PRIORITY == [
-            "anthropic", "openai", "moonshot", "siliconflow",
+            "anthropic", "openai", "groq", "mistral", "moonshot", "siliconflow",
             "fireworks", "together", "deepinfra", "openrouter",
         ]
 
@@ -269,6 +269,25 @@ class TestRouterAvailableProviders:
     def test_empty_providers(self) -> None:
         router = ModelRouter(providers={})
         assert router.available_providers == []
+
+
+class TestPriorityListsIncludeNewProviders:
+    """Verify Groq and Mistral are in the global priority lists."""
+
+    def test_groq_in_cloud_priority(self) -> None:
+        assert "groq" in CLOUD_PRIORITY
+
+    def test_mistral_in_cloud_priority(self) -> None:
+        assert "mistral" in CLOUD_PRIORITY
+
+    def test_groq_in_cheapest_priority(self) -> None:
+        assert "groq" in CHEAPEST_PRIORITY
+
+    def test_mistral_in_cheapest_priority(self) -> None:
+        assert "mistral" in CHEAPEST_PRIORITY
+
+    def test_groq_ranks_high_in_cheapest(self) -> None:
+        assert CHEAPEST_PRIORITY.index("groq") < CHEAPEST_PRIORITY.index("openai")
 
 
 class TestRouterStream:

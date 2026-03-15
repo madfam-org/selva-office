@@ -1,6 +1,6 @@
 {
   "name": "@autoswarm/root",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "AutoSwarm Office — Gamified multi-agent business orchestration platform",
   "author": "Innovaciones MADFAM SAS de CV",
@@ -21,7 +21,8 @@
     "prepare": "husky",
     "generate-assets": "node scripts/generate-assets.js",
     "generate-variants": "node scripts/generate-variants.js && node scripts/generate-tile-variants.js",
-    "generate-map": "node scripts/generate-map.js"
+    "generate-map": "node scripts/generate-map.js",
+    "test:e2e": "playwright test"
   },
   "pnpm": {
     "overrides": {
@@ -38,7 +39,8 @@
     "prettier": "^3.4.2",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "@playwright/test": "^1.40.0"
   },
   "dependencies": {
     "pino": "^9.6.0"

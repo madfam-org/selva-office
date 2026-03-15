@@ -8,12 +8,19 @@ import logging
 import signal
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 from cachetools import TTLCache
 from langgraph.types import Command
 
-from autoswarm_observability import bind_task_context, clear_context, configure_logging, init_sentry
+from autoswarm_observability import (
+    bind_task_context,
+    clear_context,
+    configure_logging,
+    init_sentry,
+    init_tracing,
+)
 from autoswarm_redis_pool import get_redis_pool
 from autoswarm_redis_pool.task_stream import (
     MAX_RETRIES,
@@ -36,10 +43,10 @@ from .task_status import update_task_status as _update_task_status
 # Use shared observability logging instead of basicConfig.
 configure_logging(service_name="worker")
 init_sentry("worker")
+init_tracing("worker")
 
 logger = logging.getLogger("autoswarm.worker")
 
-QUEUE_KEY = "autoswarm:tasks"
 AGENT_STATUS_CHANNEL = "autoswarm:agent-status"
 GRAPH_BUILDERS = {
     "coding": build_coding_graph,
@@ -299,13 +306,32 @@ async def process_task(task_data: dict) -> None:
     handler = InterruptHandler(
         nexus_api_url=settings.nexus_api_url,
         redis_url=settings.redis_url,
+        default_timeout=settings.approval_timeout,
     )
 
     # Set repo_path in initial state for coding graphs.
     if graph_type == "coding":
-        initial_state["repo_path"] = (
+        repo_path = (
             task_data.get("payload", {}).get("repo_path") or settings.repo_base_path
         )
+        # Expand ~ and ensure the directory exists and is writable.
+        resolved_repo = Path(repo_path).expanduser().resolve()
+        try:
+            resolved_repo.mkdir(parents=True, exist_ok=True)
+            # Quick writability check.
+            _probe = resolved_repo / ".autoswarm-probe"
+            _probe.touch()
+            _probe.unlink()
+        except OSError as exc:
+            error_msg = f"Repo path {resolved_repo} is not writable: {exc}"
+            logger.error(error_msg)
+            await _update_task_status(
+                settings.nexus_api_url, task_id, "failed", {"error": error_msg},
+                error_message=error_msg,
+            )
+            await _publish_agent_status(agent_id, "error", current_node_id="")
+            return
+        initial_state["repo_path"] = str(resolved_repo)
 
     # Notify Colyseus that this agent is now working.
     await _publish_agent_status(agent_id, "working")
@@ -472,6 +498,7 @@ async def _run_custom_with_streaming(
 async def main() -> None:
     """Entry point: connect to Redis and consume the task stream."""
     settings = get_settings()
+    logger.info("Worker configuration validated")
 
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
@@ -485,6 +512,11 @@ async def main() -> None:
         sys.exit(1)
 
     logger.info("Connected to Redis at %s", settings.redis_url)
+
+    # Log available inference providers at startup.
+    from .inference import validate_providers
+
+    validate_providers()
 
     # Set up Redis Streams consumer
     consumer = TaskStreamConsumer()

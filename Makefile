@@ -1,4 +1,4 @@
-.PHONY: dev dev-full dev-seed worker build test lint clean docker-up docker-down db-migrate db-wait setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test worktree-cleanup
+.PHONY: dev dev-full dev-seed worker build test test-e2e lint clean docker-up docker-down db-migrate db-wait setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test worktree-cleanup
 
 # ── Development ─────────────────────────────────────
 dev:
@@ -22,8 +22,12 @@ dev-full:
 	$(MAKE) db-wait
 	@echo "Running database migrations..."
 	uv run --directory apps/nexus-api alembic upgrade head
+	@echo "Seeding departments and agents..."
+	$(MAKE) dev-seed
 	@echo "Starting all services..."
 	$(MAKE) dev
+	@echo "Running smoke test in background (5s delay)..."
+	@sleep 5 && $(MAKE) smoke-test &
 
 dev-seed:
 	@echo "Seeding departments and agents..."
@@ -39,6 +43,9 @@ build:
 test:
 	pnpm test
 	uv run pytest
+
+test-e2e:
+	pnpm test:e2e
 
 lint:
 	pnpm lint

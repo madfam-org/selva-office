@@ -40,6 +40,7 @@ class InterruptHandler:
 
     nexus_api_url: str
     redis_url: str = "redis://localhost:6379"
+    default_timeout: int = 300
     client: httpx.AsyncClient = field(default_factory=lambda: httpx.AsyncClient(timeout=30.0))
 
     async def create_approval_request(
@@ -158,8 +159,8 @@ class InterruptHandler:
     async def wait_for_approval(
         self,
         request_id: str,
-        timeout: int = 300,
-        poll_interval: float = 2.0,
+        timeout: int | None = None,
+        poll_interval: float = 0.5,
     ) -> ApprovalResponse:
         """Wait for an approval decision, preferring Redis pub/sub with polling fallback.
 
@@ -175,6 +176,8 @@ class InterruptHandler:
             TimeoutError: If no decision is made within *timeout* seconds.
             httpx.HTTPStatusError: If the API returns an error status during polling.
         """
+        if timeout is None:
+            timeout = self.default_timeout
         try:
             return await self._wait_via_redis(request_id, timeout)
         except Exception as exc:

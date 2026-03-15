@@ -11,6 +11,8 @@ model catalogs, and routing configuration.
 |----------|------|------------|---------------|----------------|
 | Anthropic | Proprietary | Anthropic Messages | claude-sonnet-4-20250514 | Yes |
 | OpenAI | Proprietary | OpenAI Chat | gpt-4o | Yes |
+| Groq | Open-source host | OpenAI-compat | llama-3.3-70b-versatile | No |
+| Mistral | Proprietary | OpenAI-compat | mistral-large-latest | Yes |
 | SiliconFlow | Open-source host | OpenAI-compat | THUDM/GLM-5 | Yes (GLM-4.5V) |
 | Moonshot | Open-source host | OpenAI-compat | kimi-k2.5 | No |
 | Together AI | Open-source host | OpenAI-compat | Llama-3.3-70B-Instruct | Qwen3-VL |
@@ -23,9 +25,11 @@ model catalogs, and routing configuration.
 
 | Provider | Input $/M | Output $/M | Notes |
 |----------|-----------|------------|-------|
+| Groq | $0.05 | $0.08 | Fastest inference, LPU hardware |
 | DeepInfra | $0.23 | $0.40 | Cheapest per-token for 70B |
 | Fireworks AI | $0.20 | $0.90 | Cheapest input, higher output (tiered) |
 | Together AI | $0.54 | $0.54 | Flat rate, broadest catalog |
+| Mistral | ~$2.00 | ~$6.00 | Mistral Large pricing (proprietary) |
 | OpenRouter | Varies | Varies | Aggregator markup over underlying provider |
 | OpenAI | ~$2.50 | ~$10.00 | GPT-4o pricing (proprietary) |
 | Anthropic | ~$3.00 | ~$15.00 | Claude Sonnet 4 pricing (proprietary) |
@@ -40,23 +44,13 @@ Pricing as of March 2026. Check provider dashboards for current rates.
 | Fireworks AI | 80+ | Fast inference, function calling, serverless GPUs |
 | DeepInfra | 77 | Lowest cost, pay-per-token, no minimum |
 | OpenRouter | 100+ | Unified access to multiple providers, fallback routing |
+| Groq | 20+ | Fastest TTFT (sub-100ms), LPU inference engine |
+| Mistral | 10+ | Strong multilingual, code, and reasoning models |
 
 ## Selection Rationale
 
-These three open-source providers were selected from a broader evaluation based on:
-
-1. **OpenAI-compatible API**: All three implement the `/v1/chat/completions` endpoint,
-   allowing integration via `GenericOpenAIProvider` with zero new provider classes.
-
-2. **Cost efficiency**: DeepInfra and Fireworks offer 70B-class models at 5-10x lower
-   cost than proprietary providers. Together provides the broadest catalog at
-   competitive rates.
-
-3. **Vision support**: All three host vision-capable open-source models (Llama 3.2
-   Vision, Qwen-VL family), enabling multimodal inference without proprietary APIs.
-
-4. **Reliability**: All three have production SLAs, <100ms TTFT for cached models,
-   and geographic distribution.
+All open-source providers implement the `/v1/chat/completions` endpoint, allowing
+integration via `GenericOpenAIProvider` with zero new provider classes.
 
 ### Alternatives Considered
 
@@ -64,7 +58,6 @@ These three open-source providers were selected from a broader evaluation based 
 |----------|-----------------|
 | Anyscale | Merged into Fireworks AI ecosystem |
 | Replicate | Per-second billing model less predictable for batch workloads |
-| Groq | Fast but limited model selection, no vision models at evaluation time |
 | Perplexity | Focused on search/RAG, not general inference |
 | Modal | More of a compute platform than inference API |
 
@@ -89,7 +82,7 @@ Configure assignments in `~/.autoswarm/org-config.yaml` (template at
 Quality-first ordering for internal/non-sensitive workloads:
 
 ```
-anthropic > openai > moonshot > siliconflow > fireworks > together > deepinfra > openrouter
+anthropic > openai > groq > mistral > moonshot > siliconflow > fireworks > together > deepinfra > openrouter
 ```
 
 ### Cheapest Priority (Public sensitivity)
@@ -97,7 +90,7 @@ anthropic > openai > moonshot > siliconflow > fireworks > together > deepinfra >
 Cost-first ordering for public/non-sensitive workloads:
 
 ```
-deepinfra > together > siliconflow > fireworks > moonshot > openrouter > openai > anthropic
+deepinfra > groq > together > siliconflow > fireworks > mistral > moonshot > openrouter > openai > anthropic
 ```
 
 ### Sensitivity Routing
@@ -124,7 +117,9 @@ Set API keys in `.env` to enable each provider:
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
 
-# Open-source (any combination)
+# Open-source / cloud (any combination)
+GROQ_API_KEY=gsk-...
+MISTRAL_API_KEY=...
 TOGETHER_API_KEY=...
 FIREWORKS_API_KEY=...
 DEEPINFRA_API_KEY=...
@@ -144,6 +139,22 @@ ORG_CONFIG_PATH=~/.autoswarm/org-config.yaml
 Providers without API keys are silently skipped. The router selects from whatever
 providers are registered. Additional providers can be defined in the org config.
 
+### Provider Auth Patterns
+
+| Provider | Auth Header | Key Format |
+|----------|------------|------------|
+| Anthropic | `x-api-key` | `sk-ant-...` |
+| OpenAI | `Authorization: Bearer` | `sk-...` |
+| Groq | `Authorization: Bearer` | `gsk_...` |
+| Mistral | `Authorization: Bearer` | Plain string |
+| Together | `Authorization: Bearer` | Plain string |
+| Fireworks | `Authorization: Bearer` | `fw_...` |
+| DeepInfra | `Authorization: Bearer` | Plain string |
+| SiliconFlow | `Authorization: Bearer` | Plain string |
+| Moonshot | `Authorization: Bearer` | Plain string |
+| OpenRouter | `Authorization: Bearer` | `sk-or-...` |
+| Ollama | None | Local, no auth |
+
 ### Intelligence Config API
 
 The current org configuration is available via the nexus-api control plane:
@@ -156,13 +167,102 @@ Authorization: Bearer <token>
 Returns providers (without API keys), model assignments, priority lists, and
 embedding config. Agent templates are excluded from the response.
 
+## How to Add a New Provider
+
+### Via org-config.yaml (dynamic, no code change)
+
+Any OpenAI-compatible endpoint can be added at runtime:
+
+```yaml
+# ~/.autoswarm/org-config.yaml
+providers:
+  my-provider:
+    base_url: https://api.my-provider.com/v1
+    api_key_env: MY_PROVIDER_API_KEY
+    vision: false
+    timeout: 120.0
+```
+
+Set the env var and restart the worker. The provider will be registered
+automatically as a `GenericOpenAIProvider`.
+
+### Via hardcoded registration (built-in)
+
+For providers that should always be available:
+
+1. Add the API key field to `apps/workers/autoswarm_workers/config.py`:
+   ```python
+   my_provider_api_key: str | None = None
+   ```
+
+2. Register the provider in `apps/workers/autoswarm_workers/inference.py`
+   inside `build_model_router()`:
+   ```python
+   if settings.my_provider_api_key:
+       providers["my-provider"] = GenericOpenAIProvider(
+           base_url="https://api.my-provider.com/v1",
+           api_key=settings.my_provider_api_key,
+           model="default-model",
+           provider_name="my-provider",
+       )
+   ```
+
+3. Add to priority lists in `packages/inference/madfam_inference/router.py`:
+   ```python
+   CLOUD_PRIORITY = [..., "my-provider", ...]
+   CHEAPEST_PRIORITY = [..., "my-provider", ...]
+   ```
+
+4. Add env var to `.env.example` and update this document.
+
+## Troubleshooting
+
+### No providers configured warning
+
+At startup the worker logs available providers. If you see:
+```
+WARNING: No cloud LLM API keys configured — only Ollama is available.
+```
+Set at least one cloud provider API key in `.env`.
+
+### Verifying provider availability
+
+The worker logs the full provider list at startup:
+```
+INFO: LLM providers available: anthropic, groq, ollama
+```
+
+You can also check via the API:
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:4300/api/v1/intelligence/config
+```
+
+### Common API key format issues
+
+| Provider | Common Mistake | Fix |
+|----------|---------------|-----|
+| Anthropic | Missing `sk-ant-` prefix | Copy full key from console.anthropic.com |
+| Groq | Using wrong prefix | Key should start with `gsk_` |
+| OpenRouter | Missing `sk-or-` prefix | Copy from openrouter.ai/keys |
+
+### Provider timeout errors
+
+Default git operation timeout is 120s. For large repos, increase via:
+```bash
+# In your org config
+providers:
+  my-provider:
+    timeout: 300.0
+```
+
 ## Top Models by Use Case
 
 ### Code Generation
 | Model | Provider(s) | Notes |
 |-------|-------------|-------|
 | Claude Sonnet 4 | Anthropic, OpenRouter | Best code quality |
-| Llama 3.3 70B Instruct | Together, DeepInfra | Best open-source for code |
+| Llama 3.3 70B Instruct | Together, DeepInfra, Groq | Best open-source for code |
+| Mistral Large | Mistral | Strong code + reasoning |
 | DeepSeek Coder V2 | Together, DeepInfra | Specialized for code |
 | Qwen2.5-Coder-32B | Together, Fireworks | Strong coding, smaller footprint |
 
@@ -171,6 +271,7 @@ embedding config. Agent templates are excluded from the response.
 |-------|-------------|-------|
 | GPT-4o | OpenAI | Strongest general vision |
 | Claude Sonnet 4 | Anthropic | Strong vision + reasoning |
+| Mistral Large | Mistral | Vision-capable proprietary |
 | Llama 3.2 90B Vision | DeepInfra | Best open-source vision |
 | Qwen3-VL | Together, DeepInfra | Competitive open-source vision |
 | Qwen2.5-VL | Fireworks | Fast inference, good quality |
@@ -180,12 +281,13 @@ embedding config. Agent templates are excluded from the response.
 |-------|-------------|-------|
 | Claude Opus 4 | Anthropic | Highest capability |
 | GPT-4o | OpenAI | Strong general purpose |
-| Llama 3.3 70B | Together, DeepInfra, Fireworks | Best open-source general |
+| Llama 3.3 70B | Together, DeepInfra, Fireworks, Groq | Best open-source general |
 | Mixtral 8x22B | Together, Fireworks | Good quality/cost ratio |
 
 ### Fast / Cheap (Agent inner loops)
 | Model | Provider(s) | Notes |
 |-------|-------------|-------|
-| Llama 3.1 8B | All three OS providers | Sub-cent per call |
+| Llama 3.3 70B | Groq | Fastest inference (sub-100ms TTFT) |
+| Llama 3.1 8B | All OS providers | Sub-cent per call |
 | Gemma 2 9B | Together, DeepInfra | Fast, good quality for size |
 | Qwen2.5 7B | Together, Fireworks | Strong multilingual |

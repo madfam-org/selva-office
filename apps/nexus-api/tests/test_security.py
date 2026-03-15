@@ -51,7 +51,10 @@ class TestSecurityHeaders:
     @pytest.mark.asyncio
     async def test_permissions_policy(self, client: httpx.AsyncClient) -> None:
         resp = await client.get("/api/v1/health/health")
-        assert "camera=()" in (resp.headers.get("permissions-policy") or "")
+        policy = resp.headers.get("permissions-policy") or ""
+        assert "camera=(self)" in policy
+        assert "microphone=(self)" in policy
+        assert "geolocation=()" in policy
 
 
 # ---------------------------------------------------------------------------

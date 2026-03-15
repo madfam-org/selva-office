@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import get_current_user
+from ..auth import get_current_user, require_non_guest
 from ..database import get_db
 from ..models import Map
 from ..tenant import TenantContext, get_tenant
@@ -98,7 +98,12 @@ def _validate_tmj(tmj_content: str) -> dict[str, Any]:
 # -- Endpoints -----------------------------------------------------------------
 
 
-@router.post("", response_model=MapResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=MapResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_non_guest)],
+)
 async def create_map(
     body: MapCreateRequest,
     db: AsyncSession = Depends(get_db),  # noqa: B008
@@ -142,7 +147,7 @@ async def get_map(
     return _map_to_response(m)
 
 
-@router.put("/{map_id}", response_model=MapResponse)
+@router.put("/{map_id}", response_model=MapResponse, dependencies=[Depends(require_non_guest)])
 async def update_map(
     map_id: str,
     body: MapUpdateRequest,
@@ -166,7 +171,11 @@ async def update_map(
     return _map_to_response(m)
 
 
-@router.delete("/{map_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{map_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_non_guest)],
+)
 async def delete_map(
     map_id: str,
     db: AsyncSession = Depends(get_db),  # noqa: B008

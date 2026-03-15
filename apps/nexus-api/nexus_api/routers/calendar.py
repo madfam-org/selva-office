@@ -18,7 +18,7 @@ from autoswarm_calendar import (
     MicrosoftCalendarAdapter,
 )
 
-from ..auth import get_current_user
+from ..auth import get_current_user, require_non_guest
 from ..database import get_db
 from ..models import CalendarConnection
 from ..tenant import TenantContext, get_tenant
@@ -179,6 +179,7 @@ async def list_events(
     "/connect",
     response_model=ConnectResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_non_guest)],
 )
 async def connect_calendar(
     body: ConnectCalendarRequest,
@@ -212,7 +213,11 @@ async def connect_calendar(
     return ConnectResponse(provider=body.provider.value)
 
 
-@router.delete("/disconnect", response_model=DisconnectResponse)
+@router.delete(
+    "/disconnect",
+    response_model=DisconnectResponse,
+    dependencies=[Depends(require_non_guest)],
+)
 async def disconnect_calendar(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008

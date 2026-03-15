@@ -9,6 +9,15 @@ dependencies = [
 
 [project.optional-dependencies]
 sentry = ["sentry-sdk[fastapi]>=2.19.0"]
+tracing = [
+  "opentelemetry-api>=1.20",
+  "opentelemetry-sdk>=1.20",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.20",
+]
+all = [
+  "autoswarm-observability[sentry]",
+  "autoswarm-observability[tracing]",
+]
 
 [build-system]
 requires = ["hatchling"]

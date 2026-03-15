@@ -13,24 +13,19 @@ import pytest
 
 
 class TestEmitEvent:
-    """emit_event fires POST to nexus-api and PUBLISH to Redis."""
+    """emit_event fires POST to nexus-api (via fire_and_forget_request) and PUBLISH to Redis."""
 
     @pytest.mark.asyncio
     async def test_posts_to_nexus_url_with_correct_body(self) -> None:
-        mock_response = MagicMock(status_code=201)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ),
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
@@ -46,9 +41,10 @@ class TestEmitEvent:
                 agent_id="agent-1",
             )
 
-            mock_client.post.assert_called_once()
-            call_args = mock_client.post.call_args
-            assert call_args[0][0] == "http://test:4300/api/v1/events"
+            mock_ffr.assert_called_once()
+            call_args = mock_ffr.call_args
+            assert call_args[0][0] == "POST"
+            assert call_args[0][1] == "http://test:4300/api/v1/events"
             payload = call_args[1]["json"]
             assert payload["event_type"] == "node.entered"
             assert payload["event_category"] == "node"
@@ -57,20 +53,15 @@ class TestEmitEvent:
 
     @pytest.mark.asyncio
     async def test_includes_optional_fields_when_provided(self) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ),
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
@@ -95,7 +86,7 @@ class TestEmitEvent:
                 request_id="req-abc",
             )
 
-            payload = mock_client.post.call_args[1]["json"]
+            payload = mock_ffr.call_args[1]["json"]
             assert payload["node_id"] == "plan"
             assert payload["graph_type"] == "coding"
             assert payload["payload"] == {"key": "value"}
@@ -108,20 +99,15 @@ class TestEmitEvent:
 
     @pytest.mark.asyncio
     async def test_skips_task_id_when_unknown(self) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ),
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
@@ -136,25 +122,20 @@ class TestEmitEvent:
                 task_id="unknown",
             )
 
-            payload = mock_client.post.call_args[1]["json"]
+            payload = mock_ffr.call_args[1]["json"]
             assert "task_id" not in payload
 
     @pytest.mark.asyncio
     async def test_skips_agent_id_when_unknown(self) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ),
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
@@ -169,92 +150,45 @@ class TestEmitEvent:
                 agent_id="unknown",
             )
 
-            payload = mock_client.post.call_args[1]["json"]
+            payload = mock_ffr.call_args[1]["json"]
             assert "agent_id" not in payload
 
     @pytest.mark.asyncio
-    async def test_logs_warning_on_http_failure(self) -> None:
-        mock_response = MagicMock(status_code=500, text="Internal Server Error")
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
+    async def test_uses_2s_http_timeout(self) -> None:
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ),
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
-            patch("autoswarm_workers.event_emitter.logger") as mock_logger,
         ):
             from autoswarm_workers.event_emitter import emit_event
 
-            # Should not raise.
             await emit_event(
                 "http://test:4300",
                 event_type="node.entered",
                 event_category="node",
             )
 
-            mock_logger.warning.assert_called()
-            warning_msg = mock_logger.warning.call_args[0][0]
-            assert "rejected" in warning_msg.lower() or "status" in warning_msg.lower()
-
-    @pytest.mark.asyncio
-    async def test_logs_warning_on_connection_error(self) -> None:
-        mock_client = AsyncMock()
-        mock_client.post.side_effect = Exception("connection refused")
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
-        mock_pool = MagicMock()
-        mock_pool.execute_with_retry = AsyncMock()
-
-        with (
-            patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ),
-            patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
-                return_value=mock_pool,
-            ),
-            patch("autoswarm_workers.event_emitter.logger") as mock_logger,
-        ):
-            from autoswarm_workers.event_emitter import emit_event
-
-            # Should not raise.
-            await emit_event(
-                "http://test:4300",
-                event_type="node.entered",
-                event_category="node",
-                task_id="task-1",
-            )
-
-            mock_logger.warning.assert_called()
+            assert mock_ffr.call_args[1]["timeout"] == 2.0
 
     @pytest.mark.asyncio
     async def test_publishes_to_redis_channel(self) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
             ),
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
@@ -282,19 +216,14 @@ class TestEmitEvent:
 
     @pytest.mark.asyncio
     async def test_handles_redis_failure_gracefully(self) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock(side_effect=Exception("Redis down"))
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
             ),
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
@@ -315,20 +244,15 @@ class TestEmitEvent:
 
     @pytest.mark.asyncio
     async def test_sets_org_id_only_when_not_default(self) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ),
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
             patch(
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
@@ -343,10 +267,10 @@ class TestEmitEvent:
                 event_category="node",
                 org_id="default",
             )
-            payload_default = mock_client.post.call_args[1]["json"]
+            payload_default = mock_ffr.call_args[1]["json"]
             assert "org_id" not in payload_default
 
-            mock_client.post.reset_mock()
+            mock_ffr.reset_mock()
 
             # Non-default org_id should be included.
             await emit_event(
@@ -355,39 +279,8 @@ class TestEmitEvent:
                 event_category="node",
                 org_id="acme-corp",
             )
-            payload_custom = mock_client.post.call_args[1]["json"]
+            payload_custom = mock_ffr.call_args[1]["json"]
             assert payload_custom["org_id"] == "acme-corp"
-
-    @pytest.mark.asyncio
-    async def test_uses_2s_http_timeout(self) -> None:
-        mock_response = MagicMock(status_code=200)
-        mock_client = AsyncMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-
-        mock_pool = MagicMock()
-        mock_pool.execute_with_retry = AsyncMock()
-
-        with (
-            patch(
-                "autoswarm_workers.event_emitter.httpx.AsyncClient",
-                return_value=mock_client,
-            ) as mock_cls,
-            patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
-                return_value=mock_pool,
-            ),
-        ):
-            from autoswarm_workers.event_emitter import emit_event
-
-            await emit_event(
-                "http://test:4300",
-                event_type="node.entered",
-                event_category="node",
-            )
-
-            mock_cls.assert_called_once_with(timeout=2.0)
 
 
 # ---------------------------------------------------------------------------

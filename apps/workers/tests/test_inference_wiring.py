@@ -53,6 +53,39 @@ def test_build_model_router_always_includes_ollama():
     assert "anthropic" not in names
 
 
+def test_build_model_router_registers_groq():
+    """Groq is registered when GROQ_API_KEY is set."""
+    from autoswarm_workers.inference import build_model_router
+
+    mock_settings = _make_settings(groq_api_key="gsk-test-groq")
+    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+        router = build_model_router()
+
+    assert "groq" in router.available_providers
+
+
+def test_build_model_router_skips_groq_without_key():
+    """Groq is NOT registered when no key is set."""
+    from autoswarm_workers.inference import build_model_router
+
+    mock_settings = _make_settings()
+    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+        router = build_model_router()
+
+    assert "groq" not in router.available_providers
+
+
+def test_build_model_router_registers_mistral():
+    """Mistral is registered when MISTRAL_API_KEY is set."""
+    from autoswarm_workers.inference import build_model_router
+
+    mock_settings = _make_settings(mistral_api_key="msk-test-mistral")
+    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+        router = build_model_router()
+
+    assert "mistral" in router.available_providers
+
+
 def test_get_model_router_returns_singleton():
     """get_model_router caches and returns the same instance."""
     import autoswarm_workers.inference as inf

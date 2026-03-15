@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoswarm_skills import get_skill_registry, parse_skill_md_string
 
-from ..auth import get_current_user
+from ..auth import get_current_user, require_non_guest
 from ..database import get_db
 from ..models import SkillMarketplaceEntry, SkillRating
 from ..tenant import TenantContext, get_tenant
@@ -250,6 +250,7 @@ async def get_marketplace_skill(
     "/skills",
     response_model=MarketplaceEntryResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_non_guest)],
 )
 async def publish_skill(
     body: PublishSkillRequest,
@@ -288,7 +289,11 @@ async def publish_skill(
     return _entry_to_response(entry)
 
 
-@router.post("/skills/{entry_id}/rate", response_model=SkillRatingResponse)
+@router.post(
+    "/skills/{entry_id}/rate",
+    response_model=SkillRatingResponse,
+    dependencies=[Depends(require_non_guest)],
+)
 async def rate_skill(
     entry_id: str,
     body: RateSkillRequest,
@@ -347,7 +352,11 @@ async def rate_skill(
     )
 
 
-@router.post("/skills/{entry_id}/install", response_model=InstallResponse)
+@router.post(
+    "/skills/{entry_id}/install",
+    response_model=InstallResponse,
+    dependencies=[Depends(require_non_guest)],
+)
 async def install_skill(
     entry_id: str,
     db: AsyncSession = Depends(get_db),  # noqa: B008

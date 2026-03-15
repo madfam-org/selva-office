@@ -7,7 +7,7 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
 
-function getSessionToken(): string | null {
+export function getSessionToken(): string | null {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(/(?:^|;\s*)janua-session=([^;]*)/);
   return match?.[1] ?? null;
@@ -42,7 +42,11 @@ export function getSessionUser(): { sub: string; email: string; name?: string; r
   try {
     const parts = token.split('.');
     if (parts.length < 2) return null;
-    const payload = JSON.parse(atob(parts[1]));
+    // JWTs use base64url encoding (- instead of +, _ instead of /).
+    // Restore standard base64 and pad to a multiple of 4.
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
     return {
       sub: payload.sub ?? '',
       email: payload.email ?? '',
@@ -60,4 +64,12 @@ export function getSessionUser(): { sub: string; email: string; name?: string; r
 export function isAdmin(): boolean {
   const user = getSessionUser();
   return user?.roles.includes('admin') ?? false;
+}
+
+/**
+ * Check if the current session user is a guest.
+ */
+export function isGuest(): boolean {
+  const user = getSessionUser();
+  return user?.roles.includes('guest') ?? false;
 }

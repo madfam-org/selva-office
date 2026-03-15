@@ -23,7 +23,9 @@ const server = new Server({
   }),
 });
 
-server.define("office", OfficeRoom, { nexusApiUrl: NEXUS_API_URL });
+server
+  .define("office", OfficeRoom, { nexusApiUrl: NEXUS_API_URL })
+  .filterBy(["orgId"]);
 
 logger.info({ port: PORT }, "Room server listening");
 logger.info({ url: `http://localhost:${PORT}/health` }, "Health check available");
