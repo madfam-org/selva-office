@@ -11,6 +11,7 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
+from ..event_emitter import instrumented_node
 from .base import BaseGraphState
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ class CRMState(BaseGraphState, TypedDict, total=False):
 # -- Node functions -----------------------------------------------------------
 
 
+@instrumented_node
 def fetch_context(state: CRMState) -> CRMState:
     """Fetch CRM context for the target recipient and action.
 
@@ -101,6 +103,7 @@ def fetch_context(state: CRMState) -> CRMState:
     }
 
 
+@instrumented_node
 def draft_communication(state: CRMState) -> CRMState:
     """Draft the outbound communication based on CRM context.
 
@@ -164,6 +167,7 @@ def draft_communication(state: CRMState) -> CRMState:
     }
 
 
+@instrumented_node
 def approval_gate(state: CRMState) -> CRMState:
     """Interrupt execution to require human approval for outbound CRM actions.
 
@@ -208,6 +212,7 @@ def approval_gate(state: CRMState) -> CRMState:
     }
 
 
+@instrumented_node
 def send(state: CRMState) -> CRMState:
     """Execute the approved outbound CRM action.
 

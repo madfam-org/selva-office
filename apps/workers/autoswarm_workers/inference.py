@@ -133,12 +133,41 @@ async def call_llm(
     ledger via the nexus-api internal endpoint.
     """
     try:
+        import time as _time
+
+        from .event_emitter import emit_event as _emit_llm_event
+
+        _llm_start = _time.monotonic()
+
         request = InferenceRequest(
             messages=messages,
             system_prompt=system_prompt or None,
             policy=RoutingPolicy(sensitivity=sensitivity, task_type=task_type),
         )
         response: InferenceResponse = await router.complete(request)
+
+        _llm_elapsed = int((_time.monotonic() - _llm_start) * 1000)
+        _total_tokens = (
+            (response.usage.get("total_tokens") or 0) if response.usage else 0
+        )
+
+        # Emit LLM event for observability
+        import contextlib
+
+        from .config import get_settings as _get_llm_settings
+
+        with contextlib.suppress(Exception):
+            await _emit_llm_event(
+                _get_llm_settings().nexus_api_url,
+                event_type="llm.response",
+                event_category="llm",
+                task_id=task_id,
+                agent_id=agent_id,
+                provider=response.provider,
+                model=response.model,
+                token_count=_total_tokens,
+                duration_ms=_llm_elapsed,
+            )
 
         # Meter the inference call to the billing ledger.
         if response.usage:

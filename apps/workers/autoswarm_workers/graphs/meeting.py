@@ -12,6 +12,7 @@ from typing import Any, TypedDict
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 
+from ..event_emitter import instrumented_node
 from .base import BaseGraphState
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class MeetingState(BaseGraphState, TypedDict, total=False):
 # -- Node functions -----------------------------------------------------------
 
 
+@instrumented_node
 def transcribe(state: MeetingState) -> MeetingState:
     """Transcribe the meeting recording.
 
@@ -96,6 +98,7 @@ def transcribe(state: MeetingState) -> MeetingState:
     }
 
 
+@instrumented_node
 def summarize(state: MeetingState) -> MeetingState:
     """Summarize the meeting transcript.
 
@@ -159,6 +162,7 @@ def summarize(state: MeetingState) -> MeetingState:
     }
 
 
+@instrumented_node
 def extract_actions(state: MeetingState) -> MeetingState:
     """Extract action items from the transcript and summary.
 
@@ -214,6 +218,7 @@ def extract_actions(state: MeetingState) -> MeetingState:
     }
 
 
+@instrumented_node
 def save_artifact(state: MeetingState) -> MeetingState:
     """Save the meeting notes as an artifact via ArtifactStorage.
 

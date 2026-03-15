@@ -23,11 +23,12 @@ from autoswarm_redis_pool.timeout import get_task_timeout
 
 from .checkpointer import create_checkpointer
 from .config import get_settings
+from .event_emitter import emit_event as _emit_event
 from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
 from .graphs.deployment import build_deployment_graph
-from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.meeting import build_meeting_graph
+from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.research import build_research_graph
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
@@ -312,6 +313,15 @@ async def process_task(task_data: dict) -> None:
         settings.nexus_api_url, task_id, "running",
         started_at=datetime.now(UTC).isoformat(),
     )
+    await _emit_event(
+        settings.nexus_api_url,
+        event_type="task.started",
+        event_category="task",
+        task_id=task_id,
+        agent_id=agent_id,
+        graph_type=graph_type,
+        request_id=request_id,
+    )
 
     try:
         # Apply per-graph-type timeout
@@ -342,6 +352,15 @@ async def process_task(task_data: dict) -> None:
         await _update_task_status(
             settings.nexus_api_url, task_id, api_status, result.get("result"),
         )
+        await _emit_event(
+            settings.nexus_api_url,
+            event_type="task.completed" if api_status == "completed" else "task.failed",
+            event_category="task",
+            task_id=task_id,
+            agent_id=agent_id,
+            graph_type=graph_type,
+            request_id=request_id,
+        )
         logger.info("Task %s completed with status: %s", task_id, result.get("status"))
         await _publish_agent_status(agent_id, "idle", current_node_id="")
     except TimeoutError:
@@ -350,12 +369,32 @@ async def process_task(task_data: dict) -> None:
             settings.nexus_api_url, task_id, "failed", {"error": f"Timed out after {timeout}s"},
             error_message=f"Timed out after {timeout}s",
         )
+        await _emit_event(
+            settings.nexus_api_url,
+            event_type="task.timeout",
+            event_category="task",
+            task_id=task_id,
+            agent_id=agent_id,
+            graph_type=graph_type,
+            error_message=f"Timed out after {timeout}s",
+            request_id=request_id,
+        )
         await _publish_agent_status(agent_id, "error", current_node_id="")
     except Exception as exc:
         logger.exception("Task %s failed", task_id)
         await _update_task_status(
             settings.nexus_api_url, task_id, "failed", {"error": str(exc)},
             error_message=str(exc),
+        )
+        await _emit_event(
+            settings.nexus_api_url,
+            event_type="task.failed",
+            event_category="task",
+            task_id=task_id,
+            agent_id=agent_id,
+            graph_type=graph_type,
+            error_message=str(exc)[:500],
+            request_id=request_id,
         )
         await _publish_agent_status(agent_id, "error", current_node_id="")
     finally:

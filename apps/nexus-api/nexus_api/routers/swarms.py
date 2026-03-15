@@ -17,7 +17,7 @@ from autoswarm_redis_pool import get_redis_pool
 from ..auth import get_current_user
 from ..config import get_settings
 from ..database import get_db
-from ..models import Agent, ComputeTokenLedger, SwarmTask, Workflow
+from ..models import Agent, ComputeTokenLedger, SwarmTask, TaskEvent, Workflow
 from ..tenant import TenantContext, get_tenant
 
 router = APIRouter(tags=["swarms"], dependencies=[Depends(get_current_user)])
@@ -216,6 +216,23 @@ async def dispatch_task(
         task.status = "pending"
         await db.flush()
 
+    # Emit task.dispatched event (direct DB insert, no HTTP)
+    try:
+        from .events import emit_event_db
+
+        await emit_event_db(
+            db,
+            event_type="task.dispatched",
+            event_category="task",
+            task_id=task.id,
+            graph_type=task.graph_type,
+            org_id=tenant.org_id,
+            request_id=request_id,
+            payload={"description": task.description[:200], "graph_type": task.graph_type},
+        )
+    except Exception:
+        pass  # Never block dispatch on event emission
+
     return _task_to_response(task)
 
 
@@ -233,6 +250,123 @@ async def list_active_tasks(
     )
     tasks = result.scalars().all()
     return [_task_to_response(t) for t in tasks]
+
+
+class TaskBoardItem(BaseModel):
+    id: str
+    description: str
+    graph_type: str
+    status: str
+    agent_names: list[str]
+    created_at: str
+    started_at: str | None
+    completed_at: str | None
+    duration_ms: int | None
+    total_tokens: int | None
+    event_count: int
+
+    model_config = {"from_attributes": True}
+
+
+class TaskBoardResponse(BaseModel):
+    columns: dict[str, list[TaskBoardItem]]
+    totals: dict[str, int]
+
+
+@router.get("/tasks/board", response_model=TaskBoardResponse)
+async def get_task_board(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> TaskBoardResponse:
+    """Return tasks grouped by status column with aggregated event data."""
+    # Fetch recent tasks (last 100)
+    result = await db.execute(
+        select(SwarmTask)
+        .where(SwarmTask.org_id == tenant.org_id)
+        .order_by(SwarmTask.created_at.desc())
+        .limit(100)
+    )
+    tasks = result.scalars().all()
+
+    # Aggregate event data per task
+    task_ids = [t.id for t in tasks]
+    event_agg: dict[str, dict] = {}
+    if task_ids:
+        agg_result = await db.execute(
+            select(
+                TaskEvent.task_id,
+                func.sum(TaskEvent.duration_ms),
+                func.sum(TaskEvent.token_count),
+                func.count(TaskEvent.id),
+            )
+            .where(TaskEvent.task_id.in_(task_ids))
+            .group_by(TaskEvent.task_id)
+        )
+        for row in agg_result:
+            event_agg[str(row[0])] = {
+                "duration_ms": row[1],
+                "total_tokens": row[2],
+                "event_count": row[3],
+            }
+
+    # Resolve agent names
+    all_agent_ids: set[str] = set()
+    for t in tasks:
+        for aid in (t.assigned_agent_ids or []):
+            all_agent_ids.add(aid)
+
+    agent_names: dict[str, str] = {}
+    if all_agent_ids:
+        for aid in all_agent_ids:
+            try:
+                uid = uuid.UUID(aid)
+                agent_result = await db.execute(select(Agent).where(Agent.id == uid))
+                agent = agent_result.scalar_one_or_none()
+                if agent:
+                    agent_names[aid] = agent.name
+            except (ValueError, Exception):
+                pass
+
+    # Build columns
+    columns: dict[str, list[TaskBoardItem]] = {
+        "queued": [],
+        "running": [],
+        "completed": [],
+        "failed": [],
+    }
+
+    status_map = {
+        "queued": "queued",
+        "pending": "queued",
+        "running": "running",
+        "completed": "completed",
+        "failed": "failed",
+        "cancelled": "failed",
+    }
+
+    for t in tasks:
+        task_id_str = str(t.id)
+        agg = event_agg.get(task_id_str, {})
+        col = status_map.get(t.status, "queued")
+
+        item = TaskBoardItem(
+            id=task_id_str,
+            description=t.description,
+            graph_type=t.graph_type,
+            status=t.status,
+            agent_names=[agent_names.get(aid, aid[:8]) for aid in (t.assigned_agent_ids or [])],
+            created_at=t.created_at.isoformat(),
+            started_at=t.started_at.isoformat() if t.started_at else None,
+            completed_at=t.completed_at.isoformat() if t.completed_at else None,
+            duration_ms=agg.get("duration_ms"),
+            total_tokens=agg.get("total_tokens"),
+            event_count=agg.get("event_count", 0),
+        )
+        columns[col].append(item)
+
+    totals = {col: len(items) for col, items in columns.items()}
+
+    return TaskBoardResponse(columns=columns, totals=totals)
 
 
 @router.get("/tasks/{task_id}", response_model=SwarmTaskResponse)

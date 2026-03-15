@@ -11,6 +11,7 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
+from ..event_emitter import instrumented_node
 from .base import BaseGraphState, check_permission
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class DeploymentState(BaseGraphState, TypedDict, total=False):
 # -- Node functions -----------------------------------------------------------
 
 
+@instrumented_node
 def validate(state: DeploymentState) -> DeploymentState:
     """Validate deployment parameters and check permissions.
 
@@ -86,6 +88,7 @@ def validate(state: DeploymentState) -> DeploymentState:
     }
 
 
+@instrumented_node
 def deploy_gate(state: DeploymentState) -> DeploymentState:
     """Interrupt execution before deployment to require human approval.
 
@@ -132,6 +135,7 @@ def deploy_gate(state: DeploymentState) -> DeploymentState:
     }
 
 
+@instrumented_node
 def deploy(state: DeploymentState) -> DeploymentState:
     """Trigger the deployment via the DeployTool.
 
@@ -194,6 +198,7 @@ def deploy(state: DeploymentState) -> DeploymentState:
         }
 
 
+@instrumented_node
 def monitor(state: DeploymentState) -> DeploymentState:
     """Check deployment status via the DeployStatusTool.
 

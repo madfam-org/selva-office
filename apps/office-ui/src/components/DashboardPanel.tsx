@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, type FC } from 'react';
-import type { Department, Agent } from '@autoswarm/shared-types';
+import type { Department, Agent, TaskBoardItem, TaskTimeline } from '@autoswarm/shared-types';
+import { useTaskBoard } from '@/hooks/useTaskBoard';
 
 interface DashboardPanelProps {
   open: boolean;
@@ -12,8 +13,6 @@ interface DashboardPanelProps {
   onOpenMapEditor?: () => void;
 }
 
-type TaskStatus = 'backlog' | 'in_progress' | 'review' | 'done';
-
 const DEPARTMENT_ICONS: Record<string, string> = {
   engineering: '\uD83D\uDD27',
   sales: '\uD83D\uDCCA',
@@ -22,63 +21,112 @@ const DEPARTMENT_ICONS: Record<string, string> = {
   blueprint: '\uD83D\uDCD0',
 };
 
-interface KanbanTask {
-  id: string;
-  agentName: string;
-  title: string;
-  status: TaskStatus;
-  departmentSlug: string;
-}
-
-const STATUS_COLUMNS: { key: TaskStatus; label: string; color: string }[] = [
-  { key: 'backlog', label: 'BACKLOG', color: 'text-slate-400' },
-  { key: 'in_progress', label: 'IN PROGRESS', color: 'text-blue-400' },
-  { key: 'review', label: 'REVIEW', color: 'text-amber-400' },
-  { key: 'done', label: 'DONE', color: 'text-emerald-400' },
+const STATUS_COLUMNS: { key: string; label: string; color: string; borderColor: string }[] = [
+  { key: 'queued', label: 'QUEUED', color: 'text-slate-400', borderColor: '#64748b' },
+  { key: 'running', label: 'RUNNING', color: 'text-blue-400', borderColor: '#3b82f6' },
+  { key: 'completed', label: 'COMPLETED', color: 'text-emerald-400', borderColor: '#10b981' },
+  { key: 'failed', label: 'FAILED', color: 'text-red-400', borderColor: '#ef4444' },
 ];
 
-/**
- * Derive kanban tasks from agent statuses.
- * Maps agent status to a kanban column for visualization.
- */
-function deriveTasksFromAgents(departments: Department[]): KanbanTask[] {
-  const tasks: KanbanTask[] = [];
-
-  departments.forEach((dept) => {
-    dept.agents.forEach((agent: Agent) => {
-      // currentTaskId may be null (from API) or empty string (from Colyseus)
-      const taskId = agent.currentTaskId;
-      if (!taskId) return;
-
-      let status: TaskStatus = 'backlog';
-      switch (agent.status) {
-        case 'working':
-          status = 'in_progress';
-          break;
-        case 'waiting_approval':
-          status = 'review';
-          break;
-        case 'idle':
-          status = taskId ? 'done' : 'backlog';
-          break;
-        case 'paused':
-        case 'error':
-          status = 'backlog';
-          break;
-      }
-
-      tasks.push({
-        id: taskId,
-        agentName: agent.name,
-        title: `Task ${taskId.substring(0, 8)}`,
-        status,
-        departmentSlug: dept.slug,
-      });
-    });
-  });
-
-  return tasks;
+function formatDuration(ms: number | null | undefined): string {
+  if (ms == null) return '';
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
 }
+
+const TaskTimelineView: FC<{
+  timeline: TaskTimeline;
+  onClose: () => void;
+}> = ({ timeline, onClose }) => (
+  <div className="border-b border-slate-700 px-3 py-2">
+    <div className="flex items-center justify-between mb-2">
+      <h3 className="pixel-text text-[7px] uppercase text-indigo-400">
+        Timeline ({timeline.events.length} events)
+      </h3>
+      <button
+        onClick={onClose}
+        className="font-mono text-[8px] text-slate-500 hover:text-white"
+      >
+        [close]
+      </button>
+    </div>
+    <div className="flex gap-2 mb-2 font-mono text-[7px] text-slate-500">
+      {timeline.total_duration_ms != null && (
+        <span>Total: {formatDuration(timeline.total_duration_ms)}</span>
+      )}
+      {timeline.total_tokens != null && (
+        <span>{timeline.total_tokens.toLocaleString()} tokens</span>
+      )}
+    </div>
+    <div className="max-h-40 overflow-y-auto space-y-0.5">
+      {timeline.events.map((ev) => (
+        <div
+          key={ev.id}
+          className="flex items-center gap-1 font-mono text-[7px] py-0.5 border-l-2 pl-1"
+          style={{
+            borderColor: ev.event_type.includes('error') ? '#ef4444'
+              : ev.event_category === 'llm' ? '#a855f7'
+              : ev.event_category === 'node' ? '#22d3ee'
+              : '#64748b',
+          }}
+        >
+          <span className="text-slate-500 w-14 shrink-0">
+            {new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+          <span className={ev.event_type.includes('error') ? 'text-red-400' : 'text-slate-300'}>
+            {ev.event_type}
+          </span>
+          {ev.node_id && <span className="text-cyan-400">[{ev.node_id}]</span>}
+          {ev.duration_ms != null && (
+            <span className="text-slate-600">{formatDuration(ev.duration_ms)}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const TaskCard: FC<{
+  task: TaskBoardItem;
+  borderColor: string;
+  index: number;
+  onSelect: (id: string) => void;
+}> = ({ task, borderColor, index, onSelect }) => (
+  <div
+    onClick={() => onSelect(task.id)}
+    className="bg-slate-800/60 px-2 py-1.5 font-mono text-[8px] shadow-[0_0_0_1px_#334155] transition-all duration-150 hover:bg-slate-700/60 hover:translate-x-1 cursor-pointer animate-fade-in-up"
+    style={{
+      borderLeft: `2px solid ${borderColor}`,
+      animationDelay: `${index * 50}ms`,
+    }}
+  >
+    <div className="flex items-center justify-between">
+      <p className="truncate text-slate-200 flex-1 min-w-0">
+        {task.description.length > 50
+          ? task.description.substring(0, 50) + '...'
+          : task.description}
+      </p>
+      <span className="ml-1 rounded bg-slate-700 px-1 text-[6px] text-slate-400 uppercase">
+        {task.graph_type}
+      </span>
+    </div>
+    <div className="flex items-center gap-2 mt-0.5">
+      {task.agent_names.length > 0 && (
+        <span className="text-cyan-400">{task.agent_names.join(', ')}</span>
+      )}
+      {task.duration_ms != null && (
+        <span className="text-slate-500">{formatDuration(task.duration_ms)}</span>
+      )}
+      {task.total_tokens != null && task.total_tokens > 0 && (
+        <span className="text-purple-400">{task.total_tokens} tok</span>
+      )}
+      {task.event_count > 0 && (
+        <span className="text-slate-600">{task.event_count} events</span>
+      )}
+    </div>
+  </div>
+);
 
 export const DashboardPanel: FC<DashboardPanelProps> = ({
   open,
@@ -89,7 +137,7 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
   onOpenMapEditor,
 }) => {
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
-  const tasks = deriveTasksFromAgents(departments);
+  const { board, selectedTimeline, timelineLoading, selectTask, clearSelection } = useTaskBoard();
 
   // Listen for postMessage events from other components
   useEffect(() => {
@@ -102,9 +150,9 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  const filteredTasks = selectedDepartment
-    ? tasks.filter((t) => t.departmentSlug === selectedDepartment)
-    : tasks;
+  const handleSelectTask = (taskId: string) => {
+    void selectTask(taskId);
+  };
 
   return (
     <>
@@ -208,10 +256,10 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
                 .map((dept) => {
                   const deptAgentCount = dept.agents.length;
                   const deptTaskCount = dept.agents.filter(
-                    (a) => a.currentTaskId,
+                    (a: Agent) => a.currentTaskId,
                   ).length;
                   const synergyCount = dept.agents.reduce(
-                    (sum, a) => sum + (a.synergyBonuses?.length ?? 0),
+                    (sum: number, a: Agent) => sum + (a.synergyBonuses?.length ?? 0),
                     0,
                   );
 
@@ -261,8 +309,8 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
           {(() => {
             const workingAgents = departments.flatMap((dept) =>
               dept.agents
-                .filter((a) => a.status === 'working')
-                .map((a) => ({ ...a, deptSlug: dept.slug })),
+                .filter((a: Agent) => a.status === 'working')
+                .map((a: Agent) => ({ ...a, deptSlug: dept.slug })),
             );
             if (workingAgents.length === 0) return null;
             return (
@@ -285,13 +333,21 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
             );
           })()}
 
-          {/* Kanban columns */}
+          {/* Task timeline detail view */}
+          {timelineLoading && (
+            <div className="border-b border-slate-700 px-3 py-4 text-center font-mono text-[8px] text-slate-500">
+              Loading timeline...
+            </div>
+          )}
+          {selectedTimeline && !timelineLoading && (
+            <TaskTimelineView timeline={selectedTimeline} onClose={clearSelection} />
+          )}
+
+          {/* DB-backed Kanban columns */}
           <div className="flex-1 overflow-y-auto px-3 py-3">
             <div className="space-y-3">
               {STATUS_COLUMNS.map((column) => {
-                const columnTasks = filteredTasks.filter(
-                  (t) => t.status === column.key,
-                );
+                const columnTasks = board?.columns[column.key] ?? [];
 
                 return (
                   <div key={column.key}>
@@ -313,23 +369,13 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
                     ) : (
                       <div className="space-y-1">
                         {columnTasks.map((task, taskIdx) => (
-                          <div
+                          <TaskCard
                             key={task.id}
-                            className="flex items-center justify-between bg-slate-800/60 px-2 py-1.5 font-mono text-[8px] shadow-[0_0_0_1px_#334155] transition-all duration-150 hover:bg-slate-700/60 hover:translate-x-1 cursor-default animate-fade-in-up"
-                            style={{
-                              borderLeft: `2px solid ${column.key === 'in_progress' ? '#3b82f6' : column.key === 'review' ? '#f59e0b' : column.key === 'done' ? '#10b981' : '#64748b'}`,
-                              animationDelay: `${taskIdx * 50}ms`,
-                            }}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-slate-200">
-                                {task.title}
-                              </p>
-                              <p className="text-slate-500">
-                                {task.agentName}
-                              </p>
-                            </div>
-                          </div>
+                            task={task}
+                            borderColor={column.borderColor}
+                            index={taskIdx}
+                            onSelect={handleSelectTask}
+                          />
                         ))}
                       </div>
                     )}
