@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -149,8 +150,9 @@ class InterruptHandler:
                 )
                 return approval
 
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
+            jittered = poll_interval * (0.5 + random.random())
+            await asyncio.sleep(jittered)
+            elapsed += jittered
 
         raise TimeoutError(
             f"Approval request {request_id} was not resolved within {timeout} seconds"

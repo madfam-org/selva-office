@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import shutil
 import signal
 import sys
 from datetime import UTC, datetime
@@ -495,8 +496,70 @@ async def _run_custom_with_streaming(
     return result
 
 
+async def _cleanup_stale_worktrees(repo_base: str, stale_hours: int = 24) -> int:
+    """Remove worktree directories older than *stale_hours*.
+
+    Scans ``<repo_base>/*/_worktrees/*/`` for stale directories.
+    Returns the number of worktrees removed.
+    """
+    import time
+
+    base = Path(repo_base).expanduser().resolve()
+    if not base.exists():
+        return 0
+
+    cutoff = time.time() - (stale_hours * 3600)
+    removed = 0
+
+    for worktree_root in base.glob("*/_worktrees"):
+        if not worktree_root.is_dir():
+            continue
+        for wt_dir in worktree_root.iterdir():
+            if not wt_dir.is_dir():
+                continue
+            try:
+                mtime = wt_dir.stat().st_mtime
+                if mtime < cutoff:
+                    shutil.rmtree(wt_dir, ignore_errors=True)
+                    removed += 1
+                    logger.info("Removed stale worktree: %s", wt_dir)
+            except OSError:
+                logger.warning("Could not stat worktree: %s", wt_dir)
+
+    if removed > 0:
+        logger.info("Cleaned up %d stale worktree(s) from %s", removed, base)
+    return removed
+
+
+# Active concurrent tasks tracked for graceful shutdown.
+_active_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
+_task_semaphore: asyncio.Semaphore | None = None
+
+
+async def _process_with_semaphore(
+    consumer: TaskStreamConsumer,
+    msg_id: str,
+    task_data: dict,
+) -> None:
+    """Process a single task under the concurrency semaphore."""
+    assert _task_semaphore is not None
+    task_id = task_data.get("task_id", "unknown")
+    async with _task_semaphore:
+        try:
+            await process_task(task_data)
+            await consumer.ack(msg_id)
+        except Exception:
+            logger.exception("Task %s failed (msg_id=%s)", task_id, msg_id)
+            retries = await consumer.retry_count(msg_id)
+            if retries >= MAX_RETRIES:
+                error_msg = f"Max retries ({MAX_RETRIES}) exceeded"
+                await consumer.move_to_dlq(msg_id, task_data, error_msg)
+
+
 async def main() -> None:
     """Entry point: connect to Redis and consume the task stream."""
+    global _task_semaphore  # noqa: PLW0603
+
     settings = get_settings()
     logger.info("Worker configuration validated")
 
@@ -512,6 +575,9 @@ async def main() -> None:
         sys.exit(1)
 
     logger.info("Connected to Redis at %s", settings.redis_url)
+
+    # Cleanup stale worktrees from previous runs.
+    await _cleanup_stale_worktrees(settings.repo_base_path, settings.worktree_stale_hours)
 
     # Log available inference providers at startup.
     from .inference import validate_providers
@@ -532,7 +598,14 @@ async def main() -> None:
         except Exception:
             logger.exception("Failed to process stalled task %s", msg_id)
 
-    logger.info("Worker listening on stream '%s'", "autoswarm:task-stream")
+    logger.info(
+        "Worker listening on stream '%s' (max_concurrent=%d)",
+        "autoswarm:task-stream",
+        settings.max_concurrent_tasks,
+    )
+
+    # Initialize concurrency semaphore
+    _task_semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 
     # Exponential backoff state for connection errors
     backoff_delay = 1.0
@@ -540,12 +613,13 @@ async def main() -> None:
 
     try:
         while not _shutdown.is_set():
-            # Check shutdown before starting new task
             if _shutdown.is_set():
                 break
 
             try:
-                messages = await consumer.read(count=1, block=5000)
+                messages = await consumer.read(
+                    count=settings.max_concurrent_tasks, block=5000,
+                )
                 if not messages:
                     continue
 
@@ -553,22 +627,14 @@ async def main() -> None:
                 backoff_delay = 1.0
 
                 for msg_id, task_data in messages:
-                    # Check shutdown between tasks
                     if _shutdown.is_set():
                         break
 
-                    task_id = task_data.get("task_id", "unknown")
-                    try:
-                        await process_task(task_data)
-                        await consumer.ack(msg_id)
-                    except Exception:
-                        logger.exception("Task %s failed (msg_id=%s)", task_id, msg_id)
-                        # Check retry count
-                        retries = await consumer.retry_count(msg_id)
-                        if retries >= MAX_RETRIES:
-                            error_msg = f"Max retries ({MAX_RETRIES}) exceeded"
-                            await consumer.move_to_dlq(msg_id, task_data, error_msg)
-                        # Leave unacked for re-delivery on next claim_stalled
+                    task = asyncio.create_task(
+                        _process_with_semaphore(consumer, msg_id, task_data)
+                    )
+                    _active_tasks.add(task)
+                    task.add_done_callback(_active_tasks.discard)
 
             except ConnectionError:
                 logger.warning(
@@ -577,6 +643,10 @@ async def main() -> None:
                 await asyncio.sleep(backoff_delay)
                 backoff_delay = min(backoff_delay * 2, max_backoff)
     finally:
+        # Drain active tasks on shutdown.
+        if _active_tasks:
+            logger.info("Draining %d active task(s)...", len(_active_tasks))
+            await asyncio.gather(*_active_tasks, return_exceptions=True)
         await pool.close()
         logger.info("Worker shut down")
 

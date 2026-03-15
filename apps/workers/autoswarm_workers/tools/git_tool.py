@@ -106,17 +106,18 @@ class GitTool:
         branch: str,
         title: str,
         body: str,
+        *,
+        token: str | None = None,
     ) -> BashResult:
         """Create a GitHub pull request using the ``gh`` CLI.
-
-        Requires ``GH_TOKEN`` to be set in the environment (callers
-        should set it before invoking this method).
 
         Args:
             repo_path: Path to the repository (or worktree).
             branch: The head branch for the PR.
             title: PR title.
             body: PR body/description.
+            token: Optional GitHub token passed via subprocess env
+                (avoids polluting ``os.environ``).
 
         Returns:
             BashResult with the ``gh`` output.
@@ -133,10 +134,12 @@ class GitTool:
             )
         safe_title = title.replace("'", "'\\''")
         safe_body = body.replace("'", "'\\''")
-        return await self.bash.execute(
+        cmd = (
             f"gh pr create -C {repo_path} --head {branch} "
             f"--title '{safe_title}' --body '{safe_body}'"
         )
+        env = {"GH_TOKEN": token} if token else None
+        return await self.bash.execute(cmd, env=env)
 
     async def create_worktree(self, repo_path: str, branch_name: str) -> str:
         """Create an isolated Git worktree for agent work.

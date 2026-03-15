@@ -108,6 +108,7 @@ class ApprovalRequest(Base):
     urgency: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    responded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     org_id: Mapped[str] = mapped_column(
         String(255), nullable=False, default="default", index=True
     )

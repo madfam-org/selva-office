@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     # -- Security -------------------------------------------------------------
     dev_auth_bypass: bool = False
     rate_limit_per_minute: int = 60
+    dispatch_rate_limit: int = 10
+    dispatch_rate_window: int = 60
     csp_extra_sources: str = ""
     log_format: str = "json"
 

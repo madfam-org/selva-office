@@ -161,10 +161,13 @@ def implement(state: CodingState) -> CodingState:
         }
 
     code_output: str | None = None
+    llm_available = False
+    max_retries = 2
     try:
         from ..inference import call_llm, get_model_router
 
         router = get_model_router()
+        llm_available = True
         plan_msg = next(
             (
                 m for m in reversed(messages)
@@ -185,17 +188,59 @@ def implement(state: CodingState) -> CodingState:
             '{\"files\": [{\"path\": \"src/main.py\", \"content\": \"...\"}]}'
         )
         system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
-        code_output = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": f"Implement step {iteration}: {current_step}"}],
-            system_prompt=system_prompt,
-            task_type="coding",
-        ))
+
+        last_error: str | None = None
+        for attempt in range(1 + max_retries):
+            user_content = f"Implement step {iteration}: {current_step}"
+            if last_error and attempt > 0:
+                user_content = (
+                    f"Your previous response was not valid JSON: {last_error}. "
+                    "Return ONLY a JSON object with key 'files' containing an "
+                    "array of objects with 'path' and 'content' keys.\n\n"
+                    f"Original request: Implement step {iteration}: {current_step}"
+                )
+
+            raw = _run_async(call_llm(
+                router,
+                messages=[{"role": "user", "content": user_content}],
+                system_prompt=system_prompt,
+                task_type="coding",
+            ))
+
+            try:
+                parsed = _json.loads(raw)
+                if isinstance(parsed.get("files"), list):
+                    code_output = raw
+                    break
+                last_error = "Response missing 'files' array"
+            except _json.JSONDecodeError as exc:
+                last_error = str(exc)
+                logger.warning(
+                    "LLM returned invalid JSON (attempt %d/%d): %s",
+                    attempt + 1, 1 + max_retries, last_error,
+                )
+        else:
+            # All retries exhausted — fail the node
+            if llm_available:
+                error_msg = AIMessage(
+                    content=(
+                        f"LLM failed to produce valid JSON after "
+                        f"{1 + max_retries} attempts: {last_error}"
+                    ),
+                )
+                return {
+                    **state,
+                    "messages": [*messages, error_msg],
+                    "status": "error",
+                }
+
     except Exception:
-        pass  # Fall through to placeholder path
+        pass  # Fall through to placeholder path (no LLM configured)
 
     # Write files to worktree from LLM output or placeholder.
-    files_written = _write_files_to_worktree(worktree_path, code_output, state)
+    files_written = _write_files_to_worktree(
+        worktree_path, code_output, state, placeholder_ok=not llm_available,
+    )
 
     summary = code_output[:500] if code_output else f"Implementation iteration {iteration}"
 
@@ -226,11 +271,15 @@ def _write_files_to_worktree(
     worktree_path: str | None,
     code_output: str | None,
     state: CodingState,
+    *,
+    placeholder_ok: bool = True,
 ) -> list[str]:
     """Parse LLM JSON output and write files to the worktree.
 
-    Returns a list of relative paths written. Falls back to writing a
-    placeholder file when no valid JSON is produced.
+    Returns a list of relative paths written.  When *placeholder_ok* is
+    ``True`` (no LLM configured) a placeholder file is written as a
+    fallback.  When ``False`` (LLM was available but produced garbage),
+    the caller should treat an empty return as an error.
     """
     if not worktree_path:
         return []
@@ -258,10 +307,10 @@ def _write_files_to_worktree(
                 target.write_text(content)
                 files_written.append(rel_path)
         except (_json.JSONDecodeError, KeyError, TypeError):
-            pass  # Fall through to placeholder
+            logger.warning("Failed to parse LLM code output as JSON")
 
-    # Placeholder when LLM produced no parseable files.
-    if not files_written:
+    # Placeholder only when no LLM was configured (not when LLM failed).
+    if not files_written and placeholder_ok:
         desc = state.get("description", "Agent task")
         placeholder = wt / "AUTOSWARM_PLACEHOLDER.md"
         placeholder.write_text(f"# AutoSwarm Placeholder\n\nTask: {desc}\n")
@@ -504,14 +553,10 @@ def _create_pr_after_push(
 
     Failures are logged but never raised — PR creation is best-effort.
     """
-    import os
-
     try:
         from ..config import get_settings as _get_worker_settings
 
         settings = _get_worker_settings()
-        if settings.github_token:
-            os.environ["GH_TOKEN"] = settings.github_token
 
         description = state.get("description", "Agent changes")
         code_changes = state.get("code_changes", [])
@@ -523,7 +568,11 @@ def _create_pr_after_push(
             f"**Description**: {description}\n"
             f"**Files changed**: {file_count}\n"
         )
-        pr_result = _run_async(git_tool.create_pr(worktree_path, branch, title, body))
+        pr_result = _run_async(
+            git_tool.create_pr(
+                worktree_path, branch, title, body, token=settings.github_token,
+            )
+        )
         if pr_result.return_code == 0:
             logger.info("PR created for branch %s: %s", branch, pr_result.stdout.strip())
         else:
@@ -533,6 +582,13 @@ def _create_pr_after_push(
 
 
 # -- Conditional edge routing -------------------------------------------------
+
+
+def _route_after_implement(state: CodingState) -> str:
+    """Route after implement: error goes to END, otherwise test."""
+    if state.get("status") == "error":
+        return END
+    return "test"
 
 
 def _route_after_test(state: CodingState) -> str:
@@ -571,7 +627,10 @@ def build_coding_graph() -> StateGraph:
 
     graph.set_entry_point("plan")
     graph.add_edge("plan", "implement")
-    graph.add_edge("implement", "test")
+    graph.add_conditional_edges(
+        "implement", _route_after_implement,
+        {"test": "test", END: END},
+    )
     graph.add_conditional_edges(
         "test", _route_after_test,
         {"review": "review", "implement": "implement"},

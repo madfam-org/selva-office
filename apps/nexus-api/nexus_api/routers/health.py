@@ -177,3 +177,34 @@ async def queue_stats() -> dict[str, object]:
 
     stats["redis_pool"] = pool.metrics()
     return stats
+
+
+@router.get("/dlq-stats")
+async def dlq_stats() -> dict[str, object]:
+    """Return dead-letter queue statistics and recent entries."""
+    pool = get_redis_pool(url=_settings.redis_url)
+    result: dict[str, object] = {}
+
+    try:
+        client = await pool.client()
+
+        try:
+            result["depth"] = await client.xlen("autoswarm:task-dlq")
+        except Exception:
+            result["depth"] = 0
+
+        # Return the 10 most recent DLQ entries.
+        try:
+            entries = await client.xrevrange("autoswarm:task-dlq", count=10)
+            result["recent"] = [
+                {"id": eid, "data": data}
+                for eid, data in entries
+            ]
+        except Exception:
+            result["recent"] = []
+
+    except Exception as exc:
+        logger.warning("Failed to fetch DLQ stats: %s", exc)
+        result["error"] = str(exc)
+
+    return result

@@ -72,12 +72,19 @@ class BashTool:
                 return pattern.pattern
         return None
 
-    async def execute(self, command: str) -> BashResult:
+    async def execute(
+        self, command: str, *, env: dict[str, str] | None = None,
+    ) -> BashResult:
         """Execute a shell command in a sandboxed subprocess.
 
         The command is first checked against the blocklist.  If it
         matches a dangerous pattern, execution is refused without
         spawning a process.
+
+        Args:
+            command: Shell command to execute.
+            env: Optional extra environment variables merged with
+                ``os.environ``.  Keys in *env* override inherited values.
 
         Returns a ``BashResult`` with stdout, stderr, and return code.
         """
@@ -92,6 +99,23 @@ class BashTool:
                 return_code=126,
             )
 
+        # -- Path containment check -------------------------------------------
+        if self.allowed_cwd and re.search(r'\bcd\s+[^;|&]*\.\.', command):
+            logger.warning("Blocked cd .. in sandboxed command: %s", command)
+            return BashResult(
+                command=command,
+                stdout="",
+                stderr="Command blocked: directory traversal not allowed in sandbox",
+                return_code=126,
+            )
+
+        # -- Build subprocess environment ------------------------------------
+        import os
+
+        subprocess_env: dict[str, str] | None = None
+        if env:
+            subprocess_env = {**os.environ, **env}
+
         # -- Execute ----------------------------------------------------------
         try:
             process = await asyncio.create_subprocess_shell(
@@ -99,6 +123,7 @@ class BashTool:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self.allowed_cwd,
+                env=subprocess_env,
             )
 
             try:
