@@ -63,6 +63,25 @@ async def test_create_pr_gh_not_installed(git_tool: GitTool) -> None:
 
 
 @pytest.mark.asyncio
+async def test_configure_identity_sets_name_and_email(git_tool: GitTool) -> None:
+    """configure_identity runs git config for user.name and user.email."""
+    git_tool.bash = AsyncMock()
+    git_tool.bash.execute = AsyncMock(
+        return_value=BashResult(command="", stdout="", stderr="", return_code=0)
+    )
+
+    result = await git_tool.configure_identity("/repo", "bot-user", "bot@example.com")
+
+    assert result.return_code == 0
+    assert git_tool.bash.execute.call_count == 2
+    calls = [c[0][0] for c in git_tool.bash.execute.call_args_list]
+    assert "user.name" in calls[0]
+    assert "bot-user" in calls[0]
+    assert "user.email" in calls[1]
+    assert "bot@example.com" in calls[1]
+
+
+@pytest.mark.asyncio
 async def test_cleanup_worktree_shutil_fallback(git_tool: GitTool) -> None:
     """cleanup_worktree falls back to shutil.rmtree when git remove fails."""
     git_tool.bash = AsyncMock()

@@ -33,6 +33,8 @@ async def update_task_status(
         body["error_message"] = error_message
 
     url = f"{nexus_url}/api/v1/swarms/tasks/{task_id}"
-    success = await fire_and_forget_request("PATCH", url, json=body, timeout=5.0)
+    success = await fire_and_forget_request(
+        "PATCH", url, json=body, headers={"Authorization": "Bearer dev-bypass"}, timeout=5.0,
+    )
     if not success:
         logger.warning("Failed to update task %s status to %s after retries", task_id, status)

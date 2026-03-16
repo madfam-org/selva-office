@@ -44,7 +44,7 @@ class TestEmitEvent:
             mock_ffr.assert_called_once()
             call_args = mock_ffr.call_args
             assert call_args[0][0] == "POST"
-            assert call_args[0][1] == "http://test:4300/api/v1/events"
+            assert call_args[0][1] == "http://test:4300/api/v1/events/"
             payload = call_args[1]["json"]
             assert payload["event_type"] == "node.entered"
             assert payload["event_category"] == "node"

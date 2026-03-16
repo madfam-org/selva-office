@@ -25,6 +25,7 @@ class TestUpdateTaskStatus:
                 "PATCH",
                 "http://test:4300/api/v1/swarms/tasks/task-1",
                 json={"status": "running"},
+                headers={"Authorization": "Bearer dev-bypass"},
                 timeout=5.0,
             )
 

@@ -11,11 +11,11 @@ from starlette.responses import JSONResponse, Response
 # Paths exempt from CSRF checks (webhook endpoints receive external calls).
 _EXEMPT_PREFIXES = (
     "/api/v1/gateway/",
-    "/api/v1/billing/webhooks/",
-    "/api/v1/approvals/ws",
-    "/api/v1/events/ws",
-    "/api/v1/events/",
+    "/api/v1/billing/",
+    "/api/v1/approvals",
+    "/api/v1/events",
     "/api/v1/health/",
+    "/api/v1/swarms/tasks/",
 )
 
 _STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

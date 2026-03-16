@@ -110,6 +110,25 @@ class TestWorkerInferenceKeyWarning:
         assert len(inference_warnings) == 0
 
 
+class TestWorkerGitIdentitySettings:
+    """Git identity settings for agent commits."""
+
+    def test_defaults_to_madfam_bot(self) -> None:
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            settings = _make_settings()
+        assert settings.git_author_name == "madfam-bot"
+        assert settings.git_author_email == "bot@madfam.io"
+
+    def test_custom_git_identity(self) -> None:
+        settings = _make_settings(
+            git_author_name="custom-bot",
+            git_author_email="custom@example.com",
+        )
+        assert settings.git_author_name == "custom-bot"
+        assert settings.git_author_email == "custom@example.com"
+
+
 class TestWorkerDefaultSettingsValid:
     """Default Settings (with warnings) must not raise."""
 

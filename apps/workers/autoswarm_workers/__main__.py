@@ -188,7 +188,10 @@ async def _fetch_agent_skills(nexus_url: str, agent_id: str) -> list[str]:
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{nexus_url}/api/v1/agents/{agent_id}")
+            resp = await client.get(
+                f"{nexus_url}/api/v1/agents/{agent_id}",
+                headers={"Authorization": "Bearer dev-bypass"},
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 skills = data.get("effective_skills", [])

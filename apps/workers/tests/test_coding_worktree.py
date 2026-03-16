@@ -71,6 +71,9 @@ class TestCodingWorktree:
         from autoswarm_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
+        mock_git.configure_identity = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
         mock_git.commit = AsyncMock(
             return_value=MagicMock(return_code=0, stderr=""),
         )
@@ -84,6 +87,8 @@ class TestCodingWorktree:
 
         mock_settings = MagicMock()
         mock_settings.github_token = None
+        mock_settings.git_author_name = "madfam-bot"
+        mock_settings.git_author_email = "bot@madfam.io"
 
         with (
             patch(
@@ -167,6 +172,9 @@ class TestPushGateCommitPush:
         from autoswarm_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
+        mock_git.configure_identity = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
         mock_git.commit = AsyncMock(
             return_value=MagicMock(return_code=0, stderr=""),
         )
@@ -180,6 +188,8 @@ class TestPushGateCommitPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = None
+        mock_settings.git_author_name = "madfam-bot"
+        mock_settings.git_author_email = "bot@madfam.io"
 
         with (
             patch(
@@ -243,6 +253,9 @@ class TestPushGateCommitPush:
         from autoswarm_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
+        mock_git.configure_identity = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
         mock_git.commit = AsyncMock(
             return_value=MagicMock(return_code=1, stderr="nothing to commit"),
         )
@@ -251,6 +264,8 @@ class TestPushGateCommitPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = None
+        mock_settings.git_author_name = "madfam-bot"
+        mock_settings.git_author_email = "bot@madfam.io"
 
         with (
             patch(

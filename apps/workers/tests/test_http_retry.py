@@ -67,7 +67,8 @@ class TestFireAndForgetRequest:
 
         assert result is True
         mock_client.request.assert_called_once_with(
-            "PATCH", "http://test:4300/api/v1/tasks/1", json={"status": "running"}
+            "PATCH", "http://test:4300/api/v1/tasks/1", json={"status": "running"},
+            headers=None,
         )
 
     @pytest.mark.asyncio

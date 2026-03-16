@@ -62,6 +62,19 @@
   delay), then falls through to alternative providers.
 - **Approval Audit Trail**: `responded_by` column on `approval_requests` (migration
   0012). Populated from JWT `sub` claim.
+- **Git Identity**: `GitTool.configure_identity()` sets repo-local `user.name` /
+  `user.email` before every agent commit. Config: `GIT_AUTHOR_NAME` (default
+  `madfam-bot`), `GIT_AUTHOR_EMAIL` (default `bot@madfam.io`).
+- **Worker-to-API Auth**: `fire_and_forget_request()` accepts optional `headers`
+  kwarg. `task_status.py` and `interrupt_handler.py` pass `Authorization: Bearer
+  dev-bypass` for CSRF bypass. `_fetch_agent_skills()` in `__main__.py` also
+  passes Bearer auth.
+- **CSRF Exemptions**: `/api/v1/events`, `/api/v1/approvals`, `/api/v1/billing/`,
+  `/api/v1/swarms/tasks/` added to CSRF exempt prefixes (worker-to-API calls).
+- **PR Creation Compat**: `GitTool.create_pr()` resolves `OWNER/REPO` from git
+  remote URL and uses `--repo` flag instead of `-C` (compat with older `gh` CLI).
+- **Worktree Branch Naming**: `plan()` creates worktree with branch
+  `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
 ## Port Assignments
 

@@ -112,7 +112,7 @@ def plan(state: CodingState) -> CodingState:
             git_tool = GitTool()
             task_id = state.get("task_id", "unknown")
             worktree_path = _run_async(
-                git_tool.create_worktree(repo_path, f"task-{task_id}")
+                git_tool.create_worktree(repo_path, f"autoswarm/task-{task_id}")
             )
             logger.info("Created worktree at %s", worktree_path)
         except Exception:
@@ -487,6 +487,9 @@ def push_gate(state: CodingState) -> CodingState:
 
                 settings = _get_worker_settings()
                 git_tool = GitTool()
+                _run_async(git_tool.configure_identity(
+                    worktree_path, settings.git_author_name, settings.git_author_email,
+                ))
                 commit_msg = f"autoswarm: {state.get('description', 'agent changes')[:200]}"
                 commit_result = _run_async(git_tool.commit(worktree_path, commit_msg))
                 if commit_result.return_code == 0:

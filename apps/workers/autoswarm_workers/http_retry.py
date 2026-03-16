@@ -75,6 +75,7 @@ async def fire_and_forget_request(
     url: str,
     *,
     json: dict | None = None,
+    headers: dict[str, str] | None = None,
     timeout: float = 5.0,
     max_retries: int = 3,
     base_delay: float = 0.5,
@@ -92,7 +93,7 @@ async def fire_and_forget_request(
     for attempt in range(max_retries):
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
-                resp = await client.request(method, url, json=json)
+                resp = await client.request(method, url, json=json, headers=headers)
                 if resp.status_code < 500:
                     cb.record_success()
                     if resp.status_code not in (200, 201, 204):

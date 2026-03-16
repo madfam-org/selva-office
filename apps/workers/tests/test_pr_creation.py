@@ -28,8 +28,8 @@ class TestCreatePr:
 
         result = await tool.create_pr("/repo", "feat/x", "Title", "Body text")
 
-        assert tool.bash.execute.call_count == 2
-        cmd = tool.bash.execute.call_args_list[1][0][0]
+        assert tool.bash.execute.call_count == 3  # command -v gh, git remote get-url, gh pr create
+        cmd = tool.bash.execute.call_args_list[2][0][0]
         assert "gh pr create" in cmd
         assert "--head feat/x" in cmd
         assert "Title" in cmd
@@ -48,8 +48,8 @@ class TestCreatePr:
 
         await tool.create_pr("/repo", "feat/x", "It's a title", "It's a body")
 
-        # Second call is the actual gh pr create (first is `command -v gh`)
-        cmd = tool.bash.execute.call_args_list[1][0][0]
+        # Third call is the actual gh pr create (1st: command -v gh, 2nd: git remote)
+        cmd = tool.bash.execute.call_args_list[2][0][0]
         # Single quotes should be escaped
         assert "'\\''" in cmd
 
@@ -61,6 +61,9 @@ class TestPrCreationAfterPush:
         from autoswarm_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
+        mock_git.configure_identity = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
         mock_git.commit = AsyncMock(
             return_value=MagicMock(return_code=0, stderr=""),
         )
@@ -74,6 +77,8 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
+        mock_settings.git_author_name = "madfam-bot"
+        mock_settings.git_author_email = "bot@madfam.io"
 
         with (
             patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),
@@ -96,6 +101,9 @@ class TestPrCreationAfterPush:
         from autoswarm_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
+        mock_git.configure_identity = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
         mock_git.commit = AsyncMock(
             return_value=MagicMock(return_code=0, stderr=""),
         )
@@ -107,6 +115,8 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
+        mock_settings.git_author_name = "madfam-bot"
+        mock_settings.git_author_email = "bot@madfam.io"
 
         with (
             patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),
@@ -127,6 +137,9 @@ class TestPrCreationAfterPush:
         from autoswarm_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
+        mock_git.configure_identity = AsyncMock(
+            return_value=MagicMock(return_code=0, stderr=""),
+        )
         mock_git.commit = AsyncMock(
             return_value=MagicMock(return_code=0, stderr=""),
         )
@@ -140,6 +153,8 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
+        mock_settings.git_author_name = "madfam-bot"
+        mock_settings.git_author_email = "bot@madfam.io"
 
         with (
             patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),

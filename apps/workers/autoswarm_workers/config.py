@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     # -- GitHub / Deployment ---------------------------------------------------
     github_token: str | None = None
     enclii_deploy_token: str | None = None
+    git_author_name: str = "madfam-bot"
+    git_author_email: str = "bot@madfam.io"
 
     # -- Concurrency / Timeouts -----------------------------------------------
     max_concurrent_tasks: int = 3
