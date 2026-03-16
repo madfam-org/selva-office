@@ -53,5 +53,8 @@ data/*
 # Org config (secrets outside repo)
 .autoswarm/
 
+# Gateway runtime data
+apps/gateway/data/
+
 # Misc
 *.tsbuildinfo

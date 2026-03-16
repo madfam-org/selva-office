@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -20,7 +20,7 @@ class TestConfigureCredentials:
             return_value=MagicMock(success=True, stdout="", stderr="", return_code=0)
         )
 
-        result = await tool.configure_credentials("/repo", "ghp_test123")
+        await tool.configure_credentials("/repo", "ghp_test123")
 
         tool.bash.execute.assert_called_once()
         cmd = tool.bash.execute.call_args[0][0]

@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from autoswarm_permissions import (
+    DEFAULT_CONTEXT_RULES,
+    DEFAULT_PERMISSION_MATRIX,
+    ROLE_PERMISSION_MATRICES,
     PermissionContext,
     PermissionEngine,
     RiskScoreRule,
     RoleMatrixRule,
     TimeOfDayRule,
     TrustLevelRule,
-    DEFAULT_CONTEXT_RULES,
-    DEFAULT_PERMISSION_MATRIX,
-    ROLE_PERMISSION_MATRICES,
 )
 from autoswarm_permissions.types import ActionCategory, PermissionLevel
 
@@ -25,25 +23,25 @@ class TestTimeOfDayRule:
 
     def test_blocks_deploy_after_hours(self) -> None:
         rule = TimeOfDayRule()
-        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 23, 0, tzinfo=timezone.utc))
+        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 23, 0, tzinfo=UTC))
         result = rule.evaluate(ActionCategory.DEPLOY, PermissionLevel.ALLOW, ctx)
         assert result == PermissionLevel.ASK
 
     def test_escalates_ask_to_deny_after_hours(self) -> None:
         rule = TimeOfDayRule()
-        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 3, 0, tzinfo=timezone.utc))
+        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 3, 0, tzinfo=UTC))
         result = rule.evaluate(ActionCategory.GIT_PUSH, PermissionLevel.ASK, ctx)
         assert result == PermissionLevel.DENY
 
     def test_allows_during_business_hours(self) -> None:
         rule = TimeOfDayRule()
-        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 14, 0, tzinfo=timezone.utc))
+        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 14, 0, tzinfo=UTC))
         result = rule.evaluate(ActionCategory.DEPLOY, PermissionLevel.ALLOW, ctx)
         assert result is None
 
     def test_no_effect_on_non_destructive(self) -> None:
         rule = TimeOfDayRule()
-        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 23, 0, tzinfo=timezone.utc))
+        ctx = PermissionContext(time_utc=datetime(2025, 6, 1, 23, 0, tzinfo=UTC))
         result = rule.evaluate(ActionCategory.FILE_READ, PermissionLevel.ALLOW, ctx)
         assert result is None
 
@@ -131,7 +129,7 @@ class TestRuleComposition:
             context_rules=DEFAULT_CONTEXT_RULES,
         )
         ctx = PermissionContext(
-            time_utc=datetime(2025, 6, 1, 2, 0, tzinfo=timezone.utc),
+            time_utc=datetime(2025, 6, 1, 2, 0, tzinfo=UTC),
             agent_level=1,
         )
         result = engine.evaluate(ActionCategory.GIT_PUSH, context=ctx)
@@ -146,7 +144,7 @@ class TestRuleComposition:
             context_rules=[*DEFAULT_CONTEXT_RULES, rule],
         )
         ctx = PermissionContext(
-            time_utc=datetime(2025, 6, 1, 14, 0, tzinfo=timezone.utc),
+            time_utc=datetime(2025, 6, 1, 14, 0, tzinfo=UTC),
             agent_role="reviewer",
         )
         result = engine.evaluate(ActionCategory.GIT_PUSH, context=ctx)

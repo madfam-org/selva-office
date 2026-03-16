@@ -187,8 +187,9 @@ class TestSkillBasedSynergies:
         roles = [AgentRole.CODER, AgentRole.REVIEWER]
         skills = ["coding", "code-review", "webapp-testing", "madfam-api"]
         effective = calculator.get_effective_multiplier(roles, agent_skills=skills)
-        # Full Stack Review (1.25) * Full Coverage (1.35) * MADFAM Expert (1.15)
-        # * MADFAM Specialists (1.2, coding+madfam-api) * Quality Pipeline (1.3, coding+webapp-testing)
+        # Full Stack Review (1.25) * Full Coverage (1.35)
+        # * MADFAM Expert (1.15) * MADFAM Specialists (1.2, coding+madfam-api)
+        # * Quality Pipeline (1.3, coding+webapp-testing)
         expected = 1.25 * 1.35 * 1.15 * 1.2 * 1.3
         assert effective == pytest.approx(expected)
 

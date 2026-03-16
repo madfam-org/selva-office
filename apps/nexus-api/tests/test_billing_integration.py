@@ -142,8 +142,6 @@ class TestDhanamWebhookTier:
     async def test_subscription_updated_caches_tier(
         self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
-        import hashlib
-        import hmac
         import json
 
         payload = {

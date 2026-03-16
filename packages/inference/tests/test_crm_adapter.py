@@ -9,7 +9,6 @@ import pytest
 from madfam_inference.adapters.crm import PhyneCRMAdapter
 from madfam_inference.adapters.crm_types import (
     PhyneActivity,
-    PhyneContact,
     PhyneDashboard,
     PhyneLead,
     PhyneLeadScore,
@@ -166,7 +165,7 @@ class TestPhyneCRMAdapter:
             leads = await adapter.list_leads(status="open")
 
         assert len(leads) == 2
-        assert all(isinstance(l, PhyneLead) for l in leads)
+        assert all(isinstance(lead, PhyneLead) for lead in leads)
 
     @pytest.mark.asyncio
     async def test_get_dashboard(self) -> None:

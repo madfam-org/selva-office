@@ -150,32 +150,31 @@ class AnthropicProvider(InferenceProvider):
     async def stream(self, request: InferenceRequest) -> AsyncIterator[str]:
         body = self._build_body(request, stream=True)
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            async with client.stream(
-                "POST",
-                f"{self._base_url}/messages",
-                headers=self._headers(),
-                json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    payload = line[len("data: "):]
-                    if payload.strip() == "[DONE]":
-                        break
-                    # Parse SSE event - Anthropic sends content_block_delta events
-                    import json
+        async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
+            "POST",
+            f"{self._base_url}/messages",
+            headers=self._headers(),
+            json=body,
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                payload = line[len("data: "):]
+                if payload.strip() == "[DONE]":
+                    break
+                # Parse SSE event - Anthropic sends content_block_delta events
+                import json
 
-                    try:
-                        event = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
+                try:
+                    event = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
 
-                    if event.get("type") == "content_block_delta":
-                        delta = event.get("delta", {})
-                        if delta.get("type") == "text_delta":
-                            yield delta.get("text", "")
+                if event.get("type") == "content_block_delta":
+                    delta = event.get("delta", {})
+                    if delta.get("type") == "text_delta":
+                        yield delta.get("text", "")
 
     async def list_models(self) -> list[str]:
         async with httpx.AsyncClient(timeout=self._timeout) as client:

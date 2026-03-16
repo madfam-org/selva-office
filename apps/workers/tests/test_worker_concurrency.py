@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -13,8 +12,8 @@ import pytest
 @pytest.mark.asyncio
 async def test_semaphore_limits_concurrency():
     """Verify that the semaphore caps parallel task execution."""
-    from autoswarm_workers.__main__ import _process_with_semaphore
     import autoswarm_workers.__main__ as worker_mod
+    from autoswarm_workers.__main__ import _process_with_semaphore
 
     counter = {"active": 0, "max_active": 0}
     original_semaphore = worker_mod._task_semaphore
@@ -67,8 +66,8 @@ async def test_shutdown_drains_active_tasks():
 @pytest.mark.asyncio
 async def test_ack_on_success():
     """Verify that successful tasks are acknowledged."""
-    from autoswarm_workers.__main__ import _process_with_semaphore
     import autoswarm_workers.__main__ as worker_mod
+    from autoswarm_workers.__main__ import _process_with_semaphore
 
     original_semaphore = worker_mod._task_semaphore
     worker_mod._task_semaphore = asyncio.Semaphore(1)
@@ -86,8 +85,8 @@ async def test_ack_on_success():
 @pytest.mark.asyncio
 async def test_dlq_on_max_retries_concurrent():
     """Verify that tasks are moved to DLQ after max retries."""
-    from autoswarm_workers.__main__ import _process_with_semaphore
     import autoswarm_workers.__main__ as worker_mod
+    from autoswarm_workers.__main__ import _process_with_semaphore
 
     original_semaphore = worker_mod._task_semaphore
     worker_mod._task_semaphore = asyncio.Semaphore(1)

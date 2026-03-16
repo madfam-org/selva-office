@@ -14,7 +14,6 @@ import pytest
 from nexus_api.config import Settings
 from nexus_api.main import app as _fastapi_app
 
-
 # ---------------------------------------------------------------------------
 # Security Headers
 # ---------------------------------------------------------------------------

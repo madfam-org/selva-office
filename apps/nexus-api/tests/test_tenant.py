@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import httpx
 import pytest
 
-from nexus_api.config import Settings
-from nexus_api.tenant import TenantContext, get_tenant
+from nexus_api.tenant import get_tenant
 
 
 class TestTenantDependency:

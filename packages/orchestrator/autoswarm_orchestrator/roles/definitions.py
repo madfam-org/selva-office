@@ -22,7 +22,10 @@ ROLE_DEFINITIONS: dict[AgentRole, RoleDefinition] = {
     AgentRole.PLANNER: RoleDefinition(
         role=AgentRole.PLANNER,
         display_name="Strategic Planner",
-        description="Plans and coordinates tasks across the swarm, setting priorities and sequencing work.",
+        description=(
+            "Plans and coordinates tasks across the swarm, "
+            "setting priorities and sequencing work."
+        ),
         default_tools=["search", "analyze"],
         default_permissions={"file_read": "allow", "file_write": "deny"},
     ),
@@ -66,7 +69,10 @@ ROLE_DEFINITIONS: dict[AgentRole, RoleDefinition] = {
     AgentRole.SUPPORT: RoleDefinition(
         role=AgentRole.SUPPORT,
         display_name="Support Agent",
-        description="Handles inbound support tickets, triages issues, and communicates with customers.",
+        description=(
+            "Handles inbound support tickets, triages issues, "
+            "and communicates with customers."
+        ),
         default_tools=["crm_api", "email", "search"],
         default_permissions={"email_send": "ask", "crm_update": "ask"},
     ),

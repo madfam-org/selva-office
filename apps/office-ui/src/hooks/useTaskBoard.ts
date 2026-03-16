@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { TaskBoardResponse, TaskTimeline } from '@autoswarm/shared-types';
+import { apiFetch } from '@/lib/api';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
 const POLL_INTERVAL_MS = 10000;
 
 interface TaskBoardState {
@@ -32,9 +31,7 @@ export function useTaskBoard(): TaskBoardState {
   const fetchBoard = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/v1/swarms/tasks/board`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/swarms/tasks/board');
       if (res.ok) {
         const data = (await res.json()) as TaskBoardResponse;
         setBoard(data);
@@ -57,10 +54,7 @@ export function useTaskBoard(): TaskBoardState {
   const selectTask = useCallback(async (taskId: string) => {
     setTimelineLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/events/tasks/${taskId}/timeline`,
-        { credentials: 'include' },
-      );
+      const res = await apiFetch(`/api/v1/events/tasks/${taskId}/timeline`);
       if (res.ok) {
         const data = (await res.json()) as TaskTimeline;
         setSelectedTimeline(data);

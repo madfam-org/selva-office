@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 class ComputeTokenManager:
@@ -30,7 +30,7 @@ class ComputeTokenManager:
 
     @staticmethod
     def _next_midnight_utc() -> datetime:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return now.replace(hour=0, minute=0, second=0, microsecond=0).replace(
             day=now.day + 1
         )

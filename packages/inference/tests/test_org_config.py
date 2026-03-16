@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from madfam_inference.org_config import (
     ModelAssignment,
     OrgConfig,

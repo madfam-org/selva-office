@@ -1,4 +1,9 @@
-import "dotenv/config";
+import * as path from "node:path";
+import dotenv from "dotenv";
+
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config(); // CWD fallback for Docker/production
+
 import http from "node:http";
 import { createLogger } from "@autoswarm/config/logging";
 import { initSentry } from "@autoswarm/config/sentry";

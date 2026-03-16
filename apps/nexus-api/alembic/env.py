@@ -5,9 +5,9 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
+import nexus_api.models  # noqa: F401 — register all models
 from nexus_api.config import get_settings
 from nexus_api.database import Base
-import nexus_api.models  # noqa: F401 — register all models
 
 config = context.config
 if config.config_file_name is not None:

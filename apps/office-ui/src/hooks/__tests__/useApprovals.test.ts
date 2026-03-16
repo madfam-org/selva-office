@@ -292,7 +292,7 @@ describe('useApprovals', () => {
       'http://localhost:4300/api/v1/approvals/req-a/approve',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: expect.any(Headers),
         body: JSON.stringify({ feedback: 'looks good' }),
         credentials: 'include',
       }),
@@ -322,7 +322,7 @@ describe('useApprovals', () => {
       'http://localhost:4300/api/v1/approvals/req-b/deny',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: expect.any(Headers),
         body: JSON.stringify({ feedback: 'not allowed' }),
         credentials: 'include',
       }),

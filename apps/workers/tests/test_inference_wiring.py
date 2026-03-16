@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from langchain_core.messages import HumanMessage
-
 
 # ---------------------------------------------------------------------------
 # Phase 1A: build_model_router / get_model_router
@@ -153,7 +151,10 @@ def test_plan_node_fallback_without_llm():
     from autoswarm_workers.graphs.coding import plan
 
     # No LLM configured — should use fallback.
-    with patch("autoswarm_workers.inference.get_model_router", side_effect=RuntimeError("no providers")):
+    with patch(
+        "autoswarm_workers.inference.get_model_router",
+        side_effect=RuntimeError("no providers"),
+    ):
         state = plan(_make_coding_state())
 
     assert state["status"] == "planning"
@@ -169,10 +170,10 @@ def test_implement_node_with_mocked_llm(mock_call_llm, mock_get_router):
     mock_call_llm.return_value = "def fix_login():\n    pass"
     mock_get_router.return_value = MagicMock()
 
-    from autoswarm_workers.graphs.coding import plan, implement
-
     # First produce a plan so implement can reference plan steps.
     import json
+
+    from autoswarm_workers.graphs.coding import implement, plan
 
     mock_call_llm.return_value = json.dumps(
         {"description": "Fix login", "steps": ["Fix auth"]}

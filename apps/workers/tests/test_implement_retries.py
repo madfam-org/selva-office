@@ -5,9 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from autoswarm_workers.graphs.coding import implement, _write_files_to_worktree
+from autoswarm_workers.graphs.coding import _write_files_to_worktree, implement
 
 
 def _make_state(worktree_path=None, iteration=0):
