@@ -55,8 +55,8 @@ class GitTool:
     async def configure_identity(
         self,
         repo_path: str,
-        name: str = "madfam-bot",
-        email: str = "bot@madfam.io",
+        name: str = "autoswarm-bot",
+        email: str = "bot@autoswarm.dev",
     ) -> BashResult:
         """Set repo-local git identity for commits.
 

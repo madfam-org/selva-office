@@ -58,3 +58,6 @@ apps/gateway/data/
 
 # Misc
 *.tsbuildinfo
+
+# Org-specific config (never commit)
+*.env.production

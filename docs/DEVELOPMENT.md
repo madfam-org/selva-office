@@ -14,7 +14,7 @@
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/madfam-org/autoswarm-office.git
+git clone https://github.com/YOUR-ORG/autoswarm-office.git
 cd autoswarm-office
 
 # 2. Run first-time setup (checks prereqs, installs deps, creates .env)

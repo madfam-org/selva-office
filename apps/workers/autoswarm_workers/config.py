@@ -38,8 +38,8 @@ class Settings(BaseSettings):
     github_token: str | None = None
     enclii_deploy_token: str | None = None
     worker_api_token: str = "dev-bypass"
-    git_author_name: str = "madfam-bot"
-    git_author_email: str = "bot@madfam.io"
+    git_author_name: str = "autoswarm-bot"
+    git_author_email: str = "bot@autoswarm.dev"
 
     # -- Concurrency / Timeouts -----------------------------------------------
     max_concurrent_tasks: int = 3

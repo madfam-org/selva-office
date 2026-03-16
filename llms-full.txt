@@ -347,7 +347,7 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
     "description": "Integrate payment gateway",
     "assigned_agent_ids": ["<uuid>", "<uuid>"],
     "payload": {
-        "repo": "madfam-org/autoswarm-office",
+        "repo": "your-org/autoswarm-office",
         "branch": "feat/payments"
     }
 }
@@ -358,10 +358,10 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
 ```json
 {
     "sub": "user_abc123",
-    "email": "tactician@madfam.io",
+    "email": "user@example.com",
     "roles": ["admin"],
     "org_id": "org_xyz789",
-    "iss": "https://auth.madfam.io",
+    "iss": "https://auth.example.com",
     "aud": "autoswarm-office",
     "exp": 1741276800,
     "iat": 1741273200
@@ -374,10 +374,10 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
 |----------|---------|-------------|
 | DATABASE_URL | postgresql://autoswarm:autoswarm@localhost:5432/autoswarm | PostgreSQL connection |
 | REDIS_URL | redis://localhost:6379 | Redis connection |
-| JANUA_ISSUER_URL | https://auth.madfam.io | Janua OIDC issuer |
+| JANUA_ISSUER_URL | (empty) | Janua OIDC issuer |
 | JANUA_CLIENT_ID | autoswarm-office | OIDC client ID |
 | JANUA_CLIENT_SECRET | (empty) | OIDC client secret |
-| NEXT_PUBLIC_JANUA_URL | https://auth.madfam.io | Client-side Janua URL |
+| NEXT_PUBLIC_JANUA_URL | (empty) | Client-side Janua URL |
 | DHANAM_API_URL | https://api.dhan.am | Dhanam billing API |
 | DHANAM_WEBHOOK_SECRET | (empty) | Dhanam webhook HMAC key |
 | ANTHROPIC_API_KEY | (empty) | Anthropic Claude API key |
@@ -391,7 +391,7 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
 | OFFICE_UI_PORT | 4301 | Office UI listen port |
 | ADMIN_PORT | 4302 | Admin dashboard listen port |
 | COLYSEUS_PORT | 4303 | Colyseus listen port |
-| NPM_MADFAM_TOKEN | (empty) | MADFAM npm registry token |
+| NPM_REGISTRY_TOKEN | (empty) | Private npm registry token |
 
 ## Synergy Rules
 
@@ -421,16 +421,16 @@ effective multiplier of 1.875x.
 | deploy | ask |
 | api_call | allow |
 
-## MADFAM Ecosystem
+## Ecosystem Services
 
-- **Janua** (auth.madfam.io): OIDC identity provider. Provides @janua/nextjs-sdk for
+- **Janua** (auth provider): OIDC identity provider. Provides @janua/nextjs-sdk for
   frontend session management and Python JWT validation for the API. Read the Janua
   llms-full.txt for complete API surface.
 
-- **Dhanam** (api.dhan.am): Billing and subscription management. Provides
+- **Dhanam** (billing provider): Billing and subscription management. Provides
   @dhanam/billing-sdk for usage tracking and tier enforcement. Read the Dhanam
   llms-full.txt for complete API surface.
 
-- **Enclii** (api.enclii.dev): Deployment orchestration. Watches GHCR for image pushes,
-  manages ArgoCD rollouts. Configured via .enclii.yml. Read the Enclii llms-full.txt
-  for complete API surface.
+- **Enclii** (deployment provider): Deployment orchestration. Watches GHCR for image
+  pushes, manages ArgoCD rollouts. Configured via .enclii.yml. Read the Enclii
+  llms-full.txt for complete API surface.

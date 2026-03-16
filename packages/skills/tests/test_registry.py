@@ -28,14 +28,13 @@ def test_registry_discovers_all_skills(registry: SkillRegistry) -> None:
         "strategic-planning",
         "crm-outreach",
         "customer-support",
-        "madfam-api",
         "webapp-testing",
         "mcp-builder",
         "doc-coauthoring",
         "skill-creator",
     }
     assert expected.issubset(names), f"Missing skills: {expected - names}"
-    assert len(skills) >= 11
+    assert len(skills) >= 10
 
 
 def test_registry_get_metadata(registry: SkillRegistry) -> None:
@@ -59,7 +58,7 @@ def test_registry_activate_loads_body(registry: SkillRegistry) -> None:
     defn = registry.activate("coding")
     assert defn.meta.name == "coding"
     assert len(defn.instructions) > 0
-    assert "MADFAM" in defn.instructions
+    assert len(defn.instructions) > 10  # Non-trivial instructions
 
 
 def test_registry_activate_unknown_raises(registry: SkillRegistry) -> None:
@@ -91,12 +90,11 @@ def test_get_skills_for_role_unknown(registry: SkillRegistry) -> None:
 
 
 def test_get_allowed_tools_union(registry: SkillRegistry) -> None:
-    tools = registry.get_allowed_tools(["coding", "madfam-api"])
+    tools = registry.get_allowed_tools(["coding", "code-review"])
     # coding has file_read, file_write, bash_execute, git_commit
-    # madfam-api has api_call, file_read
+    # code-review has file_read, (potentially others)
     assert "file_read" in tools
     assert "file_write" in tools
-    assert "api_call" in tools
     assert "bash_execute" in tools
     assert "git_commit" in tools
 

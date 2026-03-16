@@ -1,5 +1,29 @@
 # CLAUDE.md -- AutoSwarm Office
 
+## Quick Start (Local Dev)
+
+```bash
+# Prerequisites: Docker, Node 20+, pnpm 9+, Python 3.12+, uv
+
+# 1. Clone and install
+git clone <repo-url>
+cd autoswarm-office
+make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all services
+
+# 2. Open the office
+# Navigate to http://localhost:4301
+# Click "Dev Login (bypass)"
+
+# 3. (Optional) Enable LLM inference
+# Add at least one API key to .env:
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   or OPENAI_API_KEY=sk-...
+# Then restart the worker: make worker
+
+# 4. (Optional) Enable git push
+# Set GITHUB_TOKEN in .env to a PAT with repo scope
+```
+
 ## Critical Paths
 
 - `apps/nexus-api/src/main.py` -- FastAPI application entry point
@@ -67,7 +91,7 @@
   0012). Populated from JWT `sub` claim.
 - **Git Identity**: `GitTool.configure_identity()` sets repo-local `user.name` /
   `user.email` before every agent commit. Config: `GIT_AUTHOR_NAME` (default
-  `madfam-bot`), `GIT_AUTHOR_EMAIL` (default `bot@madfam.io`).
+  `autoswarm-bot`), `GIT_AUTHOR_EMAIL` (default `bot@autoswarm.dev`).
 - **Worker-to-API Auth**: Centralized via `auth.py:get_worker_auth_headers()`.
   Reads `WORKER_API_TOKEN` env var (default `dev-bypass`). Used by
   `task_status.py`, `event_emitter.py`, `interrupt_handler.py`, and
@@ -218,7 +242,7 @@ uv run mypy .         # Python type checking
 
 The `packages/skills/` package implements the AgentSkills standard.
 
-- **Core skills** (11) live in `packages/skills/skill-definitions/`. Always loaded.
+- **Core skills** (10) live in `packages/skills/skill-definitions/`. Always loaded.
 - **Community skills** (~25) live in `packages/skills/community-skills/`. Vendored from
   [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills).
   Disabled by default.
@@ -505,8 +529,8 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Agent roster**: 13 agents across 4 departments (Engineering×6, Research×3,
   CRM×2, Support×2) with cross-functional skills. Seed script is idempotent
   (skips existing agents by name).
-- **New synergy rules**: "MADFAM Specialists" (madfam-api+coding, 1.2×) and
-  "Quality Pipeline" (coding+webapp-testing, 1.3×). Total: 10 default rules.
+- **New synergy rules**: "Quality Pipeline" (coding+webapp-testing, 1.3×).
+  Total: 8 default rules.
 - **Configurable embeddings**: `EmbeddingProvider` accepts optional
   `provider_name`, `model`, `base_url` for org-config-driven embedding
   providers (e.g. DeepInfra Nemotron). Falls back to OpenAI

@@ -2,7 +2,7 @@
 import posthog from "posthog-js";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "";
-const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://analytics.madfam.io";
+const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "";
 let initialized = false;
 
 export function initPostHog(): void {

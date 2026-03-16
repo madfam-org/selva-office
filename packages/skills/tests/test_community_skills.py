@@ -14,7 +14,7 @@ from autoswarm_skills.types import SkillTier
 SKILL_DEFS_DIR = Path(__file__).resolve().parent.parent / "skill-definitions"
 COMMUNITY_DIR = Path(__file__).resolve().parent.parent / "community-skills"
 
-CORE_SKILL_COUNT = 11
+CORE_SKILL_COUNT = 10
 
 
 @pytest.fixture()

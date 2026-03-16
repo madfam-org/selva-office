@@ -11,7 +11,7 @@ import { createLogger } from "@autoswarm/config/logging";
 const logger = createLogger({ service: "colyseus" }).child({ component: "auth" });
 
 const DEV_AUTH_BYPASS = process.env.DEV_AUTH_BYPASS === "true";
-const JANUA_ISSUER_URL = process.env.JANUA_ISSUER_URL ?? "https://auth.madfam.io";
+const JANUA_ISSUER_URL = process.env.JANUA_ISSUER_URL ?? "";
 
 // Lazily-initialized JWKS function.
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;

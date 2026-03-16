@@ -5,7 +5,7 @@ import AgentsPage from '../app/agents/page';
 const mockAgents = [
   {
     id: 'a1',
-    name: 'ByteForge',
+    name: 'Coder-Alpha',
     role: 'coder' as const,
     status: 'idle' as const,
     departmentId: 'd1',
@@ -14,7 +14,7 @@ const mockAgents = [
   },
   {
     id: 'a2',
-    name: 'DeepDive',
+    name: 'Researcher-Alpha',
     role: 'researcher' as const,
     status: 'working' as const,
     departmentId: 'd2',
@@ -84,7 +84,7 @@ describe('AgentsPage', () => {
     render(<AgentsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('ByteForge')).toBeInTheDocument();
+      expect(screen.getByText('Coder-Alpha')).toBeInTheDocument();
     });
 
     // Table header columns
@@ -101,10 +101,10 @@ describe('AgentsPage', () => {
     render(<AgentsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('ByteForge')).toBeInTheDocument();
+      expect(screen.getByText('Coder-Alpha')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('DeepDive')).toBeInTheDocument();
+    expect(screen.getByText('Researcher-Alpha')).toBeInTheDocument();
     expect(screen.getByText('coder')).toBeInTheDocument();
     expect(screen.getByText('researcher')).toBeInTheDocument();
     expect(screen.getByText('Engineering')).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('AgentsPage', () => {
     render(<AgentsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('ByteForge')).toBeInTheDocument();
+      expect(screen.getByText('Coder-Alpha')).toBeInTheDocument();
     });
 
     // Click the first Delete button
@@ -149,7 +149,7 @@ describe('AgentsPage', () => {
     render(<AgentsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('ByteForge')).toBeInTheDocument();
+      expect(screen.getByText('Coder-Alpha')).toBeInTheDocument();
     });
 
     // Click Delete on first agent
@@ -184,7 +184,7 @@ describe('AgentsPage', () => {
 
     await waitFor(() => {
       // The agent should be removed from the list
-      expect(screen.queryByText('ByteForge')).not.toBeInTheDocument();
+      expect(screen.queryByText('Coder-Alpha')).not.toBeInTheDocument();
     });
   });
 
@@ -193,7 +193,7 @@ describe('AgentsPage', () => {
     render(<AgentsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('ByteForge')).toBeInTheDocument();
+      expect(screen.getByText('Coder-Alpha')).toBeInTheDocument();
     });
 
     const reassignButtons = screen.getAllByText('Reassign');

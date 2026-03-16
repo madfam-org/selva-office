@@ -103,7 +103,7 @@ def test_refresh_with_real_skills() -> None:
     """Refresh on the real skill-definitions directory retains all core skills."""
     registry = SkillRegistry(skills_dir=SKILL_DEFS_DIR)
     count_before = len(registry.list_skills())
-    assert count_before >= 11  # Known core skills
+    assert count_before >= 10  # Known core skills
 
     registry.refresh()
 
