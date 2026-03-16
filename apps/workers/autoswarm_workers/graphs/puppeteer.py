@@ -58,11 +58,28 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
         from autoswarm_workers.inference import call_llm, get_model_router
 
         router = get_model_router()
+
+        # Retrieve experience context for prompt enrichment
+        experience_suffix = ""
+        try:
+            from autoswarm_workers.prompts import build_experience_context
+
+            agent_id = state.get("agent_id", "unknown")
+            experience_suffix = _run_async(build_experience_context(
+                agent_id=agent_id,
+                agent_role="planner",
+                task_description=description,
+            ))
+        except Exception:
+            pass
+
         prompt = (
             "Decompose this task into 2-5 independent subtasks. "
             "Return a JSON array of objects with 'description' and 'type' fields.\n\n"
             f"Task: {description}"
         )
+        if experience_suffix:
+            prompt += f"\n\n{experience_suffix}"
         response = _run_async(
             call_llm(
                 router,

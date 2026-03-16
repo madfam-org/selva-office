@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -79,6 +80,14 @@ class Agent(Base):
     org_id: Mapped[str] = mapped_column(
         String(255), nullable=False, default="default", index=True
     )
+    # Performance tracking (migration 0013)
+    tasks_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tasks_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    approval_success_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    approval_denial_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    avg_task_duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    last_task_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow

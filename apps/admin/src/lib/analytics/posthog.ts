@@ -11,8 +11,8 @@ export function initPostHog(): void {
   if (navigator.doNotTrack === "1") return;
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
-    capture_pageview: true,
-    autocapture: true,
+    capture_pageview: false,
+    autocapture: false,
     respect_dnt: true,
     persistence: "localStorage+cookie",
     secure_cookie: true,

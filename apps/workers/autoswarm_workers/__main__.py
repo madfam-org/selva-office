@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import shutil
 import signal
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -65,6 +67,8 @@ _shutdown = asyncio.Event()
 
 # Agent skill cache: avoids HTTP GET per task (Phase 4.2)
 _skill_cache: TTLCache[str, list[str]] = TTLCache(maxsize=256, ttl=60)
+# Agent role cache: populated alongside skills for learning hooks
+_role_cache: TTLCache[str, str] = TTLCache(maxsize=256, ttl=60)
 
 
 def _handle_signal(sig: signal.Signals) -> None:
@@ -198,6 +202,9 @@ async def _fetch_agent_skills(nexus_url: str, agent_id: str) -> list[str]:
                 data = resp.json()
                 skills = data.get("effective_skills", [])
                 _skill_cache[agent_id] = skills
+                # Cache role alongside skills for learning hooks
+                role = data.get("role", "coder")
+                _role_cache[agent_id] = role
                 return skills
     except Exception:
         logger.warning("Failed to fetch skills for agent %s", agent_id)
@@ -339,6 +346,11 @@ async def process_task(task_data: dict) -> None:
             return
         initial_state["repo_path"] = str(resolved_repo)
 
+    # Track timing for learning hooks
+    _task_start = time.monotonic()
+    agent_role = _role_cache.get(agent_id, "coder")
+    description = task_data.get("description", "")
+
     # Notify Colyseus that this agent is now working.
     await _publish_agent_status(agent_id, "working")
     await _update_task_status(
@@ -393,6 +405,25 @@ async def process_task(task_data: dict) -> None:
             graph_type=graph_type,
             request_id=request_id,
         )
+        # -- Learning hooks (fire-and-forget) ------------------------------------
+        _duration = time.monotonic() - _task_start
+        with contextlib.suppress(Exception):
+            from .learning import (
+                record_experience,
+                update_agent_performance,
+                update_bandit_reward,
+            )
+
+            await record_experience(
+                agent_id, agent_role, description, graph_type,
+                result.get("result"), graph_status, duration_seconds=_duration,
+            )
+            await update_agent_performance(
+                settings.nexus_api_url, agent_id, graph_status,
+                duration_seconds=_duration,
+            )
+            await update_bandit_reward(agent_id, 1.0 if api_status == "completed" else 0.2)
+
         logger.info("Task %s completed with status: %s", task_id, result.get("status"))
         await _publish_agent_status(agent_id, "idle", current_node_id="")
     except TimeoutError:
@@ -411,6 +442,30 @@ async def process_task(task_data: dict) -> None:
             error_message=f"Timed out after {timeout}s",
             request_id=request_id,
         )
+        # -- Learning hooks (fire-and-forget) --------------------------------
+        with contextlib.suppress(Exception):
+            from .learning import (
+                generate_reflexion,
+                record_experience,
+                update_agent_performance,
+                update_bandit_reward,
+            )
+
+            _duration = time.monotonic() - _task_start
+            await record_experience(
+                agent_id, agent_role, description, graph_type,
+                None, "failed", duration_seconds=_duration,
+                error_message=f"Timed out after {timeout}s",
+            )
+            await generate_reflexion(
+                agent_id, agent_role, description, graph_type,
+                error_message=f"Timed out after {timeout}s",
+            )
+            await update_agent_performance(
+                settings.nexus_api_url, agent_id, "failed", duration_seconds=_duration,
+            )
+            await update_bandit_reward(agent_id, 0.0)
+
         await _publish_agent_status(agent_id, "error", current_node_id="")
     except Exception as exc:
         logger.exception("Task %s failed", task_id)
@@ -428,6 +483,30 @@ async def process_task(task_data: dict) -> None:
             error_message=str(exc)[:500],
             request_id=request_id,
         )
+        # -- Learning hooks (fire-and-forget) --------------------------------
+        with contextlib.suppress(Exception):
+            from .learning import (
+                generate_reflexion,
+                record_experience,
+                update_agent_performance,
+                update_bandit_reward,
+            )
+
+            _duration = time.monotonic() - _task_start
+            await record_experience(
+                agent_id, agent_role, description, graph_type,
+                None, "failed", duration_seconds=_duration,
+                error_message=str(exc)[:500],
+            )
+            await generate_reflexion(
+                agent_id, agent_role, description, graph_type,
+                error_message=str(exc)[:500],
+            )
+            await update_agent_performance(
+                settings.nexus_api_url, agent_id, "failed", duration_seconds=_duration,
+            )
+            await update_bandit_reward(agent_id, 0.0)
+
         await _publish_agent_status(agent_id, "error", current_node_id="")
     finally:
         await handler.close()

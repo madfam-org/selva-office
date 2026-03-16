@@ -85,6 +85,26 @@ class TaskStatusUpdate(BaseModel):
 # -- Helpers ------------------------------------------------------------------
 
 
+def _compute_perf_weight(agent: Agent) -> float:
+    """Compute a 0.0-1.0 performance weight from agent stats.
+
+    ``perf_weight = 0.5 * approval_rate + 0.5 * completion_rate``
+    New agents (no history) default to 0.5 (neutral).
+    """
+    total_tasks = agent.tasks_completed + agent.tasks_failed
+    total_approvals = agent.approval_success_count + agent.approval_denial_count
+
+    if total_tasks == 0 and total_approvals == 0:
+        return 0.5  # Neutral for new agents
+
+    completion_rate = agent.tasks_completed / total_tasks if total_tasks > 0 else 0.5
+    approval_rate = (
+        agent.approval_success_count / total_approvals if total_approvals > 0 else 0.5
+    )
+
+    return 0.5 * approval_rate + 0.5 * completion_rate
+
+
 def _task_to_response(task: SwarmTask) -> SwarmTaskResponse:
     return SwarmTaskResponse(
         id=str(task.id),
@@ -166,7 +186,11 @@ async def dispatch_task(
                 )
                 overlap = len(required & agent_skills)
                 if overlap > 0:
-                    scored.append((overlap / len(required), agent))
+                    skill_score = overlap / len(required)
+                    # Performance-weighted scoring (30% weight)
+                    perf_weight = _compute_perf_weight(agent)
+                    final_score = skill_score * (0.7 + 0.3 * perf_weight)
+                    scored.append((final_score, agent))
             scored.sort(key=lambda x: x[0], reverse=True)
             assigned_agent_ids = [str(a.id) for _, a in scored[:3]]
         except Exception:

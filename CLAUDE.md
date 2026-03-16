@@ -8,6 +8,7 @@
 - `apps/workers/autoswarm_workers/task_status.py` -- Fire-and-forget task PATCH to nexus-api
 - `apps/workers/autoswarm_workers/auth.py` -- Centralized worker-to-API auth headers
 - `apps/workers/autoswarm_workers/prompts.py` -- Repo-context-aware LLM system prompts
+- `apps/workers/autoswarm_workers/learning.py` -- Post-task learning (experience, reflexion, bandit, stats)
 - `apps/workers/autoswarm_workers/event_emitter.py` -- Fire-and-forget event POST + Redis PUBLISH
 - `apps/nexus-api/nexus_api/routers/events.py` -- Events REST API + WebSocket stream
 - `apps/nexus-api/nexus_api/routers/metrics.py` -- Ops metrics dashboard aggregation API
@@ -77,6 +78,31 @@
   remote URL and uses `--repo` flag instead of `-C` (compat with older `gh` CLI).
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
+
+## Agent Learning Loop (v0.4.0)
+
+- **Experience Recording**: `learning.py:record_experience()` stores task outcomes
+  in `ExperienceStore` (per-role, 30-day temporal decay) and `MemoryStore`
+  (per-agent). Score mapping: completed=1.0, denied=0.2, failed=0.0. Fire-and-forget.
+- **Reflexion**: `learning.py:generate_reflexion()` calls LLM for self-critique on
+  failures (Reflexion NeurIPS 2023 pattern). Falls back to basic text when LLM
+  unavailable. Stored with score=0.3 and `metadata.type="reflection"`.
+- **Experience Injection**: `prompts.py:build_experience_context()` retrieves
+  similar past experiences and agent memories, injecting them into plan/implement/
+  review prompts. Graceful degradation to empty string on any error.
+- **Agent Performance Tracking**: 6 columns on `Agent` model (`tasks_completed`,
+  `tasks_failed`, `approval_success_count`, `approval_denial_count`,
+  `avg_task_duration_seconds`, `last_task_at`). `PATCH /api/v1/agents/{id}/stats`
+  accepts delta increments with running average for duration. Migration `0013`.
+- **Bandit Reward**: `learning.py:update_bandit_reward()` updates `ThompsonBandit`
+  after every task (not just puppeteer). Reward: 1.0 (success), 0.2 (partial), 0.0
+  (failure). Persisted to `BANDIT_PERSIST_PATH`.
+- **Performance-Aware Dispatch**: Skill-based agent matching in `swarms.py` weighted
+  by `_compute_perf_weight()` (30% performance, 70% skill overlap). New agents
+  default to 0.5 (neutral). `perf_weight = 0.5 * approval_rate + 0.5 * completion_rate`.
+- **Config**: `MEMORY_PERSIST_DIR` (default `/tmp/autoswarm-memory`),
+  `BANDIT_PERSIST_PATH` (default `/tmp/autoswarm-bandit.json`).
+- **CSRF**: `/api/v1/agents/` stats endpoint uses Bearer auth which bypasses CSRF.
 
 ## Autonomous Dev Readiness (v0.3.1)
 
