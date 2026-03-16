@@ -187,10 +187,12 @@ async def _fetch_agent_skills(nexus_url: str, agent_id: str) -> list[str]:
         return cached
 
     try:
+        from .auth import get_worker_auth_headers
+
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
                 f"{nexus_url}/api/v1/agents/{agent_id}",
-                headers={"Authorization": "Bearer dev-bypass"},
+                headers=get_worker_auth_headers(),
             )
             if resp.status_code == 200:
                 data = resp.json()

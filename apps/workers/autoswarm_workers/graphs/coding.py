@@ -68,13 +68,13 @@ def plan(state: CodingState) -> CodingState:
         from ..inference import call_llm, get_model_router
 
         router = get_model_router()
+        from ..prompts import build_plan_prompt
+
         skill_ctx = state.get("agent_system_prompt", "")
-        base_prompt = (
-            "You are a senior developer. Break this task into an ordered list "
-            "of concrete file changes. Return a JSON object with keys: "
-            "'description' (string) and 'steps' (array of strings)."
+        repo_path = state.get("repo_path")
+        system_prompt = build_plan_prompt(
+            task_description.strip(), repo_path=repo_path, skill_ctx=skill_ctx,
         )
-        system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
         llm_response = _run_async(call_llm(
             router,
             messages=[{"role": "user", "content": task_description.strip()}],
@@ -179,15 +179,16 @@ def implement(state: CodingState) -> CodingState:
         step_idx = min(iteration - 1, len(plan_steps) - 1) if plan_steps else 0
         current_step = plan_steps[step_idx] if plan_steps else "Implement changes"
 
+        from ..prompts import build_implement_prompt
+
         skill_ctx = state.get("agent_system_prompt", "")
-        base_prompt = (
-            "You are a senior developer. Write production-ready code for the "
-            "requested change. Return a JSON object with key 'files' containing "
-            "an array of objects, each with 'path' (relative to project root) "
-            "and 'content' (full file text). Example: "
-            '{\"files\": [{\"path\": \"src/main.py\", \"content\": \"...\"}]}'
+        system_prompt = build_implement_prompt(
+            step=current_step,
+            iteration=iteration,
+            repo_path=state.get("repo_path"),
+            worktree_path=worktree_path,
+            skill_ctx=skill_ctx,
         )
-        system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
 
         last_error: str | None = None
         for attempt in range(1 + max_retries):
@@ -340,10 +341,7 @@ def test(state: CodingState) -> CodingState:
         test_cmd = f"cd {worktree_path} && {test_cmd}"
 
     try:
-        loop = asyncio.get_event_loop()
-        bash_result = loop.run_until_complete(
-            _bash_tool.execute(test_cmd)
-        )
+        bash_result = _run_async(_bash_tool.execute(test_cmd))
 
         if bash_result.success:
             # Parse basic pass/fail from pytest output.
@@ -414,14 +412,11 @@ def review(state: CodingState) -> CodingState:
         from ..inference import call_llm, get_model_router
 
         router = get_model_router()
+        from ..prompts import build_review_prompt
+
         changes_text = "\n".join(c.get("summary", "") for c in code_changes)
         skill_ctx = state.get("agent_system_prompt", "")
-        base_prompt = (
-            "You are a thorough code reviewer. Check for bugs, security issues, "
-            "and style violations. Return JSON with keys: 'changes_reviewed' (int), "
-            "'issues_found' (int), 'recommendation' ('approve' or 'revise')."
-        )
-        system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
+        system_prompt = build_review_prompt(changes_text, skill_ctx=skill_ctx)
         review_text = _run_async(call_llm(
             router,
             messages=[{"role": "user", "content": f"Review these changes:\n{changes_text}"}],

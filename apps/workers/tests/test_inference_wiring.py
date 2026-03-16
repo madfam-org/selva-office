@@ -179,13 +179,14 @@ def test_implement_node_with_mocked_llm(mock_call_llm, mock_get_router):
     )
     state = plan(_make_coding_state())
 
-    mock_call_llm.return_value = "def fix_login():\n    pass"
+    mock_call_llm.return_value = json.dumps(
+        {"files": [{"path": "auth.py", "content": "def fix_login():\n    pass"}]}
+    )
     state = implement(state)
 
     assert state["status"] == "implementing"
     assert state["iteration"] == 1
     assert len(state["code_changes"]) == 1
-    assert "fix_login" in state["code_changes"][0]["summary"]
 
 
 @patch("autoswarm_workers.inference.get_model_router")

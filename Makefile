@@ -1,4 +1,7 @@
-.PHONY: dev dev-full dev-seed worker build test test-e2e lint clean docker-up docker-down db-migrate db-wait setup generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test worktree-cleanup
+# Portable docker compose: prefer v1 standalone, fall back to v2 plugin.
+DOCKER_COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
+
+.PHONY: dev dev-full dev-seed worker build test test-e2e lint clean docker-up docker-down db-migrate db-wait setup setup-org-config generate-assets generate-variants post-process generate-map db-backup db-restore db-verify-backup smoke-test worktree-cleanup
 
 # ── Development ─────────────────────────────────────
 dev:
@@ -18,12 +21,13 @@ db-wait:
 
 dev-full:
 	@echo "Starting infrastructure..."
-	docker compose -f infra/docker/docker-compose.dev.yml up -d --wait
+	$(DOCKER_COMPOSE) -f infra/docker/docker-compose.dev.yml up -d --wait
 	$(MAKE) db-wait
 	@echo "Running database migrations..."
 	uv run --directory apps/nexus-api alembic upgrade head
 	@echo "Seeding departments and agents..."
 	$(MAKE) dev-seed
+	$(MAKE) setup-org-config
 	@echo "Starting all services..."
 	$(MAKE) dev
 	@echo "Running smoke test in background (5s delay)..."
@@ -69,13 +73,13 @@ clean:
 
 # ── Docker ──────────────────────────────────────────
 docker-up:
-	docker compose -f infra/docker/docker-compose.yml up -d
+	$(DOCKER_COMPOSE) -f infra/docker/docker-compose.yml up -d
 
 docker-down:
-	docker compose -f infra/docker/docker-compose.yml down
+	$(DOCKER_COMPOSE) -f infra/docker/docker-compose.yml down
 
 docker-dev:
-	docker compose -f infra/docker/docker-compose.dev.yml up -d
+	$(DOCKER_COMPOSE) -f infra/docker/docker-compose.dev.yml up -d
 
 # ── Database ────────────────────────────────────────
 db-migrate:
@@ -109,6 +113,12 @@ generate-map:
 
 generate-office-map:
 	node scripts/generate-office-map.js
+
+setup-org-config:
+	@mkdir -p ~/.autoswarm
+	@test -f ~/.autoswarm/org-config.yaml || \
+		cp data/org-config-template.yaml ~/.autoswarm/org-config.yaml
+	@echo "Org config at ~/.autoswarm/org-config.yaml"
 
 # ── Setup ───────────────────────────────────────────
 setup:

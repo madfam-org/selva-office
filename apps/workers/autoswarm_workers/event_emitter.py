@@ -72,8 +72,11 @@ async def emit_event(
         body["org_id"] = org_id
 
     # POST to nexus-api (with retry and circuit breaker)
+    from .auth import get_worker_auth_headers
+
     await fire_and_forget_request(
-        "POST", f"{nexus_url}/api/v1/events/", json=body, timeout=2.0
+        "POST", f"{nexus_url}/api/v1/events/", json=body,
+        headers=get_worker_auth_headers(), timeout=2.0,
     )
 
     # Also PUBLISH to Redis for real-time WS relay
