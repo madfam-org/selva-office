@@ -42,7 +42,12 @@ class InterruptHandler:
     nexus_api_url: str
     redis_url: str = "redis://localhost:6379"
     default_timeout: int = 300
-    client: httpx.AsyncClient = field(default_factory=lambda: httpx.AsyncClient(timeout=30.0))
+    client: httpx.AsyncClient = field(
+        default_factory=lambda: httpx.AsyncClient(
+            timeout=30.0,
+            headers={"Authorization": "Bearer dev-bypass"},
+        ),
+    )
 
     async def create_approval_request(
         self,
@@ -69,7 +74,7 @@ class InterruptHandler:
         Raises:
             httpx.HTTPStatusError: If the API returns an error status.
         """
-        url = f"{self.nexus_api_url.rstrip('/')}/api/v1/approvals"
+        url = f"{self.nexus_api_url.rstrip('/')}/api/v1/approvals/"
 
         body = {
             "agent_id": agent_id,

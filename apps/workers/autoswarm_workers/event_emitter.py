@@ -73,7 +73,7 @@ async def emit_event(
 
     # POST to nexus-api (with retry and circuit breaker)
     await fire_and_forget_request(
-        "POST", f"{nexus_url}/api/v1/events", json=body, timeout=2.0
+        "POST", f"{nexus_url}/api/v1/events/", json=body, timeout=2.0
     )
 
     # Also PUBLISH to Redis for real-time WS relay

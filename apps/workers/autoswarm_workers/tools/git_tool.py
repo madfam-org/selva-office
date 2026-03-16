@@ -52,6 +52,21 @@ class GitTool:
             f"git -C {repo_path} commit -m '{safe_message}'"
         )
 
+    async def configure_identity(
+        self,
+        repo_path: str,
+        name: str = "madfam-bot",
+        email: str = "bot@madfam.io",
+    ) -> BashResult:
+        """Set repo-local git identity for commits.
+
+        Ensures commits are attributed to the service account rather than
+        inheriting the global git config (which may be a developer's
+        personal identity).
+        """
+        await self.bash.execute(f"git -C {repo_path} config user.name '{name}'")
+        return await self.bash.execute(f"git -C {repo_path} config user.email '{email}'")
+
     async def configure_credentials(self, repo_path: str, token: str) -> BashResult:
         """Set a repo-local credential helper that provides the given token.
 
@@ -134,8 +149,21 @@ class GitTool:
             )
         safe_title = title.replace("'", "'\\''")
         safe_body = body.replace("'", "'\\''")
+        # Resolve OWNER/REPO from the git remote (works regardless of gh version).
+        remote = await self.bash.execute(
+            f"git -C {repo_path} remote get-url origin"
+        )
+        repo_slug = ""
+        if remote.success:
+            url = remote.stdout.strip()
+            # Handle both HTTPS (github.com/OWNER/REPO.git) and SSH (git@github.com:OWNER/REPO.git)
+            for prefix in ("https://github.com/", "git@github.com:"):
+                if url.startswith(prefix):
+                    repo_slug = url[len(prefix):].removesuffix(".git")
+                    break
+        repo_flag = f"--repo {repo_slug}" if repo_slug else ""
         cmd = (
-            f"gh pr create -C {repo_path} --head {branch} "
+            f"gh pr create {repo_flag} --head {branch} "
             f"--title '{safe_title}' --body '{safe_body}'"
         )
         env = {"GH_TOKEN": token} if token else None
