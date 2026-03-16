@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { MetricsDashboard } from '@autoswarm/shared-types';
+import { apiFetch } from '@/lib/api';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
 const POLL_INTERVAL_MS = 30000;
 
 export type MetricsPeriod = '1h' | '6h' | '24h' | '7d' | '30d';
@@ -30,10 +29,7 @@ export function useMetrics(): MetricsState {
   const fetchDashboard = useCallback(async (p: MetricsPeriod) => {
     try {
       setLoading(true);
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/metrics/dashboard?period=${p}`,
-        { credentials: 'include' },
-      );
+      const res = await apiFetch(`/api/v1/metrics/dashboard?period=${p}`);
       if (res.ok) {
         const data = (await res.json()) as MetricsDashboard;
         setDashboard(data);

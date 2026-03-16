@@ -90,7 +90,7 @@ class PhyneCRMAdapter:
             input_data["status"] = status
         data = await self._get("leads.list", input_data or None)
         if isinstance(data, list):
-            return [PhyneLead(**l) for l in data]
+            return [PhyneLead(**item) for item in data]
         return []
 
     async def move_lead_stage(self, lead_id: str, stage_id: str) -> PhyneLead:

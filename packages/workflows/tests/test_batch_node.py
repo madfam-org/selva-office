@@ -9,11 +9,12 @@ import pytest
 from autoswarm_workflows.nodes.batch import BatchNodeHandler, _aggregate
 from autoswarm_workflows.schema import (
     BatchAggregateStrategy,
+    EdgeDefinition,
     NodeDefinition,
     NodeType,
+    WorkflowDefinition,
 )
 from autoswarm_workflows.validator import WorkflowValidator
-from autoswarm_workflows.schema import EdgeDefinition, WorkflowDefinition
 
 
 def _make_batch_node(**overrides) -> NodeDefinition:  # type: ignore[no-untyped-def]

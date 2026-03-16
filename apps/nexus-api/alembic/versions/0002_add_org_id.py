@@ -16,8 +16,17 @@ branch_labels = None
 depends_on = None
 
 
+_ORG_TABLES = (
+    "departments",
+    "agents",
+    "approval_requests",
+    "swarm_tasks",
+    "compute_token_ledger",
+)
+
+
 def upgrade() -> None:
-    for table in ("departments", "agents", "approval_requests", "swarm_tasks", "compute_token_ledger"):
+    for table in _ORG_TABLES:
         op.add_column(
             table,
             sa.Column("org_id", sa.String(255), nullable=False, server_default="default"),
@@ -26,6 +35,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for table in ("departments", "agents", "approval_requests", "swarm_tasks", "compute_token_ledger"):
+    for table in _ORG_TABLES:
         op.drop_index(f"ix_{table}_org_id", table)
         op.drop_column(table, "org_id")

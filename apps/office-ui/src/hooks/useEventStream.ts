@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TaskEvent, EventCategory } from '@autoswarm/shared-types';
+import { apiFetch } from '@/lib/api';
 
 const WS_URL =
   process.env.NEXT_PUBLIC_EVENTS_WS_URL ?? 'ws://localhost:4300/api/v1/events/ws';
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
 const MAX_RECONNECT_DELAY_MS = 30000;
 const MAX_IN_MEMORY = 500;
 
@@ -135,9 +134,7 @@ export function useEventStream(): EventStreamState {
         limit: '50',
         offset: String(allEvents.length),
       });
-      const res = await fetch(`${API_BASE_URL}/api/v1/events?${params}`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/events?${params}`);
       if (res.ok) {
         const older = (await res.json()) as TaskEvent[];
         if (older.length < 50) setHasMore(false);

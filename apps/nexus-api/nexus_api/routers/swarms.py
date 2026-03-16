@@ -196,6 +196,31 @@ async def dispatch_task(
         except Exception:
             pass  # Fall through to dispatch without auto-selection
 
+    # -- Fallback: auto-assign any idle agent when no agents or skills given --
+    if not assigned_agent_ids:
+        try:
+            fallback_result = await db.execute(
+                select(Agent)
+                .where(Agent.org_id == tenant.org_id)
+                .where(Agent.status == "idle")
+                .order_by(Agent.created_at)
+                .limit(1)
+            )
+            fallback_agent = fallback_result.scalar_one_or_none()
+            if fallback_agent is None:
+                # No idle agents — pick any agent in the org
+                fallback_result = await db.execute(
+                    select(Agent)
+                    .where(Agent.org_id == tenant.org_id)
+                    .order_by(Agent.created_at)
+                    .limit(1)
+                )
+                fallback_agent = fallback_result.scalar_one_or_none()
+            if fallback_agent is not None:
+                assigned_agent_ids = [str(fallback_agent.id)]
+        except Exception:
+            pass  # Dispatch proceeds without assignment
+
     # -- Compute token budget check -------------------------------------------
     dispatch_cost = 10  # matches ComputeTokenManager.COST_TABLE["dispatch_task"]
 

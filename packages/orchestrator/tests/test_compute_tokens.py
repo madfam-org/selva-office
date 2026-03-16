@@ -164,7 +164,7 @@ class TestReset:
         assert manager.remaining == manager.daily_limit
 
     def test_reset_updates_reset_at(self, manager: ComputeTokenManager) -> None:
-        original_reset_at = manager.reset_at
+        _ = manager.reset_at
         manager.reset()
         # reset_at is recalculated; the new value may be different if the
         # clock ticked across midnight, but it should always be set.

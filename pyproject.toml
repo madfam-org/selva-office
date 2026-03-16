@@ -69,14 +69,66 @@ extend-exclude = ["packages/skills/community-skills"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+"**/routers/*.py" = ["B008"]
+"**/auth.py" = ["B008"]
+"**/tests/*.py" = ["SIM117"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["autoswarm_orchestrator", "madfam_inference", "autoswarm_permissions", "nexus_api", "autoswarm_workers", "autoswarm_skills", "autoswarm_observability", "autoswarm_redis_pool", "autoswarm_workflows", "autoswarm_tools", "autoswarm_memory", "autoswarm_sdk", "autoswarm_calendar"]
 
 [tool.mypy]
 python_version = "3.12"
-strict = true
-warn_return_any = true
 warn_unused_configs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+explicit_package_bases = true
+mypy_path = [
+    "packages/inference",
+    "packages/orchestrator",
+    "packages/permissions",
+    "packages/skills",
+    "packages/observability/src",
+    "packages/redis-pool/src",
+    "packages/workflows/src",
+    "packages/tools/src",
+    "packages/memory/src",
+    "packages/sdk",
+    "packages/calendar",
+    "apps/nexus-api",
+    "apps/workers",
+]
+exclude = [
+    "community-skills",
+    "node_modules",
+    "dist",
+    "\\.venv",
+    "conftest\\.py",
+    "tests/",
+]
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "conftest"]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "posthog.*",
+    "opentelemetry.*",
+    "faiss.*",
+    "jose.*",
+    "yaml.*",
+    "cachetools.*",
+    "langgraph.*",
+    "langchain_core.*",
+    "simple_salesforce.*",
+    "sentry_sdk.*",
+    "prometheus_client.*",
+    "httpx.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

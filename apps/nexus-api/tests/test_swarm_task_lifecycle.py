@@ -9,7 +9,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from nexus_api.models import SwarmTask, Workflow
+from nexus_api.models import Agent, SwarmTask, Workflow
 
 
 class TestDispatchWorkflowId:
@@ -194,3 +194,97 @@ class TestPatchTaskMetadata:
         task = result.scalar_one()
         assert task.started_at is None
         assert task.error_message is None
+
+
+class TestDispatchAutoAssignment:
+    """POST /api/v1/swarms/dispatch auto-assigns an agent when none specified."""
+
+    @pytest.mark.asyncio
+    async def test_dispatch_without_agents_auto_assigns(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        db_session,  # type: ignore[no-untyped-def]
+    ) -> None:
+        """Dispatching without agents or skills auto-assigns the first idle agent."""
+        agent = Agent(name="AutoBot", role="coder", status="idle", org_id="dev-org")
+        db_session.add(agent)
+        await db_session.flush()
+        await db_session.refresh(agent)
+
+        with patch(
+            "nexus_api.routers.swarms.get_redis_pool",
+            return_value=AsyncMock(execute_with_retry=AsyncMock()),
+        ):
+            resp = await client.post(
+                "/api/v1/swarms/dispatch",
+                json={"description": "No agent specified", "graph_type": "coding"},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert len(data["assigned_agent_ids"]) == 1
+        assert data["assigned_agent_ids"][0] == str(agent.id)
+
+    @pytest.mark.asyncio
+    async def test_dispatch_prefers_idle_agent(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        db_session,  # type: ignore[no-untyped-def]
+    ) -> None:
+        """When both idle and working agents exist, idle is preferred."""
+        working_agent = Agent(
+            name="BusyBot", role="coder", status="working", org_id="dev-org"
+        )
+        idle_agent = Agent(
+            name="IdleBot", role="coder", status="idle", org_id="dev-org"
+        )
+        db_session.add_all([working_agent, idle_agent])
+        await db_session.flush()
+        await db_session.refresh(working_agent)
+        await db_session.refresh(idle_agent)
+
+        with patch(
+            "nexus_api.routers.swarms.get_redis_pool",
+            return_value=AsyncMock(execute_with_retry=AsyncMock()),
+        ):
+            resp = await client.post(
+                "/api/v1/swarms/dispatch",
+                json={"description": "Prefer idle", "graph_type": "coding"},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["assigned_agent_ids"] == [str(idle_agent.id)]
+
+    @pytest.mark.asyncio
+    async def test_dispatch_falls_back_to_non_idle_agent(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        db_session,  # type: ignore[no-untyped-def]
+    ) -> None:
+        """When no idle agents exist, falls back to any agent in the org."""
+        working_agent = Agent(
+            name="OnlyBot", role="coder", status="working", org_id="dev-org"
+        )
+        db_session.add(working_agent)
+        await db_session.flush()
+        await db_session.refresh(working_agent)
+
+        with patch(
+            "nexus_api.routers.swarms.get_redis_pool",
+            return_value=AsyncMock(execute_with_retry=AsyncMock()),
+        ):
+            resp = await client.post(
+                "/api/v1/swarms/dispatch",
+                json={"description": "No idle agents", "graph_type": "coding"},
+                headers=auth_headers,
+            )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["assigned_agent_ids"] == [str(working_agent.id)]

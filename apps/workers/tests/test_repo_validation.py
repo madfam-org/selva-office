@@ -23,10 +23,20 @@ async def test_non_writable_repo_path_fails_task() -> None:
     }
 
     with (
-        patch("autoswarm_workers.__main__._update_task_status", new_callable=AsyncMock) as mock_status,
-        patch("autoswarm_workers.__main__._publish_agent_status", new_callable=AsyncMock),
+        patch(
+            "autoswarm_workers.__main__._update_task_status",
+            new_callable=AsyncMock,
+        ) as mock_status,
+        patch(
+            "autoswarm_workers.__main__._publish_agent_status",
+            new_callable=AsyncMock,
+        ),
         patch("autoswarm_workers.__main__._emit_event", new_callable=AsyncMock),
-        patch("autoswarm_workers.__main__._fetch_agent_skills", new_callable=AsyncMock, return_value=[]),
+        patch(
+            "autoswarm_workers.__main__._fetch_agent_skills",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
     ):
         await process_task(task_data)
 
@@ -34,7 +44,8 @@ async def test_non_writable_repo_path_fails_task() -> None:
     mock_status.assert_called()
     last_call = mock_status.call_args_list[-1]
     assert last_call[0][2] == "failed"  # status arg
-    assert "not writable" in str(last_call[1].get("error_message", "") or last_call[0][3])
+    error_msg = last_call[1].get("error_message", "") or last_call[0][3]
+    assert "not writable" in str(error_msg)
 
 
 @pytest.mark.asyncio
@@ -58,8 +69,16 @@ async def test_missing_repo_path_created() -> None:
             patch("autoswarm_workers.__main__._update_task_status", new_callable=AsyncMock),
             patch("autoswarm_workers.__main__._publish_agent_status", new_callable=AsyncMock),
             patch("autoswarm_workers.__main__._emit_event", new_callable=AsyncMock),
-            patch("autoswarm_workers.__main__._fetch_agent_skills", new_callable=AsyncMock, return_value=[]),
-            patch("autoswarm_workers.__main__.run_graph_with_interrupts", new_callable=AsyncMock, return_value={"status": "completed"}),
+            patch(
+                "autoswarm_workers.__main__._fetch_agent_skills",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "autoswarm_workers.__main__.run_graph_with_interrupts",
+                new_callable=AsyncMock,
+                return_value={"status": "completed"},
+            ),
             patch("autoswarm_workers.__main__.InterruptHandler") as mock_handler_cls,
         ):
             mock_handler = AsyncMock()

@@ -39,6 +39,8 @@ def _perm_allow():
 
 def _build_test_graph():
     """Build a coding graph without push_gate (avoids interrupt)."""
+    from langgraph.graph import END, StateGraph
+
     from autoswarm_workers.graphs.coding import (
         CodingState,
         _route_after_implement,
@@ -46,9 +48,10 @@ def _build_test_graph():
         implement,
         plan,
         review,
+    )
+    from autoswarm_workers.graphs.coding import (
         test as test_node,
     )
-    from langgraph.graph import END, StateGraph
 
     graph = StateGraph(CodingState)
     graph.add_node("plan", plan)
@@ -111,7 +114,11 @@ async def test_coding_pipeline_mock_llm_succeeds(tmp_path):
         patch("autoswarm_workers.__main__._update_task_status", new_callable=AsyncMock),
         patch("autoswarm_workers.__main__._publish_agent_status", new_callable=AsyncMock),
         patch("autoswarm_workers.__main__._emit_event", new_callable=AsyncMock),
-        patch("autoswarm_workers.__main__._fetch_agent_skills", new_callable=AsyncMock, return_value=[]),
+        patch(
+            "autoswarm_workers.__main__._fetch_agent_skills",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
         patch("autoswarm_workers.__main__.get_redis_pool", return_value=MagicMock()),
         patch("autoswarm_observability.bind_task_context"),
         patch("autoswarm_observability.clear_context"),

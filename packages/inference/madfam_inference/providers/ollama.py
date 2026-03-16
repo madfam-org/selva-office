@@ -137,31 +137,30 @@ class OllamaProvider(InferenceProvider):
     async def stream(self, request: InferenceRequest) -> AsyncIterator[str]:
         body = self._build_body(request, stream=True)
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            async with client.stream(
-                "POST",
-                f"{self._base_url}/api/chat",
-                json=body,
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    if not line.strip():
-                        continue
-                    try:
-                        data = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
+        async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
+            "POST",
+            f"{self._base_url}/api/chat",
+            json=body,
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
 
-                    # Ollama streams JSON objects, one per line.
-                    # Each has a "message" field with partial content.
-                    message = data.get("message", {})
-                    content = message.get("content", "")
-                    if content:
-                        yield content
+                # Ollama streams JSON objects, one per line.
+                # Each has a "message" field with partial content.
+                message = data.get("message", {})
+                content = message.get("content", "")
+                if content:
+                    yield content
 
-                    # The final object has "done": true
-                    if data.get("done", False):
-                        break
+                # The final object has "done": true
+                if data.get("done", False):
+                    break
 
     async def list_models(self) -> list[str]:
         async with httpx.AsyncClient(timeout=self._timeout) as client:

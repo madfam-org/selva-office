@@ -126,7 +126,11 @@ class InterruptHandler:
                         )
 
             result = await asyncio.wait_for(_get_message(), timeout=timeout)
-            logger.info("Approval request %s resolved via Redis pub/sub: %s", request_id, result.result)
+            logger.info(
+                "Approval request %s resolved via Redis pub/sub: %s",
+                request_id,
+                result.result,
+            )
             return result
         finally:
             await pubsub.unsubscribe(channel_name)
@@ -229,7 +233,10 @@ class InterruptHandler:
             action_category = kwargs.get("action_category", "api_call")
             payload.update(kwargs)
 
-        reasoning = f"Agent {agent_id} requires approval for '{action_category}' during task {task_id}."
+        reasoning = (
+            f"Agent {agent_id} requires approval for "
+            f"'{action_category}' during task {task_id}."
+        )
 
         try:
             request_id = await self.create_approval_request(

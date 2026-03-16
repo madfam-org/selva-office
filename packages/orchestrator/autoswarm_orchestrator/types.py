@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class AgentRole(str, Enum):
+class AgentRole(StrEnum):
     """Roles an agent can fulfill within a swarm department."""
 
     PLANNER = "planner"
@@ -19,7 +19,7 @@ class AgentRole(str, Enum):
     SUPPORT = "support"
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     """Lifecycle states for a swarm agent."""
 
     IDLE = "idle"
@@ -50,7 +50,7 @@ class SwarmTask(BaseModel):
     graph_type: str = "sequential"
     payload: dict = Field(default_factory=dict)
     status: str = "pending"
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class DepartmentConfig(BaseModel):

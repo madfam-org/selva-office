@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ApprovalRequest, ApprovalResponse } from '@autoswarm/shared-types';
+import { apiFetch } from '@/lib/api';
 
 const WS_URL =
   process.env.NEXT_PUBLIC_APPROVALS_WS_URL ?? 'ws://localhost:4300/api/v1/approvals/ws';
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
 const MAX_RECONNECT_DELAY_MS = 30000;
 
 interface ApprovalsState {
@@ -124,18 +123,15 @@ export function useApprovals(): ApprovalsState {
 
   const sendDecision = useCallback(
     async (requestId: string, decision: 'approve' | 'deny', feedback?: string): Promise<boolean> => {
-      const url = `${API_BASE_URL}/api/v1/approvals/${requestId}/${decision}`;
       const body: Record<string, unknown> = {};
       if (feedback !== undefined) {
         body.feedback = feedback;
       }
 
       try {
-        const res = await fetch(url, {
+        const res = await apiFetch(`/api/v1/approvals/${requestId}/${decision}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
-          credentials: 'include',
         });
 
         if (res.ok) {

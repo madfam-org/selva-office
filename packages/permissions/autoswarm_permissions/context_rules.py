@@ -6,7 +6,7 @@ Rules can escalate ALLOW -> ASK or ASK -> DENY but never relax permissions.
 from __future__ import annotations
 
 import abc
-from datetime import datetime, timezone
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -81,9 +81,12 @@ class TrustLevelRule(ContextRule):
     ) -> PermissionLevel | None:
         if context.agent_level is None:
             return None
-        if context.agent_level < self.min_level and category in _DESTRUCTIVE_ACTIONS:
-            if level == PermissionLevel.ALLOW:
-                return PermissionLevel.ASK
+        if (
+            context.agent_level < self.min_level
+            and category in _DESTRUCTIVE_ACTIONS
+            and level == PermissionLevel.ALLOW
+        ):
+            return PermissionLevel.ASK
         return None
 
 

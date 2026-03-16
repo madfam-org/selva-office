@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class PermissionLevel(str, Enum):
+class PermissionLevel(StrEnum):
     """Possible permission decisions for an action."""
 
     ALLOW = "allow"
@@ -15,7 +15,7 @@ class PermissionLevel(str, Enum):
     DENY = "deny"
 
 
-class ActionCategory(str, Enum):
+class ActionCategory(StrEnum):
     """Categories of actions that agents can request."""
 
     FILE_READ = "file_read"

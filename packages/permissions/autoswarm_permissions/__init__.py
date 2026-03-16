@@ -2,8 +2,8 @@
 
 from .classifier import ActionClassifier
 from .context_rules import (
-    ContextRule,
     DEFAULT_CONTEXT_RULES,
+    ContextRule,
     PermissionContext,
     RiskScoreRule,
     RoleMatrixRule,

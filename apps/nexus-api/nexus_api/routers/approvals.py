@@ -157,7 +157,11 @@ async def _respond_to_request(
 # -- Endpoints ----------------------------------------------------------------
 
 
-@router.get("/", response_model=list[ApprovalRequestResponse], dependencies=[Depends(get_current_user)])
+@router.get(
+    "/",
+    response_model=list[ApprovalRequestResponse],
+    dependencies=[Depends(get_current_user)],
+)
 async def list_pending_approvals(
     db: AsyncSession = Depends(get_db),
 ) -> list[ApprovalRequestResponse]:
