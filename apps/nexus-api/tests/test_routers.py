@@ -561,7 +561,7 @@ class TestSkillsList:
         assert resp.status_code == 200
         body = resp.json()
         assert isinstance(body, list)
-        assert len(body) >= 11
+        assert len(body) >= 10
         first = body[0]
         assert "name" in first
         assert "description" in first
@@ -579,7 +579,7 @@ class TestSkillsList:
         assert resp.status_code == 200
         body = resp.json()
         assert all(s["tier"] == "core" for s in body)
-        assert len(body) == 11
+        assert len(body) == 10
 
     async def test_list_skills_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Skills list requires authentication."""

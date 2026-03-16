@@ -20,18 +20,26 @@ db-wait:
 	@echo "PostgreSQL is ready."
 
 dev-full:
+	@test -f .env || (echo "Creating .env from .env.example..." && cp .env.example .env)
+	@echo "Installing dependencies..."
+	$(MAKE) install
 	@echo "Starting infrastructure..."
 	$(DOCKER_COMPOSE) -f infra/docker/docker-compose.dev.yml up -d --wait
 	$(MAKE) db-wait
 	@echo "Running database migrations..."
 	uv run --directory apps/nexus-api alembic upgrade head
-	@echo "Seeding departments and agents..."
-	$(MAKE) dev-seed
 	$(MAKE) setup-org-config
 	@echo "Starting all services..."
-	$(MAKE) dev
-	@echo "Running smoke test in background (5s delay)..."
-	@sleep 5 && $(MAKE) smoke-test &
+	$(MAKE) dev &
+	@echo "Waiting for nexus-api to be ready..."
+	@for i in $$(seq 1 30); do \
+	  curl -sf http://localhost:4300/api/v1/health/health >/dev/null 2>&1 && break; \
+	  sleep 1; \
+	done
+	@echo "Seeding departments and agents..."
+	$(MAKE) dev-seed
+	@echo "Running smoke test..."
+	@sleep 3 && $(MAKE) smoke-test
 
 dev-seed:
 	@echo "Seeding departments and agents..."

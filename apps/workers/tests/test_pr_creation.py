@@ -77,8 +77,8 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
-        mock_settings.git_author_name = "madfam-bot"
-        mock_settings.git_author_email = "bot@madfam.io"
+        mock_settings.git_author_name = "autoswarm-bot"
+        mock_settings.git_author_email = "bot@autoswarm.dev"
 
         with (
             patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),
@@ -115,8 +115,8 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
-        mock_settings.git_author_name = "madfam-bot"
-        mock_settings.git_author_email = "bot@madfam.io"
+        mock_settings.git_author_name = "autoswarm-bot"
+        mock_settings.git_author_email = "bot@autoswarm.dev"
 
         with (
             patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),
@@ -153,8 +153,8 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
-        mock_settings.git_author_name = "madfam-bot"
-        mock_settings.git_author_email = "bot@madfam.io"
+        mock_settings.git_author_name = "autoswarm-bot"
+        mock_settings.git_author_email = "bot@autoswarm.dev"
 
         with (
             patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),

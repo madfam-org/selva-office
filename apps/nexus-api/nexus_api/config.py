@@ -29,12 +29,12 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
 
     # -- Auth (Janua OIDC) ----------------------------------------------------
-    janua_issuer_url: str = "https://auth.madfam.io"
+    janua_issuer_url: str = ""
     janua_client_id: str = "autoswarm-office"
     janua_client_secret: str = ""
 
     # -- Billing (Dhanam) -----------------------------------------------------
-    dhanam_api_url: str = "https://api.dhan.am"
+    dhanam_api_url: str = ""
     dhanam_webhook_secret: str = ""
 
     # -- Gateway (GitHub webhooks) ---------------------------------------------

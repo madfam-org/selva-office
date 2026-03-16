@@ -59,24 +59,10 @@ _DEFAULT_SYNERGY_RULES: list[SynergyRule] = [
         multiplier=1.35,
     ),
     SynergyRule(
-        name="MADFAM Expert",
-        description="MADFAM API knowledge combined with coder role accelerates platform work.",
-        required_roles=frozenset({AgentRole.CODER}),
-        required_skills=frozenset({"madfam-api"}),
-        multiplier=1.15,
-    ),
-    SynergyRule(
         name="Research Pipeline",
         description="Research and doc-coauthoring skills streamline knowledge production.",
         required_roles=frozenset(),
         required_skills=frozenset({"research", "doc-coauthoring"}),
-        multiplier=1.2,
-    ),
-    SynergyRule(
-        name="MADFAM Specialists",
-        description="Multiple agents with MADFAM API knowledge amplify ecosystem integration.",
-        required_roles=frozenset(),
-        required_skills=frozenset({"madfam-api", "coding"}),
         multiplier=1.2,
     ),
     SynergyRule(

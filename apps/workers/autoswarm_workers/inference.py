@@ -35,7 +35,15 @@ def build_model_router() -> ModelRouter:
     Also registers providers defined in the org config.
     """
     settings = get_settings()
-    org_config = load_org_config(Path(settings.org_config_path).expanduser())
+    try:
+        org_config = load_org_config(Path(settings.org_config_path).expanduser())
+    except (FileNotFoundError, OSError):
+        logger.warning(
+            "Org config not found at %s — using default provider routing",
+            settings.org_config_path,
+        )
+        from madfam_inference.org_config import OrgConfig
+        org_config = OrgConfig()
     providers: dict[str, InferenceProvider] = {}
 
     if settings.anthropic_api_key:

@@ -87,8 +87,8 @@ class TestCodingWorktree:
 
         mock_settings = MagicMock()
         mock_settings.github_token = None
-        mock_settings.git_author_name = "madfam-bot"
-        mock_settings.git_author_email = "bot@madfam.io"
+        mock_settings.git_author_name = "autoswarm-bot"
+        mock_settings.git_author_email = "bot@autoswarm.dev"
 
         with (
             patch(
@@ -188,8 +188,8 @@ class TestPushGateCommitPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = None
-        mock_settings.git_author_name = "madfam-bot"
-        mock_settings.git_author_email = "bot@madfam.io"
+        mock_settings.git_author_name = "autoswarm-bot"
+        mock_settings.git_author_email = "bot@autoswarm.dev"
 
         with (
             patch(
@@ -264,8 +264,8 @@ class TestPushGateCommitPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = None
-        mock_settings.git_author_name = "madfam-bot"
-        mock_settings.git_author_email = "bot@madfam.io"
+        mock_settings.git_author_name = "autoswarm-bot"
+        mock_settings.git_author_email = "bot@autoswarm.dev"
 
         with (
             patch(

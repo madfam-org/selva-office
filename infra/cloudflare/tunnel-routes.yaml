@@ -1,13 +1,14 @@
+# Replace your-domain.example.com with your domain
 tunnel: autoswarm-office
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
-  - hostname: api.autoswarm.madfam.io
+  - hostname: api.your-domain.example.com
     service: http://nexus-api.autoswarm.svc.cluster.local:80
-  - hostname: office.autoswarm.madfam.io
+  - hostname: office.your-domain.example.com
     service: http://office-ui.autoswarm.svc.cluster.local:80
-  - hostname: colyseus.autoswarm.madfam.io
+  - hostname: ws.your-domain.example.com
     service: http://colyseus.autoswarm.svc.cluster.local:80
-  - hostname: admin.autoswarm.madfam.io
+  - hostname: admin.your-domain.example.com
     service: http://admin.autoswarm.svc.cluster.local:80
   - service: http_status:404

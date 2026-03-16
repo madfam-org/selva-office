@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useCallback, useState } from 'react';
 
 const JANUA_URL =
-  process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ?? 'https://auth.madfam.io';
+  process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ?? '';
 const DEFAULT_ORG = process.env.NEXT_PUBLIC_GUEST_DEFAULT_ORG ?? '';
 const GUEST_ENABLED = process.env.NEXT_PUBLIC_GUEST_ACCESS_ENABLED !== 'false';
 

@@ -15,7 +15,7 @@ DEV_ORG = "dev-org"
 OTHER_ORG = "other-org"
 
 
-async def _seed_agent(db_session, *, name: str = "ByteForge", org_id: str = DEV_ORG) -> Agent:
+async def _seed_agent(db_session, *, name: str = "Coder-Alpha", org_id: str = DEV_ORG) -> Agent:
     """Insert an agent and return it with a refreshed id."""
     agent = Agent(name=name, role="coder", status="idle", org_id=org_id)
     db_session.add(agent)
@@ -177,7 +177,7 @@ class TestTaskBoard:
         db_session,
     ) -> None:
         """Agent UUIDs in assigned_agent_ids are resolved to human-readable names."""
-        agent = await _seed_agent(db_session, name="ByteForge")
+        agent = await _seed_agent(db_session, name="Coder-Alpha")
         await _seed_task(
             db_session,
             description="Named task",
@@ -190,7 +190,7 @@ class TestTaskBoard:
 
         items = resp.json()["columns"]["running"]
         assert len(items) == 1
-        assert "ByteForge" in items[0]["agent_names"]
+        assert "Coder-Alpha" in items[0]["agent_names"]
 
     async def test_event_aggregates_included(
         self,

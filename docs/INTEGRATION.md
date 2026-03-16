@@ -23,10 +23,10 @@ Register an OIDC client in Janua for AutoSwarm Office:
 ### Environment Variables
 
 ```bash
-JANUA_ISSUER_URL=https://auth.madfam.io
+JANUA_ISSUER_URL=https://auth.example.com
 JANUA_CLIENT_ID=autoswarm-office
 JANUA_CLIENT_SECRET=<from Janua admin console>
-NEXT_PUBLIC_JANUA_URL=https://auth.madfam.io
+NEXT_PUBLIC_JANUA_URL=https://auth.example.com
 ```
 
 ### Next.js Middleware (Office UI)
@@ -82,7 +82,7 @@ pnpm add @dhanam/billing-sdk
 ### Configuration
 
 ```bash
-DHANAM_API_URL=https://api.dhan.am
+DHANAM_API_URL=https://billing.example.com
 DHANAM_WEBHOOK_SECRET=<from Dhanam dashboard>
 ```
 
@@ -122,15 +122,15 @@ The `.enclii.yml` at the project root defines three services:
 
 | Service | Dockerfile | Port | Domain |
 |---------|-----------|------|--------|
-| `autoswarm-nexus-api` | `infra/docker/Dockerfile.nexus-api` | 4300 | `api.autoswarm.madfam.io` |
-| `autoswarm-office-ui` | `infra/docker/Dockerfile.office-ui` | 3000 | `office.autoswarm.madfam.io` |
-| `autoswarm-colyseus` | `infra/docker/Dockerfile.colyseus` | 4303 | `colyseus.autoswarm.madfam.io` |
+| `autoswarm-nexus-api` | `infra/docker/Dockerfile.nexus-api` | 4300 | `api.your-domain.example.com` |
+| `autoswarm-office-ui` | `infra/docker/Dockerfile.office-ui` | 3000 | `office.your-domain.example.com` |
+| `autoswarm-colyseus` | `infra/docker/Dockerfile.colyseus` | 4303 | `ws.your-domain.example.com` |
 
 ### Deployment Pipeline
 
 1. CI passes on the `main` branch.
 2. The `deploy-enclii.yml` GitHub Actions workflow builds and pushes Docker images
-   to `ghcr.io/madfam-org/autoswarm-*`.
+   to `ghcr.io/your-org/autoswarm-*`.
 3. The workflow POSTs a lifecycle callback to `https://api.enclii.dev/v1/callbacks/lifecycle-event`
    with the commit SHA and image tags.
 4. Enclii receives the callback and updates the ArgoCD Application manifests in the

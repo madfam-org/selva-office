@@ -4,4 +4,4 @@ metadata:
   name: autoswarm
   labels:
     app.kubernetes.io/part-of: autoswarm-office
-    madfam.io/project: autoswarm
+    autoswarm.dev/project: autoswarm

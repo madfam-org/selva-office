@@ -10,7 +10,7 @@ App-of-Apps pattern.
 
 1. The Enclii repo contains a root ArgoCD Application (the "App of Apps")
    that uses an ApplicationSet controller to discover and manage all
-   madfam project applications.
+   project applications.
 
 2. The `config.json` in this directory is consumed by Enclii's
    ApplicationSet controller. The controller reads the project metadata
@@ -25,7 +25,7 @@ App-of-Apps pattern.
 ## Integration Steps
 
 1. Ensure the Enclii repo's root ApplicationSet is configured to scan
-   for `config.json` files across madfam project repositories.
+   for `config.json` files across project repositories.
 
 2. Verify that the ArgoCD project `autoswarm-office` exists in ArgoCD
    or is created by Enclii's project provisioning.

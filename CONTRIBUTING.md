@@ -33,7 +33,7 @@ autoswarm-office/
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/madfam-org/autoswarm-office
+git clone https://github.com/YOUR-ORG/autoswarm-office
 cd autoswarm-office
 
 # 2. Install Node.js dependencies

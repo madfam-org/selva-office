@@ -5,7 +5,7 @@ import AdminDashboard from '../app/page';
 const mockAgents = [
   {
     id: 'a1',
-    name: 'ByteForge',
+    name: 'Coder-Alpha',
     role: 'coder',
     status: 'idle',
     departmentId: 'd1',
@@ -14,7 +14,7 @@ const mockAgents = [
   },
   {
     id: 'a2',
-    name: 'DeepDive',
+    name: 'Researcher-Alpha',
     role: 'researcher',
     status: 'working',
     departmentId: 'd2',
@@ -23,7 +23,7 @@ const mockAgents = [
   },
   {
     id: 'a3',
-    name: 'Hexcraft',
+    name: 'Coder-Beta',
     role: 'coder',
     status: 'idle',
     departmentId: 'd1',
