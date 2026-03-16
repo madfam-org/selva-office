@@ -144,15 +144,19 @@ class TestImplementWritesFiles:
     def test_implement_falls_back_to_placeholder(self, tmp_path: Path) -> None:
         from autoswarm_workers.graphs.coding import implement
 
-        result = implement({
-            "messages": [AIMessage(
-                content="Plan ready",
-                additional_kwargs={"plan": {"steps": ["step1"]}},
-            )],
-            "worktree_path": str(tmp_path),
-            "iteration": 0,
-            "description": "Test task",
-        })
+        with patch(
+            "autoswarm_workers.inference.get_model_router",
+            side_effect=RuntimeError("no providers"),
+        ):
+            result = implement({
+                "messages": [AIMessage(
+                    content="Plan ready",
+                    additional_kwargs={"plan": {"steps": ["step1"]}},
+                )],
+                "worktree_path": str(tmp_path),
+                "iteration": 0,
+                "description": "Test task",
+            })
 
         assert (tmp_path / "AUTOSWARM_PLACEHOLDER.md").exists()
         assert "AUTOSWARM_PLACEHOLDER.md" in result["code_changes"][-1]["files_modified"]

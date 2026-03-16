@@ -42,11 +42,15 @@ class TestTranscribeNode:
         """When no LLM is configured, transcribe returns a placeholder."""
         from autoswarm_workers.graphs.meeting import transcribe
 
-        result = transcribe({
-            "messages": [],
-            "recording_url": "https://example.com/meeting.webm",
-            "description": "Sprint planning",
-        })
+        with patch(
+            "autoswarm_workers.inference.get_model_router",
+            side_effect=RuntimeError("no providers"),
+        ):
+            result = transcribe({
+                "messages": [],
+                "recording_url": "https://example.com/meeting.webm",
+                "description": "Sprint planning",
+            })
 
         assert result["status"] == "transcribed"
         assert result["transcript"]
