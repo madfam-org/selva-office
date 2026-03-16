@@ -133,6 +133,7 @@ make db-backup        # Backup PostgreSQL database
 make db-restore       # Restore from backup (BACKUP_FILE=<path>)
 make db-verify-backup # Verify backup integrity (BACKUP_FILE=<path>)
 make worktree-cleanup # Remove stale git worktrees (STALE_HOURS=24)
+make setup-org-config # Bootstrap ~/.autoswarm/org-config.yaml from template
 
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
