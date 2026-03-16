@@ -42,12 +42,15 @@ class InterruptHandler:
     nexus_api_url: str
     redis_url: str = "redis://localhost:6379"
     default_timeout: int = 300
-    client: httpx.AsyncClient = field(
-        default_factory=lambda: httpx.AsyncClient(
-            timeout=30.0,
-            headers={"Authorization": "Bearer dev-bypass"},
-        ),
-    )
+    auth_headers: dict[str, str] = field(default_factory=dict)
+    client: httpx.AsyncClient = field(init=False)
+
+    def __post_init__(self) -> None:
+        if not self.auth_headers:
+            from .auth import get_worker_auth_headers
+
+            self.auth_headers = get_worker_auth_headers()
+        self.client = httpx.AsyncClient(timeout=30.0, headers=self.auth_headers)
 
     async def create_approval_request(
         self,

@@ -6,6 +6,8 @@
 - `apps/office-ui/src/app/page.tsx` -- Office UI root page
 - `apps/workers/autoswarm_workers/__main__.py` -- Worker process entry (task status lifecycle)
 - `apps/workers/autoswarm_workers/task_status.py` -- Fire-and-forget task PATCH to nexus-api
+- `apps/workers/autoswarm_workers/auth.py` -- Centralized worker-to-API auth headers
+- `apps/workers/autoswarm_workers/prompts.py` -- Repo-context-aware LLM system prompts
 - `apps/workers/autoswarm_workers/event_emitter.py` -- Fire-and-forget event POST + Redis PUBLISH
 - `apps/nexus-api/nexus_api/routers/events.py` -- Events REST API + WebSocket stream
 - `apps/nexus-api/nexus_api/routers/metrics.py` -- Ops metrics dashboard aggregation API
@@ -65,16 +67,34 @@
 - **Git Identity**: `GitTool.configure_identity()` sets repo-local `user.name` /
   `user.email` before every agent commit. Config: `GIT_AUTHOR_NAME` (default
   `madfam-bot`), `GIT_AUTHOR_EMAIL` (default `bot@madfam.io`).
-- **Worker-to-API Auth**: `fire_and_forget_request()` accepts optional `headers`
-  kwarg. `task_status.py` and `interrupt_handler.py` pass `Authorization: Bearer
-  dev-bypass` for CSRF bypass. `_fetch_agent_skills()` in `__main__.py` also
-  passes Bearer auth.
+- **Worker-to-API Auth**: Centralized via `auth.py:get_worker_auth_headers()`.
+  Reads `WORKER_API_TOKEN` env var (default `dev-bypass`). Used by
+  `task_status.py`, `event_emitter.py`, `interrupt_handler.py`, and
+  `__main__.py:_fetch_agent_skills()`. No hardcoded tokens in source.
 - **CSRF Exemptions**: `/api/v1/events`, `/api/v1/approvals`, `/api/v1/billing/`,
   `/api/v1/swarms/tasks/` added to CSRF exempt prefixes (worker-to-API calls).
 - **PR Creation Compat**: `GitTool.create_pr()` resolves `OWNER/REPO` from git
   remote URL and uses `--repo` flag instead of `-C` (compat with older `gh` CLI).
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
+
+## Autonomous Dev Readiness (v0.3.1)
+
+- **test() Node Fix**: `test()` uses `_run_async()` instead of
+  `asyncio.get_event_loop()`, which crashed in ThreadPoolExecutor threads.
+- **Worker Auth Hardening**: `WORKER_API_TOKEN` env var (default `dev-bypass`).
+  `auth.py:get_worker_auth_headers()` centralizes all worker-to-API auth.
+  No hardcoded `"Bearer dev-bypass"` in source files.
+- **Org Config Bootstrap**: `make setup-org-config` copies
+  `data/org-config-template.yaml` to `~/.autoswarm/org-config.yaml`. Wired
+  into `make dev-full`. Worker logs warning when org config missing.
+- **Enhanced System Prompts**: `prompts.py` provides `build_plan_prompt()`,
+  `build_implement_prompt()`, `build_review_prompt()` with repo context
+  (top-level listing, README excerpt, CLAUDE.md conventions, language
+  detection). Strict JSON format instructions prevent LLM returning
+  markdown instead of file objects.
+- **Docker Compose Compat**: `DOCKER_COMPOSE` Makefile variable auto-detects
+  `docker-compose` (v1) vs `docker compose` (v2 plugin).
 
 ## Port Assignments
 

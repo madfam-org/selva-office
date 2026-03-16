@@ -7,6 +7,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+_MOCK_AUTH = {"Authorization": "Bearer test-token"}
+
+
+def _patch_auth():
+    """Patch get_worker_auth_headers for event_emitter calls."""
+    return patch(
+        "autoswarm_workers.auth.get_worker_auth_headers",
+        return_value=_MOCK_AUTH,
+    )
+
+
 # ---------------------------------------------------------------------------
 # emit_event tests
 # ---------------------------------------------------------------------------
@@ -30,6 +41,7 @@ class TestEmitEvent:
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import emit_event
 
@@ -52,6 +64,34 @@ class TestEmitEvent:
             assert payload["agent_id"] == "agent-1"
 
     @pytest.mark.asyncio
+    async def test_includes_auth_headers(self) -> None:
+        """Verify that emit_event passes auth headers to fire_and_forget_request."""
+        mock_pool = MagicMock()
+        mock_pool.execute_with_retry = AsyncMock()
+
+        with (
+            patch(
+                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
+            patch(
+                "autoswarm_workers.event_emitter.get_redis_pool",
+                return_value=mock_pool,
+            ),
+            _patch_auth(),
+        ):
+            from autoswarm_workers.event_emitter import emit_event
+
+            await emit_event(
+                "http://test:4300",
+                event_type="node.entered",
+                event_category="node",
+            )
+
+            assert mock_ffr.call_args[1]["headers"] == _MOCK_AUTH
+
+    @pytest.mark.asyncio
     async def test_includes_optional_fields_when_provided(self) -> None:
         mock_pool = MagicMock()
         mock_pool.execute_with_retry = AsyncMock()
@@ -66,6 +106,7 @@ class TestEmitEvent:
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import emit_event
 
@@ -112,6 +153,7 @@ class TestEmitEvent:
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import emit_event
 
@@ -140,6 +182,7 @@ class TestEmitEvent:
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import emit_event
 
@@ -168,6 +211,7 @@ class TestEmitEvent:
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import emit_event
 
@@ -194,6 +238,7 @@ class TestEmitEvent:
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import EVENTS_CHANNEL, emit_event
 
@@ -230,6 +275,7 @@ class TestEmitEvent:
                 return_value=mock_pool,
             ),
             patch("autoswarm_workers.event_emitter.logger") as mock_logger,
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import emit_event
 
@@ -257,6 +303,7 @@ class TestEmitEvent:
                 "autoswarm_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
+            _patch_auth(),
         ):
             from autoswarm_workers.event_emitter import emit_event
 

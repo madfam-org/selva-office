@@ -120,6 +120,15 @@ def build_model_router() -> ModelRouter:
 
 def validate_providers() -> None:
     """Log which providers are available. Warns if only Ollama is registered."""
+    settings = get_settings()
+    org_config_path = Path(settings.org_config_path).expanduser()
+    if not org_config_path.exists():
+        logger.warning(
+            "Org config not found at %s — run 'make setup-org-config'. "
+            "Task-type model routing is disabled.",
+            org_config_path,
+        )
+
     try:
         router = build_model_router()
         providers = router.available_providers

@@ -6,17 +6,30 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+_MOCK_AUTH = {"Authorization": "Bearer test-token"}
+
+
+def _patch_auth():
+    """Patch get_worker_auth_headers to return a test token."""
+    return patch(
+        "autoswarm_workers.task_status.get_worker_auth_headers",
+        return_value=_MOCK_AUTH,
+    )
+
 
 class TestUpdateTaskStatus:
     """update_task_status sends PATCH requests to nexus-api via fire_and_forget_request."""
 
     @pytest.mark.asyncio
     async def test_patches_running_status(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as mock_ffr:
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
+            _patch_auth(),
+        ):
             from autoswarm_workers.task_status import update_task_status
 
             await update_task_status("http://test:4300", "task-1", "running")
@@ -25,17 +38,20 @@ class TestUpdateTaskStatus:
                 "PATCH",
                 "http://test:4300/api/v1/swarms/tasks/task-1",
                 json={"status": "running"},
-                headers={"Authorization": "Bearer dev-bypass"},
+                headers=_MOCK_AUTH,
                 timeout=5.0,
             )
 
     @pytest.mark.asyncio
     async def test_patches_completed_with_result(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as mock_ffr:
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
+            _patch_auth(),
+        ):
             from autoswarm_workers.task_status import update_task_status
 
             await update_task_status(
@@ -49,11 +65,14 @@ class TestUpdateTaskStatus:
 
     @pytest.mark.asyncio
     async def test_patches_failed_with_error(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as mock_ffr:
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
+            _patch_auth(),
+        ):
             from autoswarm_workers.task_status import update_task_status
 
             await update_task_status(
@@ -66,10 +85,13 @@ class TestUpdateTaskStatus:
 
     @pytest.mark.asyncio
     async def test_skips_unknown_task_id(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-        ) as mock_ffr:
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+            ) as mock_ffr,
+            _patch_auth(),
+        ):
             from autoswarm_workers.task_status import update_task_status
 
             await update_task_status("http://test:4300", "unknown", "running")
@@ -77,10 +99,13 @@ class TestUpdateTaskStatus:
 
     @pytest.mark.asyncio
     async def test_does_not_raise_on_failure(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-            return_value=False,
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=False,
+            ),
+            _patch_auth(),
         ):
             from autoswarm_workers.task_status import update_task_status
 
@@ -96,6 +121,7 @@ class TestUpdateTaskStatus:
                 return_value=False,
             ),
             patch("autoswarm_workers.task_status.logger") as mock_logger,
+            _patch_auth(),
         ):
             from autoswarm_workers.task_status import update_task_status
 
@@ -105,11 +131,14 @@ class TestUpdateTaskStatus:
 
     @pytest.mark.asyncio
     async def test_includes_started_at_when_provided(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as mock_ffr:
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
+            _patch_auth(),
+        ):
             from autoswarm_workers.task_status import update_task_status
 
             await update_task_status(
@@ -123,11 +152,14 @@ class TestUpdateTaskStatus:
 
     @pytest.mark.asyncio
     async def test_includes_error_message_when_provided(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as mock_ffr:
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
+            _patch_auth(),
+        ):
             from autoswarm_workers.task_status import update_task_status
 
             await update_task_status(
@@ -143,11 +175,14 @@ class TestUpdateTaskStatus:
 
     @pytest.mark.asyncio
     async def test_omits_metadata_when_not_provided(self) -> None:
-        with patch(
-            "autoswarm_workers.task_status.fire_and_forget_request",
-            new_callable=AsyncMock,
-            return_value=True,
-        ) as mock_ffr:
+        with (
+            patch(
+                "autoswarm_workers.task_status.fire_and_forget_request",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_ffr,
+            _patch_auth(),
+        ):
             from autoswarm_workers.task_status import update_task_status
 
             await update_task_status("http://test:4300", "task-1", "running")
