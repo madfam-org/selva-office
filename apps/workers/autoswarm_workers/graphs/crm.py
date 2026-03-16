@@ -125,9 +125,26 @@ def draft_communication(state: CRMState) -> CRMState:
         from ..inference import call_llm, get_model_router
 
         router = get_model_router()
+
+        # Retrieve experience context for prompt enrichment
+        experience_ctx = ""
+        try:
+            from ..prompts import build_experience_context
+
+            agent_id = state.get("agent_id", "unknown")
+            description = state.get("description", "")
+            experience_ctx = _run_async(build_experience_context(
+                agent_id=agent_id,
+                agent_role="crm",
+                task_description=description,
+            ))
+        except Exception:
+            pass
+
         skill_ctx = state.get("agent_system_prompt", "")
         base_prompt = "Draft a professional communication based on the CRM context provided."
-        system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
+        parts = [p for p in [skill_ctx, experience_ctx, base_prompt] if p]
+        system_prompt = "\n\n".join(parts)
         draft = _run_async(call_llm(
             router,
             messages=[{

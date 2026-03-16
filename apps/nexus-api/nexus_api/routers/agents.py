@@ -60,10 +60,26 @@ class AgentResponse(BaseModel):
     skill_ids: list[str] | None
     effective_skills: list[str]
     synergy_data: dict[str, Any] | None
+    tasks_completed: int = 0
+    tasks_failed: int = 0
+    approval_success_count: int = 0
+    approval_denial_count: int = 0
+    avg_task_duration_seconds: float | None = None
+    last_task_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class AgentStatsUpdate(BaseModel):
+    """Delta increments for agent performance stats. Worker-to-API."""
+
+    tasks_completed_delta: int = Field(default=0, ge=0)
+    tasks_failed_delta: int = Field(default=0, ge=0)
+    approval_success_delta: int = Field(default=0, ge=0)
+    approval_denial_delta: int = Field(default=0, ge=0)
+    task_duration_seconds: float | None = Field(default=None, ge=0)
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -82,6 +98,12 @@ def _agent_to_response(agent: Agent) -> AgentResponse:
         skill_ids=agent.skill_ids,
         effective_skills=effective_skills,
         synergy_data=agent.synergy_data,
+        tasks_completed=agent.tasks_completed,
+        tasks_failed=agent.tasks_failed,
+        approval_success_count=agent.approval_success_count,
+        approval_denial_count=agent.approval_denial_count,
+        avg_task_duration_seconds=agent.avg_task_duration_seconds,
+        last_task_at=agent.last_task_at,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
     )
@@ -192,6 +214,50 @@ async def assign_agent(
         ) from exc
 
     agent.department_id = dept_uid
+    agent.updated_at = datetime.now(UTC)
+    await db.flush()
+    await db.refresh(agent)
+    return _agent_to_response(agent)
+
+
+@router.patch("/{agent_id}/stats", response_model=AgentResponse)
+async def update_agent_stats(
+    agent_id: str,
+    body: AgentStatsUpdate,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> AgentResponse:
+    """Apply delta increments to agent performance stats.
+
+    Worker-to-API endpoint — no user auth required (Bearer token only).
+    Computes a running average for task duration.
+    """
+    agent = await _get_agent_or_404(agent_id, db)
+
+    agent.tasks_completed += body.tasks_completed_delta
+    agent.tasks_failed += body.tasks_failed_delta
+    agent.approval_success_count += body.approval_success_delta
+    agent.approval_denial_count += body.approval_denial_delta
+
+    # Compute running average duration
+    if body.task_duration_seconds is not None:
+        total_tasks = agent.tasks_completed + agent.tasks_failed
+        if agent.avg_task_duration_seconds is not None and total_tasks > 1:
+            # Incremental mean: new_avg = old_avg + (new_val - old_avg) / n
+            agent.avg_task_duration_seconds = (
+                agent.avg_task_duration_seconds
+                + (body.task_duration_seconds - agent.avg_task_duration_seconds) / total_tasks
+            )
+        else:
+            agent.avg_task_duration_seconds = body.task_duration_seconds
+
+    # Update last_task_at whenever any delta is applied
+    if (
+        body.tasks_completed_delta
+        or body.tasks_failed_delta
+        or body.task_duration_seconds is not None
+    ):
+        agent.last_task_at = datetime.now(UTC)
+
     agent.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(agent)

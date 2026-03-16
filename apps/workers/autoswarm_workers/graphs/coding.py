@@ -68,12 +68,25 @@ def plan(state: CodingState) -> CodingState:
         from ..inference import call_llm, get_model_router
 
         router = get_model_router()
-        from ..prompts import build_plan_prompt
+        from ..prompts import build_experience_context, build_plan_prompt
+
+        # Retrieve experience context for prompt enrichment
+        experience_ctx = ""
+        try:
+            agent_id = state.get("agent_id", "unknown")
+            experience_ctx = _run_async(build_experience_context(
+                agent_id=agent_id,
+                agent_role="coder",
+                task_description=task_description.strip(),
+            ))
+        except Exception:
+            logger.debug("Failed to retrieve experience context", exc_info=True)
 
         skill_ctx = state.get("agent_system_prompt", "")
         repo_path = state.get("repo_path")
         system_prompt = build_plan_prompt(
             task_description.strip(), repo_path=repo_path, skill_ctx=skill_ctx,
+            experience_ctx=experience_ctx,
         )
         llm_response = _run_async(call_llm(
             router,

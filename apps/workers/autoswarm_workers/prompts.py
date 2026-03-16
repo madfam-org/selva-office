@@ -92,10 +92,73 @@ def _detect_language(repo_path: str | None) -> str:
     return ext_to_lang.get(top_ext, "unknown")
 
 
+async def build_experience_context(
+    agent_id: str,
+    agent_role: str,
+    task_description: str,
+) -> str:
+    """Retrieve relevant past experiences and agent memories for prompt injection.
+
+    Returns a formatted string of past approaches, or empty string on any error.
+    Graceful degradation: empty ExperienceStore or embedding failures return "".
+    """
+    try:
+        from autoswarm_memory import ExperienceStore, get_embedding_provider, get_memory_manager
+
+        from .config import get_settings
+
+        settings = get_settings()
+        sections: list[str] = []
+
+        # Search similar past experiences (per-role)
+        embedder = get_embedding_provider()
+        exp_store = ExperienceStore(
+            role=agent_role,
+            embedding_provider=embedder,
+            persist_dir=settings.memory_persist_dir,
+        )
+
+        similar = exp_store.search_similar(task_description, top_k=3, min_score=0.3)
+        if similar:
+            lines: list[str] = []
+            for rec in similar:
+                if rec.score >= 0.8:
+                    badge = "[SUCCESS]"
+                elif rec.score >= 0.3:
+                    badge = "[PARTIAL]"
+                else:
+                    badge = "[FAILED]"
+                lines.append(f"- {badge} {rec.approach[:200]} → {rec.outcome[:150]}")
+            sections.append(
+                "## Past Approaches for Similar Tasks\n" + "\n".join(lines)
+            )
+
+        # Agent-specific memories
+        mem_manager = get_memory_manager(persist_dir=settings.memory_persist_dir)
+        agent_ctx = mem_manager.get_relevant_context(agent_id, task_description, top_k=3)
+        if agent_ctx:
+            sections.append(agent_ctx)
+
+        # High-confidence shortcuts
+        shortcuts = exp_store.get_shortcuts(task_description, threshold=0.85)
+        if shortcuts:
+            shortcut_lines = [f"- {s[:200]}" for s in shortcuts]
+            sections.append(
+                "## Proven Approaches (High Confidence)\n" + "\n".join(shortcut_lines)
+            )
+
+        return "\n\n".join(sections)
+
+    except Exception:
+        logger.debug("Failed to build experience context", exc_info=True)
+        return ""
+
+
 def build_plan_prompt(
     description: str,
     repo_path: str | None = None,
     skill_ctx: str = "",
+    experience_ctx: str = "",
 ) -> str:
     """Build a system prompt for the plan() node with repo context."""
     ctx = _read_repo_context(repo_path)
@@ -126,9 +189,13 @@ def build_plan_prompt(
         )
 
     base = "\n\n".join(sections)
+    parts: list[str] = []
     if skill_ctx:
-        return f"{skill_ctx}\n\n{base}"
-    return base
+        parts.append(skill_ctx)
+    if experience_ctx:
+        parts.append(experience_ctx)
+    parts.append(base)
+    return "\n\n".join(parts)
 
 
 def build_implement_prompt(
@@ -137,6 +204,7 @@ def build_implement_prompt(
     repo_path: str | None = None,
     worktree_path: str | None = None,
     skill_ctx: str = "",
+    experience_ctx: str = "",
 ) -> str:
     """Build a system prompt for the implement() node with strict JSON instructions."""
     ctx = _read_repo_context(worktree_path or repo_path)
@@ -164,14 +232,19 @@ def build_implement_prompt(
     )
 
     base = "\n\n".join(sections)
+    parts_impl: list[str] = []
     if skill_ctx:
-        return f"{skill_ctx}\n\n{base}"
-    return base
+        parts_impl.append(skill_ctx)
+    if experience_ctx:
+        parts_impl.append(experience_ctx)
+    parts_impl.append(base)
+    return "\n\n".join(parts_impl)
 
 
 def build_review_prompt(
     changes: str,
     skill_ctx: str = "",
+    experience_ctx: str = "",
 ) -> str:
     """Build a system prompt for the review() node with enhanced criteria."""
     sections = [
@@ -186,6 +259,10 @@ def build_review_prompt(
     ]
 
     base = "\n".join(sections)
+    parts_rev: list[str] = []
     if skill_ctx:
-        return f"{skill_ctx}\n\n{base}"
-    return base
+        parts_rev.append(skill_ctx)
+    if experience_ctx:
+        parts_rev.append(experience_ctx)
+    parts_rev.append(base)
+    return "\n\n".join(parts_rev)

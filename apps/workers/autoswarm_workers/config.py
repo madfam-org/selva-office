@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     worktree_stale_hours: int = 24
     approval_timeout: int = 300
 
+    # -- Learning / Memory ----------------------------------------------------
+    memory_persist_dir: str = "/tmp/autoswarm-memory"
+    bandit_persist_path: str = "/tmp/autoswarm-bandit.json"
+
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
