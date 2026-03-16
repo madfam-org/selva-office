@@ -11,7 +11,7 @@ metadata:
 spec:
   project: autoswarm-office
   source:
-    repoURL: https://github.com/your-org/autoswarm-office
+    repoURL: https://github.com/madfam-org/autoswarm-office
     targetRevision: main
     path: infra/k8s/production
   destination:

@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: office-ui
-          image: ghcr.io/your-org/autoswarm-office-ui:latest
+          image: ghcr.io/madfam-org/autoswarm-office-ui:latest
           ports:
             - containerPort: 3000
               protocol: TCP
@@ -64,9 +64,9 @@ spec:
                 - ALL
           env:
             - name: NEXT_PUBLIC_API_URL
-              value: https://api.your-domain.example.com
+              value: https://agents-api.madfam.io
             - name: NEXT_PUBLIC_COLYSEUS_URL
-              value: wss://ws.your-domain.example.com
+              value: wss://agents-ws.madfam.io
           volumeMounts:
             - name: tmp
               mountPath: /tmp

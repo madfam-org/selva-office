@@ -1,9 +1,8 @@
-# Enclii deployment config — replace your-domain.example.com and your-org with your values
 apiVersion: enclii.dev/v1
 kind: Service
 metadata:
   name: autoswarm-nexus-api
-  project: your-project
+  project: autoswarm-office
   description: AutoSwarm Office — Core orchestration API
 spec:
   build:
@@ -12,7 +11,7 @@ spec:
     context: .
     source:
       git:
-        repository: https://github.com/your-org/autoswarm-office
+        repository: https://github.com/madfam-org/autoswarm-office
         branch: main
         autoDeploy: true
   runtime:
@@ -48,7 +47,7 @@ spec:
           name: autoswarm-secrets
           key: redis-url
     - name: JANUA_ISSUER_URL
-      value: https://auth.your-domain.example.com
+      value: https://auth.madfam.io
     - name: JANUA_CLIENT_ID
       value: autoswarm-office
     - name: JANUA_CLIENT_SECRET
@@ -57,7 +56,7 @@ spec:
           name: autoswarm-secrets
           key: janua-client-secret
   domains:
-    - domain: api.your-domain.example.com
+    - domain: agents-api.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -69,7 +68,7 @@ apiVersion: enclii.dev/v1
 kind: Service
 metadata:
   name: autoswarm-office-ui
-  project: your-project
+  project: autoswarm-office
   description: AutoSwarm Office — Spatial office UI
 spec:
   build:
@@ -77,12 +76,12 @@ spec:
     dockerfile: infra/docker/Dockerfile.office-ui
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://api.your-domain.example.com
-      NEXT_PUBLIC_JANUA_URL: https://auth.your-domain.example.com
-      NEXT_PUBLIC_COLYSEUS_URL: wss://ws.your-domain.example.com
+      NEXT_PUBLIC_API_URL: https://agents-api.madfam.io
+      NEXT_PUBLIC_JANUA_URL: https://auth.madfam.io
+      NEXT_PUBLIC_COLYSEUS_URL: wss://agents-ws.madfam.io
     source:
       git:
-        repository: https://github.com/your-org/autoswarm-office
+        repository: https://github.com/madfam-org/autoswarm-office
         branch: main
         autoDeploy: true
   runtime:
@@ -106,9 +105,9 @@ spec:
       periodSeconds: 10
   env:
     - name: NEXT_PUBLIC_DHANAM_URL
-      value: https://billing.your-domain.example.com
+      value: https://app.dhan.am
   domains:
-    - domain: office.your-domain.example.com
+    - domain: agents.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -117,7 +116,7 @@ apiVersion: enclii.dev/v1
 kind: Service
 metadata:
   name: autoswarm-colyseus
-  project: your-project
+  project: autoswarm-office
   description: AutoSwarm Office — Colyseus room server
 spec:
   build:
@@ -126,7 +125,7 @@ spec:
     context: .
     source:
       git:
-        repository: https://github.com/your-org/autoswarm-office
+        repository: https://github.com/madfam-org/autoswarm-office
         branch: main
         autoDeploy: true
   runtime:
@@ -149,7 +148,7 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: ws.your-domain.example.com
+    - domain: agents-ws.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -158,7 +157,7 @@ apiVersion: enclii.dev/v1
 kind: Service
 metadata:
   name: autoswarm-admin
-  project: your-project
+  project: autoswarm-office
   description: AutoSwarm Office — Admin dashboard
 spec:
   build:
@@ -166,11 +165,11 @@ spec:
     dockerfile: infra/docker/Dockerfile.admin
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://api.your-domain.example.com
-      NEXT_PUBLIC_JANUA_URL: https://auth.your-domain.example.com
+      NEXT_PUBLIC_API_URL: https://agents-api.madfam.io
+      NEXT_PUBLIC_JANUA_URL: https://auth.madfam.io
     source:
       git:
-        repository: https://github.com/your-org/autoswarm-office
+        repository: https://github.com/madfam-org/autoswarm-office
         branch: main
         autoDeploy: true
   runtime:
@@ -193,7 +192,7 @@ spec:
       initialDelaySeconds: 30
       periodSeconds: 10
   domains:
-    - domain: admin.your-domain.example.com
+    - domain: agents-admin.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -202,7 +201,7 @@ apiVersion: enclii.dev/v1
 kind: Service
 metadata:
   name: autoswarm-gateway
-  project: your-project
+  project: autoswarm-office
   description: AutoSwarm Office — WebSocket gateway
 spec:
   build:
@@ -211,7 +210,7 @@ spec:
     context: .
     source:
       git:
-        repository: https://github.com/your-org/autoswarm-office
+        repository: https://github.com/madfam-org/autoswarm-office
         branch: main
         autoDeploy: true
   runtime:
@@ -234,7 +233,7 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: gateway.your-domain.example.com
+    - domain: agents-gw.madfam.io
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -243,7 +242,7 @@ apiVersion: enclii.dev/v1
 kind: Service
 metadata:
   name: autoswarm-workers
-  project: your-project
+  project: autoswarm-office
   description: AutoSwarm Office — Background task workers
 spec:
   build:
@@ -252,7 +251,7 @@ spec:
     context: .
     source:
       git:
-        repository: https://github.com/your-org/autoswarm-office
+        repository: https://github.com/madfam-org/autoswarm-office
         branch: main
         autoDeploy: true
   runtime:

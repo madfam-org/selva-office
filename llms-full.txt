@@ -347,7 +347,7 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
     "description": "Integrate payment gateway",
     "assigned_agent_ids": ["<uuid>", "<uuid>"],
     "payload": {
-        "repo": "your-org/autoswarm-office",
+        "repo": "madfam-org/autoswarm-office",
         "branch": "feat/payments"
     }
 }

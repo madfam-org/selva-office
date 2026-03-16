@@ -1,18 +1,17 @@
-# Replace your-domain.example.com and your-tunnel with your values
 records:
   - type: CNAME
-    name: api.your-domain.example.com
-    content: your-tunnel.cfargotunnel.com
+    name: agents-api.madfam.io
+    content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME
-    name: office.your-domain.example.com
-    content: your-tunnel.cfargotunnel.com
+    name: agents.madfam.io
+    content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME
-    name: ws.your-domain.example.com
-    content: your-tunnel.cfargotunnel.com
+    name: agents-ws.madfam.io
+    content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME
-    name: admin.your-domain.example.com
-    content: your-tunnel.cfargotunnel.com
+    name: agents-admin.madfam.io
+    content: autoswarm-office.cfargotunnel.com
     proxied: true

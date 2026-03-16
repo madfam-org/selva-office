@@ -15,7 +15,6 @@ resources:
   - service-monitors.yaml
   - pdb.yaml
   - hpa.yaml
-  - networkpolicy.yaml
   - backup-cronjob.yaml
   - keda-scaledobject.yaml
 

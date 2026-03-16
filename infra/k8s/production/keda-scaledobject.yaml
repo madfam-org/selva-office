@@ -4,15 +4,15 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: autoswarm-worker
+  name: workers-keda
   namespace: autoswarm
   labels:
-    app.kubernetes.io/name: autoswarm-worker
+    app.kubernetes.io/name: workers
     app.kubernetes.io/component: worker
     app.kubernetes.io/part-of: autoswarm
 spec:
   scaleTargetRef:
-    name: autoswarm-worker
+    name: workers
   pollingInterval: 30
   cooldownPeriod: 300
   minReplicaCount: 1
