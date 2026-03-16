@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useTaskDispatch } from '../../hooks/useTaskDispatch';
+import * as api from '@/lib/api';
 
 describe('useTaskDispatch', () => {
   beforeEach(() => {
@@ -188,6 +189,28 @@ describe('useTaskDispatch', () => {
         credentials: 'include',
       }),
     );
+  });
+
+  it('returns mock response in demo mode without fetching', async () => {
+    vi.spyOn(api, 'isDemo').mockReturnValue(true);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useTaskDispatch());
+
+    await act(async () => {
+      const response = await result.current.dispatch({
+        description: 'Demo dispatch',
+        graph_type: 'coding',
+      });
+      expect(response).not.toBeNull();
+      expect(response?.id).toMatch(/^demo-task-/);
+      expect(response?.description).toBe('Demo dispatch');
+    });
+
+    expect(result.current.status).toBe('success');
+    // Fetch should NOT have been called
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('includes credentials: include', async () => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { TaskBoardResponse, TaskTimeline } from '@autoswarm/shared-types';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, isDemo } from '@/lib/api';
 
 const POLL_INTERVAL_MS = 10000;
 
@@ -43,13 +43,15 @@ export function useTaskBoard(): TaskBoardState {
     }
   }, []);
 
+  const demo = isDemo();
   useEffect(() => {
+    if (demo) return; // Skip API polling in demo mode
     void fetchBoard();
     pollRef.current = setInterval(() => void fetchBoard(), POLL_INTERVAL_MS);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [fetchBoard]);
+  }, [fetchBoard, demo]);
 
   const selectTask = useCallback(async (taskId: string) => {
     setTimelineLoading(true);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, isDemo } from '@/lib/api';
 
 export type MeetingNotesStatus = 'idle' | 'dispatching' | 'processing' | 'completed' | 'error';
 
@@ -99,6 +99,8 @@ export function useMeetingNotes(): {
   }, []);
 
   const dispatchMeetingNotes = useCallback(async (recordingUrl: string): Promise<void> => {
+    if (isDemo()) return; // No-op in demo mode
+
     stopPolling();
     abortRef.current = false;
     setStatus('dispatching');

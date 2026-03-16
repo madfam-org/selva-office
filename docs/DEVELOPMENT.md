@@ -31,7 +31,9 @@ After startup, these URLs are available:
 
 | Service | URL |
 |---------|-----|
-| Office UI | http://localhost:4301 |
+| Office UI (landing) | http://localhost:4301 |
+| Office UI (demo) | http://localhost:4301/demo |
+| Office UI (office) | http://localhost:4301/office |
 | Nexus API | http://localhost:4300 |
 | API docs (Swagger) | http://localhost:4300/docs |
 | Colyseus | ws://localhost:4303 |

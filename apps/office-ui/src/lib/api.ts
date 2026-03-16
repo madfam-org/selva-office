@@ -73,3 +73,11 @@ export function isGuest(): boolean {
   const user = getSessionUser();
   return user?.roles.includes('guest') ?? false;
 }
+
+/**
+ * Check if the current session is a demo session.
+ */
+export function isDemo(): boolean {
+  const user = getSessionUser();
+  return user?.roles.includes('demo') ?? false;
+}

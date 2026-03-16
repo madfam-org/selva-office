@@ -16,7 +16,7 @@ const JANUA_CLIENT_ID = process.env.NEXT_PUBLIC_JANUA_CLIENT_ID ?? 'autoswarm-of
 function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const redirect = searchParams.get('redirect') ?? '/';
+  const redirect = searchParams.get('redirect') ?? '/office';
 
   const handleDevLogin = useCallback(() => {
     document.cookie = `janua-session=${DUMMY_JWT}; path=/; max-age=86400; SameSite=Lax`;

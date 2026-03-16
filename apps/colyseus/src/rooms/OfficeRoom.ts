@@ -44,6 +44,7 @@ import type {
 import { WhiteboardSchema } from "../schema/Whiteboard";
 import { MessageThrottler } from "../throttle";
 import { verifyToken, type AuthResult } from "../auth";
+import { DemoSimulator } from "../demo/DemoSimulator";
 import { createLogger } from "@autoswarm/config/logging";
 import { getRedisClient, closeRedisClient } from "../redis-client";
 import type { RedisClientType } from "redis";
@@ -149,6 +150,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   private agentIndex = new Map<string, { deptId: string; agentIndex: number }>();
   private redisSubscriber: RedisClientType | null = null;
   private throttler = new MessageThrottler();
+  private demoSimulator: DemoSimulator | null = null;
 
   /**
    * Return the service-to-service auth token for nexus-api calls.
@@ -235,6 +237,11 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
     this.throttledMessage("approve", (client: Client, message: ApproveMessage) => {
       if (this.isGuestBlocked(client, "approve")) return;
+      // In demo mode, resolve locally instead of calling the real API
+      if (this.demoSimulator && message.requestId?.startsWith("demo-agent-")) {
+        this.demoSimulator.resolveApproval(message.requestId, "approved");
+        return;
+      }
       handleApproval(this.state, client, {
         ...message,
         nexusApiUrl: this.nexusApiUrl,
@@ -243,6 +250,11 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
     this.throttledMessage("deny", (client: Client, message: ApproveMessage) => {
       if (this.isGuestBlocked(client, "deny")) return;
+      // In demo mode, resolve locally instead of calling the real API
+      if (this.demoSimulator && message.requestId?.startsWith("demo-agent-")) {
+        this.demoSimulator.resolveApproval(message.requestId, "denied");
+        return;
+      }
       handleApproval(this.state, client, {
         ...message,
         result: "denied",
@@ -379,10 +391,11 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   onJoin(client: Client, options?: RoomOptions & { name?: string }): void {
     const auth = client.auth as AuthResult | undefined;
     const isGuest = auth?.isGuest ?? false;
+    const isDemoClient = auth?.isDemo ?? false;
     const playerName = auth?.name ?? options?.name ?? "Player";
 
     logger.info(
-      { sessionId: client.sessionId, isGuest, orgId: auth?.orgId },
+      { sessionId: client.sessionId, isGuest, isDemo: isDemoClient, orgId: auth?.orgId },
       "Client joined",
     );
 
@@ -401,6 +414,12 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
       name: playerName,
       isGuest,
     });
+
+    // Start demo simulation on first demo client join
+    if (isDemoClient && !this.demoSimulator) {
+      this.demoSimulator = new DemoSimulator(this.state);
+      this.demoSimulator.start();
+    }
   }
 
   onLeave(client: Client, consented: boolean): void {
@@ -427,6 +446,10 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
 
   onDispose(): void {
     logger.info("Room disposed");
+    if (this.demoSimulator) {
+      this.demoSimulator.stop();
+      this.demoSimulator = null;
+    }
     if (this.stopProximityLoop) {
       this.stopProximityLoop();
       this.stopProximityLoop = null;
@@ -443,6 +466,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
    * 3 immediate retries (1s, 2s, 4s), then a deferred retry after 30s.
    */
   private async fetchAgentsWithRetry(): Promise<void> {
+    if (this.demoSimulator) return; // Demo agents are populated by the simulator
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -544,6 +568,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
   }
 
   private async subscribeToAgentUpdates(): Promise<void> {
+    if (this.demoSimulator) return; // No real agent updates in demo mode
     try {
       this.redisSubscriber = await getRedisClient();
     } catch (err) {

@@ -149,6 +149,23 @@
   .animate-pulse-border {
     animation: pulse-border 2s ease-in-out infinite;
   }
+
+  /* Landing page animations */
+  @keyframes glow-pulse {
+    0%, 100% { text-shadow: 0 0 8px rgba(99, 102, 241, 0.4), 0 0 24px rgba(99, 102, 241, 0.1); }
+    50% { text-shadow: 0 0 16px rgba(99, 102, 241, 0.6), 0 0 48px rgba(99, 102, 241, 0.2); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
 }
 
 /* Pixelact UI scoped styles — avoids collision with .retro-btn/.pixel-border */

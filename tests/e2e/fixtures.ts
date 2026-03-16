@@ -7,8 +7,8 @@ import { test as base, expect, type Page } from "@playwright/test";
 
 export const test = base.extend<{ authedPage: Page }>({
   authedPage: async ({ page }, use) => {
-    // Dev auth bypass: navigate to login, fill display name, submit
-    await page.goto("/");
+    // Dev auth bypass: navigate to /office (redirects to /login if unauthenticated)
+    await page.goto("/office");
     // Wait for either the game canvas or the login page
     const loginVisible = await page
       .locator('input[name="displayName"], input[placeholder*="name" i]')

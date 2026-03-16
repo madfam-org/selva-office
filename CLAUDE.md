@@ -11,8 +11,8 @@ cd autoswarm-office
 make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all services
 
 # 2. Open the office
-# Navigate to http://localhost:4301
-# Click "Dev Login (bypass)"
+# Navigate to http://localhost:4301 (landing page)
+# Click "Try Demo" for sandboxed demo, or "Sign In" → Dev Login → /office
 
 # 3. (Optional) Enable LLM inference
 # Add at least one API key to .env:
@@ -24,10 +24,24 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 # Set GITHUB_TOKEN in .env to a PAT with repo scope
 ```
 
+## Route Structure
+
+| Path | Auth | Purpose |
+|------|------|---------|
+| `/` | Public | Landing page |
+| `/demo` | Public | Demo office with simulated agents |
+| `/office` | Protected | Real office (main experience) |
+| `/login` | Public | Dev bypass + Janua SSO |
+| `/guest` | Public | Invite-based guest join |
+
 ## Critical Paths
 
 - `apps/nexus-api/src/main.py` -- FastAPI application entry point
-- `apps/office-ui/src/app/page.tsx` -- Office UI root page
+- `apps/office-ui/src/app/page.tsx` -- Landing page (server-rendered)
+- `apps/office-ui/src/app/office/page.tsx` -- Office page (protected, live mode)
+- `apps/office-ui/src/app/demo/page.tsx` -- Demo page (public, sandbox mode)
+- `apps/office-ui/src/components/OfficeExperience.tsx` -- Shared office experience component
+- `apps/colyseus/src/demo/DemoSimulator.ts` -- Demo agent simulation engine
 - `apps/workers/autoswarm_workers/__main__.py` -- Worker process entry (task status lifecycle)
 - `apps/workers/autoswarm_workers/task_status.py` -- Fire-and-forget task PATCH to nexus-api
 - `apps/workers/autoswarm_workers/auth.py` -- Centralized worker-to-API auth headers
@@ -102,6 +116,29 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
   remote URL and uses `--repo` flag instead of `-C` (compat with older `gh` CLI).
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
+
+## Landing Page + Demo Mode (v0.5.0)
+
+- **Landing page** (`/`): Server-rendered marketing page. No auth, no game deps.
+  Sections: Hero, Feature Grid, How It Works, Footer. Uses existing design tokens.
+- **Demo mode** (`/demo`): Sandboxed office with 8 simulated agents. Client
+  generates unsigned JWT with `org_id: "demo-public"`, `roles: ["demo"]`.
+  Colyseus `verifyToken()` recognizes demo tokens before JWKS verification.
+  `filterBy(["orgId"])` isolates demo rooms from real rooms.
+- **DemoSimulator** (`apps/colyseus/src/demo/DemoSimulator.ts`): Populates 8
+  hardcoded agents, cycles them through idle → working → waiting_approval → idle
+  every 12-15s. Auto-approves after 15s if no human action.
+  `resolveApproval()` handles human approve/deny locally.
+- **OfficeExperience** (`components/OfficeExperience.tsx`): Extracted from old
+  `page.tsx`. Accepts `mode: 'live' | 'demo'`. Demo mode hides calendar,
+  marketplace, map editor, workflow editor, ops feed, metrics.
+- **Hook bypasses**: `useApprovals`, `useTaskDispatch`, `useCalendar`,
+  `useMeetingNotes`, `useTaskBoard`, `useEventStream` all check `isDemo()`
+  and skip WebSocket connections / API polling in demo mode.
+- **Route changes**: `/` → landing, `/office` → protected office (was `/`),
+  `/demo` → public demo. Login default redirect changed from `/` to `/office`.
+- **Config**: `NEXT_PUBLIC_DEMO_ENABLED` env var (default true) controls
+  visibility of "Try Demo" CTA on landing page.
 
 ## Agent Learning Loop (v0.4.0)
 

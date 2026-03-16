@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, isDemo } from '@/lib/api';
 
 export interface DispatchRequest {
   description: string;
@@ -37,6 +37,22 @@ export function useTaskDispatch(): {
   const dispatch = useCallback(async (request: DispatchRequest): Promise<DispatchResponse | null> => {
     setStatus('submitting');
     setError(null);
+
+    // Demo mode: return mock response after a short delay
+    if (isDemo()) {
+      await new Promise((r) => setTimeout(r, 800));
+      const mock: DispatchResponse = {
+        id: `demo-task-${Date.now()}`,
+        description: request.description,
+        graph_type: request.graph_type,
+        status: 'queued',
+        assigned_agent_ids: [],
+        created_at: new Date().toISOString(),
+      };
+      setLastDispatchedTask(mock);
+      setStatus('success');
+      return mock;
+    }
 
     try {
       const res = await apiFetch('/api/v1/swarms/dispatch', {

@@ -2,7 +2,8 @@ import { test, expect } from "./fixtures";
 
 test.describe("Login Flow", () => {
   test("dev auth bypass loads the office", async ({ page }) => {
-    await page.goto("/");
+    // Navigate to /office which redirects to /login when unauthenticated
+    await page.goto("/office");
     // Should see either login form or go straight to game
     await page.waitForSelector(
       "canvas, [data-testid='office-main'], input",
@@ -22,8 +23,14 @@ test.describe("Login Flow", () => {
     await expect(page.locator("canvas")).toBeVisible({ timeout: 15000 });
   });
 
-  test("page title contains AutoSwarm", async ({ page }) => {
+  test("landing page title contains AutoSwarm", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/autoswarm|office/i);
+  });
+
+  test("landing page shows demo and sign-in CTAs", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator('a[href="/demo"]')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('a[href="/login"]')).toBeVisible({ timeout: 5000 });
   });
 });
