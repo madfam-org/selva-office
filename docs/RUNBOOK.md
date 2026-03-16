@@ -62,7 +62,7 @@ AutoSwarm Office runs six application services backed by PostgreSQL and Redis.
 | Service | Port | Technology | Stateful | Purpose |
 |---------|------|-----------|----------|---------|
 | nexus-api | 4300 | FastAPI, SQLAlchemy | Yes (PostgreSQL, Redis) | Central REST API, WebSocket hub, task dispatch |
-| office-ui | 4301 | Next.js 14, Phaser 3 | No | Spatial 2D office, agent dashboards, approval UI |
+| office-ui | 4301 | Next.js 14, Phaser 3 | No | Landing page (`/`), demo mode (`/demo`), office (`/office`), approval UI |
 | admin | 4302 | Next.js | No | Admin dashboard (reads from nexus-api) |
 | colyseus | 4303 | Colyseus (Node.js) | Ephemeral (in-memory state) | Real-time game state synchronization |
 | gateway | 4304 | Node.js (OpenClaw) | No | Cron-based heartbeat daemon, GitHub event scraper |

@@ -30,6 +30,7 @@ export interface AuthResult {
   roles: string[];
   name: string;
   isGuest: boolean;
+  isDemo: boolean;
 }
 
 /**
@@ -42,6 +43,28 @@ export async function verifyToken(
   token: string | undefined,
   options?: { name?: string },
 ): Promise<AuthResult> {
+  // Check for demo tokens (unsigned JWTs with org_id=demo-public)
+  if (token) {
+    try {
+      const parts = token.split(".");
+      if (parts.length >= 2) {
+        const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+        if (payload.org_id === "demo-public" && Array.isArray(payload.roles) && payload.roles.includes("demo")) {
+          return {
+            sub: payload.sub ?? "demo-anon",
+            orgId: "demo-public",
+            roles: ["demo"],
+            name: options?.name ?? payload.name ?? "Visitor",
+            isGuest: false,
+            isDemo: true,
+          };
+        }
+      }
+    } catch {
+      // Not a demo token — fall through to normal verification
+    }
+  }
+
   if (DEV_AUTH_BYPASS) {
     return {
       sub: "dev-user-00000000",
@@ -49,6 +72,7 @@ export async function verifyToken(
       roles: ["admin", "tactician"],
       name: options?.name ?? "Player",
       isGuest: false,
+      isDemo: false,
     };
   }
 
@@ -73,6 +97,7 @@ export async function verifyToken(
       roles,
       name: (payload as JWTPayload & { name?: string }).name ?? options?.name ?? "Player",
       isGuest: roles.includes("guest"),
+      isDemo: false,
     };
   } catch (err) {
     logger.warn({ err }, "JWT verification failed");

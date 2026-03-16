@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TaskEvent, EventCategory } from '@autoswarm/shared-types';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, isDemo } from '@/lib/api';
 
 const WS_URL =
   process.env.NEXT_PUBLIC_EVENTS_WS_URL ?? 'ws://localhost:4300/api/v1/events/ws';
@@ -114,7 +114,9 @@ export function useEventStream(): EventStreamState {
     }
   }, []);
 
+  const demo = isDemo();
   useEffect(() => {
+    if (demo) return; // Don't connect WebSocket in demo mode
     connect();
 
     return () => {
@@ -124,7 +126,7 @@ export function useEventStream(): EventStreamState {
         wsRef.current = null;
       }
     };
-  }, [connect]);
+  }, [connect, demo]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;

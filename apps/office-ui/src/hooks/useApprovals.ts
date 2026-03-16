@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ApprovalRequest, ApprovalResponse } from '@autoswarm/shared-types';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, isDemo } from '@/lib/api';
 
 const WS_URL =
   process.env.NEXT_PUBLIC_APPROVALS_WS_URL ?? 'ws://localhost:4300/api/v1/approvals/ws';
@@ -26,8 +26,9 @@ interface WSMessage {
  * and provides approve/deny actions.
  */
 export function useApprovals(): ApprovalsState {
+  const demo = isDemo();
   const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>([]);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(demo);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempts = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -108,6 +109,7 @@ export function useApprovals(): ApprovalsState {
   }, []);
 
   useEffect(() => {
+    if (demo) return; // Skip WebSocket in demo mode
     connect();
 
     return () => {

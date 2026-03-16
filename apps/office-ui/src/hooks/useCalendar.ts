@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, isDemo } from '@/lib/api';
 
 export interface CalendarEvent {
   id: string;
@@ -142,14 +142,16 @@ export function useCalendar(options?: {
     }
   }, []);
 
-  // Check connection status on mount
+  // Check connection status on mount (skip in demo)
+  const demo = isDemo();
   useEffect(() => {
+    if (demo) return;
     void fetchStatus();
-  }, [fetchStatus]);
+  }, [fetchStatus, demo]);
 
-  // Poll events every 60s when connected
+  // Poll events every 60s when connected (skip in demo)
   useEffect(() => {
-    if (!connected) return;
+    if (!connected || demo) return;
 
     // Fetch immediately, then start interval
     void fetchEvents();

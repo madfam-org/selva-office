@@ -84,7 +84,7 @@ function GuestJoinForm() {
       document.cookie = `janua-session=${data.access_token}; path=/; max-age=${4 * 3600}; SameSite=Lax`;
 
       // Redirect to the office
-      router.push('/');
+      router.push('/office');
     } catch (err) {
       setState('error');
       setError(err instanceof Error ? err.message : 'Failed to join as guest');
