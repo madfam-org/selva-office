@@ -26,6 +26,11 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json turbo.json ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+ARG NEXT_PUBLIC_JANUA_ISSUER_URL
+ARG NEXT_PUBLIC_JANUA_CLIENT_ID
+ENV NEXT_PUBLIC_JANUA_ISSUER_URL=$NEXT_PUBLIC_JANUA_ISSUER_URL
+ENV NEXT_PUBLIC_JANUA_CLIENT_ID=$NEXT_PUBLIC_JANUA_CLIENT_ID
+
 RUN pnpm --filter @autoswarm/shared-types build && \
     pnpm --filter admin build
 

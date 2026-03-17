@@ -150,6 +150,9 @@ jobs:
           sbom: false
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          build-args: |
+            NEXT_PUBLIC_JANUA_ISSUER_URL=${{ secrets.JANUA_ISSUER_URL }}
+            NEXT_PUBLIC_JANUA_CLIENT_ID=${{ secrets.JANUA_CLIENT_ID }}
           tags: |
             ${{ env.REGISTRY }}/${{ matrix.image }}:${{ steps.meta.outputs.sha }}
             ${{ env.REGISTRY }}/${{ matrix.image }}:latest
