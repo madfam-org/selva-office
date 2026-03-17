@@ -67,6 +67,8 @@ spec:
                 name: autoswarm-config
             - secretRef:
                 name: autoswarm-secrets
+            - secretRef:
+                name: autoswarm-admin-auth
           env:
             - name: ENVIRONMENT
               value: production
