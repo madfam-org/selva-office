@@ -19,6 +19,8 @@ spec:
         app.kubernetes.io/part-of: autoswarm-office
         app.kubernetes.io/component: admin
     spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
       serviceAccountName: autoswarm-sa
       securityContext:
         runAsNonRoot: true

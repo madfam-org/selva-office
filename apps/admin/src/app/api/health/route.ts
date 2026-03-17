@@ -10,16 +10,10 @@ export async function GET() {
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) {
-      return NextResponse.json(
-        { status: 'degraded', api: 'unreachable' },
-        { status: 503 }
-      );
+      return NextResponse.json({ status: 'degraded', api: 'unreachable' });
     }
     return NextResponse.json({ status: 'ok', api: 'connected' });
   } catch {
-    return NextResponse.json(
-      { status: 'degraded', api: 'unreachable' },
-      { status: 503 }
-    );
+    return NextResponse.json({ status: 'degraded', api: 'unreachable' });
   }
 }
