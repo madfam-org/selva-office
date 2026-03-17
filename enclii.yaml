@@ -63,6 +63,57 @@ spec:
   slo:
     availability: 99.9
     latencyP99Ms: 500
+  network:
+    services:
+      - name: nexus-api
+        port: 4300
+        ingress: [cloudflare-tunnel]
+        egress: [dns, https, postgres, redis]
+      - name: office-ui
+        port: 3000
+        ingress: [cloudflare-tunnel]
+        egress: [dns, https]
+      - name: admin
+        port: 3000
+        ingress: [cloudflare-tunnel]
+        egress: [dns, https]
+      - name: colyseus
+        port: 4303
+        ingress: [cloudflare-tunnel]
+        egress: [dns, https, redis]
+      - name: gateway
+        port: 4304
+        ingress: [cloudflare-tunnel]
+        egress: [dns, https]
+      - name: workers
+        port: 0
+        egress: [dns, https, postgres, redis]
+    custom:
+      - name: office-ui-to-nexus
+        from: { app: office-ui }
+        to: { app: nexus-api }
+        port: 4300
+        direction: both
+      - name: admin-to-nexus
+        from: { app: admin }
+        to: { app: nexus-api }
+        port: 4300
+        direction: both
+      - name: colyseus-to-nexus
+        from: { app: colyseus }
+        to: { app: nexus-api }
+        port: 4300
+        direction: both
+      - name: gateway-to-nexus
+        from: { app: gateway }
+        to: { app: nexus-api }
+        port: 4300
+        direction: both
+      - name: gateway-to-colyseus
+        from: { app: gateway }
+        to: { app: colyseus }
+        port: 4303
+        direction: both
 ---
 apiVersion: enclii.dev/v1
 kind: Service
