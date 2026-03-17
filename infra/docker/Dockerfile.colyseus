@@ -25,6 +25,8 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
 
+LABEL org.opencontainers.image.source=https://github.com/madfam-org/autoswarm-office
+
 COPY --from=builder --chown=appuser:nodejs /app/apps/colyseus/dist ./dist
 COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:nodejs /app/apps/colyseus/node_modules ./apps/colyseus/node_modules

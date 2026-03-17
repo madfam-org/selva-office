@@ -40,6 +40,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+LABEL org.opencontainers.image.source=https://github.com/madfam-org/autoswarm-office
+
 COPY --from=builder --chown=nextjs:nodejs /app/apps/office-ui/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/office-ui/.next/static ./apps/office-ui/.next/static
 COPY --from=builder /app/apps/office-ui/public ./apps/office-ui/public
