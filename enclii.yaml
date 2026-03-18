@@ -229,19 +229,23 @@ spec:
     resources:
       requests:
         cpu: "25m"
-        memory: "256Mi"
+        memory: "384Mi"
       limits:
         cpu: "500m"
-        memory: "512Mi"
+        memory: "768Mi"
     healthCheck: /api/health
+    startupProbe:
+      path: /api/health
+      failureThreshold: 12
+      periodSeconds: 5
     readinessProbe:
       path: /api/health
-      initialDelaySeconds: 10
-      periodSeconds: 5
+      initialDelaySeconds: 5
+      periodSeconds: 15
     livenessProbe:
       path: /api/health
-      initialDelaySeconds: 30
-      periodSeconds: 10
+      initialDelaySeconds: 10
+      periodSeconds: 30
   domains:
     - domain: agents-admin.madfam.io
       tls: true
