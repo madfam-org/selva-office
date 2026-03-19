@@ -129,6 +129,11 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(CSRFMiddleware)
 
+    # -- Root health endpoint (K8s liveness probe) ----------------------------
+    @app.get("/health", tags=["health"])
+    async def root_health() -> dict[str, str]:
+        return {"status": "healthy", "service": "nexus-api"}
+
     # -- Routers --------------------------------------------------------------
     app.include_router(health.router, prefix="/api/v1/health")
     app.include_router(agents.router, prefix="/api/v1/agents")

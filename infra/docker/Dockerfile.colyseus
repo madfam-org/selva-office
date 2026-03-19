@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,11 @@ RUN pnpm --filter @autoswarm/shared-types build && \
     pnpm --filter colyseus build
 
 # Stage 2: Runner
-FROM node:20-alpine AS runner
+# Node.js 22 required: @autoswarm/config exports raw .ts files and Node 22's
+# --experimental-strip-types (enabled by default) transparently handles them.
+# Node 20 crashes with "SyntaxError: Unexpected token 'export'" on the
+# TypeScript interface declarations in packages/config/logging.ts.
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
