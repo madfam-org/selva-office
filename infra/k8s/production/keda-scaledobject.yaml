@@ -20,9 +20,11 @@ spec:
   triggers:
     - type: redis-streams
       metadata:
-        # Redis connection (use TriggerAuthentication for production).
         address: redis.data.svc.cluster.local:6379
+        databaseIndex: "8"
         stream: autoswarm:task-stream
         consumerGroup: autoswarm-workers
         # Target: 5 pending messages per replica.
         pendingEntriesCount: "5"
+      authenticationRef:
+        name: redis-trigger-auth
