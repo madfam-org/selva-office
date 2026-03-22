@@ -21,7 +21,7 @@ spec:
     - type: redis-streams
       metadata:
         # Redis connection (use TriggerAuthentication for production).
-        address: redis.autoswarm.svc.cluster.local:6379
+        address: redis.data.svc.cluster.local:6379
         stream: autoswarm:task-stream
         consumerGroup: autoswarm-workers
         # Target: 5 pending messages per replica.
