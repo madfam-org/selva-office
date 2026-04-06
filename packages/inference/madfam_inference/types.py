@@ -50,6 +50,7 @@ class InferenceRequest(BaseModel):
     policy: RoutingPolicy = Field(default_factory=RoutingPolicy)
     system_prompt: str | None = None
     tools: list[dict] | None = None
+    response_format: dict[str, Any] | None = None
 
     def has_media(self) -> bool:
         """Return True if any message contains image content blocks.

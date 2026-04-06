@@ -20,7 +20,7 @@ from .logging_config import configure_logging
 from .middleware.csrf import CSRFMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.request_id import RequestIdMiddleware
-from .middleware.security import SecurityHeadersMiddleware
+from .middleware.security import SecurityHeadersMiddleware, TenantRLSMiddleware
 from .routers import (
     admin,
     agents,
@@ -122,6 +122,7 @@ def create_app() -> FastAPI:
         csp_extra_sources=settings.csp_extra_sources,
     )
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(TenantRLSMiddleware)
     app.add_middleware(
         RateLimitMiddleware,
         redis_url=settings.redis_url,

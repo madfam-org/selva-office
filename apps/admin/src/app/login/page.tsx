@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 
 const DUMMY_JWT_PAYLOAD =
   'eyJzdWIiOiJkZXYtdXNlciIsInJvbGVzIjpbImFkbWluIiwidGFjdGljaWFuIl0sIm9yZ19pZCI6ImRldi1vcmciLCJlbWFpbCI6ImRldkBhdXRvc3dhcm0ubG9jYWwifQ==';

@@ -106,6 +106,8 @@ class OpenAIProvider(InferenceProvider):
         }
         if request.tools:
             body["tools"] = request.tools
+        if request.response_format:
+            body["response_format"] = request.response_format
         if stream:
             body["stream"] = True
         return body

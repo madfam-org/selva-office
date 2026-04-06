@@ -239,6 +239,7 @@ uv run mypy .         # Python type checking
 - **Janua** handles all authentication. Never implement custom auth. Use the
   `get_current_user` dependency in FastAPI and the Next.js middleware for session
   validation. Janua tokens are JWTs with `sub`, `email`, `roles`, and `org_id` claims.
+  - **Enterprise SSO Mapping**: To support multi-tenant boundaries (RLS in PostgreSQL), Janua must be configured with an OpenID Connect Enterprise Connection. Navigate to the Janua dashboard and map your IdP's group/tenant ID claim to the `org_id` token claim. This `org_id` is automatically extracted by the `TenantRLSMiddleware` in `security.py` to enforce secure PostgreSQL Row-Level Security isolation boundaries.
 
 - **Dhanam** handles billing and subscriptions. Compute token budgets are enforced
   by the orchestrator package and tracked in the `compute_token_ledger` table.
@@ -687,6 +688,10 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **WebSocket payload**: `WebSocketTransport` is configured with
   `maxPayload: 1024 * 1024` (1 MB) because the default ws limit is too small
   when state includes 12+ agents.
+- **Colyseus Scaling Recommendations**: While a large `maxPayload` prevents crashes,
+  massive arrays in `OfficeStateSchema` will cause severe CPU usage during state encoding.
+  Use `@filter()` annotations for lists like `chatMessages` and break rooms into
+  shards per department if the agent count climbs beyond 100 globally.
 - **GameEventBus caching**: `PhaserGame.tsx`'s `GameEventBus` caches the last
   emitted value per event key and replays it to late subscribers. This fixes a
   timing race where Colyseus state arrives before the Phaser `OfficeScene` is

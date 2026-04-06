@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: autoswarm-postgres
     ports:
       - "5432:5432"
@@ -18,6 +18,17 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - madfam-shared-network
+
+  coturn:
+    image: coturn/coturn:latest
+    container_name: autoswarm-coturn
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
     networks:
       - madfam-shared-network
 

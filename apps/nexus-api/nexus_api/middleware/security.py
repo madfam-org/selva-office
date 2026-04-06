@@ -6,6 +6,34 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
+from contextvars import ContextVar
+import base64
+import json
+
+org_id_var: ContextVar[str] = ContextVar("org_id", default="default")
+
+class TenantRLSMiddleware(BaseHTTPMiddleware):
+    """Extracts org_id from JWT payload to set up context for PostgreSQL RLS."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        org_id = "default"
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                # Fast unverified decode of JWT payload (verification happens in auth dependencies)
+                payload_part = token.split(".")[1]
+                payload_part += "=" * ((4 - len(payload_part) % 4) % 4)
+                claims = json.loads(base64.b64decode(payload_part))
+                org_id = claims.get("org_id", "default")
+            except Exception:
+                pass
+        
+        token_ctx = org_id_var.set(org_id)
+        try:
+            return await call_next(request)
+        finally:
+            org_id_var.reset(token_ctx)
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Adds recommended security headers to every response.

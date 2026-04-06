@@ -173,6 +173,7 @@ async def call_llm(
     agent_id: str | None = None,
     task_id: str | None = None,
     org_id: str = "default",
+    response_format: dict[str, Any] | None = None,
 ) -> str:
     """Convenience wrapper that calls the LLM and returns content.
 
@@ -194,6 +195,7 @@ async def call_llm(
             messages=messages,
             system_prompt=system_prompt or None,
             policy=RoutingPolicy(sensitivity=sensitivity, task_type=task_type),
+            response_format=response_format,
         )
         response: InferenceResponse = await router.complete(request)
 

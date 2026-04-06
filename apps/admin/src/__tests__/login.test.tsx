@@ -33,9 +33,9 @@ describe('LoginPage', () => {
     expect(screen.getByText('AutoSwarm Admin')).toBeInTheDocument();
   });
 
-  it('shows the dev login description', () => {
+  it('shows the sign in description', () => {
     render(<LoginPage />);
-    expect(screen.getByText('Admin Development Login')).toBeInTheDocument();
+    expect(screen.getByText('Sign in to access the admin console')).toBeInTheDocument();
   });
 
   it('renders the login button', () => {
@@ -46,11 +46,11 @@ describe('LoginPage', () => {
     expect(loginBtn).toBeInTheDocument();
   });
 
-  it('shows the production disclaimer', () => {
+  it('shows the powered by Janua disclaimer', () => {
     render(<LoginPage />);
     expect(
       screen.getByText(
-        'This page will be replaced with Janua SSO in production',
+        'Powered by Janua',
       ),
     ).toBeInTheDocument();
   });

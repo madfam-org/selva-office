@@ -615,6 +615,18 @@ async def _cleanup_stale_worktrees(repo_base: str, stale_hours: int = 24) -> int
     return removed
 
 
+async def _periodic_cleanup(repo_base: str, stale_hours: int) -> None:
+    """Run _cleanup_stale_worktrees periodically."""
+    while not _shutdown.is_set():
+        await asyncio.sleep(3600)  # Every hour
+        if _shutdown.is_set():
+            break
+        try:
+            await _cleanup_stale_worktrees(repo_base, stale_hours)
+        except Exception:
+            logger.exception("Failed during periodic worktree cleanup")
+
+
 # Active concurrent tasks tracked for graceful shutdown.
 _active_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
 _task_semaphore: asyncio.Semaphore | None = None
@@ -662,6 +674,11 @@ async def main() -> None:
 
     # Cleanup stale worktrees from previous runs.
     await _cleanup_stale_worktrees(settings.repo_base_path, settings.worktree_stale_hours)
+    
+    # Start periodic cleanup task
+    cleanup_task = asyncio.create_task(_periodic_cleanup(settings.repo_base_path, settings.worktree_stale_hours))
+    _active_tasks.add(cleanup_task)
+    cleanup_task.add_done_callback(_active_tasks.discard)
 
     # Log available inference providers at startup.
     from .inference import validate_providers
