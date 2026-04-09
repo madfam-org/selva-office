@@ -38,6 +38,7 @@ from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
 from .graphs.deployment import build_deployment_graph
 from .graphs.meeting import build_meeting_graph
+from .graphs.project import build_project_graph
 from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.research import build_research_graph
 from .interrupt_handler import InterruptHandler
@@ -58,6 +59,7 @@ GRAPH_BUILDERS = {
     "deployment": build_deployment_graph,
     "puppeteer": build_puppeteer_graph,
     "meeting": build_meeting_graph,
+    "project": build_project_graph,
     # "custom" is handled dynamically via WorkflowCompiler — see process_task()
 }
 

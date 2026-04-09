@@ -6,6 +6,7 @@ from ..base import BaseTool
 from .artifact import ListArtifactsTool, RetrieveArtifactTool, SaveArtifactTool
 from .code import BashExecTool, PythonExecTool
 from .communication import CreateReportTool, SendNotificationTool
+from .slack import SlackMessageTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
 from .deploy import DeployStatusTool, DeployTool
 from .environment import EnvInfoTool, PackageInstallTool
@@ -43,6 +44,7 @@ def get_builtin_tools() -> list[BaseTool]:
         # Communication
         SendNotificationTool(),
         CreateReportTool(),
+        SlackMessageTool(),
         # Environment
         EnvInfoTool(),
         PackageInstallTool(),

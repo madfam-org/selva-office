@@ -285,25 +285,73 @@ export class HeartbeatService {
     return waves;
   }
 
+  // Auto-dispatch rules: map event types to SwarmTask graph types + skills
+  private static readonly AUTO_DISPATCH_RULES: Record<
+    string,
+    { graphType: string; skills: string[]; hitl: boolean }
+  > = {
+    "github:pr_opened": { graphType: "review", skills: ["code-review"], hitl: false },
+    "github:ci_failed": { graphType: "coding", skills: ["coding", "webapp-testing"], hitl: true },
+    "github:issue_opened": { graphType: "research", skills: ["research"], hitl: false },
+    "crm:high_intent_lead": { graphType: "crm", skills: ["crm-outreach"], hitl: true },
+    "crm:support_ticket": { graphType: "support", skills: ["customer-support"], hitl: false },
+    "crm:campaign_due": { graphType: "research", skills: ["research", "doc-coauthoring"], hitl: false },
+  };
+
   private async dispatch(waves: EnemyWaveEvent[]): Promise<void> {
+    // 1. Send waves to WebSocket (existing behavior for UI)
     try {
       const ws = this.getOrCreateWebSocket();
-
       await this.waitForOpen(ws);
-
       for (const wave of waves) {
-        const message = JSON.stringify({
-          type: "gateway:wave",
-          data: wave,
-        });
-        ws.send(message);
+        ws.send(JSON.stringify({ type: "gateway:wave", data: wave }));
         this.logger.info(
           { kind: wave.kind, source: wave.source, eventCount: wave.events.length },
-          "Dispatched wave"
+          "Dispatched wave to WebSocket"
         );
       }
     } catch (err) {
-      this.logger.error({ err }, "Failed to dispatch waves");
+      this.logger.error({ err }, "Failed to dispatch waves to WebSocket");
+    }
+
+    // 2. Auto-dispatch matching events as SwarmTasks (new behavior)
+    if (process.env.AUTO_DISPATCH_ENABLED !== "true") return;
+
+    const dispatchUrl = process.env.NEXUS_API_URL ?? this.nexusApiUrl.replace("ws", "http");
+    const token = process.env.WORKER_API_TOKEN ?? "dev-bypass";
+
+    for (const wave of waves) {
+      for (const event of wave.events) {
+        const eventKey = `${event.source}:${event.type}`;
+        const rule = HeartbeatService.AUTO_DISPATCH_RULES[eventKey];
+        if (!rule) continue;
+
+        const description = `[auto] ${event.source}/${event.type}: ${JSON.stringify(event.payload).substring(0, 200)}`;
+
+        try {
+          const resp = await fetch(`${dispatchUrl}/api/v1/swarms/dispatch`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              description,
+              graph_type: rule.graphType,
+              required_skills: rule.skills,
+              metadata: { auto_dispatched: true, source_event: eventKey, ...event.payload },
+            }),
+          });
+
+          if (resp.ok) {
+            this.logger.info({ eventKey, graphType: rule.graphType }, "Auto-dispatched SwarmTask");
+          } else {
+            this.logger.warn({ eventKey, status: resp.status }, "Auto-dispatch failed");
+          }
+        } catch (err) {
+          this.logger.error({ err, eventKey }, "Auto-dispatch error");
+        }
+      }
     }
   }
 

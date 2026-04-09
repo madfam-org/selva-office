@@ -183,13 +183,65 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
             "status": "error",
         }
 
-    # Execute subtasks (LLM if available, otherwise placeholder)
+    # Execute subtasks — dispatch as independent SwarmTasks when API is available,
+    # fall back to in-process LLM execution otherwise
     async def _execute_subtasks() -> list[dict[str, Any]]:
-        semaphore = asyncio.Semaphore(max_parallel)
+        import os
+        import httpx
 
-        async def _run_subtask(
+        semaphore = asyncio.Semaphore(max_parallel)
+        api_url = os.environ.get("NEXUS_API_URL", "")
+        api_token = os.environ.get("WORKER_API_TOKEN", "dev-bypass")
+        use_dispatch = bool(api_url) and os.environ.get("PUPPETEER_DISPATCH_SUBTASKS", "false") == "true"
+
+        async def _dispatch_subtask(
             subtask: dict[str, Any], index: int
         ) -> dict[str, Any]:
+            """Dispatch subtask as independent SwarmTask via API."""
+            async with semaphore:
+                try:
+                    async with httpx.AsyncClient(timeout=300) as client:
+                        # Create SwarmTask
+                        resp = await client.post(
+                            f"{api_url}/api/v1/swarms/dispatch",
+                            headers={"Authorization": f"Bearer {api_token}"},
+                            json={
+                                "description": subtask.get("description", ""),
+                                "graph_type": subtask.get("graph_type", "fast_coding"),
+                                "required_skills": subtask.get("required_skills", ["coding"]),
+                                "metadata": {"parent_task": state.get("task_id"), "subtask_index": index},
+                            },
+                        )
+                        if resp.status_code not in (200, 201):
+                            raise RuntimeError(f"Dispatch failed: {resp.status_code}")
+                        task_id = resp.json().get("task", {}).get("id", "")
+
+                        # Poll for completion (max 5 minutes)
+                        for _ in range(60):
+                            await asyncio.sleep(5)
+                            status_resp = await client.get(
+                                f"{api_url}/api/v1/swarms/tasks/{task_id}",
+                                headers={"Authorization": f"Bearer {api_token}"},
+                            )
+                            if status_resp.status_code == 200:
+                                task_data = status_resp.json()
+                                if task_data.get("status") in ("completed", "failed"):
+                                    return {
+                                        "index": index,
+                                        "description": subtask.get("description", ""),
+                                        "result": task_data.get("result", ""),
+                                        "success": task_data.get("status") == "completed",
+                                        "task_id": task_id,
+                                    }
+                        return {"index": index, "description": subtask.get("description", ""), "result": "Timeout", "success": False}
+                except Exception as exc:
+                    logger.error("Subtask dispatch failed: %s", exc)
+                    return {"index": index, "description": subtask.get("description", ""), "result": str(exc), "success": False}
+
+        async def _run_subtask_locally(
+            subtask: dict[str, Any], index: int
+        ) -> dict[str, Any]:
+            """Execute subtask in-process via LLM."""
             async with semaphore:
                 try:
                     from autoswarm_workers.inference import call_llm, get_model_router
@@ -214,15 +266,13 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
                     return {
                         "index": index,
                         "description": subtask.get("description", ""),
-                        "result": (
-                            f"Subtask completed (no LLM): "
-                            f"{subtask.get('description', '')}"
-                        ),
+                        "result": f"Subtask completed (no LLM): {subtask.get('description', '')}",
                         "success": True,
                         "error": str(exc) if str(exc) else None,
                     }
 
-        tasks = [_run_subtask(st, i) for i, st in enumerate(subtasks)]
+        executor = _dispatch_subtask if use_dispatch else _run_subtask_locally
+        tasks = [executor(st, i) for i, st in enumerate(subtasks)]
         return await asyncio.gather(*tasks)
 
     results = _run_async(_execute_subtasks())
