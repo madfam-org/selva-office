@@ -72,9 +72,40 @@ spec:
                 secretKeyRef:
                   name: autoswarm-secrets
                   key: secret-key
+            - name: PHYNE_CRM_URL
+              value: http://phyne-crm-web.phyne-crm.svc.cluster.local
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-llm-secrets
+                  key: RESEND_API_KEY
+                  optional: true
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: autoswarm-memory
+              mountPath: /data/autoswarm
+          env:
+            - name: MEMORY_PERSIST_DIR
+              value: /data/autoswarm/memory
+            - name: BANDIT_PERSIST_PATH
+              value: /data/autoswarm/bandit.json
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: autoswarm-memory
+          persistentVolumeClaim:
+            claimName: autoswarm-memory-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: autoswarm-memory-pvc
+  namespace: autoswarm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
