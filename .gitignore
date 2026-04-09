@@ -61,3 +61,7 @@ apps/gateway/data/
 
 # Org-specific config (never commit)
 *.env.production
+*.pem
+*.key
+*.p12
+*.pfx
