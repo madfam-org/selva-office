@@ -209,7 +209,8 @@ make typecheck        # TypeScript + mypy
 make build            # Build all packages
 make docker-dev       # Start Postgres + Redis
 make db-migrate       # Run Alembic migrations
-make db-seed          # Seed departments and agents
+make db-seed          # Seed default departments and agents (13 generic)
+python scripts/seed-madfam-org.py  # Seed MADFAM org: 4 nodes, 10 named agents
 make smoke-test       # Verify all services are healthy
 make generate-assets  # Regenerate pixel-art sprite PNGs
 make generate-variants # Generate palette-themed sprite/tile variants
@@ -564,9 +565,15 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **New providers**: SiliconFlow (`SILICONFLOW_API_KEY`, GLM-5) and Moonshot
   (`MOONSHOT_API_KEY`, Kimi K2.5) registered in `build_model_router()`.
   Org config can define additional providers dynamically.
-- **Agent roster**: 13 agents across 4 departments (Engineering×6, Research×3,
+- **Agent roster (default)**: 13 agents across 4 departments (Engineering×6, Research×3,
   CRM×2, Support×2) with cross-functional skills. Seed script is idempotent
   (skips existing agents by name).
+- **MADFAM Production Roster** (`scripts/seed-madfam-org.py`): 10 named agents across 4 nodes:
+  - **Executive Brain Trust**: Oráculo (Strategic Advisor, L10), Centinela (Chief of Staff, L9), Forjador (CTO, L10)
+  - **Build & Run Engine**: Telar (Product Owner, L7), Códice (Lead Dev, L9), Vigía (SRE, L8)
+  - **Growth & Market Syndicate**: Heraldo (Growth Director, L8), Nexo (CRM Lead, L8)
+  - **Physical-Digital Bridge**: Áureo (Finance Controller, L7), Espectro (MES Supervisor, L7)
+  - Model assignments: Opus 4 for planning, Sonnet 4 for coding/review/research, Haiku 4.5 for CRM/support
 - **New synergy rules**: "Quality Pipeline" (coding+webapp-testing, 1.3×).
   Total: 8 default rules.
 - **Configurable embeddings**: `EmbeddingProvider` accepts optional
