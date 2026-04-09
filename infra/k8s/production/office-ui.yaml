@@ -39,11 +39,17 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 10
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
@@ -51,7 +57,6 @@ spec:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 20
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
@@ -67,6 +72,14 @@ spec:
               value: https://agents-api.madfam.io
             - name: NEXT_PUBLIC_COLYSEUS_URL
               value: wss://agents-ws.madfam.io
+            - name: NEXT_PUBLIC_JANUA_ISSUER_URL
+              value: https://auth.madfam.io
+            - name: NEXT_PUBLIC_JANUA_CLIENT_ID
+              value: autoswarm-office
+            - name: NEXT_PUBLIC_DEMO_ENABLED
+              value: "true"
+            - name: NEXT_PUBLIC_GUEST_ACCESS_ENABLED
+              value: "true"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
