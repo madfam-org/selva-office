@@ -109,9 +109,9 @@ class Settings(BaseSettings):
             self.colyseus_secret == "change-me-in-production"
             and self.environment != "development"
         ):
-            warnings.warn(
-                "COLYSEUS_SECRET is set to default value in non-development environment!",
-                stacklevel=2,
+            raise ValueError(
+                "COLYSEUS_SECRET must be set in production (cannot use default). "
+                "Generate with: openssl rand -hex 32"
             )
 
         return self

@@ -1,44 +1,41 @@
 const FEATURES = [
   {
-    title: 'AI Agents',
-    description: 'Autonomous agents across Engineering, Research, CRM, and Support departments.',
+    icon: '\u26A1',
+    title: 'Dispatch Tasks',
+    description:
+      'Assign work to AI agents across coding, research, CRM, and deployment. Agents plan, execute, and push code autonomously.',
   },
   {
-    title: 'Real-Time Collaboration',
-    description: 'Proximity video, chat, emotes, and whiteboards in a shared virtual office.',
+    icon: '\uD83D\uDC41\uFE0F',
+    title: 'Observe in Real Time',
+    description:
+      'Watch your agents collaborate in a pixel-art virtual office. See task progress, agent status, and inter-agent communication live.',
   },
   {
-    title: 'Task Orchestration',
-    description: 'Dispatch tasks and watch agents plan, implement, test, and push code.',
-  },
-  {
-    title: 'Visual Workflows',
-    description: 'Drag-and-drop workflow builder with 8 node types and conditional routing.',
-  },
-  {
-    title: 'Human-in-the-Loop',
-    description: 'Review and approve every agent action before it takes effect.',
-  },
-  {
-    title: 'Full Observability',
-    description: 'Real-time event stream, metrics dashboard, and task timeline views.',
+    icon: '\u2713',
+    title: 'Approve with Confidence',
+    description:
+      'Human-in-the-loop safety. Every destructive action, deployment, and external communication requires your explicit approval.',
   },
 ];
 
 export function FeatureGrid() {
   return (
     <section className="mx-auto max-w-5xl px-4 py-24">
-      <h2 className="pixel-text mb-12 text-center text-lg text-indigo-400">
-        Features
+      <h2 className="pixel-text mb-14 text-center text-lg text-indigo-400">
+        What You Can Do
       </h2>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((feature) => (
           <div
             key={feature.title}
-            className="retro-panel rounded p-5 transition-transform hover:-translate-y-0.5"
+            className="retro-panel group rounded-lg p-6 transition-transform hover:-translate-y-1"
           >
-            <h3 className="pixel-text mb-2 text-xs text-indigo-300">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-600/10 text-2xl">
+              {feature.icon}
+            </div>
+            <h3 className="pixel-text mb-3 text-xs leading-relaxed text-indigo-300">
               {feature.title}
             </h3>
             <p className="text-sm leading-relaxed text-slate-400">

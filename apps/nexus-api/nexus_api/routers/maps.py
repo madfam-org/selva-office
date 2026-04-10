@@ -7,9 +7,9 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user, require_non_guest
@@ -45,6 +45,13 @@ class MapResponse(BaseModel):
     updated_at: str
 
     model_config = {"from_attributes": True}
+
+
+class MapListResponse(BaseModel):
+    items: list[MapResponse]
+    total: int
+    limit: int
+    offset: int
 
 
 class MapImportRequest(BaseModel):
@@ -124,17 +131,33 @@ async def create_map(
     return _map_to_response(m)
 
 
-@router.get("", response_model=list[MapResponse])
+@router.get("", response_model=MapListResponse)
 async def list_maps(
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
-) -> list[MapResponse]:
-    """List all maps for the current tenant."""
+) -> MapListResponse:
+    """List all maps for the current tenant with pagination."""
+    base_stmt = select(Map).where(Map.org_id == tenant.org_id)
+
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # Paginated results
     result = await db.execute(
-        select(Map).where(Map.org_id == tenant.org_id).order_by(Map.updated_at.desc())
+        base_stmt.order_by(Map.updated_at.desc()).limit(limit).offset(offset)
     )
     maps = result.scalars().all()
-    return [_map_to_response(m) for m in maps]
+    return MapListResponse(
+        items=[_map_to_response(m) for m in maps],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{map_id}", response_model=MapResponse)

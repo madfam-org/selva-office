@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user, require_non_guest
@@ -76,6 +76,13 @@ class WorkflowTemplateResponse(BaseModel):
     filename: str
     category: str
     node_count: int
+
+
+class WorkflowListResponse(BaseModel):
+    items: list[WorkflowResponse]
+    total: int
+    limit: int
+    offset: int
 
 
 class CreateFromTemplateRequest(BaseModel):
@@ -168,19 +175,33 @@ async def create_workflow(
     return _workflow_to_response(wf)
 
 
-@router.get("", response_model=list[WorkflowResponse])
+@router.get("", response_model=WorkflowListResponse)
 async def list_workflows(
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
-) -> list[WorkflowResponse]:
-    """List all workflows for the current tenant."""
+) -> WorkflowListResponse:
+    """List all workflows for the current tenant with pagination."""
+    base_stmt = select(Workflow).where(Workflow.org_id == tenant.org_id)
+
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # Paginated results
     result = await db.execute(
-        select(Workflow)
-        .where(Workflow.org_id == tenant.org_id)
-        .order_by(Workflow.updated_at.desc())
+        base_stmt.order_by(Workflow.updated_at.desc()).limit(limit).offset(offset)
     )
     workflows = result.scalars().all()
-    return [_workflow_to_response(wf) for wf in workflows]
+    return WorkflowListResponse(
+        items=[_workflow_to_response(wf) for wf in workflows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 # -- Template endpoints (before /{workflow_id} to avoid route conflict) --------

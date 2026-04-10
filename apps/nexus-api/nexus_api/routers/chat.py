@@ -10,7 +10,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -44,41 +44,56 @@ class ChatMessageResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ChatHistoryResponse(BaseModel):
+    items: list[ChatMessageResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 # -- Endpoints ----------------------------------------------------------------
 
 
-@router.get("/history", response_model=list[ChatMessageResponse])
+@router.get("/history", response_model=ChatHistoryResponse)
 async def get_chat_history(
     room_id: str = Query(..., min_length=1),  # noqa: B008
     limit: int = Query(default=50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(default=0, ge=0),  # noqa: B008
     before: datetime | None = Query(default=None),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
-) -> list[ChatMessageResponse]:
-    """Return recent chat messages for a room, newest first.
+) -> ChatHistoryResponse:
+    """Return recent chat messages for a room with pagination, newest first.
 
-    Pagination: pass ``before`` with the ``created_at`` of the oldest
-    message in your current batch to fetch the next page.
+    Pagination: use ``limit`` and ``offset`` for standard pagination, or pass
+    ``before`` with the ``created_at`` of the oldest message in your current
+    batch to fetch the next page (cursor-based).
     """
-    query = (
-        select(ChatMessage)
-        .where(
-            ChatMessage.room_id == room_id,
-            ChatMessage.org_id == tenant.org_id,
-        )
-        .order_by(ChatMessage.created_at.desc())
-        .limit(limit)
+    base_query = select(ChatMessage).where(
+        ChatMessage.room_id == room_id,
+        ChatMessage.org_id == tenant.org_id,
     )
 
     if before:
-        query = query.where(ChatMessage.created_at < before)
+        base_query = base_query.where(ChatMessage.created_at < before)
 
-    result = await db.execute(query)
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # Paginated results
+    result = await db.execute(
+        base_query.order_by(ChatMessage.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     messages = list(result.scalars().all())
     # Return oldest-first for display
     messages.reverse()
 
-    return [
+    items = [
         ChatMessageResponse(
             id=str(m.id),
             room_id=m.room_id,
@@ -90,6 +105,9 @@ async def get_chat_history(
         )
         for m in messages
     ]
+    return ChatHistoryResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.post("/messages", status_code=201)

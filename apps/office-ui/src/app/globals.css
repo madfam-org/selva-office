@@ -160,6 +160,22 @@
     50% { transform: translateY(-6px); }
   }
 
+  @keyframes landing-particle-float {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(-120px) translateX(30px); opacity: 0; }
+  }
+
+  .landing-particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(129, 140, 248, 0.5);
+    animation: landing-particle-float 6s ease-in-out infinite;
+  }
+
   .animate-glow-pulse {
     animation: glow-pulse 3s ease-in-out infinite;
   }

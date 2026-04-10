@@ -118,7 +118,7 @@ async def fire_and_forget_request(
                 url,
                 attempt + 1,
                 max_retries,
-                exc_info=attempt == max_retries - 1,
+                exc_info=True,
             )
 
         cb.record_failure()

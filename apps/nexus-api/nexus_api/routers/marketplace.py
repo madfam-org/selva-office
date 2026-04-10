@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,6 +95,8 @@ class MarketplaceListResponse(BaseModel):
 
     entries: list[MarketplaceEntryResponse]
     total: int
+    limit: int
+    offset: int
 
 
 class InstallResponse(BaseModel):
@@ -149,28 +151,36 @@ async def list_marketplace_skills(
     search: str | None = None,
     category: str | None = None,
     sort_by: str | None = None,
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
 ) -> MarketplaceListResponse:
-    """List marketplace skill entries with optional search, category filter, and sorting."""
-    stmt = select(SkillMarketplaceEntry).where(
+    """List marketplace skill entries with pagination, search, category filter, and sorting."""
+    base_stmt = select(SkillMarketplaceEntry).where(
         SkillMarketplaceEntry.org_id == tenant.org_id
     )
 
     if search:
         pattern = f"%{search}%"
-        stmt = stmt.where(
+        base_stmt = base_stmt.where(
             SkillMarketplaceEntry.name.ilike(pattern)
             | SkillMarketplaceEntry.description.ilike(pattern)
         )
 
     if category:
-        stmt = stmt.where(SkillMarketplaceEntry.category == category)
+        base_stmt = base_stmt.where(SkillMarketplaceEntry.category == category)
+
+    # Total count (before sorting joins that may affect count)
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar_one()
 
     if sort_by == "downloads":
-        stmt = stmt.order_by(SkillMarketplaceEntry.downloads.desc())
+        base_stmt = base_stmt.order_by(SkillMarketplaceEntry.downloads.desc())
     elif sort_by == "newest":
-        stmt = stmt.order_by(SkillMarketplaceEntry.created_at.desc())
+        base_stmt = base_stmt.order_by(SkillMarketplaceEntry.created_at.desc())
     elif sort_by == "rating":
         # Sub-query for average rating to order by
         avg_sub = (
@@ -181,21 +191,24 @@ async def list_marketplace_skills(
             .group_by(SkillRating.entry_id)
             .subquery()
         )
-        stmt = (
-            stmt.outerjoin(
+        base_stmt = (
+            base_stmt.outerjoin(
                 avg_sub,
                 SkillMarketplaceEntry.id == avg_sub.c.entry_id,
             )
             .order_by(avg_sub.c.avg_r.desc())
         )
     else:
-        stmt = stmt.order_by(SkillMarketplaceEntry.created_at.desc())
+        base_stmt = base_stmt.order_by(SkillMarketplaceEntry.created_at.desc())
 
-    result = await db.execute(stmt)
+    # Paginated results
+    result = await db.execute(base_stmt.limit(limit).offset(offset))
     rows = result.scalars().all()
 
     entries = [_entry_to_response(e) for e in rows]
-    return MarketplaceListResponse(entries=entries, total=len(entries))
+    return MarketplaceListResponse(
+        entries=entries, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get("/skills/{entry_id}", response_model=MarketplaceEntryDetailResponse)

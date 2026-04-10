@@ -8,9 +8,9 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoswarm_redis_pool import get_redis_pool
@@ -62,6 +62,13 @@ class ApprovalRequestResponse(BaseModel):
     responded_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class ApprovalListResponse(BaseModel):
+    items: list[ApprovalRequestResponse]
+    total: int
+    limit: int
+    offset: int
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -159,20 +166,34 @@ async def _respond_to_request(
 
 @router.get(
     "/",
-    response_model=list[ApprovalRequestResponse],
+    response_model=ApprovalListResponse,
     dependencies=[Depends(get_current_user)],
 )
 async def list_pending_approvals(
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
     db: AsyncSession = Depends(get_db),
-) -> list[ApprovalRequestResponse]:
-    """List all pending approval requests, most recent first."""
+) -> ApprovalListResponse:
+    """List all pending approval requests with pagination, most recent first."""
+    base_stmt = select(ApprovalRequest).where(ApprovalRequest.status == "pending")
+
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # Paginated results
     result = await db.execute(
-        select(ApprovalRequest)
-        .where(ApprovalRequest.status == "pending")
-        .order_by(ApprovalRequest.created_at.desc())
+        base_stmt.order_by(ApprovalRequest.created_at.desc()).limit(limit).offset(offset)
     )
     requests = result.scalars().all()
-    return [_approval_to_response(r) for r in requests]
+    return ApprovalListResponse(
+        items=[_approval_to_response(r) for r in requests],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)

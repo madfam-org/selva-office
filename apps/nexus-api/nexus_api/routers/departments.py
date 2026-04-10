@@ -5,9 +5,9 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user
@@ -66,6 +66,13 @@ class DepartmentResponse(BaseModel):
 
 class DepartmentDetailResponse(DepartmentResponse):
     agents: list[AgentSummary]
+
+
+class DepartmentListResponse(BaseModel):
+    items: list[DepartmentResponse]
+    total: int
+    limit: int
+    offset: int
 
 
 # -- Helpers ------------------------------------------------------------------
@@ -131,17 +138,33 @@ async def _get_dept_or_404(dept_id: str, db: AsyncSession) -> Department:
 # -- Endpoints ----------------------------------------------------------------
 
 
-@router.get("/", response_model=list[DepartmentResponse])
+@router.get("/", response_model=DepartmentListResponse)
 async def list_departments(
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
     db: AsyncSession = Depends(get_db),
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
-) -> list[DepartmentResponse]:
-    """List all departments."""
+) -> DepartmentListResponse:
+    """List all departments with pagination."""
+    base_stmt = select(Department).where(Department.org_id == tenant.org_id)
+
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # Paginated results
     result = await db.execute(
-        select(Department).where(Department.org_id == tenant.org_id).order_by(Department.name)
+        base_stmt.order_by(Department.name).limit(limit).offset(offset)
     )
     departments = result.scalars().all()
-    return [_dept_to_response(d) for d in departments]
+    return DepartmentListResponse(
+        items=[_dept_to_response(d) for d in departments],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)

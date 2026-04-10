@@ -13,17 +13,28 @@ describe('HeroSection', () => {
     expect(screen.getByText(/Your AI team/)).toBeTruthy();
   });
 
-  it('renders Try Demo CTA link', () => {
+  it('renders the metrics line', () => {
+    render(<HeroSection />);
+    expect(screen.getByText('10 AI Agents')).toBeTruthy();
+    expect(screen.getByText('4 Departments')).toBeTruthy();
+    expect(screen.getByText('HITL Safety')).toBeTruthy();
+  });
+
+  it('renders primary CTA linking to the office app', () => {
+    render(<HeroSection />);
+    const ctaLink = screen.getByText(/Enter the Office/);
+    expect(ctaLink).toBeTruthy();
+    expect(ctaLink.closest('a')?.getAttribute('href')).toBe(
+      'https://agents-app.madfam.io',
+    );
+  });
+
+  it('renders Try Demo CTA linking to the demo', () => {
     render(<HeroSection />);
     const demoLink = screen.getByText('Try Demo');
     expect(demoLink).toBeTruthy();
-    expect(demoLink.closest('a')?.getAttribute('href')).toBe('/demo');
-  });
-
-  it('renders Sign In CTA link', () => {
-    render(<HeroSection />);
-    const signInLink = screen.getByText('Sign In');
-    expect(signInLink).toBeTruthy();
-    expect(signInLink.closest('a')?.getAttribute('href')).toBe('/login');
+    expect(demoLink.closest('a')?.getAttribute('href')).toBe(
+      'https://agents-app.madfam.io/demo',
+    );
   });
 });

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoswarm_tools.storage import LocalFSStorage
@@ -42,6 +42,8 @@ class ArtifactResponse(BaseModel):
 class ArtifactListResponse(BaseModel):
     artifacts: list[ArtifactResponse]
     total: int
+    limit: int
+    offset: int
 
 
 # -- Endpoints -----------------------------------------------------------------
@@ -50,15 +52,26 @@ class ArtifactListResponse(BaseModel):
 @router.get("", response_model=ArtifactListResponse)
 async def list_artifacts(
     task_id: str | None = None,
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
 ) -> ArtifactListResponse:
-    """List artifacts, optionally filtered by task_id."""
-    stmt = select(Artifact).where(Artifact.org_id == tenant.org_id)
+    """List artifacts with pagination, optionally filtered by task_id."""
+    base_stmt = select(Artifact).where(Artifact.org_id == tenant.org_id)
     if task_id:
-        stmt = stmt.where(Artifact.task_id == uuid.UUID(task_id))
-    stmt = stmt.order_by(Artifact.created_at.desc())
-    result = await db.execute(stmt)
+        base_stmt = base_stmt.where(Artifact.task_id == uuid.UUID(task_id))
+
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # Paginated results
+    result = await db.execute(
+        base_stmt.order_by(Artifact.created_at.desc()).limit(limit).offset(offset)
+    )
     rows = result.scalars().all()
 
     items = [
@@ -75,7 +88,9 @@ async def list_artifacts(
         )
         for a in rows
     ]
-    return ArtifactListResponse(artifacts=items, total=len(items))
+    return ArtifactListResponse(
+        artifacts=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get("/{artifact_id}", response_model=ArtifactResponse)

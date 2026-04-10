@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+
+logger = logging.getLogger(__name__)
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -26,8 +30,8 @@ class TenantRLSMiddleware(BaseHTTPMiddleware):
                 payload_part += "=" * ((4 - len(payload_part) % 4) % 4)
                 claims = json.loads(base64.b64decode(payload_part))
                 org_id = claims.get("org_id", "default")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("JWT org_id extraction failed (using default): %s", e)
         
         token_ctx = org_id_var.set(org_id)
         try:

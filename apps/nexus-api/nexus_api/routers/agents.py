@@ -6,9 +6,9 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoswarm_skills import DEFAULT_ROLE_SKILLS
@@ -72,6 +72,13 @@ class AgentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AgentListResponse(BaseModel):
+    items: list[AgentResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class AgentStatsUpdate(BaseModel):
     """Delta increments for agent performance stats. Worker-to-API."""
 
@@ -125,14 +132,16 @@ async def _get_agent_or_404(agent_id: str, db: AsyncSession) -> Agent:
 # -- Endpoints ----------------------------------------------------------------
 
 
-@router.get("/", response_model=list[AgentResponse])
+@router.get("/", response_model=AgentListResponse)
 async def list_agents(
     department_id: str | None = None,
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
     db: AsyncSession = Depends(get_db),
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
-) -> list[AgentResponse]:
-    """List all agents, optionally filtered by department."""
-    stmt = select(Agent).where(Agent.org_id == tenant.org_id)
+) -> AgentListResponse:
+    """List agents with pagination, optionally filtered by department."""
+    base_stmt = select(Agent).where(Agent.org_id == tenant.org_id)
     if department_id is not None:
         try:
             dept_uid = uuid.UUID(department_id)
@@ -140,11 +149,25 @@ async def list_agents(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid department UUID"
             ) from exc
-        stmt = stmt.where(Agent.department_id == dept_uid)
+        base_stmt = base_stmt.where(Agent.department_id == dept_uid)
 
-    result = await db.execute(stmt.order_by(Agent.created_at.desc()))
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # Paginated results
+    result = await db.execute(
+        base_stmt.order_by(Agent.created_at.desc()).limit(limit).offset(offset)
+    )
     agents = result.scalars().all()
-    return [_agent_to_response(a) for a in agents]
+    return AgentListResponse(
+        items=[_agent_to_response(a) for a in agents],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
