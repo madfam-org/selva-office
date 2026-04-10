@@ -877,11 +877,11 @@ export class OfficeScene extends Phaser.Scene {
         .setAlpha(0.2);
       this.departmentZones.push(zone);
 
-      // Ambient breathing pulse on zone overlays
+      // Ambient breathing pulse on zone overlays (subtle FFVI-style tint)
       this.tweens.add({
         targets: zone,
-        alpha: { from: 0.2, to: 0.35 },
-        duration: 3000 + index * 500,
+        alpha: { from: 0.08, to: 0.15 },
+        duration: 4000 + index * 600,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -1529,10 +1529,10 @@ export class OfficeScene extends Phaser.Scene {
 
   private getHaloStyle(status: string): { color: number; alpha: number } {
     switch (status) {
-      case 'working': return { color: 0x06b6d4, alpha: 0.3 };
-      case 'waiting_approval': return { color: 0xfbbf24, alpha: 0.4 };
-      case 'error': return { color: 0xef4444, alpha: 0.3 };
-      default: return { color: 0x64748b, alpha: 0.2 };
+      case 'working': return { color: 0x67e8f9, alpha: 0.25 };       // soft cyan glow
+      case 'waiting_approval': return { color: 0xfcd34d, alpha: 0.35 }; // warm gold
+      case 'error': return { color: 0xfb7185, alpha: 0.3 };           // soft rose
+      default: return { color: 0xc4b5a0, alpha: 0.15 };               // warm parchment (not cold slate)
     }
   }
 

@@ -1,12 +1,12 @@
 {
   "tokens": {
     "S": "skin",
-    "O": "#0f0f1a",
+    "O": "#1a1520",
     "H": "hair",
     "C": "outfit",
     "D": "outfit_dark",
     "L": "outfit_light",
-    "E": "#0f0f1a",
+    "E": "#1a1520",
     "W": "#ffffff",
     "X": "shadow",
     "G": "highlight",

@@ -3,7 +3,21 @@
  * generate-office-map.js
  *
  * Programmatically constructs office-default.tmj with rooms, corridors,
- * furniture, and proper collision data. Outputs a 50×28 Tiled JSON map.
+ * furniture, and proper collision data. Outputs a 50x28 Tiled JSON map.
+ *
+ * FFVI / Chrono Trigger quality upgrade:
+ *   - Furniture in L-shaped clusters (2-3 desks together)
+ *   - floorLightPool under every ceilingLampWarm
+ *   - floorShadowS/E behind/below furniture
+ *   - wallMoldingTop on all wall top edges
+ *   - Plants at corridor intersections and room corners
+ *   - whiteboardScribbles on one wall per department
+ *   - stickyNotes near desks
+ *   - Central lobby with rugRoundV2 and reception desk cluster
+ *   - Engineering: serverRackActive tiles (2-3)
+ *   - Break area: coffeeMachineV2, plantFlowering, couch
+ *   - windowDay on outer walls (2-3 per room)
+ *   - awardPlaque and clockFace on walls as decoration
  *
  * Usage:
  *   node scripts/generate-office-map.js [--output path]
@@ -76,6 +90,32 @@ const T = {
   door_h: 52,
   door_v: 53,
   welcome_mat: 54,
+  // FFVI-quality tiles (indices 54-78 → IDs 55-79)
+  desk_wood: 55,
+  desk_with_coffee: 56,
+  desk_with_papers: 57,
+  monitor_active: 58,
+  monitor_meeting: 59,
+  chair_leather: 60,
+  bookshelf_full: 61,
+  plant_flowering: 62,
+  plant_tall: 63,
+  floor_shadow_s: 64,
+  floor_shadow_e: 65,
+  floor_light_pool: 66,
+  ceiling_lamp_warm: 67,
+  vent_grate: 68,
+  whiteboard_scribbles: 69,
+  sticky_notes: 70,
+  coffee_machine_v2: 71,
+  server_rack_active: 72,
+  award_plaque: 73,
+  clock_face: 74,
+  wall_molding_top: 75,
+  wall_baseboard: 76,
+  window_day: 77,
+  pillar: 78,
+  rug_round_v2: 79,
 };
 
 // ---------------------------------------------------------------------------
@@ -107,71 +147,99 @@ function fillRect(layer, x, y, w, h, tileId) {
 }
 
 // ---------------------------------------------------------------------------
-// Room definitions
+// Room definitions (same 4 departments, same coordinates, FFVI-upgraded)
 // ---------------------------------------------------------------------------
 const ROOMS = [
   {
     name: 'Engineering',
     slug: 'dept-engineering',
-    color: '#1e3a5f',
-    // Wall-inclusive bounds
+    color: '#1a3d6b',
     x: 0, y: 0, w: 22, h: 12,
     carpet: T.floor_carpet_blue,
-    // Door positions (wall coords that become doors)
     doors: [
-      { col: 10, row: 11, type: 'h' }, // bottom wall
+      { col: 10, row: 11, type: 'h' },
       { col: 11, row: 11, type: 'h' },
-      { col: 21, row: 5, type: 'v' },  // right wall
+      { col: 21, row: 5, type: 'v' },
       { col: 21, row: 6, type: 'v' },
     ],
     furniture: [
-      // Desk clusters (front-facing desks with monitors and chairs)
-      // Row 1: left cluster
-      { col: 2, row: 2, tile: T.desk_front },
-      { col: 3, row: 2, tile: T.desk_front },
-      { col: 2, row: 1, tile: T.monitor_on },
-      { col: 3, row: 1, tile: T.monitor_on },
-      { col: 2, row: 3, tile: T.chair },
-      { col: 3, row: 3, tile: T.chair },
-      // Row 1: middle cluster
-      { col: 8, row: 2, tile: T.desk_front },
-      { col: 9, row: 2, tile: T.desk_front },
-      { col: 8, row: 1, tile: T.monitor_on },
+      // === L-shaped desk cluster 1 (top-left) ===
+      // 3 desks in an L: 2 facing south + 1 side desk
+      { col: 2, row: 2, tile: T.desk_wood },
+      { col: 3, row: 2, tile: T.desk_with_coffee },
+      { col: 2, row: 1, tile: T.monitor_active },
+      { col: 3, row: 1, tile: T.monitor_active },
+      { col: 2, row: 3, tile: T.chair_leather },
+      { col: 3, row: 3, tile: T.chair_leather },
+      { col: 4, row: 2, tile: T.desk_side },       // L extension
+      { col: 4, row: 1, tile: T.monitor_on },
+      // Sticky notes near cluster
+      { col: 5, row: 3, tile: T.sticky_notes },
+
+      // === L-shaped desk cluster 2 (mid-left) ===
+      { col: 8, row: 2, tile: T.desk_with_papers },
+      { col: 9, row: 2, tile: T.desk_wood },
+      { col: 8, row: 1, tile: T.monitor_active },
       { col: 9, row: 1, tile: T.monitor_on },
-      { col: 8, row: 3, tile: T.chair },
+      { col: 8, row: 3, tile: T.chair_leather },
       { col: 9, row: 3, tile: T.chair },
-      // Row 2: desks
-      { col: 2, row: 6, tile: T.desk_front },
-      { col: 3, row: 6, tile: T.desk_front },
-      { col: 2, row: 5, tile: T.monitor_on },
-      { col: 3, row: 5, tile: T.monitor_on },
-      { col: 2, row: 7, tile: T.chair },
-      { col: 3, row: 7, tile: T.chair },
-      { col: 8, row: 6, tile: T.desk_front },
-      { col: 9, row: 6, tile: T.desk_front },
-      { col: 8, row: 5, tile: T.monitor_on },
-      { col: 9, row: 5, tile: T.monitor_on },
-      { col: 8, row: 7, tile: T.chair },
-      { col: 9, row: 7, tile: T.chair },
-      // Server rack in corner
-      { col: 19, row: 1, tile: T.server_rack },
-      { col: 19, row: 2, tile: T.server_rack },
-      // Plant
-      { col: 14, row: 1, tile: T.plant_small },
+
+      // === Desk cluster 3 (lower row) ===
+      { col: 2, row: 6, tile: T.desk_wood },
+      { col: 3, row: 6, tile: T.desk_with_papers },
+      { col: 4, row: 6, tile: T.desk_with_coffee },
+      { col: 2, row: 5, tile: T.monitor_active },
+      { col: 3, row: 5, tile: T.monitor_meeting },
+      { col: 4, row: 5, tile: T.monitor_active },
+      { col: 2, row: 7, tile: T.chair_leather },
+      { col: 3, row: 7, tile: T.chair_leather },
+      { col: 4, row: 7, tile: T.chair },
+      // Sticky notes near lower cluster
+      { col: 5, row: 7, tile: T.sticky_notes },
+
+      // === Server rack area (top-right corner) ===
+      { col: 18, row: 1, tile: T.server_rack_active },
+      { col: 19, row: 1, tile: T.server_rack_active },
+      { col: 18, row: 2, tile: T.server_rack },
+
+      // Plants at corners
+      { col: 14, row: 1, tile: T.plant_tall },
+      { col: 13, row: 9, tile: T.plant_flowering },
+
       // Printer
       { col: 14, row: 9, tile: T.printer },
     ],
     decorations: [
-      { col: 6, row: 4, tile: T.ceiling_light },
-      { col: 15, row: 4, tile: T.ceiling_light },
-      { col: 17, row: 9, tile: T.poster_a },
+      // Warm lamps + light pools
+      { col: 6, row: 4, tile: T.ceiling_lamp_warm },
+      { col: 6, row: 5, tile: T.floor_light_pool },
+      { col: 15, row: 4, tile: T.ceiling_lamp_warm },
+      { col: 15, row: 5, tile: T.floor_light_pool },
+      // Shadows behind furniture
+      { col: 2, row: 4, tile: T.floor_shadow_s },
+      { col: 3, row: 4, tile: T.floor_shadow_s },
+      { col: 2, row: 8, tile: T.floor_shadow_s },
+      { col: 3, row: 8, tile: T.floor_shadow_s },
+      { col: 4, row: 8, tile: T.floor_shadow_s },
+      // Eastern shadow near server racks
+      { col: 20, row: 1, tile: T.floor_shadow_e },
+      { col: 20, row: 2, tile: T.floor_shadow_e },
+      // Whiteboard on wall
+      { col: 12, row: 1, tile: T.whiteboard_scribbles },
+      // Award plaque
+      { col: 17, row: 9, tile: T.award_plaque },
+      // Window on outer wall (top)
+      { col: 6, row: 1, tile: T.window_day },
+      { col: 16, row: 1, tile: T.window_day },
+      // Vent grate
+      { col: 10, row: 9, tile: T.vent_grate },
     ],
     review: { col: 18, row: 8 },
   },
   {
     name: 'Sales',
     slug: 'dept-sales',
-    color: '#3b1e5f',
+    color: '#5a1d48',
     x: 28, y: 0, w: 22, h: 12,
     carpet: T.floor_carpet_purple,
     doors: [
@@ -181,46 +249,76 @@ const ROOMS = [
       { col: 28, row: 6, type: 'v' },
     ],
     furniture: [
-      // Desks
-      { col: 30, row: 2, tile: T.desk_front },
-      { col: 31, row: 2, tile: T.desk_front },
-      { col: 30, row: 1, tile: T.monitor_on },
-      { col: 31, row: 1, tile: T.monitor_on },
-      { col: 30, row: 3, tile: T.chair },
-      { col: 31, row: 3, tile: T.chair },
-      { col: 36, row: 2, tile: T.desk_front },
-      { col: 37, row: 2, tile: T.desk_front },
-      { col: 36, row: 1, tile: T.monitor_on },
+      // === L-shaped desk cluster 1 (left side) ===
+      { col: 30, row: 2, tile: T.desk_with_coffee },
+      { col: 31, row: 2, tile: T.desk_wood },
+      { col: 32, row: 2, tile: T.desk_side },
+      { col: 30, row: 1, tile: T.monitor_active },
+      { col: 31, row: 1, tile: T.monitor_meeting },
+      { col: 32, row: 1, tile: T.monitor_on },
+      { col: 30, row: 3, tile: T.chair_leather },
+      { col: 31, row: 3, tile: T.chair_leather },
+      { col: 32, row: 3, tile: T.chair },
+      // Sticky notes
+      { col: 33, row: 3, tile: T.sticky_notes },
+
+      // === Desk cluster 2 (right side) ===
+      { col: 36, row: 2, tile: T.desk_wood },
+      { col: 37, row: 2, tile: T.desk_with_papers },
+      { col: 36, row: 1, tile: T.monitor_active },
       { col: 37, row: 1, tile: T.monitor_on },
-      { col: 36, row: 3, tile: T.chair },
+      { col: 36, row: 3, tile: T.chair_leather },
       { col: 37, row: 3, tile: T.chair },
-      { col: 30, row: 6, tile: T.desk_front },
-      { col: 31, row: 6, tile: T.desk_front },
-      { col: 30, row: 5, tile: T.monitor_on },
-      { col: 31, row: 5, tile: T.monitor_on },
-      { col: 30, row: 7, tile: T.chair },
+
+      // === Lower desk cluster ===
+      { col: 30, row: 6, tile: T.desk_with_papers },
+      { col: 31, row: 6, tile: T.desk_with_coffee },
+      { col: 30, row: 5, tile: T.monitor_active },
+      { col: 31, row: 5, tile: T.monitor_meeting },
+      { col: 30, row: 7, tile: T.chair_leather },
       { col: 31, row: 7, tile: T.chair },
+      { col: 32, row: 7, tile: T.sticky_notes },
+
       // Whiteboard
-      { col: 46, row: 1, tile: T.whiteboard },
-      // Couch
+      { col: 46, row: 1, tile: T.whiteboard_scribbles },
+
+      // === Break area (couch + coffee) ===
       { col: 44, row: 8, tile: T.couch },
       { col: 45, row: 8, tile: T.couch },
-      // Coffee machine
-      { col: 47, row: 5, tile: T.coffee_machine },
-      // Plant
-      { col: 42, row: 1, tile: T.plant_large },
+      { col: 47, row: 5, tile: T.coffee_machine_v2 },
+
+      // Plants at corners
+      { col: 42, row: 1, tile: T.plant_tall },
+      { col: 48, row: 9, tile: T.plant_flowering },
     ],
     decorations: [
-      { col: 34, row: 4, tile: T.ceiling_light },
-      { col: 42, row: 4, tile: T.ceiling_light },
-      { col: 44, row: 10, tile: T.poster_b },
+      // Warm lamps + light pools
+      { col: 34, row: 4, tile: T.ceiling_lamp_warm },
+      { col: 34, row: 5, tile: T.floor_light_pool },
+      { col: 42, row: 4, tile: T.ceiling_lamp_warm },
+      { col: 42, row: 5, tile: T.floor_light_pool },
+      // Shadows
+      { col: 30, row: 4, tile: T.floor_shadow_s },
+      { col: 31, row: 4, tile: T.floor_shadow_s },
+      { col: 30, row: 8, tile: T.floor_shadow_s },
+      { col: 31, row: 8, tile: T.floor_shadow_s },
+      // Windows on outer wall (top)
+      { col: 34, row: 1, tile: T.window_day },
+      { col: 40, row: 1, tile: T.window_day },
+      { col: 48, row: 1, tile: T.window_day },
+      // Clock on wall
+      { col: 44, row: 1, tile: T.clock_face },
+      // Award plaque
+      { col: 44, row: 10, tile: T.award_plaque },
+      // Vent grate
+      { col: 38, row: 9, tile: T.vent_grate },
     ],
     review: { col: 44, row: 4 },
   },
   {
     name: 'Support',
     slug: 'dept-support',
-    color: '#1e5f3a',
+    color: '#4a461d',
     x: 0, y: 16, w: 22, h: 12,
     carpet: T.floor_carpet_green,
     doors: [
@@ -230,46 +328,78 @@ const ROOMS = [
       { col: 21, row: 22, type: 'v' },
     ],
     furniture: [
-      // Desks
-      { col: 2, row: 18, tile: T.desk_front },
-      { col: 3, row: 18, tile: T.desk_front },
-      { col: 2, row: 17, tile: T.monitor_on },
+      // === L-shaped desk cluster 1 ===
+      { col: 2, row: 18, tile: T.desk_with_coffee },
+      { col: 3, row: 18, tile: T.desk_wood },
+      { col: 4, row: 18, tile: T.desk_side },
+      { col: 2, row: 17, tile: T.monitor_active },
       { col: 3, row: 17, tile: T.monitor_on },
-      { col: 2, row: 19, tile: T.chair },
+      { col: 4, row: 17, tile: T.monitor_meeting },
+      { col: 2, row: 19, tile: T.chair_leather },
       { col: 3, row: 19, tile: T.chair },
-      { col: 8, row: 18, tile: T.desk_front },
-      { col: 9, row: 18, tile: T.desk_front },
-      { col: 8, row: 17, tile: T.monitor_on },
+      { col: 4, row: 19, tile: T.chair },
+      { col: 5, row: 19, tile: T.sticky_notes },
+
+      // === Desk cluster 2 ===
+      { col: 8, row: 18, tile: T.desk_wood },
+      { col: 9, row: 18, tile: T.desk_with_papers },
+      { col: 8, row: 17, tile: T.monitor_active },
       { col: 9, row: 17, tile: T.monitor_on },
-      { col: 8, row: 19, tile: T.chair },
+      { col: 8, row: 19, tile: T.chair_leather },
       { col: 9, row: 19, tile: T.chair },
-      { col: 2, row: 22, tile: T.desk_front },
-      { col: 3, row: 22, tile: T.desk_front },
-      { col: 2, row: 21, tile: T.monitor_on },
-      { col: 3, row: 21, tile: T.monitor_on },
-      { col: 2, row: 23, tile: T.chair },
+
+      // === Lower desk cluster ===
+      { col: 2, row: 22, tile: T.desk_with_papers },
+      { col: 3, row: 22, tile: T.desk_with_coffee },
+      { col: 2, row: 21, tile: T.monitor_active },
+      { col: 3, row: 21, tile: T.monitor_meeting },
+      { col: 2, row: 23, tile: T.chair_leather },
       { col: 3, row: 23, tile: T.chair },
+      { col: 4, row: 23, tile: T.sticky_notes },
+
       // Water cooler
       { col: 14, row: 17, tile: T.water_cooler },
       // Printer
       { col: 14, row: 25, tile: T.printer },
-      // Plant
-      { col: 19, row: 17, tile: T.plant_small },
+      // Plants
+      { col: 19, row: 17, tile: T.plant_tall },
+      { col: 13, row: 25, tile: T.plant_small },
       // Filing cabinet
       { col: 18, row: 25, tile: T.filing_cabinet },
+      { col: 19, row: 25, tile: T.filing_cabinet },
+      // Bookshelf
+      { col: 18, row: 17, tile: T.bookshelf_full },
     ],
     decorations: [
-      { col: 6, row: 20, tile: T.ceiling_light },
-      { col: 15, row: 20, tile: T.ceiling_light },
-      { col: 17, row: 25, tile: T.poster_a },
-      { col: 6, row: 24, tile: T.rug_round },
+      // Warm lamps + light pools
+      { col: 6, row: 20, tile: T.ceiling_lamp_warm },
+      { col: 6, row: 21, tile: T.floor_light_pool },
+      { col: 15, row: 20, tile: T.ceiling_lamp_warm },
+      { col: 15, row: 21, tile: T.floor_light_pool },
+      // Shadows
+      { col: 2, row: 20, tile: T.floor_shadow_s },
+      { col: 3, row: 20, tile: T.floor_shadow_s },
+      { col: 2, row: 24, tile: T.floor_shadow_s },
+      { col: 3, row: 24, tile: T.floor_shadow_s },
+      // Whiteboard
+      { col: 12, row: 17, tile: T.whiteboard_scribbles },
+      // Award and clock
+      { col: 17, row: 25, tile: T.award_plaque },
+      { col: 6, row: 17, tile: T.clock_face },
+      // Rug
+      { col: 6, row: 24, tile: T.rug_round_v2 },
+      // Windows on outer wall (left)
+      { col: 1, row: 19, tile: T.window_day },
+      { col: 1, row: 23, tile: T.window_day },
+      // Vent grate
+      { col: 10, row: 25, tile: T.vent_grate },
     ],
     review: { col: 18, row: 20 },
   },
   {
     name: 'Research',
     slug: 'dept-research',
-    color: '#5f3a1e',
+    color: '#1a4d3d',
     x: 28, y: 16, w: 22, h: 12,
     carpet: T.floor_carpet_brown,
     doors: [
@@ -279,35 +409,63 @@ const ROOMS = [
       { col: 28, row: 22, type: 'v' },
     ],
     furniture: [
-      // Desks
-      { col: 30, row: 18, tile: T.desk_front },
-      { col: 31, row: 18, tile: T.desk_front },
-      { col: 30, row: 17, tile: T.monitor_on },
+      // === L-shaped desk cluster 1 ===
+      { col: 30, row: 18, tile: T.desk_wood },
+      { col: 31, row: 18, tile: T.desk_with_papers },
+      { col: 30, row: 17, tile: T.monitor_active },
       { col: 31, row: 17, tile: T.monitor_on },
-      { col: 30, row: 19, tile: T.chair },
+      { col: 30, row: 19, tile: T.chair_leather },
       { col: 31, row: 19, tile: T.chair },
-      { col: 36, row: 18, tile: T.desk_front },
-      { col: 37, row: 18, tile: T.desk_front },
-      { col: 36, row: 17, tile: T.monitor_on },
-      { col: 37, row: 17, tile: T.monitor_on },
-      { col: 36, row: 19, tile: T.chair },
-      { col: 37, row: 19, tile: T.chair },
-      // Bookshelf
-      { col: 46, row: 17, tile: T.bookshelf },
-      { col: 47, row: 17, tile: T.bookshelf },
+      { col: 32, row: 18, tile: T.desk_side },
+      { col: 32, row: 17, tile: T.monitor_active },
+      { col: 32, row: 19, tile: T.chair },
+      { col: 33, row: 19, tile: T.sticky_notes },
+
+      // === Desk cluster 2 ===
+      { col: 36, row: 18, tile: T.desk_with_coffee },
+      { col: 37, row: 18, tile: T.desk_wood },
+      { col: 36, row: 17, tile: T.monitor_active },
+      { col: 37, row: 17, tile: T.monitor_meeting },
+      { col: 36, row: 19, tile: T.chair_leather },
+      { col: 37, row: 19, tile: T.chair_leather },
+
+      // Bookshelves (research library wall)
+      { col: 46, row: 17, tile: T.bookshelf_full },
+      { col: 47, row: 17, tile: T.bookshelf_full },
+      { col: 48, row: 17, tile: T.bookshelf },
+
       // Whiteboard
-      { col: 46, row: 21, tile: T.whiteboard },
-      // Filing cabinet
+      { col: 46, row: 21, tile: T.whiteboard_scribbles },
+
+      // Filing cabinets
       { col: 44, row: 25, tile: T.filing_cabinet },
       { col: 45, row: 25, tile: T.filing_cabinet },
-      // Plant
-      { col: 42, row: 17, tile: T.plant_large },
+
+      // Plants
+      { col: 42, row: 17, tile: T.plant_tall },
+      { col: 48, row: 25, tile: T.plant_flowering },
     ],
     decorations: [
-      { col: 34, row: 20, tile: T.ceiling_light },
-      { col: 42, row: 20, tile: T.ceiling_light },
-      { col: 46, row: 25, tile: T.poster_b },
-      { col: 34, row: 24, tile: T.rug_round },
+      // Warm lamps + light pools
+      { col: 34, row: 20, tile: T.ceiling_lamp_warm },
+      { col: 34, row: 21, tile: T.floor_light_pool },
+      { col: 42, row: 20, tile: T.ceiling_lamp_warm },
+      { col: 42, row: 21, tile: T.floor_light_pool },
+      // Shadows
+      { col: 30, row: 20, tile: T.floor_shadow_s },
+      { col: 31, row: 20, tile: T.floor_shadow_s },
+      { col: 32, row: 20, tile: T.floor_shadow_s },
+      // Rug
+      { col: 34, row: 24, tile: T.rug_round_v2 },
+      // Windows on outer wall (right)
+      { col: 48, row: 19, tile: T.window_day },
+      { col: 48, row: 23, tile: T.window_day },
+      // Clock
+      { col: 46, row: 25, tile: T.clock_face },
+      // Award
+      { col: 34, row: 17, tile: T.award_plaque },
+      // Vent grate
+      { col: 40, row: 25, tile: T.vent_grate },
     ],
     review: { col: 44, row: 20 },
   },
@@ -317,7 +475,7 @@ const ROOMS = [
 const BLUEPRINT_ZONE = {
   name: 'Blueprint Lab',
   slug: 'dept-blueprint',
-  color: '#2e1e5f',
+  color: '#1d3458',
   x: 39, y: 12, w: 10, h: 4,
   carpet: T.floor_carpet_indigo,
   furniture: [
@@ -325,17 +483,69 @@ const BLUEPRINT_ZONE = {
     { col: 46, row: 13, tile: T.blueprint_table },
   ],
   decorations: [
-    { col: 44, row: 12, tile: T.ceiling_light },
+    { col: 44, row: 12, tile: T.ceiling_lamp_warm },
+    { col: 44, row: 13, tile: T.floor_light_pool },
   ],
 };
 
-// Corridor dispatch stations
+// Central lobby furniture (FFVI reception area)
+const LOBBY_FURNITURE = [
+  // Reception desk cluster (placed around dispatch stations)
+  { col: 22, row: 12, tile: T.desk_wood },
+  { col: 23, row: 12, tile: T.desk_with_papers },
+  // Rug in lobby center (walkable, behind dispatch)
+  { col: 24, row: 15, tile: T.rug_round_v2 },
+  // Plant at corridor intersection
+  { col: 22, row: 15, tile: T.plant_flowering },
+  { col: 27, row: 12, tile: T.plant_tall },
+];
+
+const LOBBY_DECORATIONS = [
+  { col: 25, row: 13, tile: T.ceiling_lamp_warm },
+  { col: 25, row: 14, tile: T.floor_light_pool },
+];
+
+// Corridor atmosphere
+const CORRIDOR_DECORATIONS = [
+  // Plants at corridor intersections
+  { col: 22, row: 3, tile: T.plant_small },
+  { col: 27, row: 3, tile: T.plant_small },
+  { col: 22, row: 24, tile: T.plant_small },
+  { col: 27, row: 24, tile: T.plant_small },
+  // Warm lamps along corridors
+  { col: 24, row: 5, tile: T.ceiling_lamp_warm },
+  { col: 24, row: 6, tile: T.floor_light_pool },
+  { col: 24, row: 22, tile: T.ceiling_lamp_warm },
+  { col: 24, row: 23, tile: T.floor_light_pool },
+  // Corridor pillars
+  { col: 22, row: 9, tile: T.pillar },
+  { col: 27, row: 9, tile: T.pillar },
+  { col: 22, row: 18, tile: T.pillar },
+  { col: 27, row: 18, tile: T.pillar },
+];
+
+// Break area (in corridor near Sales, between rooms)
+const BREAK_AREA = {
+  furniture: [
+    { col: 25, row: 8, tile: T.coffee_machine_v2 },
+    { col: 26, row: 8, tile: T.water_cooler },
+    { col: 25, row: 9, tile: T.couch },
+    { col: 26, row: 9, tile: T.couch },
+    { col: 24, row: 8, tile: T.plant_flowering },
+  ],
+  decorations: [
+    { col: 25, row: 7, tile: T.ceiling_lamp_warm },
+    { col: 25, row: 10, tile: T.floor_light_pool },
+  ],
+};
+
+// Corridor dispatch stations (same positions)
 const DISPATCH_STATIONS = [
   { col: 24, row: 13, label: 'Dispatch Task' },
   { col: 25, row: 14, label: 'Dispatch Task' },
 ];
 
-// Spawn points
+// Spawn points (same positions)
 const SPAWN_POINTS = [
   { col: 24, row: 13, name: 'default-spawn' },
   { col: 25, row: 14, name: 'spawn-2' },
@@ -367,7 +577,6 @@ function generateFloorLayer() {
   for (const room of ROOMS) {
     for (const door of room.doors) {
       if (door.type === 'h') {
-        // Place welcome mat just outside the door (in corridor)
         const matRow = door.row === room.y ? door.row - 1 : door.row + 1;
         if (matRow >= 0 && matRow < MAP_HEIGHT) {
           set(layer, door.col, matRow, T.floor_corridor);
@@ -381,7 +590,7 @@ function generateFloorLayer() {
 
 /**
  * Generate the walls layer.
- * For each room, draw walls with proper corner/edge tiles and door openings.
+ * Uses wall_molding_top for top walls of each room (FFVI quality).
  */
 function generateWallsLayer() {
   const layer = createLayer(T.EMPTY);
@@ -391,13 +600,12 @@ function generateWallsLayer() {
     const x2 = x + w - 1;
     const y2 = y + h - 1;
 
-    // Create a set of door positions for quick lookup
     const doorSet = new Set(doors.map(d => `${d.col},${d.row}`));
 
-    // Top wall (row y)
+    // Top wall (row y) — use wall_molding_top for FFVI detail
     for (let c = x + 1; c < x2; c++) {
       if (!doorSet.has(`${c},${y}`)) {
-        set(layer, c, y, T.wall_top);
+        set(layer, c, y, T.wall_molding_top);
       } else {
         set(layer, c, y, T.door_h);
       }
@@ -440,7 +648,7 @@ function generateWallsLayer() {
   return layer;
 }
 
-/** Generate the furniture layer */
+/** Generate the furniture layer (FFVI quality: clusters, variety, storytelling) */
 function generateFurnitureLayer() {
   const layer = createLayer(T.EMPTY);
 
@@ -456,6 +664,16 @@ function generateFurnitureLayer() {
     set(layer, f.col, f.row, f.tile);
   }
 
+  // Lobby furniture
+  for (const f of LOBBY_FURNITURE) {
+    set(layer, f.col, f.row, f.tile);
+  }
+
+  // Break area furniture
+  for (const f of BREAK_AREA.furniture) {
+    set(layer, f.col, f.row, f.tile);
+  }
+
   // Corridor dispatch terminals
   for (const d of DISPATCH_STATIONS) {
     set(layer, d.col, d.row, T.dispatch_terminal);
@@ -464,7 +682,7 @@ function generateFurnitureLayer() {
   return layer;
 }
 
-/** Generate the decorations layer */
+/** Generate the decorations layer (FFVI: lamps, shadows, plaques, windows) */
 function generateDecorationsLayer() {
   const layer = createLayer(T.EMPTY);
 
@@ -478,20 +696,34 @@ function generateDecorationsLayer() {
     set(layer, d.col, d.row, d.tile);
   }
 
+  for (const d of LOBBY_DECORATIONS) {
+    set(layer, d.col, d.row, d.tile);
+  }
+
+  for (const d of CORRIDOR_DECORATIONS) {
+    set(layer, d.col, d.row, d.tile);
+  }
+
+  for (const d of BREAK_AREA.decorations) {
+    set(layer, d.col, d.row, d.tile);
+  }
+
   return layer;
 }
 
 /**
  * Generate the collision layer.
- * Any wall or solid furniture tile → collision marker.
+ * Any wall or solid furniture tile -> collision marker.
  */
 function generateCollisionLayer(wallsLayer, furnitureLayer) {
   const layer = createLayer(T.EMPTY);
-  const COLLISION_MARKER = T.wall; // Any non-zero tile = blocked
+  const COLLISION_MARKER = T.wall;
 
   // Non-collidable furniture (decorative, walkable)
   const WALKABLE_FURNITURE = new Set([
-    T.rug_round, T.ceiling_light, T.welcome_mat,
+    T.rug_round, T.rug_round_v2, T.ceiling_light, T.ceiling_lamp_warm,
+    T.welcome_mat, T.sticky_notes, T.floor_shadow_s, T.floor_shadow_e,
+    T.floor_light_pool, T.vent_grate,
   ]);
 
   for (let i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
@@ -539,7 +771,7 @@ function generateDepartmentObjects() {
     });
   }
 
-  // Blueprint zone (maxAgents: 0 as per CLAUDE.md)
+  // Blueprint zone (maxAgents: 0)
   objects.push({
     id: nextId++,
     name: BLUEPRINT_ZONE.name,
@@ -662,6 +894,8 @@ function buildTmj() {
   const { objects: interactableObjects, nextId: id3 } = generateInteractableObjects(id2);
   const { objects: spawnObjects, nextId: nextObjectId } = generateSpawnPointObjects(id3);
 
+  const tileCount = 79; // 54 original + 25 FFVI tiles
+
   const layers = [
     {
       id: 1,
@@ -756,6 +990,7 @@ function buildTmj() {
     },
   ];
 
+  const tileRows = Math.ceil(tileCount / 16);
   return {
     compressionlevel: -1,
     height: MAP_HEIGHT,
@@ -774,11 +1009,11 @@ function buildTmj() {
         name: 'office-tileset',
         tilewidth: TILE_SIZE,
         tileheight: TILE_SIZE,
-        tilecount: 54,
+        tilecount: tileCount,
         columns: 16,
         image: '../tilesets/office-tileset.png',
         imagewidth: 512,
-        imageheight: 128,
+        imageheight: tileRows * TILE_SIZE,
       },
     ],
     type: 'map',
