@@ -46,7 +46,7 @@ class ProjectState(BaseGraphState):
     max_iterations: int
 
 
-@instrumented_node("project")
+@instrumented_node
 def analyze(state: ProjectState) -> ProjectState:
     """Analyze the strategic goal and identify constraints, resources, and risks."""
     messages = state.get("messages", [])
@@ -90,7 +90,7 @@ def analyze(state: ProjectState) -> ProjectState:
     }
 
 
-@instrumented_node("project")
+@instrumented_node
 def decompose(state: ProjectState) -> ProjectState:
     """Decompose the goal into ordered milestones with estimated timelines."""
     messages = state.get("messages", [])
@@ -128,7 +128,7 @@ def decompose(state: ProjectState) -> ProjectState:
     }
 
 
-@instrumented_node("project")
+@instrumented_node
 def dispatch_batch(state: ProjectState) -> ProjectState:
     """Dispatch tasks for the current milestone."""
     messages = state.get("messages", [])
@@ -173,7 +173,7 @@ def dispatch_batch(state: ProjectState) -> ProjectState:
     }
 
 
-@instrumented_node("project")
+@instrumented_node
 def monitor(state: ProjectState) -> ProjectState:
     """Check if the current milestone's task is complete."""
     messages = state.get("messages", [])
@@ -205,7 +205,7 @@ def monitor(state: ProjectState) -> ProjectState:
     }
 
 
-@instrumented_node("project")
+@instrumented_node
 def report(state: ProjectState) -> ProjectState:
     """Generate final project report."""
     messages = state.get("messages", [])

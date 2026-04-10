@@ -25,7 +25,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json turbo.json ./
 RUN pnpm --filter @autoswarm/shared-types build && \
     pnpm --filter gateway build
 
-FROM node:20-alpine AS runner
+# Node.js 22 required: @autoswarm/config exports raw .ts files and Node 22's
+# --experimental-strip-types (enabled by default) transparently handles them.
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
