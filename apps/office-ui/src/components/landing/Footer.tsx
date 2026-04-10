@@ -6,11 +6,14 @@ export function Footer() {
           AutoSwarm Office
         </span>
         <div className="flex gap-6 text-sm text-slate-500">
-          <a href="/login" className="transition-colors hover:text-indigo-400">
+          <a href="https://agents-app.madfam.io/login" className="transition-colors hover:text-indigo-400">
             Sign In
           </a>
-          <a href="/demo" className="transition-colors hover:text-indigo-400">
+          <a href="https://agents-app.madfam.io/demo" className="transition-colors hover:text-indigo-400">
             Demo
+          </a>
+          <a href="https://madfam.io" className="transition-colors hover:text-indigo-400">
+            MADFAM
           </a>
         </div>
       </div>

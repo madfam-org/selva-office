@@ -1,4 +1,5 @@
 const DEMO_ENABLED = process.env.NEXT_PUBLIC_DEMO_ENABLED !== 'false';
+const APP_URL = 'https://agents-app.madfam.io';
 
 export function HeroSection() {
   return (
@@ -26,14 +27,14 @@ export function HeroSection() {
       <div className="flex flex-wrap items-center justify-center gap-4">
         {DEMO_ENABLED && (
           <a
-            href="/demo"
+            href={`${APP_URL}/demo`}
             className="retro-btn rounded bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
           >
             Try Demo
           </a>
         )}
         <a
-          href="/login"
+          href={`${APP_URL}/login`}
           className="retro-btn rounded border border-slate-600 px-6 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:border-slate-400 hover:text-white"
         >
           Sign In

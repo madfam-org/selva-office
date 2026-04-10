@@ -1,5 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+/**
+ * URL scheme:
+ *   agents.madfam.io       → Landing page (public)
+ *   agents-app.madfam.io   → Virtual office app (auth required for /office)
+ */
+
+const APP_HOST = 'agents-app.madfam.io';
+const LANDING_HOST = 'agents.madfam.io';
+
 const PUBLIC_PATHS = ['/', '/login', '/guest', '/demo', '/api/health'];
 
 function isPublicPath(pathname: string): boolean {
@@ -8,8 +17,19 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+function isAppHost(host: string): boolean {
+  return host === APP_HOST || host.startsWith(APP_HOST);
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get('host') || '';
+
+  // --- App host (agents-app.madfam.io) ---
+  // Redirect root to /office, allow /demo and /login as entry points
+  if (isAppHost(host) && pathname === '/') {
+    return NextResponse.redirect(new URL('/office', request.url));
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
