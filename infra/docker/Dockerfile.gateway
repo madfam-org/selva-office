@@ -41,6 +41,7 @@ LABEL org.opencontainers.image.source=https://github.com/madfam-org/autoswarm-of
 COPY --from=builder /app/apps/gateway/dist ./dist
 COPY --from=builder /app/apps/gateway/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/config ./packages/config
 
 EXPOSE 4304
 
