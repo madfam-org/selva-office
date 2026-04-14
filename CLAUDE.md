@@ -78,6 +78,9 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - `packages/calendar/autoswarm_calendar/` -- Google/Microsoft calendar adapters
 - `apps/nexus-api/nexus_api/routers/maps.py` -- Map CRUD API
 - `apps/nexus-api/nexus_api/routers/calendar.py` -- Calendar connection API
+- `apps/office-ui/src/game/constants.ts` -- Centralized game-layer constants
+- `apps/office-ui/src/lib/constants.ts` -- Shared UI-layer constants (event keys, reconnect delays)
+- `apps/office-ui/src/lib/logger.ts` -- Dev-only logging wrapper (suppressed in production)
 
 ## Production Hardening (v0.3.0)
 
@@ -116,6 +119,56 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
   remote URL and uses `--repo` flag instead of `-C` (compat with older `gh` CLI).
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
+
+## Codebase Remediation (v0.5.1)
+
+- **K8s workers.yaml**: Fixed duplicate `env:` key in production deployment
+  that silently dropped `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, and 3
+  other env vars. Merged into single `env:` block with all 8 variables.
+- **Alembic Migration Chain**: Orphaned `0004_wave2_tables.py` renamed to
+  `0014_wave2_tables.py`, chained after migration 0013. Removed duplicate
+  `approval_requests` table creation (already in migration 0000). Adds
+  `session_checkpoints` table used by `checkpoints.py`.
+- **`run_async` Consolidation**: 8 duplicate `_run_async()` implementations
+  across graph files consolidated into single `run_async()` export in
+  `graphs/base.py`. All 7 consuming graphs import as `_run_async`.
+- **ACP QA Oracle Sandbox**: Replaced hardcoded `tests_passed = True` with
+  actual `BashTool` sandbox execution (late import with graceful fallback).
+  Tests are now run via subprocess with 60s timeout.
+- **Gateway SSRF Protection**: `_validate_webhook_url()` helper in
+  `routers/gateway.py` blocks private IP ranges (127/8, 10/8, 172.16/12,
+  192.168/16, 169.254/16, ::1/128, fc00::/7), enforces http/https scheme,
+  2048-char limit. Applied to all 17 webhook handlers.
+- **Bare Exception Logging**: 16 silent `except Exception: pass` blocks
+  across nexus-api routers and worker graphs now log with `exc_info=True`.
+  Fire-and-forget ops use `logger.debug`, correctness-affecting use `warning`.
+- **Settings Consolidation**: `analytics.py` and `gateway.py` now use
+  centralized pydantic `Settings` instead of direct `os.environ.get()`.
+  Added `posthog_api_key`, `posthog_host`, `autoswarm_webhook_secret` to
+  nexus-api config.
+- **Frontend URL Config**: Landing page `APP_URL` reads
+  `NEXT_PUBLIC_APP_URL` env var with production fallback.
+- **CI Python Type Checking**: Added `typecheck-py` job to CI pipeline
+  running `uv run mypy` on all Python packages. Required before build.
+- **Docker Dev Parity**: Dev compose now uses `pgvector/pgvector:pg16`
+  (was `postgres:16-alpine`) for production parity. Added coturn service
+  for WebRTC TURN in development.
+- **Frontend Constants**: Game magic numbers consolidated into
+  `apps/office-ui/src/game/constants.ts` (18 constants). Hook-level
+  constants and event bus keys in `apps/office-ui/src/lib/constants.ts`.
+- **Dev Logger**: `apps/office-ui/src/lib/logger.ts` — production-silent
+  console wrapper. Replaces raw `console.warn/error` in 5 files.
+- **Accessibility**: `aria-label` on video elements in `VideoOverlay.tsx`.
+- **Shared Types**: `companionType` tightened from `string` to
+  `'' | 'cat' | 'dog' | 'robot' | 'dragon' | 'parrot'` in
+  `packages/shared-types/src/office.ts`.
+- **Thread-Safety Docs**: Module-level mutable state in `auth.py` (JWKS
+  cache) and `http_retry.py` (circuit breaker) documented with
+  concurrency assumptions.
+- **Smoke Test**: Port numbers now configurable via env vars
+  (`NEXUS_API_PORT`, `OFFICE_UI_PORT`, `COLYSEUS_PORT`, `WORKER_PORT`).
+- **Redis Slot Docs**: Inline comments in `docker-compose.yml` documenting
+  DB 0 (nexus-api) and DB 1 (colyseus) slot assignments.
 
 ## Landing Page + Demo Mode (v0.5.0)
 
@@ -169,6 +222,9 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 
 - **test() Node Fix**: `test()` uses `_run_async()` instead of
   `asyncio.get_event_loop()`, which crashed in ThreadPoolExecutor threads.
+  `run_async()` is now a shared export from `graphs/base.py`, imported as
+  `_run_async` in all 7 graph files (coding, crm, deployment, meeting,
+  project, puppeteer, research). No duplicate implementations remain.
 - **Worker Auth Hardening**: `WORKER_API_TOKEN` env var (default `dev-bypass`).
   `auth.py:get_worker_auth_headers()` centralizes all worker-to-API auth.
   No hardcoded `"Bearer dev-bypass"` in source files.
