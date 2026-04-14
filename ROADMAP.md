@@ -66,3 +66,57 @@ Based on insights from the Hermes Agent architecture, AutoSwarm Office has evolv
 - `[ ]` Register `madfam_inference.get_default_router` singleton with production provider config
 - `[ ]` Set Telegram/Discord webhook URLs via `BotFather` / Discord Developer Portal
 
+---
+
+## Q2 Focus: Hermes Gap Remediation — Full Autonomous Intelligence
+
+A second benchmark against the live Hermes Agent platform (`hermes-agent.nousresearch.com/docs`) identified five remaining gaps where AutoSwarm Office trails the reference architecture. This section formalizes each gap as an engineering milestone with clear acceptance criteria.
+
+### Gap 1: Skill Self-Improvement Loop 🔴 (Priority 1)
+
+**Problem:** AutoSwarm creates Playbook Skills from successful QA Oracle runs but never revisits or refines them. Hermes actively re-tests existing skills between sessions and invokes the LLM to rewrite degraded or outdated skill logic.
+
+**Acceptance Criteria:**
+- A `SkillRefiner` Celery beat task runs on a configurable schedule (default: daily).
+- For each `.py` file in the skills registry, it loads the `SKILL_ENTRYPOINT`, executes it in a sandboxed subprocess, and records pass/fail.
+- On failure or if `SKILL_METADATA["last_validated"]` is older than 7 days, the task invokes `madfam_inference` to rewrite the skill, overwriting the original file.
+- A new `/api/v1/skills/{skill_name}/refine` endpoint allows on-demand manual refinement.
+
+### Gap 2: Memory LLM Summarization 🔴 (Priority 2)
+
+**Problem:** The `EdgeMemoryDB` FTS5 store accumulates raw transcripts indefinitely. Hermes periodically reads old entries, invokes an LLM to generate a compressed structured summary, and replaces verbose rows with the distilled version — preventing query degradation at scale.
+
+**Acceptance Criteria:**
+- A `MemoryCompactor` Celery beat task runs weekly (configurable).
+- Transcripts older than `N` days (default: 30) are fetched per `run_id`, passed to `madfam_inference` with a summarization prompt, and the result is stored as a single `role=summary` row replacing the originals.
+- `fts_search()` returns summary rows alongside raw transcripts seamlessly.
+
+### Gap 3: Cron / Scheduler Integration 🟡 (Priority 3)
+
+**Problem:** Hermes accepts natural-language scheduling instructions ("every Monday at 9 AM, send me a briefing") and executes them unattended. AutoSwarm has no scheduling primitive at all.
+
+**Acceptance Criteria:**
+- A `POST /api/v1/schedules` endpoint accepts `{"cron": "0 9 * * 1", "action": "acp_initiate", "payload": {...}}`.
+- Celery Beat reads scheduled entries persisted in the `schedules` Postgres table.
+- A `GET /api/v1/schedules` endpoint lists all active schedules for the authenticated user.
+- A `DELETE /api/v1/schedules/{id}` endpoint cancels a schedule.
+
+### Gap 4: Extended Gateway Platforms 🟡 (Priority 4)
+
+**Problem:** AutoSwarm covers 2 of the 15+ platforms Hermes supports (Telegram, Discord). The most strategically critical missing platform for our B2B market is **Slack**. WhatsApp, Email, and SMS complete the essential tier.
+
+**Acceptance Criteria:**
+- `POST /api/v1/gateway/slack/webhook` validates Slack's `X-Slack-Signature` (HMAC-SHA256 over request body with timestamp) and routes `/initiate_acp` slash commands to Celery.
+- `POST /api/v1/gateway/email/inbound` accepts MIME-parsed payloads from SendGrid/Postmark inbound parse and routes commands from whitelisted sender addresses.
+- `POST /api/v1/gateway/sms/inbound` accepts Twilio webhook payloads and routes SMS commands.
+
+### Gap 5: agentskills.io Registry Compatibility 🟠 (Priority 5)
+
+**Problem:** Hermes skills are portable and community-shareable via the open `agentskills.io` standard. Our compiled skills are isolated internal artifacts with no export or interoperability mechanism.
+
+**Acceptance Criteria:**
+- All LLM-compiled skills include mandatory metadata fields: `SKILL_VERSION`, `SKILL_AUTHOR`, `SKILL_TAGS`, `SKILL_SCHEMA_VERSION = "agentskills/v1"`.
+- A `GET /api/v1/skills/{skill_name}/export` endpoint returns the skill file as a downloadable `.py` artifact with correct schema headers.
+- A `POST /api/v1/skills/import` endpoint accepts a raw `.py` skill file and validates it against the `PlaybookSkill` interface before registering it into the local registry.
+
+
