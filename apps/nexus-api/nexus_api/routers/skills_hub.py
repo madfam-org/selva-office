@@ -1,0 +1,65 @@
+"""
+Track D1: Skills Hub REST router
+Exposes agentskills.io browse/search/install endpoints.
+"""
+from __future__ import annotations
+
+import logging
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+
+from autoswarm_skills.hub import SkillsHubClient
+from ..auth import get_current_user
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/skills/hub", tags=["Skills Hub"], dependencies=[Depends(get_current_user)])
+
+
+class HubSkillResponse(BaseModel):
+    name: str
+    description: str
+    author: str
+    version: str
+    category: str
+    downloads: int
+    url: str
+    tags: List[str]
+
+
+class InstallRequest(BaseModel):
+    skill_name: str
+    target_dir: Optional[str] = None
+
+
+@router.get("/", response_model=List[HubSkillResponse])
+async def browse_hub(category: Optional[str] = None, page: int = 1) -> List[HubSkillResponse]:
+    """Browse community skills on agentskills.io."""
+    client = SkillsHubClient()
+    skills = await client.browse(category=category, page=page)
+    return [HubSkillResponse(**s.__dict__) for s in skills]
+
+
+@router.get("/search", response_model=List[HubSkillResponse])
+async def search_hub(q: str) -> List[HubSkillResponse]:
+    """Full-text search the agentskills.io hub."""
+    if not q.strip():
+        raise HTTPException(status_code=422, detail="Search query cannot be empty")
+    client = SkillsHubClient()
+    skills = await client.search(q)
+    return [HubSkillResponse(**s.__dict__) for s in skills]
+
+
+@router.post("/install", status_code=status.HTTP_201_CREATED)
+async def install_skill(body: InstallRequest) -> dict:
+    """Download and install a skill from agentskills.io."""
+    import os
+    target_dir = body.target_dir or os.environ.get("AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills")
+    client = SkillsHubClient()
+    try:
+        path = await client.install(body.skill_name, target_dir)
+        return {"status": "installed", "skill": body.skill_name, "path": str(path)}
+    except Exception as exc:
+        logger.error("Skill install failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Install failed: {exc}")

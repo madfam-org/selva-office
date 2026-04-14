@@ -14,6 +14,11 @@ from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, F
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
 from .image_analysis import ImageAnalysisTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
+# Wave 4 additions
+from ..execute_code import ExecuteCodeTool
+from ..process_registry import StartBackgroundProcessTool, ListBackgroundProcessesTool, KillBackgroundProcessTool
+from ..media_tools import GenerateImageTool, TextToSpeechTool
+from ..extra_tools import WebSearchTool as WebSearchToolV2, WebExtractTool, DelegateTaskTool, ReadCredentialFileTool
 
 
 def get_builtin_tools() -> list[BaseTool]:
@@ -25,18 +30,27 @@ def get_builtin_tools() -> list[BaseTool]:
         FileListTool(),
         FileDeleteTool(),
         FileSearchTool(),
-        # Code
+        # Code (original)
         PythonExecTool(),
         BashExecTool(),
+        # Wave 4: execute_code sandbox (approval-gated)
+        ExecuteCodeTool(),
+        # Wave 4: process registry
+        StartBackgroundProcessTool(),
+        ListBackgroundProcessesTool(),
+        KillBackgroundProcessTool(),
         # Git
         GitCommitTool(),
         GitPushTool(),
         GitDiffTool(),
         GitBranchTool(),
-        # Web
+        # Web (original)
         WebSearchTool(),
         WebFetchTool(),
         WebScrapeTool(),
+        # Wave 4: enhanced web tools
+        WebSearchToolV2(),
+        WebExtractTool(),
         # Data
         JsonParseTool(),
         CsvReadTool(),
@@ -55,6 +69,11 @@ def get_builtin_tools() -> list[BaseTool]:
         SaveArtifactTool(),
         RetrieveArtifactTool(),
         ListArtifactsTool(),
-        # Image analysis
+        # Image analysis (original) + Generation (Wave 4)
         ImageAnalysisTool(),
+        GenerateImageTool(),
+        TextToSpeechTool(),
+        # Wave 4: delegation + credentials
+        DelegateTaskTool(),
+        ReadCredentialFileTool(),
     ]

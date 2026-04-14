@@ -42,6 +42,7 @@ from .routers import (
     metrics,
     schedules,
     skills,
+    skills_hub,
     swarms,
     trajectories,
     workflows,
@@ -163,6 +164,7 @@ def create_app() -> FastAPI:
     app.include_router(command_approvals.router, prefix="/api/v1")  # Gap 2: Dangerous command approval
     app.include_router(trajectories.router, prefix="/api/v1")       # Gap 6: ShareGPT trajectory export
     app.include_router(checkpoints.router, prefix="/api/v1")        # Next-tier: Session checkpoint/rollback
+    app.include_router(skills_hub.router, prefix="/api/v1")         # Track D1: agentskills.io hub
 
     return app
 

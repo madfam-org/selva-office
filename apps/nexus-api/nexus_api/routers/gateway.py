@@ -486,3 +486,198 @@ async def sms_inbound(
 
     return {"status": "ignored"}
 
+
+# ===========================================================================
+# Gateway Wave 3 — 9 additional platform adapters (Track C)
+# Completes 18/18 platform coverage matching Hermes Agent
+# ===========================================================================
+
+@router.post("/dingtalk/webhook")
+async def dingtalk_webhook(request: Request) -> Dict[str, Any]:
+    """DingTalk inbound webhook — HMAC-SHA256 validated."""
+    settings = get_settings()
+    body = await request.body()
+    timestamp = request.headers.get("timestamp", "")
+    sign = request.headers.get("sign", "")
+    if getattr(settings, "dingtalk_app_secret", None):
+        import base64 as _b64, hashlib as _hs
+        string_to_sign = f"{timestamp}\n{settings.dingtalk_app_secret}"
+        expected = _b64.b64encode(hmac.new(settings.dingtalk_app_secret.encode(), string_to_sign.encode(), _hs.sha256).digest()).decode()
+        if not hmac.compare_digest(expected, sign):
+            raise HTTPException(status_code=401, detail="Invalid DingTalk signature")
+    try:
+        data = await request.json()
+        text = data.get("text", {}).get("content", "").strip()
+        sender = data.get("senderNick", "unknown")
+    except Exception:
+        return {"msgtype": "text", "text": {"content": "Parse error"}}
+    if text.lower().startswith("acp "):
+        target_url = text[4:].strip()
+        task = run_acp_workflow_task.delay(target_url)
+        memory_store.insert_transcript(run_id=task.id, agent_role="gateway-dingtalk", role="user", content=f"ACP from DingTalk ({sender}): {target_url}")
+        logger.info("Gateway (DingTalk): ACP -> task %s", task.id)
+        return {"msgtype": "text", "text": {"content": f"ACP task started: {task.id}"}}
+    return {"msgtype": "text", "text": {"content": "Send: acp <url>"}}
+
+
+@router.post("/feishu/webhook")
+async def feishu_webhook(request: Request) -> Dict[str, Any]:
+    """Feishu (Lark) event webhook — challenge verification + ACP routing."""
+    try:
+        data = await request.json()
+    except Exception:
+        return {"code": 1}
+    if data.get("type") == "url_verification":
+        return {"challenge": data.get("challenge")}
+    settings = get_settings()
+    body = await request.body()
+    if getattr(settings, "feishu_app_secret", None):
+        import hashlib as _hs
+        ts = request.headers.get("X-Lark-Request-Timestamp", "")
+        nonce = request.headers.get("X-Lark-Request-Nonce", "")
+        sig = request.headers.get("X-Lark-Signature", "")
+        computed = _hs.sha256(f"{ts}{nonce}{settings.feishu_app_secret}{body.decode()}".encode()).hexdigest()
+        if not hmac.compare_digest(computed, sig):
+            raise HTTPException(status_code=401, detail="Invalid Feishu signature")
+    event = data.get("event", {})
+    content_str = event.get("message", {}).get("content", "{}")
+    try:
+        import json as _j
+        text = _j.loads(content_str).get("text", "").strip()
+    except Exception:
+        text = ""
+    if text.lower().startswith("/acp "):
+        task = run_acp_workflow_task.delay(text[5:].strip())
+        logger.info("Gateway (Feishu): ACP -> task %s", task.id)
+    return {"code": 0}
+
+
+@router.post("/wecom/webhook")
+async def wecom_webhook(request: Request) -> Dict[str, Any]:
+    """WeCom outgoing webhook — token-validated."""
+    settings = get_settings()
+    token = request.query_params.get("token", "")
+    if getattr(settings, "wecom_token", None):
+        if not hmac.compare_digest(settings.wecom_token, token):
+            raise HTTPException(status_code=401, detail="Invalid WeCom token")
+    try:
+        data = await request.json()
+        text = data.get("text", {}).get("content", "").strip()
+    except Exception:
+        return {"errcode": 1, "errmsg": "parse error"}
+    if text.lower().startswith("acp "):
+        task = run_acp_workflow_task.delay(text[4:].strip())
+        logger.info("Gateway (WeCom): ACP -> task %s", task.id)
+    return {"errcode": 0, "errmsg": "ok"}
+
+
+@router.post("/wecom/callback")
+async def wecom_callback(request: Request, echostr: str = None) -> Any:
+    """WeCom server-mode callback — echoes challenge, logs encrypted messages."""
+    if echostr:
+        return echostr
+    body = await request.body()
+    logger.info("Gateway (WeCom Callback): received %d byte payload", len(body))
+    return "<xml><return_code>SUCCESS</return_code></xml>"
+
+
+@router.post("/weixin/webhook")
+async def weixin_webhook(request: Request) -> Dict[str, Any]:
+    """Weixin via WxPusher — appToken validated."""
+    settings = get_settings()
+    token = request.query_params.get("appToken", "")
+    if getattr(settings, "weixin_app_token", None):
+        if not hmac.compare_digest(settings.weixin_app_token, token):
+            raise HTTPException(status_code=401, detail="Invalid Weixin appToken")
+    try:
+        data = await request.json()
+        content = data.get("content", "").strip()
+    except Exception:
+        return {"success": False}
+    if content.lower().startswith("acp "):
+        task = run_acp_workflow_task.delay(content[4:].strip())
+        logger.info("Gateway (Weixin): ACP -> task %s", task.id)
+        return {"success": True, "task_id": task.id}
+    return {"success": True}
+
+
+@router.post("/bluebubbles/webhook")
+async def bluebubbles_webhook(request: Request) -> Dict[str, Any]:
+    """BlueBubbles iMessage bridge webhook — password validated."""
+    settings = get_settings()
+    auth = request.headers.get("Authorization", "")
+    password = getattr(settings, "bluebubbles_password", None)
+    if password and not hmac.compare_digest(f"Basic {password}", auth.strip()):
+        raise HTTPException(status_code=401, detail="Invalid BlueBubbles password")
+    try:
+        data = await request.json()
+        text = data.get("data", {}).get("text", "").strip()
+    except Exception:
+        return {"status": "ignored"}
+    if text.lower().startswith("acp "):
+        task = run_acp_workflow_task.delay(text[4:].strip())
+        logger.info("Gateway (BlueBubbles): ACP -> task %s", task.id)
+        return {"status": "ok", "task_id": task.id}
+    return {"status": "ignored"}
+
+
+@router.post("/homeassistant/webhook")
+async def homeassistant_webhook(request: Request) -> Dict[str, Any]:
+    """Home Assistant webhook — Bearer long-lived token validated."""
+    settings = get_settings()
+    ha_token = getattr(settings, "ha_token", None)
+    if ha_token:
+        bearer = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        if not hmac.compare_digest(ha_token, bearer):
+            raise HTTPException(status_code=401, detail="Invalid HA token")
+    try:
+        data = await request.json()
+        message = data.get("message", "").strip()
+        entity_id = data.get("entity_id", "unknown")
+    except Exception:
+        return {"result": "ignored"}
+    if message.lower().startswith("acp "):
+        task = run_acp_workflow_task.delay(message[4:].strip())
+        logger.info("Gateway (HomeAssistant): entity=%s -> task %s", entity_id, task.id)
+        return {"result": "triggered", "task_id": task.id}
+    return {"result": "ignored"}
+
+
+@router.post("/webhook/{channel_id}")
+async def generic_webhook(channel_id: str, request: Request, x_webhook_signature: str = None) -> Dict[str, Any]:
+    """Generic HMAC-signed webhook. channel_id used for routing/logging."""
+    body = await request.body()
+    import os as _os
+    secret = _os.environ.get("AUTOSWARM_WEBHOOK_SECRET", "")
+    if secret and x_webhook_signature:
+        if not _verify_hmac(body, x_webhook_signature, secret):
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    try:
+        import json as _j
+        data = _j.loads(body)
+    except Exception:
+        data = {}
+    text = (data.get("text") or data.get("message") or data.get("content") or "").strip()
+    if text.lower().startswith("acp "):
+        task = run_acp_workflow_task.delay(text[4:].strip())
+        logger.info("Gateway (Webhook/%s): ACP -> task %s", channel_id, task.id)
+        return {"status": "ok", "channel_id": channel_id, "task_id": task.id}
+    return {"status": "ignored", "channel_id": channel_id}
+
+
+@router.post("/api/complete")
+async def api_complete(request: Request) -> Dict[str, Any]:
+    """Direct API completion — fire-and-forget ACP dispatch. Mirrors Hermes api_server mode."""
+    if not request.headers.get("Authorization", "").startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Bearer token required")
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid JSON body")
+    target_url: str = data.get("target_url", "")
+    metadata: dict = data.get("metadata", {})
+    if not target_url:
+        raise HTTPException(status_code=422, detail="target_url is required")
+    task = run_acp_workflow_task.delay(target_url, metadata=metadata)
+    logger.info("Gateway (API): ACP for %s -> task %s", target_url, task.id)
+    return {"status": "dispatched", "task_id": task.id, "target_url": target_url, "poll_url": f"/api/v1/acp/status/{task.id}"}
