@@ -8,10 +8,10 @@ import type {
   Player,
   ChatMessage,
 } from '@autoswarm/shared-types';
+import { MAX_RECONNECT_DELAY_MS } from '@/lib/constants';
 
 const COLYSEUS_URL = process.env.NEXT_PUBLIC_COLYSEUS_URL ?? 'ws://localhost:4303';
 const ROOM_NAME = 'office';
-const MAX_RECONNECT_DELAY_MS = 30000;
 
 export interface PlayerEmoteEvent {
   sessionId: string;

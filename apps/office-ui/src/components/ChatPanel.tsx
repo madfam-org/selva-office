@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ChatMessage } from '@autoswarm/shared-types';
 import { gameEventBus } from '@/game/PhaserGame';
+import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 
 interface ChatPanelProps {
   messages: ChatMessage[];
@@ -31,7 +32,7 @@ export function ChatPanel({ messages, onSend, localSessionId }: ChatPanelProps) 
 
   // Emit chat-focus events for GamepadManager
   useEffect(() => {
-    gameEventBus.emit('chat-focus', chatFocused);
+    gameEventBus.emit(EVENT_CHAT_FOCUS, chatFocused);
   }, [chatFocused]);
 
   // Global keyboard shortcut: T or / to focus chat

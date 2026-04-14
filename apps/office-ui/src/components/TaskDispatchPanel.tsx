@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, type FC } from 'react';
 import type { Department } from '@autoswarm/shared-types';
 import type { DispatchRequest, DispatchResponse, DispatchStatus } from '@/hooks/useTaskDispatch';
 import { gameEventBus } from '@/game/PhaserGame';
+import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 
@@ -72,10 +73,10 @@ export const TaskDispatchPanel: FC<TaskDispatchPanelProps> = ({
 
   // Suppress game input while text fields focused
   const handleFocus = useCallback(() => {
-    gameEventBus.emit('chat-focus', true);
+    gameEventBus.emit(EVENT_CHAT_FOCUS, true);
   }, []);
   const handleBlur = useCallback(() => {
-    gameEventBus.emit('chat-focus', false);
+    gameEventBus.emit(EVENT_CHAT_FOCUS, false);
   }, []);
 
   // ESC to close

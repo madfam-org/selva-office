@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { TaskEvent, EventCategory } from '@autoswarm/shared-types';
 import { apiFetch, isDemo } from '@/lib/api';
+import { MAX_RECONNECT_DELAY_MS } from '@/lib/constants';
 
 const WS_URL =
   process.env.NEXT_PUBLIC_EVENTS_WS_URL ?? 'ws://localhost:4300/api/v1/events/ws';
-const MAX_RECONNECT_DELAY_MS = 30000;
 const MAX_IN_MEMORY = 500;
 
 export interface EventFilters {

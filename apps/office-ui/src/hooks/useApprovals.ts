@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ApprovalRequest, ApprovalResponse } from '@autoswarm/shared-types';
 import { apiFetch, isDemo } from '@/lib/api';
+import { MAX_RECONNECT_DELAY_MS } from '@/lib/constants';
 
 const WS_URL =
   process.env.NEXT_PUBLIC_APPROVALS_WS_URL ?? 'ws://localhost:4300/api/v1/approvals/ws';
-const MAX_RECONNECT_DELAY_MS = 30000;
 
 interface ApprovalsState {
   pendingApprovals: ApprovalRequest[];
