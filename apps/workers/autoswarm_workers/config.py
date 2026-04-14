@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     """
 
     # -- Infrastructure -------------------------------------------------------
+    environment: str = "development"
     redis_url: str = "redis://localhost:6379"
     nexus_api_url: str = "http://localhost:4300"
     database_url: str | None = None
