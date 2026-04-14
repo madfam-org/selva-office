@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import concurrent.futures
 import json as _json
 import logging
 from pathlib import Path
@@ -15,22 +14,12 @@ from langgraph.types import interrupt
 
 from ..event_emitter import instrumented_node
 from ..tools.bash_tool import BashTool
-from .base import BaseGraphState, check_permission
+from .base import BaseGraphState, check_permission, run_async as _run_async
 
 logger = logging.getLogger(__name__)
 
 # Shared BashTool instance for test execution.
 _bash_tool = BashTool()
-
-
-def _run_async(coro):  # type: ignore[no-untyped-def]
-    """Run an async coroutine from a sync graph node context."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
 
 
 # -- State --------------------------------------------------------------------
