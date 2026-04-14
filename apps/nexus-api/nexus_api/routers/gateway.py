@@ -236,9 +236,200 @@ async def email_inbound(request: Request) -> Dict[str, Any]:
             logger.info("Gateway (Email): ACP triggered for %s → task %s", target_url, task.id)
             return {"status": "success", "action": "acp_triggered", "task_id": task.id}
 
+    return {\"status\": \"ignored\"}
+
+
+# ---------------------------------------------------------------------------
+# Gap 8 — Wave 2 Gateway Platforms
+# ---------------------------------------------------------------------------
+
+# ── WhatsApp (Meta Cloud API) ───────────────────────────────────────────────
+
+@router.get("/whatsapp/webhook")
+async def whatsapp_webhook_verify(
+    request: Request,
+) -> Any:
+    """
+    Responds to the Meta webhook verification challenge (GET request).
+    Required during webhook registration in Meta Developer Portal.
+    """
+    settings = get_settings()
+    params = dict(request.query_params)
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge")
+
+    if mode == "subscribe" and token == settings.whatsapp_verify_token:
+        logger.info("Gateway (WhatsApp): webhook verification successful.")
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(content=challenge or "")
+    raise HTTPException(status_code=403, detail="WhatsApp webhook verification failed")
+
+
+@router.post("/whatsapp/webhook")
+async def whatsapp_inbound(request: Request) -> Dict[str, Any]:
+    """
+    Receive inbound WhatsApp messages via Meta Cloud API webhook.
+    Validates X-Hub-Signature-256 and routes /acp commands.
+    """
+    settings = get_settings()
+    body = await request.body()
+    sig = request.headers.get("X-Hub-Signature-256", "")
+
+    if settings.whatsapp_access_token:
+        if not _verify_hmac(body, sig, settings.whatsapp_access_token):
+            raise HTTPException(status_code=401, detail="Invalid WhatsApp webhook signature")
+
+    try:
+        payload = await request.json()
+        entry = payload.get("entry", [{}])[0]
+        changes = entry.get("changes", [{}])[0]
+        message = changes.get("value", {}).get("messages", [{}])[0]
+        text = message.get("text", {}).get("body", "")
+        from_number = message.get("from", "unknown")
+    except Exception:
+        return {"status": "ignored"}
+
+    if text.lower().startswith("acp "):
+        target_url = text[4:].strip()
+        task = run_acp_workflow_task.delay(target_url)
+        memory_store.insert_transcript(
+            run_id=task.id,
+            agent_role="gateway-whatsapp",
+            role="user",
+            content=f"ACP triggered via WhatsApp from {from_number} for {target_url}",
+        )
+        logger.info("Gateway (WhatsApp): ACP triggered for %s → task %s", target_url, task.id)
+        return {"status": "success", "action": "acp_triggered", "task_id": task.id}
+
     return {"status": "ignored"}
 
 
+# ── Matrix / Element (Appservice API) ──────────────────────────────────────
+
+@router.put("/matrix/webhook")
+@router.post("/matrix/webhook")
+async def matrix_inbound(
+    request: Request,
+    authorization: str = Header(None),
+) -> Dict[str, Any]:
+    """
+    Receive events from a Matrix appservice registration.
+    Validates the Authorization: Bearer <token> header.
+    """
+    settings = get_settings()
+    expected_token = settings.matrix_appservice_token
+    if expected_token:
+        if authorization != f"Bearer {expected_token}":
+            raise HTTPException(status_code=401, detail="Invalid Matrix appservice token")
+
+    try:
+        payload = await request.json()
+        events = payload.get("events", [])
+    except Exception:
+        return {"status": "ignored"}
+
+    for event in events:
+        if event.get("type") != "m.room.message":
+            continue
+        content = event.get("content", {})
+        msgtype = content.get("msgtype")
+        if msgtype != "m.text":
+            continue
+
+        text = content.get("body", "")
+        sender = event.get("sender", "unknown")
+
+        if text.lower().startswith("acp "):
+            target_url = text[4:].strip()
+            task = run_acp_workflow_task.delay(target_url)
+            memory_store.insert_transcript(
+                run_id=task.id,
+                agent_role="gateway-matrix",
+                role="user",
+                content=f"ACP triggered via Matrix from {sender} for {target_url}",
+            )
+            logger.info("Gateway (Matrix): ACP triggered for %s → task %s", target_url, task.id)
+            return {"status": "success", "action": "acp_triggered", "task_id": task.id}
+
+    return {"status": "ignored"}
+
+
+# ── Mattermost (Slash Command) ──────────────────────────────────────────────
+
+@router.post("/mattermost/webhook")
+async def mattermost_inbound(request: Request) -> Dict[str, Any]:
+    """
+    Receive Mattermost slash command: /initiate_acp <url>.
+    Validates the shared mattermost_token from the request body.
+    """
+    settings = get_settings()
+    try:
+        form = await request.form()
+        token = form.get("token", "")
+        text = form.get("text", "")
+        user_name = form.get("user_name", "unknown")
+    except Exception:
+        return {"status": "ignored"}
+
+    if settings.mattermost_token and token != settings.mattermost_token:
+        raise HTTPException(status_code=401, detail="Invalid Mattermost token")
+
+    target_url = text.strip()
+    if not target_url:
+        return {"response_type": "ephemeral", "text": "Usage: /initiate_acp <target-url>"}
+
+    task = run_acp_workflow_task.delay(target_url)
+    memory_store.insert_transcript(
+        run_id=task.id,
+        agent_role="gateway-mattermost",
+        role="user",
+        content=f"ACP triggered via Mattermost by {user_name} for {target_url}",
+    )
+    logger.info("Gateway (Mattermost): ACP triggered for %s → task %s", target_url, task.id)
+    return {
+        "response_type": "ephemeral",
+        "text": f"✅ ACP run queued (`{task.id}`). Phase I analysis starting for `{target_url}`.",
+    }
+
+
+# ── Signal (via signal-cli REST API) ───────────────────────────────────────
+
+@router.post("/signal/webhook")
+async def signal_inbound(request: Request) -> Dict[str, Any]:
+    """
+    Receive inbound Signal messages via signal-cli REST API envelope format.
+    Validates source number against the configured whitelist.
+    """
+    settings = get_settings()
+    allowed = {n.strip() for n in settings.signal_allowed_numbers.split(",") if n.strip()}
+
+    try:
+        payload = await request.json()
+        envelope = payload.get("envelope", {})
+        source = envelope.get("source", "")
+        data_message = envelope.get("dataMessage", {})
+        text = data_message.get("message", "")
+    except Exception:
+        return {"status": "ignored"}
+
+    if allowed and source not in allowed:
+        logger.warning("Gateway (Signal): rejected message from non-whitelisted source %s", source)
+        raise HTTPException(status_code=403, detail="Signal source not in allowlist")
+
+    if text.lower().startswith("acp "):
+        target_url = text[4:].strip()
+        task = run_acp_workflow_task.delay(target_url)
+        memory_store.insert_transcript(
+            run_id=task.id,
+            agent_role="gateway-signal",
+            role="user",
+            content=f"ACP triggered via Signal from {source} for {target_url}",
+        )
+        logger.info("Gateway (Signal): ACP triggered for %s → task %s", target_url, task.id)
+        return {"status": "success", "action": "acp_triggered", "task_id": task.id}
+
+    return {"status": "ignored"}
 # ---------------------------------------------------------------------------
 # SMS (Twilio)
 # ---------------------------------------------------------------------------

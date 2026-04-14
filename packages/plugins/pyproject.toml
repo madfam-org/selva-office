@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "autoswarm-plugins"
+version = "0.1.0"
+description = "AutoSwarm Plugin System — discover, load, and coordinate agent extensions"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "importlib-metadata>=6.0; python_version<'3.12'",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autoswarm_plugins"]
+
+[project.entry-points."autoswarm.plugins"]
+# Third-party plugins register here via pip
+# example_plugin = "example_package:ExamplePlugin"

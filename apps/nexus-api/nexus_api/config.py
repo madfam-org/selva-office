@@ -91,6 +91,26 @@ class Settings(BaseSettings):
         "http://localhost:4302",
     ]
 
+    # -- Dangerous Command Approval (Gap 2) -----------------------------------
+    auto_approve_dangerous: bool = False      # Set True in CI — bypasses HITL gate
+    command_approval_timeout_seconds: int = 60  # Fail-closed after N seconds
+
+    # -- Plugin Architecture (Gap 3) ------------------------------------------
+    plugin_dirs: list[str] = []               # Additional plugin scan directories
+
+    # -- Gateway Wave 2 (Gap 8) -----------------------------------------------
+    # WhatsApp (Meta Cloud API)
+    whatsapp_verify_token: str = ""          # Used during webhook registration challenge
+    whatsapp_access_token: str = ""          # Meta Graph API access token
+    # Matrix / Element
+    matrix_appservice_token: str = ""        # Shared secret for appservice auth
+    matrix_homeserver_url: str = ""          # e.g. https://matrix.example.com
+    # Mattermost
+    mattermost_token: str = ""               # Shared secret from Mattermost slash command
+    # Signal (via signal-cli REST)
+    signal_cli_url: str = ""                 # URL of running signal-cli REST API
+    signal_allowed_numbers: str = ""         # Comma-separated E.164 source numbers
+
     # -- Security -------------------------------------------------------------
     dev_auth_bypass: bool = False
     rate_limit_per_minute: int = 60
