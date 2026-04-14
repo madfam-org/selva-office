@@ -43,6 +43,22 @@ class Settings(BaseSettings):
     # -- Enclii (deployment webhooks) ------------------------------------------
     enclii_webhook_secret: str = ""
 
+    # -- Hermes Integration ---------------------------------------------------
+    # Multi-channel gateway tokens
+    telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""
+    discord_webhook_secret: str = ""
+
+    # MCP tool server credentials
+    tavily_api_key: str = ""
+    github_token: str = ""
+
+    # Continuous learning / skills registry
+    autoswarm_skills_dir: str = "/var/lib/autoswarm/skills"
+
+    # Honcho dialectic profiling — sqlite edge memory path
+    autoswarm_state_db_path: str = "/var/lib/autoswarm/autoswarm_state.db"
+
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
