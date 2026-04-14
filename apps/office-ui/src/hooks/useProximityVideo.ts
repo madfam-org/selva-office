@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type SimplePeerType from 'simple-peer';
 import type { ProximityUpdate, WebRTCSignal } from './useColyseus';
+import { logger } from '../lib/logger';
 
 interface PeerConnection {
   sessionId: string;
@@ -119,7 +120,7 @@ export function useProximityVideo({
         setLocalStream(stream);
       })
       .catch((err) => {
-        console.warn('[useProximityVideo] getUserMedia failed:', err);
+        logger.warn('[useProximityVideo] getUserMedia failed:', err);
       });
 
     return () => {
@@ -205,7 +206,7 @@ export function useProximityVideo({
 
         if (tracker.count === 1) {
           // Only warn on first error per peer per 30s window
-          console.warn(`[useProximityVideo] Peer error with ${remoteSessionId}:`, err.message);
+          logger.warn(`[useProximityVideo] Peer error with ${remoteSessionId}:`, err.message);
         }
 
         if (tracker.count >= 3) {
@@ -369,7 +370,7 @@ export function useProximityVideo({
         }
       });
     } catch (err) {
-      console.warn('[useProximityVideo] getDisplayMedia failed:', err);
+      logger.warn('[useProximityVideo] getDisplayMedia failed:', err);
     }
   }, [screenSharing, restoreCameraTrack]);
 

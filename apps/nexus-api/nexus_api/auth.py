@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 _bearer_scheme = HTTPBearer()
 
 # In-memory JWKS cache with TTL-based expiration.
+# Thread-safety note: This module runs inside a single-process ASGI server
+# (uvicorn) with a single-threaded asyncio event loop.  Global dict/float
+# assignments are atomic under CPython's GIL, so no lock is needed.  If
+# running under a multi-threaded ASGI server, wrap _fetch_jwks() with an
+# asyncio.Lock.
 _jwks_cache: dict[str, Any] | None = None
 _jwks_cache_time: float | None = None
 _JWKS_TTL_SECONDS = 3600.0

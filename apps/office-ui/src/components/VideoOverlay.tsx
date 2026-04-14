@@ -94,6 +94,7 @@ function VideoBubble({ stream, muted = false, label, size }: VideoBubbleProps) {
           autoPlay
           playsInline
           muted={muted}
+          aria-label={`Video: ${label}`}
           className="h-full w-full object-cover"
           style={{ transform: muted ? 'scaleX(-1)' : undefined }}
         />
