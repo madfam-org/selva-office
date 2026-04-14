@@ -28,8 +28,8 @@ export function useWorkflowTemplates() {
       const data = (await res.json()) as WorkflowTemplate[];
       setTemplates(data);
       setStatus('idle');
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
     }
   }, []);
@@ -54,8 +54,8 @@ export function useWorkflowTemplates() {
         const data = (await res.json()) as WorkflowDetail;
         setStatus('idle');
         return data;
-      } catch (e) {
-        setError((e as Error).message);
+      } catch (err) {
+        setError((err as Error).message);
         setStatus('error');
         return null;
       }

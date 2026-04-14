@@ -180,8 +180,8 @@ export function useMapEditor() {
       const data = (await res.json()) as MapSummary[];
       setMapList(data);
       setStatus('idle');
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
     }
   }, []);
@@ -206,8 +206,8 @@ export function useMapEditor() {
       redoStack.current = [];
       setStatus('idle');
       return data;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }
@@ -239,8 +239,8 @@ export function useMapEditor() {
         setMapName(data.name);
         setStatus('idle');
         return data;
-      } catch (e) {
-        setError((e as Error).message);
+      } catch (err) {
+        setError((err as Error).message);
         setStatus('error');
         return null;
       }

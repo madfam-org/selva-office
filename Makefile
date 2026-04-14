@@ -5,7 +5,12 @@ DOCKER_COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker 
 
 # ── Development ─────────────────────────────────────
 dev:
-	pnpm dev & uv run --directory apps/nexus-api uvicorn nexus_api.main:app --host 0.0.0.0 --port 4300 --reload & uv run --directory apps/workers python -m autoswarm_workers
+	@bash -c '\
+	trap "kill 0" EXIT SIGINT SIGTERM; \
+	pnpm dev & \
+	uv run --directory apps/nexus-api uvicorn nexus_api.main:app --host 0.0.0.0 --port 4300 --reload & \
+	uv run --directory apps/workers python -m autoswarm_workers & \
+	wait'
 
 db-wait:
 	@echo "Waiting for PostgreSQL..."
