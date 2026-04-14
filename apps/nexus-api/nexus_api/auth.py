@@ -114,7 +114,7 @@ async def get_current_user(
     if settings.environment == "development" and settings.dev_auth_bypass:
         return {
             "sub": "dev-user-00000000",
-            "roles": ["admin", "tactician"],
+            "roles": ["admin", "tactician", "enterprise-cleanroom"],
             "org_id": "dev-org",
             "email": "dev@autoswarm.local",
         }

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: acp-clean-swarm
+  labels:
+    app: autoswarm-office
+    component: acp-clean-env
+spec:
+  containers:
+  - name: clean-agent
+    image: my-registry/autoswarm-engineer:latest
+    env:
+    - name: ACP_PHASE
+      value: "III"
+    volumeMounts:
+    - name: clean-workspace
+      mountPath: /workspace
+  volumes:
+  - name: clean-workspace
+    emptyDir: {}
+  restartPolicy: Never
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: acp-clean-network
+spec:
+  podSelector:
+    matchLabels:
+      component: acp-clean-env
+  policyTypes:
+  - Egress
+  - Ingress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: nexus-api # Only allowed to hit internal API for completion status
+    ports:
+    - protocol: TCP
+      port: 4300
+  # Explicitly drop all other egress (strict airgap requirement)
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: nexus-api # Only Nexus API can inject the sterilized spec

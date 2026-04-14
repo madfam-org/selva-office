@@ -76,6 +76,7 @@ autoswarm-office/
 - [Development Guide](docs/DEVELOPMENT.md)
 - [Human-in-the-Loop Flow](docs/HITL_FLOW.md)
 - [MADFAM Integration Guide](docs/INTEGRATION.md)
+- [Autonomous Cleanroom Protocol (ACP)](docs/AUTONOMOUS_CLEANROOM_PROTOCOL.md)
 
 ## MADFAM Ecosystem
 

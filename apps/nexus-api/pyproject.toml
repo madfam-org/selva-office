@@ -26,6 +26,7 @@ dependencies = [
   "structlog>=24.0",
   "sentry-sdk[fastapi]>=2.19.0",
   "prometheus-fastapi-instrumentator>=7.0.0",
+  "celery>=5.4.0",
 ]
 
 [build-system]
