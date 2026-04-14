@@ -35,7 +35,8 @@ function createHealthServer(): http.Server {
     if (req.method === "GET" && req.url === "/health") {
       const body = JSON.stringify({
         status: "ok",
-        service: "gateway",
+        service: "autoswarm-gateway",
+        version: "0.1.0",
         uptime: process.uptime(),
         heartbeat: {
           lastTickTime: heartbeat.lastTickTime,
