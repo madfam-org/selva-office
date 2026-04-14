@@ -128,7 +128,7 @@ def draft_communication(state: CRMState) -> CRMState:
                 task_description=description,
             ))
         except Exception:
-            pass
+            logger.debug("Failed to retrieve experience context", exc_info=True)
 
         skill_ctx = state.get("agent_system_prompt", "")
         base_prompt = "Draft a professional communication based on the CRM context provided."

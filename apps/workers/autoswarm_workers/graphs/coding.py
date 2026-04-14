@@ -240,7 +240,10 @@ def implement(state: CodingState) -> CodingState:
                 }
 
     except Exception:
-        pass  # Fall through to placeholder path (no LLM configured)
+        logger.warning(
+            "Failed to generate code via LLM; falling through to placeholder path",
+            exc_info=True,
+        )
 
     # Write files to worktree from LLM output or placeholder.
     files_written = _write_files_to_worktree(

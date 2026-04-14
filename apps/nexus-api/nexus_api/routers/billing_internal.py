@@ -89,7 +89,7 @@ async def check_budget(
         if cached:
             daily_limit = int(cached)
     except Exception:
-        pass  # Fall back to default
+        logger.debug("Failed to fetch cached tier limit from Redis", exc_info=True)
 
     today_start = datetime.now(UTC).replace(
         hour=0, minute=0, second=0, microsecond=0

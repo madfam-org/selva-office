@@ -60,7 +60,7 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
                 task_description=description,
             ))
         except Exception:
-            pass
+            logger.debug("Failed to retrieve experience context", exc_info=True)
 
         prompt = (
             "Decompose this task into 2-5 independent subtasks. "

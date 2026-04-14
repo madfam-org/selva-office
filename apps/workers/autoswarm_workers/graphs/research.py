@@ -58,7 +58,7 @@ def formulate_query(state: ResearchState) -> ResearchState:
                 task_description=raw_text.strip(),
             ))
         except Exception:
-            pass
+            logger.debug("Failed to retrieve experience context", exc_info=True)
 
         skill_ctx = state.get("agent_system_prompt", "")
         base_prompt = "Rewrite this into an optimal search query. Return only the query."

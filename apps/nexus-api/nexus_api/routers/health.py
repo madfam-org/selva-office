@@ -100,6 +100,7 @@ async def health_detail(response: Response) -> dict[str, object]:
             resp = await client.get("http://localhost:4303/health")
             checks["colyseus"] = "ok" if resp.status_code == 200 else "degraded"
     except Exception:
+        logger.debug("Colyseus health check failed", exc_info=True)
         checks["colyseus"] = "unavailable"
 
     all_ok = all(v == "ok" for v in checks.values())
@@ -148,12 +149,14 @@ async def queue_stats() -> dict[str, object]:
         try:
             stats["stream_length"] = await client.xlen("autoswarm:task-stream")
         except Exception:
+            logger.debug("Failed to fetch stream length", exc_info=True)
             stats["stream_length"] = 0
 
         # DLQ depth
         try:
             stats["dlq_depth"] = await client.xlen("autoswarm:task-dlq")
         except Exception:
+            logger.debug("Failed to fetch DLQ depth", exc_info=True)
             stats["dlq_depth"] = 0
 
         # Consumer group info
@@ -169,6 +172,7 @@ async def queue_stats() -> dict[str, object]:
                 for g in groups
             ]
         except Exception:
+            logger.debug("Failed to fetch consumer group info", exc_info=True)
             stats["consumer_groups"] = []
 
     except Exception as exc:
@@ -191,6 +195,7 @@ async def dlq_stats() -> dict[str, object]:
         try:
             result["depth"] = await client.xlen("autoswarm:task-dlq")
         except Exception:
+            logger.debug("Failed to fetch DLQ depth", exc_info=True)
             result["depth"] = 0
 
         # Return the 10 most recent DLQ entries.
@@ -201,6 +206,7 @@ async def dlq_stats() -> dict[str, object]:
                 for eid, data in entries
             ]
         except Exception:
+            logger.debug("Failed to fetch recent DLQ entries", exc_info=True)
             result["recent"] = []
 
     except Exception as exc:

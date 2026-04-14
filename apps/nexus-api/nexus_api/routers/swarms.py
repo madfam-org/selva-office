@@ -194,7 +194,9 @@ async def dispatch_task(
             scored.sort(key=lambda x: x[0], reverse=True)
             assigned_agent_ids = [str(a.id) for _, a in scored[:3]]
         except Exception:
-            pass  # Fall through to dispatch without auto-selection
+            logging.getLogger(__name__).warning(
+                "Failed to auto-select agents by skill", exc_info=True,
+            )
 
     # -- Fallback: auto-assign any idle agent when no agents or skills given --
     if not assigned_agent_ids:
@@ -219,7 +221,9 @@ async def dispatch_task(
             if fallback_agent is not None:
                 assigned_agent_ids = [str(fallback_agent.id)]
         except Exception:
-            pass  # Dispatch proceeds without assignment
+            logging.getLogger(__name__).warning(
+                "Failed to auto-assign fallback agent", exc_info=True,
+            )
 
     # -- Compute token budget check -------------------------------------------
     dispatch_cost = 10  # matches ComputeTokenManager.COST_TABLE["dispatch_task"]
@@ -304,7 +308,9 @@ async def dispatch_task(
             payload={"description": task.description[:200], "graph_type": task.graph_type},
         )
     except Exception:
-        pass  # Never block dispatch on event emission
+        logging.getLogger(__name__).debug(
+            "Failed to emit task.dispatched event", exc_info=True,
+        )
 
     return _task_to_response(task)
 
@@ -398,7 +404,9 @@ async def get_task_board(
                 if agent:
                     agent_names[aid] = agent.name
             except (ValueError, Exception):
-                pass
+                logging.getLogger(__name__).debug(
+                    "Failed to resolve agent name for %s", aid, exc_info=True,
+                )
 
     # Build columns
     columns: dict[str, list[TaskBoardItem]] = {
