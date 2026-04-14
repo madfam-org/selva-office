@@ -81,6 +81,6 @@ describe("handleMusicStatus", () => {
 
     handleMusicStatus(state, client, { status: "test" });
 
-    expect(client.send).not.toHaveBeenCalled();
+    expect(client.send).toHaveBeenCalledWith("error", { message: "Player not found" });
   });
 });

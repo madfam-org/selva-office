@@ -80,7 +80,7 @@ describe("handleAvatar", () => {
       }),
     });
 
-    expect(client.send).not.toHaveBeenCalled();
+    expect(client.send).toHaveBeenCalledWith("error", { message: "Player not found" });
   });
 
   it("accepts hair style -1 (bald) and accessory -1 (none)", () => {

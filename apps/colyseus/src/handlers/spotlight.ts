@@ -7,10 +7,8 @@ import type { OfficeStateSchema } from "../schema/OfficeState";
  * The presenter's video stream is displayed in a large view for all audience members.
  */
 
-let currentPresenter: string | null = null;
-
-export function getSpotlightPresenter(): string | null {
-  return currentPresenter;
+export function getSpotlightPresenter(state: OfficeStateSchema): string | null {
+  return state.spotlightPresenter || null;
 }
 
 export function handleSpotlightStart(
@@ -18,15 +16,17 @@ export function handleSpotlightStart(
   client: Client,
   broadcast: (type: string, payload: unknown) => void,
 ): void {
-  if (currentPresenter) {
+  if (state.spotlightPresenter) {
     client.send("error", { message: "Spotlight already in use" });
     return;
   }
 
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
-  currentPresenter = client.sessionId;
   state.spotlightPresenter = client.sessionId;
   broadcast("spotlight_active", {
     sessionId: client.sessionId,
@@ -40,12 +40,11 @@ export function handleSpotlightStop(
   state: OfficeStateSchema,
   broadcast: (type: string, payload: unknown) => void,
 ): void {
-  if (currentPresenter !== client.sessionId) {
+  if (state.spotlightPresenter !== client.sessionId) {
     client.send("error", { message: "You are not the spotlight presenter" });
     return;
   }
 
-  currentPresenter = null;
   state.spotlightPresenter = "";
   broadcast("spotlight_active", {
     sessionId: client.sessionId,
@@ -59,8 +58,7 @@ export function releaseSpotlight(
   state: OfficeStateSchema,
   broadcast: (type: string, payload: unknown) => void,
 ): void {
-  if (currentPresenter === sessionId) {
-    currentPresenter = null;
+  if (state.spotlightPresenter === sessionId) {
     state.spotlightPresenter = "";
     broadcast("spotlight_active", {
       sessionId,

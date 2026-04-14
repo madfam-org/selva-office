@@ -168,7 +168,7 @@ export function startProximityLoop(
     const clients = getClients();
 
     // Inject megaphone speaker into all players' nearby lists
-    const megaSpeaker = getMegaphoneSpeaker();
+    const megaSpeaker = getMegaphoneSpeaker(state);
     if (megaSpeaker) {
       for (const group of groups) {
         if (group.sessionId !== megaSpeaker && !group.nearbySessionIds.includes(megaSpeaker)) {

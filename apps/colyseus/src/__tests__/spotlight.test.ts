@@ -43,7 +43,7 @@ describe("spotlight", () => {
 
     handleSpotlightStart(state, client, broadcast);
 
-    expect(getSpotlightPresenter()).toBe("a");
+    expect(getSpotlightPresenter(state)).toBe("a");
     expect(state.spotlightPresenter).toBe("a");
     expect(broadcast).toHaveBeenCalledWith("spotlight_active", {
       sessionId: "a",
@@ -60,7 +60,7 @@ describe("spotlight", () => {
     handleSpotlightStart(state, mockClient("a"), broadcast);
     handleSpotlightStop(mockClient("a"), state, broadcast);
 
-    expect(getSpotlightPresenter()).toBeNull();
+    expect(getSpotlightPresenter(state)).toBeNull();
     expect(state.spotlightPresenter).toBe("");
     expect(broadcast).toHaveBeenLastCalledWith("spotlight_active", {
       sessionId: "a",
@@ -78,7 +78,7 @@ describe("spotlight", () => {
     handleSpotlightStart(state, mockClient("a"), broadcast);
     handleSpotlightStart(state, clientB, broadcast);
 
-    expect(getSpotlightPresenter()).toBe("a");
+    expect(getSpotlightPresenter(state)).toBe("a");
     expect(clientB.send).toHaveBeenCalledWith("error", {
       message: "Spotlight already in use",
     });
@@ -93,7 +93,7 @@ describe("spotlight", () => {
     handleSpotlightStart(state, mockClient("a"), broadcast);
     handleSpotlightStop(clientB, state, broadcast);
 
-    expect(getSpotlightPresenter()).toBe("a");
+    expect(getSpotlightPresenter(state)).toBe("a");
     expect(clientB.send).toHaveBeenCalledWith("error", {
       message: "You are not the spotlight presenter",
     });
@@ -107,7 +107,7 @@ describe("spotlight", () => {
     handleSpotlightStart(state, mockClient("a"), broadcast);
     releaseSpotlight("a", state, broadcast);
 
-    expect(getSpotlightPresenter()).toBeNull();
+    expect(getSpotlightPresenter(state)).toBeNull();
     expect(state.spotlightPresenter).toBe("");
     expect(broadcast).toHaveBeenLastCalledWith("spotlight_active", {
       sessionId: "a",
@@ -118,5 +118,19 @@ describe("spotlight", () => {
   it("has spotlightPresenter field on schema with correct default", () => {
     const state = createState();
     expect(state.spotlightPresenter).toBe("");
+  });
+
+  it("sends error when player not found", () => {
+    const state = createState();
+    // Do not add player — state has no players
+    const client = mockClient("unknown");
+    const broadcast = vi.fn();
+
+    handleSpotlightStart(state, client, broadcast);
+
+    expect(client.send).toHaveBeenCalledWith("error", {
+      message: "Player not found",
+    });
+    expect(broadcast).not.toHaveBeenCalled();
   });
 });

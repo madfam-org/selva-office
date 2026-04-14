@@ -27,11 +27,14 @@ function mockClient(sessionId: string) {
 }
 
 describe("megaphone", () => {
+  let resetState: OfficeStateSchema;
+
   beforeEach(() => {
-    // Reset megaphone state
+    // Reset megaphone state via a shared state object
+    resetState = createState();
     const broadcast = vi.fn();
-    releaseMegaphone("a", broadcast);
-    releaseMegaphone("b", broadcast);
+    releaseMegaphone("a", resetState, broadcast);
+    releaseMegaphone("b", resetState, broadcast);
   });
 
   it("allows first player to start megaphone", () => {
@@ -42,7 +45,7 @@ describe("megaphone", () => {
 
     handleMegaphoneStart(state, client, broadcast);
 
-    expect(getMegaphoneSpeaker()).toBe("a");
+    expect(getMegaphoneSpeaker(state)).toBe("a");
     expect(broadcast).toHaveBeenCalledWith("megaphone_active", {
       sessionId: "a",
       name: "Player-a",
@@ -59,7 +62,7 @@ describe("megaphone", () => {
     handleMegaphoneStart(state, mockClient("a"), broadcast);
     handleMegaphoneStart(state, mockClient("b"), broadcast);
 
-    expect(getMegaphoneSpeaker()).toBe("a");
+    expect(getMegaphoneSpeaker(state)).toBe("a");
   });
 
   it("stops megaphone", () => {
@@ -68,9 +71,9 @@ describe("megaphone", () => {
     const broadcast = vi.fn();
 
     handleMegaphoneStart(state, mockClient("a"), broadcast);
-    handleMegaphoneStop(mockClient("a"), broadcast);
+    handleMegaphoneStop(state, mockClient("a"), broadcast);
 
-    expect(getMegaphoneSpeaker()).toBeNull();
+    expect(getMegaphoneSpeaker(state)).toBeNull();
     expect(broadcast).toHaveBeenLastCalledWith("megaphone_active", {
       sessionId: "a",
       active: false,
@@ -84,9 +87,9 @@ describe("megaphone", () => {
     const broadcast = vi.fn();
 
     handleMegaphoneStart(state, mockClient("a"), broadcast);
-    handleMegaphoneStop(clientB, broadcast);
+    handleMegaphoneStop(state, clientB, broadcast);
 
-    expect(getMegaphoneSpeaker()).toBe("a");
+    expect(getMegaphoneSpeaker(state)).toBe("a");
     expect(clientB.send).toHaveBeenCalledWith("error", expect.any(Object));
   });
 
@@ -96,8 +99,27 @@ describe("megaphone", () => {
     const broadcast = vi.fn();
 
     handleMegaphoneStart(state, mockClient("a"), broadcast);
-    releaseMegaphone("a", broadcast);
+    releaseMegaphone("a", state, broadcast);
 
-    expect(getMegaphoneSpeaker()).toBeNull();
+    expect(getMegaphoneSpeaker(state)).toBeNull();
+  });
+
+  it("has megaphoneSpeaker field on schema with correct default", () => {
+    const state = createState();
+    expect(state.megaphoneSpeaker).toBe("");
+  });
+
+  it("sends error when player not found", () => {
+    const state = createState();
+    // Do not add player — state has no players
+    const client = mockClient("unknown");
+    const broadcast = vi.fn();
+
+    handleMegaphoneStart(state, client, broadcast);
+
+    expect(client.send).toHaveBeenCalledWith("error", {
+      message: "Player not found",
+    });
+    expect(broadcast).not.toHaveBeenCalled();
   });
 });
