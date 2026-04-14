@@ -647,8 +647,8 @@ async def homeassistant_webhook(request: Request) -> Dict[str, Any]:
 async def generic_webhook(channel_id: str, request: Request, x_webhook_signature: str = None) -> Dict[str, Any]:
     """Generic HMAC-signed webhook. channel_id used for routing/logging."""
     body = await request.body()
-    import os as _os
-    secret = _os.environ.get("AUTOSWARM_WEBHOOK_SECRET", "")
+    from ..config import get_settings as _get_settings
+    secret = _get_settings().autoswarm_webhook_secret
     if secret and x_webhook_signature:
         if not _verify_hmac(body, x_webhook_signature, secret):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")

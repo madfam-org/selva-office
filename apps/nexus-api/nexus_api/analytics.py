@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 import contextlib
-import os
 
 _client: object | None = None
 
 
 def init_posthog() -> None:
-    """Initialize PostHog client from environment variables."""
+    """Initialize PostHog client from centralized Settings."""
     global _client  # noqa: PLW0603
-    api_key = os.environ.get("POSTHOG_API_KEY", "")
-    if not api_key:
+    from .config import get_settings
+
+    settings = get_settings()
+    if not settings.posthog_api_key:
         return
     try:
         import posthog
 
-        posthog.api_key = api_key
-        posthog.host = os.environ.get("POSTHOG_HOST", "")
+        posthog.api_key = settings.posthog_api_key
+        posthog.host = settings.posthog_host
         _client = posthog
     except ImportError:
         pass
