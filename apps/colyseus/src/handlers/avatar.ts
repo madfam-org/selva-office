@@ -43,7 +43,10 @@ export function handleAvatar(
   data: AvatarMessage,
 ): void {
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
   let parsed: unknown;
   try {

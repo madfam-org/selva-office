@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
+import { logger } from '@/lib/logger';
 
 /**
  * OAuth Callback Route
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
   // Handle OAuth errors from the provider
   if (error) {
-    console.error(`[SSO] OAuth error: ${error} - ${errorDescription}`);
+    logger.error(`[SSO] OAuth error: ${error} - ${errorDescription}`);
     return errorRedirect(request, errorDescription || error);
   }
 
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
   // Validate state parameter
   const storedState = request.cookies.get('oauth_state')?.value;
   if (!storedState || storedState !== state) {
-    console.warn('[SSO] State mismatch - possible CSRF attack');
+    logger.warn('[SSO] State mismatch - possible CSRF attack');
     return errorRedirect(request, 'Invalid state parameter');
   }
 
@@ -102,13 +103,13 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.text();
-      console.error(`[SSO] Token exchange failed (${tokenResponse.status}): ${errorBody}`);
+      logger.error(`[SSO] Token exchange failed (${tokenResponse.status}): ${errorBody}`);
       return errorRedirect(request, 'Failed to exchange authorization code');
     }
 
     tokenData = await tokenResponse.json();
   } catch (err) {
-    console.error('[SSO] Token exchange error:', err);
+    logger.error('[SSO] Token exchange error:', err);
     return errorRedirect(request, 'Authentication service unavailable');
   }
 
@@ -130,13 +131,13 @@ export async function GET(request: NextRequest) {
 
     if (!userInfoResponse.ok) {
       const errorBody = await userInfoResponse.text();
-      console.error(`[SSO] UserInfo fetch failed (${userInfoResponse.status}): ${errorBody}`);
+      logger.error(`[SSO] UserInfo fetch failed (${userInfoResponse.status}): ${errorBody}`);
       return errorRedirect(request, 'Failed to retrieve user information');
     }
 
     userInfo = await userInfoResponse.json();
   } catch (err) {
-    console.error('[SSO] UserInfo error:', err);
+    logger.error('[SSO] UserInfo error:', err);
     return errorRedirect(request, 'Failed to retrieve user information');
   }
 
@@ -170,7 +171,7 @@ export async function GET(request: NextRequest) {
     // No secret configured: use the access token directly.
     // The middleware will still decode the payload for role checks.
     // In production, JANUA_SECRET_KEY MUST be set for proper session signing.
-    console.warn('[SSO] No SESSION_SECRET or JANUA_SECRET_KEY configured - using access token as session');
+    logger.warn('[SSO] No SESSION_SECRET or JANUA_SECRET_KEY configured - using access token as session');
     sessionToken = tokenData.access_token;
   }
 

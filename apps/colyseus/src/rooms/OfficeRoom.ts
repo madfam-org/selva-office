@@ -22,7 +22,6 @@ import {
   handleMegaphoneStart,
   handleMegaphoneStop,
   releaseMegaphone,
-  getMegaphoneSpeaker,
 } from "../handlers/megaphone";
 import {
   handleSpotlightStart,
@@ -320,7 +319,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     });
 
     this.throttledMessage("megaphone_stop", (client: Client) => {
-      handleMegaphoneStop(client, (type, payload) =>
+      handleMegaphoneStop(this.state, client, (type, payload) =>
         this.broadcast(type, payload)
       );
     });
@@ -433,7 +432,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     this.state.players.delete(client.sessionId);
     this.throttler.remove(client.sessionId);
     removeFromLockedGroups(client.sessionId);
-    releaseMegaphone(client.sessionId, (type, payload) =>
+    releaseMegaphone(client.sessionId, this.state, (type, payload) =>
       this.broadcast(type, payload)
     );
     releaseSpotlight(client.sessionId, this.state, (type, payload) =>

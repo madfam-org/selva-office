@@ -40,7 +40,10 @@ export function handleTeleport(
   }
 
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
   // Teleport with offset to avoid sitting on top of the target
   player.x = target.x + TELEPORT_OFFSET;

@@ -7,10 +7,8 @@ import type { OfficeStateSchema } from "../schema/OfficeState";
  * proximity groups via the `megaphone_active` broadcast.
  */
 
-let currentSpeaker: string | null = null;
-
-export function getMegaphoneSpeaker(): string | null {
-  return currentSpeaker;
+export function getMegaphoneSpeaker(state: OfficeStateSchema): string | null {
+  return state.megaphoneSpeaker || null;
 }
 
 export function handleMegaphoneStart(
@@ -18,7 +16,7 @@ export function handleMegaphoneStart(
   client: Client,
   broadcast: (type: string, payload: unknown) => void,
 ): void {
-  if (currentSpeaker) {
+  if (state.megaphoneSpeaker) {
     client.send("error", {
       message: `Megaphone in use by another player`,
     });
@@ -26,9 +24,12 @@ export function handleMegaphoneStart(
   }
 
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
-  currentSpeaker = client.sessionId;
+  state.megaphoneSpeaker = client.sessionId;
   broadcast("megaphone_active", {
     sessionId: client.sessionId,
     name: player.name,
@@ -37,15 +38,16 @@ export function handleMegaphoneStart(
 }
 
 export function handleMegaphoneStop(
+  state: OfficeStateSchema,
   client: Client,
   broadcast: (type: string, payload: unknown) => void,
 ): void {
-  if (currentSpeaker !== client.sessionId) {
+  if (state.megaphoneSpeaker !== client.sessionId) {
     client.send("error", { message: "You are not the megaphone speaker" });
     return;
   }
 
-  currentSpeaker = null;
+  state.megaphoneSpeaker = "";
   broadcast("megaphone_active", {
     sessionId: client.sessionId,
     active: false,
@@ -55,10 +57,11 @@ export function handleMegaphoneStop(
 /** Release megaphone if the speaker disconnects. */
 export function releaseMegaphone(
   sessionId: string,
+  state: OfficeStateSchema,
   broadcast: (type: string, payload: unknown) => void,
 ): void {
-  if (currentSpeaker === sessionId) {
-    currentSpeaker = null;
+  if (state.megaphoneSpeaker === sessionId) {
+    state.megaphoneSpeaker = "";
     broadcast("megaphone_active", {
       sessionId,
       active: false,

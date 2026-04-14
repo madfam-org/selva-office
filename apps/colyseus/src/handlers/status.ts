@@ -40,7 +40,10 @@ export function handleStatus(
 
   // Check the player exists
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
   player.playerStatus = status;
 }
@@ -68,7 +71,10 @@ export function handleMusicStatus(
   }
 
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
   player.musicStatus = status;
 }
@@ -96,7 +102,10 @@ export function handleMeetingTitle(
   }
 
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
   player.meetingTitle = title;
 }

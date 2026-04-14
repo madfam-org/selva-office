@@ -62,7 +62,10 @@ export function handleMovement(
   }
 
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
   const prevX = player.x;
   const prevY = player.y;

@@ -61,4 +61,5 @@ export class OfficeStateSchema extends Schema {
   @type({ map: WhiteboardSchema }) whiteboards: MapSchema<WhiteboardSchema> =
     new MapSchema<WhiteboardSchema>();
   @type("string") spotlightPresenter: string = "";
+  @type("string") megaphoneSpeaker: string = "";
 }

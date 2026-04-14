@@ -46,7 +46,10 @@ export function handleEmote(
 
   // Check the player exists
   const player = state.players.get(client.sessionId);
-  if (!player) return;
+  if (!player) {
+    client.send("error", { message: "Player not found" });
+    return;
+  }
 
   // Broadcast to all clients (including sender, so they see it too)
   broadcast("player_emote", {

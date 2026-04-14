@@ -72,7 +72,7 @@ describe("handleStatus", () => {
 
     handleStatus(state, client, { status: "busy" });
 
-    expect(client.send).not.toHaveBeenCalled();
+    expect(client.send).toHaveBeenCalledWith("error", { message: "Player not found" });
   });
 
   it("accepts all valid status types", () => {

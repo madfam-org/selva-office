@@ -14,5 +14,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+# Package lives at root (autoswarm_skills/), NOT in src/.
+# The src/autoswarm_skills/ directory contains legacy Wave 4 modules
+# that have been merged into the root package — do not add where=["src"].
 include = ["autoswarm_skills*"]

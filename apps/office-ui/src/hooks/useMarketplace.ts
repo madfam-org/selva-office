@@ -58,8 +58,8 @@ export function useMarketplace() {
         const data = (await res.json()) as MarketplaceEntry[];
         setEntries(data);
         setStatus('idle');
-      } catch (e) {
-        setError((e as Error).message);
+      } catch (err) {
+        setError((err as Error).message);
         setStatus('error');
       }
     },
@@ -76,8 +76,8 @@ export function useMarketplace() {
       setEntryDetail(data);
       setStatus('idle');
       return data;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }
@@ -101,8 +101,8 @@ export function useMarketplace() {
       setEntries((prev) => [entry, ...prev]);
       setStatus('idle');
       return entry;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }
@@ -125,8 +125,8 @@ export function useMarketplace() {
         }
         setStatus('idle');
         return true;
-      } catch (e) {
-        setError((e as Error).message);
+      } catch (err) {
+        setError((err as Error).message);
         setStatus('error');
         return false;
       }
@@ -153,8 +153,8 @@ export function useMarketplace() {
       );
       setStatus('idle');
       return true;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return false;
     }
@@ -173,8 +173,8 @@ export function useMarketplace() {
         if (entryDetail?.id === id) setEntryDetail(null);
         setStatus('idle');
         return true;
-      } catch (e) {
-        setError((e as Error).message);
+      } catch (err) {
+        setError((err as Error).message);
         setStatus('error');
         return false;
       }

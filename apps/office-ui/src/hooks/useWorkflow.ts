@@ -40,8 +40,8 @@ export function useWorkflow() {
       const data = (await res.json()) as WorkflowSummary[];
       setWorkflowList(data);
       setStatus('idle');
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
     }
   }, []);
@@ -56,8 +56,8 @@ export function useWorkflow() {
       setWorkflow(data);
       setStatus('idle');
       return data;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }
@@ -81,8 +81,8 @@ export function useWorkflow() {
       setWorkflow(data);
       setStatus('idle');
       return data;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }
@@ -101,8 +101,8 @@ export function useWorkflow() {
       setValidationResult(data);
       setStatus('idle');
       return data;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }
@@ -117,8 +117,8 @@ export function useWorkflow() {
       setWorkflowList((prev) => prev.filter((w) => w.id !== id));
       if (workflow?.id === id) setWorkflow(null);
       setStatus('idle');
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
     }
   }, [workflow?.id]);
@@ -136,8 +136,8 @@ export function useWorkflow() {
       setWorkflow(data);
       setStatus('idle');
       return data;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }
@@ -152,8 +152,8 @@ export function useWorkflow() {
       const data = (await res.json()) as { yaml_content: string };
       setStatus('idle');
       return data.yaml_content;
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (err) {
+      setError((err as Error).message);
       setStatus('error');
       return null;
     }

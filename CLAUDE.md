@@ -120,6 +120,34 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Codebase Stability (v0.5.2)
+
+- **Skills Package Fix**: Resolved dual-path collision — `pyproject.toml`
+  `where=["src"]` was hiding the real `autoswarm_skills/` root package.
+  Moved `hub.py`, `refiner.py`, `skill_md.py` from `src/` into root
+  package. Deleted conflicting `src/autoswarm_skills/registry.py`.
+- **Worker Settings**: Added missing `environment: str = "development"`
+  field to worker `Settings` class. Validator `_validate_production_safety`
+  was crashing with `AttributeError` on every instantiation.
+- **Colyseus State Sync**: Moved megaphone and spotlight from module-level
+  `let` variables to `OfficeStateSchema` fields (`megaphoneSpeaker`,
+  `spotlightPresenter`). Eliminates race conditions across rooms.
+  `getMegaphoneSpeaker()`, `handleMegaphoneStop()`, `releaseMegaphone()`
+  now accept `state` parameter.
+- **Player-Not-Found Errors**: 9 Colyseus handler locations now send
+  `client.send("error", { message: "Player not found" })` instead of
+  silently returning (megaphone, spotlight, avatar, teleport, movement,
+  status x3, emotes).
+- **Admin SSO Logger**: Replaced 7 `console.error/warn` calls in
+  `apps/admin/src/app/api/auth/callback/route.ts` with dev-only logger.
+- **Dashboard Accessibility**: Added `aria-live="polite"` to
+  MetricsDashboard stats container and DashboardPanel kanban area.
+- **Hook Error Naming**: Standardized `catch (e)` → `catch (err)` across
+  18 occurrences in useMapEditor, useWorkflowTemplates, useMarketplace,
+  useWorkflow.
+- **Makefile Dev Cleanup**: `make dev` now uses `trap "kill 0"` for
+  graceful process cleanup on Ctrl+C.
+
 ## Codebase Remediation (v0.5.1)
 
 - **K8s workers.yaml**: Fixed duplicate `env:` key in production deployment
