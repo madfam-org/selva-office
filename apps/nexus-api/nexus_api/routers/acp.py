@@ -59,6 +59,7 @@ import hmac
 import hashlib
 from fastapi import Request, Header, HTTPException
 from ..config import get_settings
+from ..memory_store.db import memory_store
 
 @router.get("/payloads/{run_id}")
 async def get_acp_payload(run_id: str) -> Dict[str, Any]:
@@ -70,6 +71,13 @@ async def get_acp_payload(run_id: str) -> Dict[str, Any]:
     # redis = request.app.state.redis
     # payload = await redis.get(f"acp:prd:{run_id}")
     logger.info(f"Clean Swarm requested payload for {run_id}")
+    
+    memory_store.insert_transcript(
+        run_id=run_id, 
+        agent_role="acp-clean-swarm", 
+        role="system", 
+        content="Requested sanitized payload via secure airgap bridge."
+    )
     return {"status": "success", "run_id": run_id, "prd": "Sanitized PRD SPEC from Redis Proxy"}
 
 
@@ -97,6 +105,13 @@ async def qa_oracle_webhook(
         
         if not hmac.compare_digest(expected_mac, x_enclii_signature):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    memory_store.insert_transcript(
+        run_id=payload.run_id, 
+        agent_role="acp-qa-oracle", 
+        role="assistant", 
+        content=f"Phase IV validation returned status: {payload.status}"
+    )
 
     if payload.status == "success":
         logger.info(f"[ACP Run {payload.run_id}] QA Passed. Initiating teardown.")

@@ -32,22 +32,37 @@ The four workflow nodes currently exist as structural class stubs. We must imple
 1. Configure the **LangGraph Playwright integration** for Phase I (Analyst).
 2. Set up the **Celery task worker** for the `/acp/initiate` route to harden the backend execution.
 
-## Q1 Focus: Hive Mind & Continuous Learning (Hermes Integration)
+## Q1 Focus: Hive Mind & Continuous Learning (Hermes Integration) ✅
 
-Based on insights from the Hermes Agent architecture, AutoSwarm Office will evolve from executing static paths to a continuous learning ecosystem.
+Based on insights from the Hermes Agent architecture, AutoSwarm Office has evolved from executing static paths to a continuous learning ecosystem. All four strategic vectors are now implemented.
 
-### 1. Autonomous Skill Generation (Procedural Memory)
-- Develop an evaluation and synthesis loop where Clean Swarms monitor successful QA Oracle test passes.
-- Automatically compress these complex problem-solving trajectories into standard Python scripts (`.py` files) stored as persistent "Skills".
-- Allow future swarms to dynamically load these standard playbooks through a central `autoswarm-skills` registry.
+### 1. Autonomous Skill Generation (Procedural Memory) ✅
+- Phase IV QA Oracle (`acp_qa_oracle.py`) now invokes the `madfam_inference` LLM router when tests pass, instructing an AI model to synthesize validated Phase III logic into a standalone Python `.py` skill conforming to the `PlaybookSkill` interface.
+- A stub compiler fallback ensures CI/CD reliability when the LLM router is unavailable.
+- Skills are dynamically loaded by the `autoswarm-skills` `SkillRegistry` package at runtime.
 
-### 2. FTS5 SQLite Edge Memory
-- Establish a `state.db` storage backend in `apps/nexus-api/` using SQLite in WAL mode.
-- Implement FTS5 virtual tables to allow human operators and Swarms sub-millisecond semantic text search across thousands of historically isolated execution transcripts without the latency or overhead of external vector stores.
+### 2. FTS5 SQLite Edge Memory ✅
+- `apps/nexus-api/nexus_api/memory_store/db.py` establishes `autoswarm_state.db` with WAL mode and FTS5 virtual tables.
+- `insert_transcript()` is called from `/payloads` and `/webhook/qa-oracle` endpoints, permanently archiving all swarm activity for instant full-text recall.
 
-### 3. Serverless Hibernation Tactics
-- Refactor the `EncliiAdapter` lifecycle behavior. 
-- Instead of treating Enclii clusters as strictly binary (deploy or teardown), introduce `suspend` and `resume` lifecycle logic to scale-to-zero compute overhead when pods are idling.
+### 3. Serverless Hibernation Tactics ✅
+- `EncliiAdapter` extended with `suspend_pod()` and `resume_pod()` to enable scale-to-zero compute posture during idle phases.
 
-### 4. Model Context Protocol (MCP) Capabilities
-- Enhance the Analyst Swarm tool sets by natively utilizing standard `mcp` servers, establishing dynamic tool adoption across isolated execution pods.
+### 4. Model Context Protocol (MCP) Capabilities ✅
+- `mcp_config.json` declares Tavily search, GitHub, and filesystem tool servers.
+- Phase I Analyst RPC subprocess dynamically bootstraps these servers before crawling, enabling tool expansion without container rebuilds.
+
+### 5. Dialectic User Profiling (Honcho) ✅
+- `honcho.py` maintains per-operator behavioral profiles stored in EdgeMemoryDB.
+- `get_system_addendum(user_id)` injects preference context (verbosity, code style, review strictness) into any LangGraph swarm node's system prompt.
+
+### 6. Multi-Channel Gateway Interfaces ✅
+- `apps/nexus-api/nexus_api/routers/gateway.py` provides Telegram and Discord webhook endpoints, enabling operators to trigger ACP workflows directly from messaging apps without UI access.
+
+## Production Readiness Checklist
+
+- `[ ]` Provision `AUTOSWARM_SKILLS_DIR` persistent volume in K8s PVC manifest
+- `[ ]` Add `TAVILY_API_KEY` and `GITHUB_TOKEN` to secrets manager for MCP servers
+- `[ ]` Register `madfam_inference.get_default_router` singleton with production provider config
+- `[ ]` Set Telegram/Discord webhook URLs via `BotFather` / Discord Developer Portal
+

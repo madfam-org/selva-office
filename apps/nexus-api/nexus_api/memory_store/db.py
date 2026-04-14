@@ -77,6 +77,32 @@ class EdgeMemoryDB:
         cursor = self._conn.execute(sql, (query, limit))
         return [dict(row) for row in cursor.fetchall()]
 
+    def insert_transcript(self, run_id: str, agent_role: str, role: str, content: str):
+        """
+        Logs workflow transcripts into the FTS database in real-time, matching
+        the persistent episodic memory architecture of Hermes.
+        """
+        import time
+        import uuid
+        
+        # Verify or spin up the episode id first to conform with FK constraint
+        cursor = self._conn.execute("SELECT id FROM conversation_episodes WHERE run_id = ?", (run_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            episode_id = f"ep-{uuid.uuid4().hex[:8]}"
+            self._conn.execute(
+                "INSERT INTO conversation_episodes (id, run_id, agent_role, started_at) VALUES (?, ?, ?, ?)",
+                (episode_id, run_id, agent_role, time.time())
+            )
+        else:
+            episode_id = row['id']
+            
+        self._conn.execute(
+            "INSERT INTO transcripts (episode_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
+            (episode_id, role, content, time.time())
+        )
+
     def close(self):
         if self._conn:
             self._conn.close()
