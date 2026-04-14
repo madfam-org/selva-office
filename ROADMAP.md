@@ -31,3 +31,23 @@ The four workflow nodes currently exist as structural class stubs. We must imple
 ## Immediate Next Steps (Sprint Planning)
 1. Configure the **LangGraph Playwright integration** for Phase I (Analyst).
 2. Set up the **Celery task worker** for the `/acp/initiate` route to harden the backend execution.
+
+## Q1 Focus: Hive Mind & Continuous Learning (Hermes Integration)
+
+Based on insights from the Hermes Agent architecture, AutoSwarm Office will evolve from executing static paths to a continuous learning ecosystem.
+
+### 1. Autonomous Skill Generation (Procedural Memory)
+- Develop an evaluation and synthesis loop where Clean Swarms monitor successful QA Oracle test passes.
+- Automatically compress these complex problem-solving trajectories into standard Python scripts (`.py` files) stored as persistent "Skills".
+- Allow future swarms to dynamically load these standard playbooks through a central `autoswarm-skills` registry.
+
+### 2. FTS5 SQLite Edge Memory
+- Establish a `state.db` storage backend in `apps/nexus-api/` using SQLite in WAL mode.
+- Implement FTS5 virtual tables to allow human operators and Swarms sub-millisecond semantic text search across thousands of historically isolated execution transcripts without the latency or overhead of external vector stores.
+
+### 3. Serverless Hibernation Tactics
+- Refactor the `EncliiAdapter` lifecycle behavior. 
+- Instead of treating Enclii clusters as strictly binary (deploy or teardown), introduce `suspend` and `resume` lifecycle logic to scale-to-zero compute overhead when pods are idling.
+
+### 4. Model Context Protocol (MCP) Capabilities
+- Enhance the Analyst Swarm tool sets by natively utilizing standard `mcp` servers, establishing dynamic tool adoption across isolated execution pods.

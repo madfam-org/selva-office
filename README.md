@@ -34,6 +34,14 @@ make docker-dev
 make dev
 ```
 
+### Python Packages (`packages/`)
+
+- `autoswarm-redis-pool`: Standardized Redis dependency for async pub/sub and distributed locking.
+- `autoswarm-permissions`: A strict Janua RBAC dependency injecting local Fastapi Role assertions globally.
+- `autoswarm-orchestrator`: Interacts closely with the Enclii platform lifecycle templates.
+- `autoswarm-workflows`: The gamified Langgraph architecture executing autonomous workflows.
+- `autoswarm-skills`: Procedural skills registry built from continuous learning loops.
+
 ## Monorepo Structure
 
 ```
@@ -51,6 +59,7 @@ autoswarm-office/
     orchestrator/      Swarm orchestration (Python)
     permissions/       HITL permission engine (Python)
     inference/         LLM provider routing (Python)
+    autoswarm-skills/  Procedural skills registry (Python)
   infra/
     docker/            Dockerfiles and Compose
     k8s/               Kubernetes manifests

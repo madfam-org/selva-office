@@ -11,6 +11,7 @@ dependencies = [
   "madfam-inference",
   "autoswarm-permissions",
   "playwright>=1.49.0",
+  "mcp>=1.2.0",
 ]
 
 [build-system]

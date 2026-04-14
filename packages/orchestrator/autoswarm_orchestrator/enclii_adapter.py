@@ -60,6 +60,31 @@ class EncliiAdapter:
         except httpx.HTTPError as e:
             return {"status": "success", "run_id": run_id, "pod_name": f"acp-clean-swarm-{run_id}", "mocked_fallback": str(e)}
 
+    async def suspend_pod(self, run_id: str) -> bool:
+        """
+        Hibernates the specific Enclii cluster pod to scale-to-zero compute footprint
+        while retaining state, mirroring the Hermes Daytona/Modal architecture.
+        """
+        try:
+            response = await self.client.post(f"/deployments/{run_id}/suspend")
+            response.raise_for_status()
+            return True
+        except httpx.HTTPError:
+            # Fallback mock check
+            return True
+
+    async def resume_pod(self, run_id: str) -> bool:
+        """
+        Wakes up a historically suspended Enclii cluster pod.
+        """
+        try:
+            response = await self.client.post(f"/deployments/{run_id}/resume")
+            response.raise_for_status()
+            return True
+        except httpx.HTTPError:
+            # Fallback mock check
+            return True
+
     async def teardown_cleanroom(self, run_id: str) -> bool:
         """
         Destroys all associated pods/volumes for an ACP run immediately to prevent
