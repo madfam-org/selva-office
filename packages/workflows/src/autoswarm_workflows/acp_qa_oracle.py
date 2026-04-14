@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 SKILL_SYNTHESIS_PROMPT = """\
 You are an expert Python engineer. A Clean Swarm agent has successfully reverse-engineered \
 the logic of a third-party service. Your task is to synthesize this into a reusable, \
-standalone Python skill script that conforms to the AutoSwarm Playbook interface.
+standalone Python skill script that conforms to the AutoSwarm agentskills/v1 interface.
 
 ## Source Code Produced by the Clean Swarm
 ```python
@@ -19,8 +19,14 @@ standalone Python skill script that conforms to the AutoSwarm Playbook interface
 
 ## Requirements
 - Output ONLY valid, runnable Python code. No markdown fences.
-- Define exactly three module-level variables: `SKILL_DESCRIPTION` (str), `SKILL_METADATA` (dict), and `SKILL_ENTRYPOINT` (callable).
-- `SKILL_ENTRYPOINT` must accept `*args, **kwargs` and return a meaningful result.
+- Define exactly these module-level variables (ALL required):
+  - `SKILL_SCHEMA_VERSION = "agentskills/v1"`  (literal string, required for interop)
+  - `SKILL_VERSION = "1.0.0"`  (semver string)
+  - `SKILL_AUTHOR = "autoswarm-qa-oracle"`
+  - `SKILL_TAGS: list[str]`  (2-5 relevant tags describing the skill domain)
+  - `SKILL_DESCRIPTION: str`  (one clear sentence describing what this skill does)
+  - `SKILL_METADATA: dict`  (must include keys: "run_id", "last_validated" as ISO-8601 UTC string)
+  - `SKILL_ENTRYPOINT: callable`  (accepts *args, **kwargs, returns a meaningful result)
 - Include concise inline comments explaining the key steps.
 - The code must be self-contained, importing only stdlib or commonly available packages.
 """

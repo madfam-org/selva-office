@@ -38,6 +38,7 @@ from .routers import (
     maps,
     marketplace,
     metrics,
+    schedules,
     skills,
     swarms,
     workflows,
@@ -155,6 +156,7 @@ def create_app() -> FastAPI:
     app.include_router(events.router, prefix="/api/v1/events")
     app.include_router(metrics.router, prefix="/api/v1/metrics")
     app.include_router(admin.router, prefix="/api/v1/admin")
+    app.include_router(schedules.router, prefix="/api/v1")
 
     return app
 

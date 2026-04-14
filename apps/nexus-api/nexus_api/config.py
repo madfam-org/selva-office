@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = ""
     discord_webhook_secret: str = ""
+    slack_signing_secret: str = ""           # Slack v0 HMAC signing secret
+    gateway_email_whitelist: str = ""        # Comma-separated authorised sender addresses
+    twilio_auth_token: str = ""              # Twilio account auth token
+    twilio_account_sid: str = ""             # Twilio account SID
 
     # MCP tool server credentials
     tavily_api_key: str = ""
@@ -55,9 +59,11 @@ class Settings(BaseSettings):
 
     # Continuous learning / skills registry
     autoswarm_skills_dir: str = "/var/lib/autoswarm/skills"
+    skill_refine_interval_days: int = 7      # Refine skills older than N days
 
-    # Honcho dialectic profiling — sqlite edge memory path
+    # Memory compaction
     autoswarm_state_db_path: str = "/var/lib/autoswarm/autoswarm_state.db"
+    memory_retention_days: int = 30          # Compact transcripts older than N days
 
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None
