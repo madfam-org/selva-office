@@ -136,12 +136,31 @@ class ACPQAOracleNode:
         """
         Run Phase I black-box tests against Phase III source, then trigger
         async skill compilation synchronously via ``asyncio.run``.
-
-        In a real deployment this runs inside a Celery worker (its own event
-        loop), so we use ``asyncio.run`` to keep the interface synchronous
-        for the caller while still leveraging async LLM I/O internally.
         """
         logger.info("[Phase IV] Validating Phase III output for run %s …", run_id)
+
+        # ----------------------------------------------------------------
+        # Gap 2: Dangerous command approval gate before any sandbox exec
+        # ----------------------------------------------------------------
+        try:
+            from autoswarm_tools.approval import is_dangerous, request_approval
+            dangerous, reason = is_dangerous(self.source_code)
+            if dangerous:
+                logger.warning("[Phase IV] Dangerous pattern detected in source code: %s", reason)
+                try:
+                    loop = asyncio.get_event_loop()
+                    approval = loop.run_until_complete(
+                        request_approval(self.source_code[:200], run_id=run_id, reason=reason)
+                    )
+                except RuntimeError:
+                    approval = asyncio.run(
+                        request_approval(self.source_code[:200], run_id=run_id, reason=reason)
+                    )
+                if not approval.approved:
+                    logger.error("[Phase IV] Dangerous command denied for run %s — aborting.", run_id)
+                    return False
+        except ImportError:
+            logger.warning("[Phase IV] autoswarm_tools not available — skipping approval gate.")
 
         # TODO: execute_in_sandbox(self.source_code, self.test_suite)
         tests_passed = True  # Replace with real sandbox execution

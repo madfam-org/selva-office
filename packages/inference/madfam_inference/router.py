@@ -5,9 +5,12 @@ import logging
 from collections.abc import AsyncIterator
 
 from .base import InferenceProvider
+from .caching import PromptCacheManager
 from .types import InferenceRequest, InferenceResponse, Sensitivity
 
 logger = logging.getLogger(__name__)
+_cache_manager = PromptCacheManager()
+
 
 # Provider names expected by the router.  The keys in the providers dict
 # passed to ModelRouter should use these identifiers.
@@ -166,6 +169,14 @@ class ModelRouter:
         through to alternative providers before raising.
         """
         provider = self._select_provider(request)
+
+        # Gap 7: Apply Anthropic prefix-cache breakpoints if applicable
+        provider_name = type(provider).__name__.lower().replace("provider", "")
+        request.messages, request.system_prompt = _cache_manager.apply_cache_breakpoints(
+            request.messages,
+            system_prompt=request.system_prompt or "",
+            provider=provider_name,
+        )
 
         # Try primary provider with 1 retry.
         last_exc: Exception | None = None

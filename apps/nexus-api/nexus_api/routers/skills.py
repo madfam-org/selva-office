@@ -1,15 +1,21 @@
-"""Skills listing and community-skills toggle endpoints."""
+"""Skills listing, community-skills toggle, and progressive disclosure endpoints."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from typing import List, Optional
 
 from autoswarm_skills import SkillTier, get_skill_registry
+from autoswarm_skills.skill_md import SkillMDRegistry  # Gap 4
 
 from ..auth import get_current_user
 
 router = APIRouter(tags=["skills"], dependencies=[Depends(get_current_user)])
+
+# Gap 4: singleton SkillMDRegistry, loaded at import time
+_md_registry = SkillMDRegistry()
+_md_registry.load_md_skills()
 
 
 class SkillResponse(BaseModel):
@@ -20,6 +26,17 @@ class SkillResponse(BaseModel):
     tier: str
     allowed_tools: list[str]
 
+
+class SkillCompactResponse(BaseModel):
+    """Level-0: compact skill metadata (~3k tokens for full catalogue)."""
+    name: str
+    description: str
+    category: str
+
+
+# ---------------------------------------------------------------------------
+# Existing endpoints
+# ---------------------------------------------------------------------------
 
 @router.get("/", response_model=list[SkillResponse])
 async def list_skills(tier: str | None = None) -> list[SkillResponse]:
@@ -53,3 +70,50 @@ async def disable_community() -> None:
 async def community_status() -> dict[str, bool]:
     """Return whether community skills are currently enabled."""
     return {"enabled": get_skill_registry().community_enabled}
+
+
+# ---------------------------------------------------------------------------
+# Gap 4: Progressive disclosure endpoints (3-level, SKILL.md format)
+# ---------------------------------------------------------------------------
+
+@router.get("/compact", response_model=List[SkillCompactResponse])
+async def list_skills_compact() -> List[SkillCompactResponse]:
+    """
+    Level 0: Compact skill index.
+
+    Returns [{name, description, category}] for all SKILL.md skills.
+    Approximately 3,000 tokens for a 50-skill catalogue.
+    Intended for LLM context injection before a phase loads full skill content.
+    """
+    return [SkillCompactResponse(**s) for s in _md_registry.list_skills_compact()]
+
+
+@router.get("/md/{skill_name}")
+async def get_skill_full(skill_name: str) -> dict:
+    """
+    Level 1: Full SKILL.md content for a named skill.
+
+    Returns the complete SKILL.md text. Use this when the agent decides
+    it needs full instructions for a specific skill.
+    """
+    content = _md_registry.get_skill_full(skill_name)
+    if content is None:
+        raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
+    return {"name": skill_name, "content": content}
+
+
+@router.get("/md/{skill_name}/refs/{ref_path:path}")
+async def get_skill_reference(skill_name: str, ref_path: str) -> dict:
+    """
+    Level 2: Specific reference file within a skill directory.
+
+    Useful for loading supplementary docs, API references, or example code
+    without loading the entire skill context.
+    """
+    content = _md_registry.get_skill_reference(skill_name, ref_path)
+    if content is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Reference '{ref_path}' not found in skill '{skill_name}'"
+        )
+    return {"skill": skill_name, "ref_path": ref_path, "content": content}

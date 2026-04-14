@@ -30,6 +30,7 @@ from .routers import (
     billing_internal,
     calendar,
     chat,
+    checkpoints,
     command_approvals,
     departments,
     events,
@@ -161,6 +162,7 @@ def create_app() -> FastAPI:
     app.include_router(schedules.router, prefix="/api/v1")
     app.include_router(command_approvals.router, prefix="/api/v1")  # Gap 2: Dangerous command approval
     app.include_router(trajectories.router, prefix="/api/v1")       # Gap 6: ShareGPT trajectory export
+    app.include_router(checkpoints.router, prefix="/api/v1")        # Next-tier: Session checkpoint/rollback
 
     return app
 

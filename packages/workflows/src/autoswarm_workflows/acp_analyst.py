@@ -1,4 +1,5 @@
 import json
+import asyncio
 import subprocess
 import os
 
@@ -59,42 +60,43 @@ class ACPAnalystNode:
     # ------------------------------------------------------------------
 
     def run(self) -> dict:
-        print(f"[Phase I] Launching RPC subagent (with MCP) for {self.target_url} …")
+        print(f"[Phase I] Launching browser extraction (with MCP) for {self.target_url} …")
 
-        mcp_bootstrap = self._get_mcp_bootstrap_snippet()
+        self._get_mcp_bootstrap_snippet()  # Keep side-effect of warming MCP procs
+
+        # ----------------------------------------------------------------
+        # Gap 1: Use browser_extract (Playwright) for JS-rendered targets
+        # ----------------------------------------------------------------
         extracted_text = ""
-
-        crawler_script = f"""\
-{mcp_bootstrap}
-import requests
-try:
-    resp = requests.get('{self.target_url}', timeout=10, headers={{"User-Agent": "AutoSwarm-Analyst/1.0"}})
-    print(resp.text[:1000])
-except Exception as e:
-    print(f"Error fetching: {{e}}")
-finally:
-    for p in _mcp_procs:
-        p.terminate()
-"""
+        screenshot_b64 = ""
         try:
-            result = subprocess.run(
-                ["python", "-c", crawler_script],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            extracted_text = result.stdout.strip()
-            if result.returncode != 0 and result.stderr:
-                print(f"[Phase I] Subagent stderr: {result.stderr[:200]}")
-        except subprocess.TimeoutExpired:
-            extracted_text = "RPC subagent timed out."
-        except Exception as e:
-            extracted_text = f"Error capturing page via RPC: {e}"
+            from autoswarm_tools.browser import browser_extract, browser_screenshot
 
-        # Pseudocode: We would normally pass `extracted_text` to an LLM chain to structure the PRD
-        # prd_json = llm_chain.invoke({"source_text": extracted_text})
-        
-        return {
-            "prd": f"# PRD Draft for {self.target_url}\n\n## Extracted Context\n...{extracted_text[:500]}...",
-            "tests": "def test_login():\n    assert True"
+            extracted_text = asyncio.run(browser_extract(self.target_url))
+            screenshot_b64 = asyncio.run(browser_screenshot(self.target_url))
+        except Exception as exc:
+            print(f"[Phase I] Browser extraction failed ({exc}) — falling back to requests")
+            try:
+                import requests
+                resp = requests.get(
+                    self.target_url,
+                    timeout=10,
+                    headers={"User-Agent": "AutoSwarm-Analyst/1.0"},
+                )
+                extracted_text = resp.text[:4000]
+            except Exception as req_exc:
+                extracted_text = f"Error fetching: {req_exc}"
+
+        prd = (
+            f"# PRD Draft for {self.target_url}\n\n"
+            f"## Extracted Context\n\n{extracted_text[:2000]}"
+        )
+
+        result = {
+            "prd": prd,
+            "tests": "def test_login():\n    assert True",
         }
+        if screenshot_b64:
+            result["screenshot_b64"] = screenshot_b64
+
+        return result

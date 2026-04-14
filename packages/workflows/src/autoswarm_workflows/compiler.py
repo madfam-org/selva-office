@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from langgraph.graph import END, StateGraph
 
+from .context_files import ContextFileLoader  # Gap 5
 from .edges import END_SENTINEL, build_conditional_router, group_edges_by_source
 from .schema import (
     ContextWindowPolicy,
@@ -17,6 +19,7 @@ from .schema import (
 from .validator import WorkflowValidator
 
 logger = logging.getLogger(__name__)
+_context_loader = ContextFileLoader()  # Gap 5 singleton
 
 
 class CustomGraphState:
@@ -54,16 +57,62 @@ class WorkflowCompiler:
         result = compiled.invoke(initial_state)
     """
 
-    def __init__(self, workflow_loader: Any = None) -> None:
+    def __init__(self, workflow_loader: Any = None, workspace_path: str | None = None) -> None:
         """Initialize the compiler.
 
         Args:
             workflow_loader: Optional callable(subgraph_id) -> WorkflowDefinition
                             used for resolving subgraph references.
+            workspace_path: Optional path to the workspace root. If provided,
+                            context files (AGENTS.md, .autoswarm.md) are loaded
+                            and injected into agent node system prompts (Gap 5).
         """
         self._loader = workflow_loader
+        self._workspace_path = workspace_path or os.environ.get("AUTOSWARM_WORKSPACE_PATH", "")
         self._validator = WorkflowValidator()
         self._pending_batch_nodes: list[tuple[NodeDefinition, Any]] = []
+
+        # Gap 3: Load plugins at compile time
+        self._plugin_tools: list[dict] = []
+        self._plugin_context: dict[str, list[str]] = {}  # phase -> addenda
+        self._load_plugins()
+
+        # Gap 5: Load workspace context files
+        self._workspace_context: str = ""
+        if self._workspace_path:
+            self._workspace_context = _context_loader.load_context(self._workspace_path)
+            if self._workspace_context:
+                logger.info("WorkflowCompiler: workspace context loaded (%d chars).", len(self._workspace_context))
+
+    def _load_plugins(self) -> None:
+        """Discover and load plugins (Gap 3)."""
+        try:
+            from autoswarm_plugins.manager import PluginManager  # type: ignore
+            extra_dirs = [d for d in os.environ.get("AUTOSWARM_PLUGIN_DIRS", "").split(":") if d]
+            manager = PluginManager(extra_dirs=extra_dirs)
+            count = manager.discover()
+            if count:
+                self._plugin_tools = manager.get_all_tools()
+                for phase in ("phase_i_analyst", "phase_ii_sanitizer", "phase_iii_clean_swarm", "phase_iv_qa_oracle"):
+                    self._plugin_context[phase] = manager.get_context_addenda(phase)
+                logger.info("WorkflowCompiler: loaded %d plugin(s) with %d tools.", count, len(self._plugin_tools))
+        except ImportError:
+            logger.debug("autoswarm_plugins not installed — plugin discovery skipped.")
+        except Exception as exc:
+            logger.warning("Plugin discovery failed: %s", exc)
+
+    def get_plugin_tools(self) -> list[dict]:
+        """Return all tools contributed by loaded plugins."""
+        return list(self._plugin_tools)
+
+    def get_phase_context(self, phase: str) -> str:
+        """Return the combined context string for *phase* from plugins + workspace."""
+        parts: list[str] = []
+        plugin_addenda = self._plugin_context.get(phase, [])
+        parts.extend(plugin_addenda)
+        if self._workspace_context:
+            parts.append(self._workspace_context)
+        return "\n\n".join(parts)
 
     def compile(
         self,
