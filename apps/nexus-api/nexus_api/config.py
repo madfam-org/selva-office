@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     org_config_path: str = "~/.autoswarm/org-config.yaml"
 
+    # -- Analytics ------------------------------------------------------------
+    posthog_api_key: str = ""
+    posthog_host: str = ""
+
+    # -- Webhooks -------------------------------------------------------------
+    autoswarm_webhook_secret: str = ""
+
     # -- Phyne-CRM ------------------------------------------------------------
     phyne_crm_url: str | None = None
 

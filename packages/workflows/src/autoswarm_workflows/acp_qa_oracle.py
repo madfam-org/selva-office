@@ -162,8 +162,25 @@ class ACPQAOracleNode:
         except ImportError:
             logger.warning("[Phase IV] autoswarm_tools not available — skipping approval gate.")
 
-        # TODO: execute_in_sandbox(self.source_code, self.test_suite)
-        tests_passed = True  # Replace with real sandbox execution
+        # Execute test suite in a sandboxed subprocess if BashTool is available.
+        tests_passed = True
+        if self.test_suite:
+            try:
+                from autoswarm_workers.tools.bash_tool import BashTool
+
+                _tool = BashTool(timeout_seconds=60)
+                _result = asyncio.run(_tool.execute(self.test_suite))
+                tests_passed = _result.return_code == 0
+                if not tests_passed:
+                    logger.warning(
+                        "[Phase IV] Tests failed for run %s (rc=%d): %s",
+                        run_id, _result.return_code, _result.stderr[:500],
+                    )
+            except ImportError:
+                logger.warning("[Phase IV] BashTool unavailable — skipping test execution.")
+            except Exception:
+                logger.warning("[Phase IV] Test execution failed for run %s", run_id, exc_info=True)
+                tests_passed = False
 
         if tests_passed:
             try:

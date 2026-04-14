@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { gameEventBus } from '@/game/PhaserGame';
+import { EVENT_EMOTE_PICKER_FOCUS } from '@/lib/constants';
 
 const EMOTES = [
   { type: 'wave', label: 'Wave', icon: '\u{1F44B}' },
@@ -61,7 +62,7 @@ export function EmotePicker({ onEmote }: EmotePickerProps) {
 
   // Emit emote-picker-focus so GamepadManager can suppress movement
   useEffect(() => {
-    gameEventBus.emit('emote-picker-focus', open);
+    gameEventBus.emit(EVENT_EMOTE_PICKER_FOCUS, open);
   }, [open]);
 
   if (!open) {

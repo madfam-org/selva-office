@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import type { ProximityPeer } from './useProximityVideo';
+import { logger } from '../lib/logger';
 
 type RecordingState = 'idle' | 'recording' | 'processing';
 
@@ -103,7 +104,7 @@ export function useRecording({ localStream, peers }: UseRecordingOptions) {
         setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
       }, 1000);
     } catch (err) {
-      console.warn('[useRecording] Failed to start recording:', err);
+      logger.warn('[useRecording] Failed to start recording:', err);
     }
   }, [localStream, peers, state]);
 

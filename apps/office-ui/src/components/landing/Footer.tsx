@@ -1,4 +1,4 @@
-const APP_URL = 'https://agents-app.madfam.io';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agents-app.madfam.io';
 const YEAR = new Date().getFullYear();
 
 const LINKS = [

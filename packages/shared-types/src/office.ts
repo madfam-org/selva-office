@@ -31,7 +31,8 @@ export interface Player {
   direction: 'up' | 'down' | 'left' | 'right';
   avatarConfig?: string;
   playerStatus?: 'online' | 'away' | 'busy' | 'dnd';
-  companionType?: string;
+  companionType?: '' | 'cat' | 'dog' | 'robot' | 'dragon' | 'parrot';
+  /** Free-text mood/music status. Server enforces max 50 characters. */
   musicStatus?: string;
 }
 

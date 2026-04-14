@@ -16,6 +16,7 @@ import {
   type Edge,
 } from '@xyflow/react';
 import { gameEventBus } from '@/game/PhaserGame';
+import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useWorkflow } from '@/hooks/useWorkflow';
 import { useExecutionLog } from '@/hooks/useExecutionLog';
@@ -413,9 +414,9 @@ export function WorkflowEditor({ open, onClose, officeState }: WorkflowEditorPro
   // Suppress game input while editor is open
   useEffect(() => {
     if (open) {
-      gameEventBus.emit('chat-focus', true);
+      gameEventBus.emit(EVENT_CHAT_FOCUS, true);
       return () => {
-        gameEventBus.emit('chat-focus', false);
+        gameEventBus.emit(EVENT_CHAT_FOCUS, false);
       };
     }
   }, [open]);

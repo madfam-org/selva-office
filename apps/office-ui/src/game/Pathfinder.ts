@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
-
-const TILE_SIZE = 32;
+import { TILE_SIZE } from './constants';
 
 interface PathNode {
   x: number;

@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-
-const BASE_RADIUS = 40;
-const THUMB_RADIUS = 16;
-const DEADZONE = 0.2;
+import {
+  JOYSTICK_BASE_RADIUS,
+  JOYSTICK_THUMB_RADIUS,
+  JOYSTICK_DEADZONE,
+} from './constants';
 
 /**
  * Custom virtual joystick for mobile touch input.
@@ -25,11 +26,11 @@ export class VirtualJoystick {
     const baseX = 80;
     const baseY = scene.scale.height - 80;
 
-    this.base = scene.add.circle(baseX, baseY, BASE_RADIUS, 0x64748b, 0.3)
+    this.base = scene.add.circle(baseX, baseY, JOYSTICK_BASE_RADIUS, 0x64748b, 0.3)
       .setScrollFactor(0)
       .setDepth(200);
 
-    this.thumb = scene.add.circle(baseX, baseY, THUMB_RADIUS, 0xa5b4fc, 0.4)
+    this.thumb = scene.add.circle(baseX, baseY, JOYSTICK_THUMB_RADIUS, 0xa5b4fc, 0.4)
       .setScrollFactor(0)
       .setDepth(201);
 
@@ -95,8 +96,8 @@ export class VirtualJoystick {
     let clampedX = dx;
     let clampedY = dy;
 
-    if (dist > BASE_RADIUS) {
-      const scale = BASE_RADIUS / dist;
+    if (dist > JOYSTICK_BASE_RADIUS) {
+      const scale = JOYSTICK_BASE_RADIUS / dist;
       clampedX = dx * scale;
       clampedY = dy * scale;
     }
@@ -104,13 +105,13 @@ export class VirtualJoystick {
     this.thumb.setPosition(this.startX + clampedX, this.startY + clampedY);
 
     // Normalize to -1..1 range with deadzone
-    const normalizedDist = Math.min(dist / BASE_RADIUS, 1);
-    if (normalizedDist < DEADZONE) {
+    const normalizedDist = Math.min(dist / JOYSTICK_BASE_RADIUS, 1);
+    if (normalizedDist < JOYSTICK_DEADZONE) {
       this._axisX = 0;
       this._axisY = 0;
     } else {
       const angle = Math.atan2(dy, dx);
-      const remapped = (normalizedDist - DEADZONE) / (1 - DEADZONE);
+      const remapped = (normalizedDist - JOYSTICK_DEADZONE) / (1 - JOYSTICK_DEADZONE);
       this._axisX = Math.cos(angle) * remapped;
       this._axisY = Math.sin(angle) * remapped;
     }

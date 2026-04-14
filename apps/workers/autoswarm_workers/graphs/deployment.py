@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import concurrent.futures
 import logging
 from typing import TypedDict
 
@@ -12,19 +11,9 @@ from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
 from ..event_emitter import instrumented_node
-from .base import BaseGraphState, check_permission
+from .base import BaseGraphState, check_permission, run_async as _run_async
 
 logger = logging.getLogger(__name__)
-
-
-def _run_async(coro):  # type: ignore[no-untyped-def]
-    """Run an async coroutine from a sync graph node context."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
 
 
 # -- State --------------------------------------------------------------------

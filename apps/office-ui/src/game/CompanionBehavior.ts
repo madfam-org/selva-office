@@ -3,9 +3,7 @@
  * Companions are small sprites that trail behind the player.
  */
 
-const COMPANION_SPEED = 180; // slightly slower than player (200)
-const FOLLOW_DISTANCE = 28; // pixels behind owner
-const LAG_FACTOR = 0.08; // interpolation lag (lower = more delay)
+import { COMPANION_SPEED, FOLLOW_DISTANCE, LAG_FACTOR } from './constants';
 
 interface CompanionState {
   x: number;

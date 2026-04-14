@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
+from collections.abc import Coroutine
 from datetime import UTC
-from typing import Any, TypedDict
+from typing import Any, TypedDict, TypeVar
 
 from langchain_core.messages import BaseMessage
 
@@ -24,6 +26,23 @@ from ..tools.bash_tool import BashTool
 from ..tools.git_tool import GitTool
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
+
+
+def run_async(coro: Coroutine[Any, Any, _T]) -> _T:  # noqa: UP047
+    """Run an async coroutine from a sync graph node context.
+
+    If no event loop is running, uses ``asyncio.run()``.  Otherwise, offloads
+    to a single-threaded ``ThreadPoolExecutor`` so that LangGraph sync nodes
+    can await async helpers without blocking the loop.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 # -- Real permission engine and classifier ------------------------------------
@@ -259,18 +278,7 @@ def tool_executor(state: BaseGraphState) -> BaseGraphState:
     # Execute each tool call sequentially.
     results: list[dict[str, Any]] = []
 
-    def _run_async(coro):  # type: ignore[no-untyped-def]
-        """Run an async coroutine from a sync context."""
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-        if loop and loop.is_running():
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, coro).result()
-        return asyncio.run(coro)
+    _run_async = run_async  # alias for local use
 
     for call in tool_calls:
         tool_name = call.get("name", "unknown")

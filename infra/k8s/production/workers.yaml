@@ -80,16 +80,15 @@ spec:
                   name: autoswarm-llm-secrets
                   key: RESEND_API_KEY
                   optional: true
+            - name: MEMORY_PERSIST_DIR
+              value: /data/autoswarm/memory
+            - name: BANDIT_PERSIST_PATH
+              value: /data/autoswarm/bandit.json
           volumeMounts:
             - name: tmp
               mountPath: /tmp
             - name: autoswarm-memory
               mountPath: /data/autoswarm
-          env:
-            - name: MEMORY_PERSIST_DIR
-              value: /data/autoswarm/memory
-            - name: BANDIT_PERSIST_PATH
-              value: /data/autoswarm/bandit.json
       volumes:
         - name: tmp
           emptyDir: {}

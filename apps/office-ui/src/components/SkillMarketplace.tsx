@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, type FC } from 'react';
 import { gameEventBus } from '@/game/PhaserGame';
+import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 import { useMarketplace } from '@/hooks/useMarketplace';
@@ -334,9 +335,9 @@ export const SkillMarketplace: FC<SkillMarketplaceProps> = ({ open, onClose }) =
   // Suppress game input while open
   useEffect(() => {
     if (open) {
-      gameEventBus.emit('chat-focus', true);
+      gameEventBus.emit(EVENT_CHAT_FOCUS, true);
       return () => {
-        gameEventBus.emit('chat-focus', false);
+        gameEventBus.emit(EVENT_CHAT_FOCUS, false);
       };
     }
   }, [open]);

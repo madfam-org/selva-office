@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type FC } from 'react';
 import type { CalendarEvent, CalendarStatus } from '@/hooks/useCalendar';
 import { gameEventBus } from '@/game/PhaserGame';
+import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 
@@ -68,10 +69,10 @@ export const CalendarPanel: FC<CalendarPanelProps> = ({
 
   // Suppress game input while text fields focused
   const handleFocus = useCallback(() => {
-    gameEventBus.emit('chat-focus', true);
+    gameEventBus.emit(EVENT_CHAT_FOCUS, true);
   }, []);
   const handleBlur = useCallback(() => {
-    gameEventBus.emit('chat-focus', false);
+    gameEventBus.emit(EVENT_CHAT_FOCUS, false);
   }, []);
 
   // ESC to close

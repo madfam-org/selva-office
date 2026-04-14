@@ -13,6 +13,10 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # Module-level circuit breaker state, keyed by URL prefix (scheme://host:port).
+# Thread-safety: Workers run in a single-threaded asyncio event loop.  Dict
+# get/set operations are GIL-atomic under CPython, and the check-then-act
+# pattern in _get_circuit_breaker() is safe because all callers are async
+# coroutines executing on the same thread.
 _circuit_state: dict[str, _CircuitBreaker] = {}
 
 

@@ -2,6 +2,7 @@
  * WebAudio filter chain for noise suppression.
  * Applies: highpass(80Hz) -> compressor -> output
  */
+import { logger } from '../lib/logger';
 
 interface AudioFilterChain {
   /** The processed output stream (use this instead of raw mic) */
@@ -51,7 +52,7 @@ export function createNoiseFilter(inputStream: MediaStream): AudioFilterChain | 
       },
     };
   } catch (err) {
-    console.warn('[audio-processor] Failed to create noise filter:', err);
+    logger.warn('[audio-processor] Failed to create noise filter:', err);
     return null;
   }
 }

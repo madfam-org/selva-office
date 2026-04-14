@@ -156,7 +156,9 @@ async def _respond_to_request(
             },
         )
     except Exception:
-        pass  # Never block approval on event emission
+        logging.getLogger(__name__).debug(
+            "Failed to emit approval event", exc_info=True,
+        )
 
     return response_data
 

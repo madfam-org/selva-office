@@ -9,9 +9,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import socket
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
+from fastapi import HTTPException
+
+from nexus_api.routers.gateway import _validate_webhook_url
 
 
 class TestGitHubWebhookPing:
@@ -318,3 +323,111 @@ class TestGitHubWebhookEvents:
 
         assert resp.status_code == 200
         assert resp.json()["tasks_created"] == 1
+
+
+def _fake_getaddrinfo_for(ip: str):
+    """Return a mock getaddrinfo result list resolving to the given IP."""
+    return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0))]
+
+
+class TestWebhookURLValidation:
+    """Tests for the _validate_webhook_url SSRF protection function."""
+
+    @patch("nexus_api.routers.gateway.socket.getaddrinfo")
+    def test_accepts_valid_public_url(self, mock_getaddrinfo: MagicMock) -> None:
+        """A valid HTTPS URL resolving to a public IP is returned unchanged."""
+        mock_getaddrinfo.return_value = _fake_getaddrinfo_for("93.184.216.34")
+
+        result = _validate_webhook_url("https://example.com/path")
+
+        assert result == "https://example.com/path"
+        mock_getaddrinfo.assert_called_once_with("example.com", None)
+
+    def test_rejects_url_exceeding_max_length(self) -> None:
+        """URLs longer than 2048 characters are rejected."""
+        long_url = "https://example.com/" + "a" * 2040
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url(long_url)
+
+        assert exc_info.value.status_code == 400
+        assert "exceeds maximum length" in exc_info.value.detail
+
+    def test_rejects_ftp_scheme(self) -> None:
+        """FTP scheme is not allowed."""
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("ftp://example.com")
+
+        assert exc_info.value.status_code == 400
+        assert "scheme must be http or https" in exc_info.value.detail
+
+    def test_rejects_file_scheme(self) -> None:
+        """File scheme is not allowed."""
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("file:///etc/passwd")
+
+        assert exc_info.value.status_code == 400
+        assert "scheme must be http or https" in exc_info.value.detail
+
+    def test_rejects_missing_hostname(self) -> None:
+        """URLs without a hostname are rejected."""
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("https://")
+
+        assert exc_info.value.status_code == 400
+        assert "missing hostname" in exc_info.value.detail
+
+    @patch("nexus_api.routers.gateway.socket.getaddrinfo")
+    def test_rejects_localhost(self, mock_getaddrinfo: MagicMock) -> None:
+        """Localhost (127.0.0.1) is blocked as a private/reserved address."""
+        mock_getaddrinfo.return_value = _fake_getaddrinfo_for("127.0.0.1")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("http://localhost:8080")
+
+        assert exc_info.value.status_code == 400
+        assert "private/reserved IP" in exc_info.value.detail
+
+    @patch("nexus_api.routers.gateway.socket.getaddrinfo")
+    def test_rejects_private_10_range(self, mock_getaddrinfo: MagicMock) -> None:
+        """10.0.0.0/8 private range is blocked."""
+        mock_getaddrinfo.return_value = _fake_getaddrinfo_for("10.0.0.1")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("https://internal.corp.example.com/api")
+
+        assert exc_info.value.status_code == 400
+        assert "private/reserved IP" in exc_info.value.detail
+
+    @patch("nexus_api.routers.gateway.socket.getaddrinfo")
+    def test_rejects_private_172_range(self, mock_getaddrinfo: MagicMock) -> None:
+        """172.16.0.0/12 private range is blocked."""
+        mock_getaddrinfo.return_value = _fake_getaddrinfo_for("172.16.0.1")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("https://staging.example.com/hook")
+
+        assert exc_info.value.status_code == 400
+        assert "private/reserved IP" in exc_info.value.detail
+
+    @patch("nexus_api.routers.gateway.socket.getaddrinfo")
+    def test_rejects_private_192_range(self, mock_getaddrinfo: MagicMock) -> None:
+        """192.168.0.0/16 private range is blocked."""
+        mock_getaddrinfo.return_value = _fake_getaddrinfo_for("192.168.1.1")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("https://router.local/callback")
+
+        assert exc_info.value.status_code == 400
+        assert "private/reserved IP" in exc_info.value.detail
+
+    @patch("nexus_api.routers.gateway.socket.getaddrinfo")
+    def test_rejects_unresolvable_hostname(self, mock_getaddrinfo: MagicMock) -> None:
+        """Hostnames that fail DNS resolution are rejected."""
+        mock_getaddrinfo.side_effect = socket.gaierror("Name or service not known")
+
+        with pytest.raises(HTTPException) as exc_info:
+            _validate_webhook_url("https://does-not-exist.invalid/path")
+
+        assert exc_info.value.status_code == 400
+        assert "could not be resolved" in exc_info.value.detail

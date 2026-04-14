@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import logging
+import socket
+import urllib.parse
 from typing import Any, Dict
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -13,6 +16,66 @@ from ..tasks.acp_tasks import run_acp_workflow_task
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/gateway", tags=["Gateway"])
+
+# ---------------------------------------------------------------------------
+# Private IP ranges that must be blocked to prevent SSRF
+# ---------------------------------------------------------------------------
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _validate_webhook_url(url: str) -> str:
+    """Validate a user-supplied URL to prevent SSRF attacks.
+
+    Checks:
+    - Length <= 2048 characters
+    - Scheme must be http or https
+    - Hostname must resolve to a non-private IP address
+
+    Returns the cleaned URL on success, or raises HTTPException(400) with a
+    descriptive reason on failure.
+    """
+    if len(url) > 2048:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid URL: exceeds maximum length of 2048 characters",
+        )
+
+    parsed = urllib.parse.urlparse(url)
+
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=400, detail="Invalid URL: scheme must be http or https"
+        )
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL: missing hostname")
+
+    try:
+        addrinfos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        raise HTTPException(
+            status_code=400, detail="Invalid URL: hostname could not be resolved"
+        )
+
+    for _family, _type, _proto, _canonname, sockaddr in addrinfos:
+        ip = ipaddress.ip_address(sockaddr[0])
+        for network in _BLOCKED_NETWORKS:
+            if ip in network:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid URL: hostname resolves to a private/reserved IP address",
+                )
+
+    return url
 
 
 def _verify_hmac(body: bytes, signature: str, secret: str) -> bool:
@@ -60,6 +123,7 @@ async def telegram_webhook(
         parts = text.split()
         if len(parts) > 1:
             target_url = parts[1]
+            target_url = _validate_webhook_url(target_url)
             task = run_acp_workflow_task.delay(target_url)
             memory_store.insert_transcript(
                 run_id=task.id,
@@ -114,6 +178,7 @@ async def discord_webhook(
         parts = content.split()
         if len(parts) > 1:
             target_url = parts[1]
+            target_url = _validate_webhook_url(target_url)
             task = run_acp_workflow_task.delay(target_url)
             memory_store.insert_transcript(
                 run_id=task.id,
@@ -184,6 +249,7 @@ async def slack_webhook(
         if not target_url:
             return {"response_type": "ephemeral", "text": "Usage: /initiate_acp <url>"}
 
+        target_url = _validate_webhook_url(target_url)
         task = run_acp_workflow_task.delay(target_url)
         memory_store.insert_transcript(
             run_id=task.id,
@@ -226,6 +292,7 @@ async def email_inbound(request: Request) -> Dict[str, Any]:
         line = line.strip()
         if line.lower().startswith("initiate_acp:"):
             target_url = line.split(":", 1)[1].strip()
+            target_url = _validate_webhook_url(target_url)
             task = run_acp_workflow_task.delay(target_url)
             memory_store.insert_transcript(
                 run_id=task.id,
@@ -236,7 +303,7 @@ async def email_inbound(request: Request) -> Dict[str, Any]:
             logger.info("Gateway (Email): ACP triggered for %s → task %s", target_url, task.id)
             return {"status": "success", "action": "acp_triggered", "task_id": task.id}
 
-    return {\"status\": \"ignored\"}
+    return {"status": "ignored"}
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +359,7 @@ async def whatsapp_inbound(request: Request) -> Dict[str, Any]:
 
     if text.lower().startswith("acp "):
         target_url = text[4:].strip()
+        target_url = _validate_webhook_url(target_url)
         task = run_acp_workflow_task.delay(target_url)
         memory_store.insert_transcript(
             run_id=task.id,
@@ -342,6 +410,7 @@ async def matrix_inbound(
 
         if text.lower().startswith("acp "):
             target_url = text[4:].strip()
+            target_url = _validate_webhook_url(target_url)
             task = run_acp_workflow_task.delay(target_url)
             memory_store.insert_transcript(
                 run_id=task.id,
@@ -379,6 +448,7 @@ async def mattermost_inbound(request: Request) -> Dict[str, Any]:
     if not target_url:
         return {"response_type": "ephemeral", "text": "Usage: /initiate_acp <target-url>"}
 
+    target_url = _validate_webhook_url(target_url)
     task = run_acp_workflow_task.delay(target_url)
     memory_store.insert_transcript(
         run_id=task.id,
@@ -419,6 +489,7 @@ async def signal_inbound(request: Request) -> Dict[str, Any]:
 
     if text.lower().startswith("acp "):
         target_url = text[4:].strip()
+        target_url = _validate_webhook_url(target_url)
         task = run_acp_workflow_task.delay(target_url)
         memory_store.insert_transcript(
             run_id=task.id,
@@ -474,6 +545,7 @@ async def sms_inbound(
 
     if sms_body.lower().startswith("acp "):
         target_url = sms_body[4:].strip()
+        target_url = _validate_webhook_url(target_url)
         task = run_acp_workflow_task.delay(target_url)
         memory_store.insert_transcript(
             run_id=task.id,
@@ -513,6 +585,7 @@ async def dingtalk_webhook(request: Request) -> Dict[str, Any]:
         return {"msgtype": "text", "text": {"content": "Parse error"}}
     if text.lower().startswith("acp "):
         target_url = text[4:].strip()
+        target_url = _validate_webhook_url(target_url)
         task = run_acp_workflow_task.delay(target_url)
         memory_store.insert_transcript(run_id=task.id, agent_role="gateway-dingtalk", role="user", content=f"ACP from DingTalk ({sender}): {target_url}")
         logger.info("Gateway (DingTalk): ACP -> task %s", task.id)
@@ -547,7 +620,9 @@ async def feishu_webhook(request: Request) -> Dict[str, Any]:
     except Exception:
         text = ""
     if text.lower().startswith("/acp "):
-        task = run_acp_workflow_task.delay(text[5:].strip())
+        target_url = text[5:].strip()
+        target_url = _validate_webhook_url(target_url)
+        task = run_acp_workflow_task.delay(target_url)
         logger.info("Gateway (Feishu): ACP -> task %s", task.id)
     return {"code": 0}
 
@@ -566,7 +641,9 @@ async def wecom_webhook(request: Request) -> Dict[str, Any]:
     except Exception:
         return {"errcode": 1, "errmsg": "parse error"}
     if text.lower().startswith("acp "):
-        task = run_acp_workflow_task.delay(text[4:].strip())
+        target_url = text[4:].strip()
+        target_url = _validate_webhook_url(target_url)
+        task = run_acp_workflow_task.delay(target_url)
         logger.info("Gateway (WeCom): ACP -> task %s", task.id)
     return {"errcode": 0, "errmsg": "ok"}
 
@@ -595,7 +672,9 @@ async def weixin_webhook(request: Request) -> Dict[str, Any]:
     except Exception:
         return {"success": False}
     if content.lower().startswith("acp "):
-        task = run_acp_workflow_task.delay(content[4:].strip())
+        target_url = content[4:].strip()
+        target_url = _validate_webhook_url(target_url)
+        task = run_acp_workflow_task.delay(target_url)
         logger.info("Gateway (Weixin): ACP -> task %s", task.id)
         return {"success": True, "task_id": task.id}
     return {"success": True}
@@ -615,7 +694,9 @@ async def bluebubbles_webhook(request: Request) -> Dict[str, Any]:
     except Exception:
         return {"status": "ignored"}
     if text.lower().startswith("acp "):
-        task = run_acp_workflow_task.delay(text[4:].strip())
+        target_url = text[4:].strip()
+        target_url = _validate_webhook_url(target_url)
+        task = run_acp_workflow_task.delay(target_url)
         logger.info("Gateway (BlueBubbles): ACP -> task %s", task.id)
         return {"status": "ok", "task_id": task.id}
     return {"status": "ignored"}
@@ -637,7 +718,9 @@ async def homeassistant_webhook(request: Request) -> Dict[str, Any]:
     except Exception:
         return {"result": "ignored"}
     if message.lower().startswith("acp "):
-        task = run_acp_workflow_task.delay(message[4:].strip())
+        target_url = message[4:].strip()
+        target_url = _validate_webhook_url(target_url)
+        task = run_acp_workflow_task.delay(target_url)
         logger.info("Gateway (HomeAssistant): entity=%s -> task %s", entity_id, task.id)
         return {"result": "triggered", "task_id": task.id}
     return {"result": "ignored"}
@@ -647,8 +730,8 @@ async def homeassistant_webhook(request: Request) -> Dict[str, Any]:
 async def generic_webhook(channel_id: str, request: Request, x_webhook_signature: str = None) -> Dict[str, Any]:
     """Generic HMAC-signed webhook. channel_id used for routing/logging."""
     body = await request.body()
-    import os as _os
-    secret = _os.environ.get("AUTOSWARM_WEBHOOK_SECRET", "")
+    from ..config import get_settings as _get_settings
+    secret = _get_settings().autoswarm_webhook_secret
     if secret and x_webhook_signature:
         if not _verify_hmac(body, x_webhook_signature, secret):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
@@ -659,7 +742,9 @@ async def generic_webhook(channel_id: str, request: Request, x_webhook_signature
         data = {}
     text = (data.get("text") or data.get("message") or data.get("content") or "").strip()
     if text.lower().startswith("acp "):
-        task = run_acp_workflow_task.delay(text[4:].strip())
+        target_url = text[4:].strip()
+        target_url = _validate_webhook_url(target_url)
+        task = run_acp_workflow_task.delay(target_url)
         logger.info("Gateway (Webhook/%s): ACP -> task %s", channel_id, task.id)
         return {"status": "ok", "channel_id": channel_id, "task_id": task.id}
     return {"status": "ignored", "channel_id": channel_id}
@@ -678,6 +763,7 @@ async def api_complete(request: Request) -> Dict[str, Any]:
     metadata: dict = data.get("metadata", {})
     if not target_url:
         raise HTTPException(status_code=422, detail="target_url is required")
+    target_url = _validate_webhook_url(target_url)
     task = run_acp_workflow_task.delay(target_url, metadata=metadata)
     logger.info("Gateway (API): ACP for %s -> task %s", target_url, task.id)
     return {"status": "dispatched", "task_id": task.id, "target_url": target_url, "poll_url": f"/api/v1/acp/status/{task.id}"}

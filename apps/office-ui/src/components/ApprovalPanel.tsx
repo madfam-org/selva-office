@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type FC } from 'react';
 import type { ApprovalRequest, ActionCategory } from '@autoswarm/shared-types';
 import { gameEventBus } from '@/game/PhaserGame';
+import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 
@@ -89,10 +90,10 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
 
   // Suppress game input while textarea focused
   const handleFocus = useCallback(() => {
-    gameEventBus.emit('chat-focus', true);
+    gameEventBus.emit(EVENT_CHAT_FOCUS, true);
   }, []);
   const handleBlur = useCallback(() => {
-    gameEventBus.emit('chat-focus', false);
+    gameEventBus.emit(EVENT_CHAT_FOCUS, false);
   }, []);
 
   const handleApprove = useCallback(

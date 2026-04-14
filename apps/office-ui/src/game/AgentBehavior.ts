@@ -35,10 +35,12 @@ interface AgentMovementState {
   homeY: number;
 }
 
-const AGENT_SPEED = 30; // pixels per second (slow patrol)
-const WAYPOINT_INTERVAL_MIN = 3000; // ms
-const WAYPOINT_INTERVAL_MAX = 7000; // ms
-const ARRIVAL_THRESHOLD = 2; // pixels
+import {
+  AGENT_SPEED,
+  WAYPOINT_INTERVAL_MIN,
+  WAYPOINT_INTERVAL_MAX,
+  ARRIVAL_THRESHOLD,
+} from './constants';
 
 export class AgentBehavior {
   private states: Map<string, AgentMovementState> = new Map();

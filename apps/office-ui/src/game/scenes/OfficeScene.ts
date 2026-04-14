@@ -11,6 +11,24 @@ import { ScriptBridge } from '../scripting/ScriptBridge';
 import { AgentBehavior } from '../AgentBehavior';
 import { CompanionBehavior } from '../CompanionBehavior';
 import { Pathfinder } from '../Pathfinder';
+import {
+  TILE_SIZE,
+  WORLD_COLS,
+  WORLD_ROWS,
+  TACTICIAN_SPEED,
+  PROXIMITY_THRESHOLD,
+  MOVE_THROTTLE_MS,
+  EMOTE_DURATION_MS,
+  ANIM_FADE_MS,
+  DUST_MOTE_INTERVAL_MS,
+  STATUS_PARTICLE_INTERVAL_MS,
+  SPAWN_OFFSET,
+  SPAWN_GRID_SPACING,
+  HALO_RADIUS,
+  HALO_Y_OFFSET,
+  EMOTE_Y_OFFSET,
+} from '../constants';
+import { EVENT_CHAT_FOCUS, EVENT_EMOTE_PICKER_FOCUS } from '../../lib/constants';
 import type {
   OfficeState,
   Department,
@@ -19,31 +37,6 @@ import type {
   Player,
   AvatarConfig,
 } from '@autoswarm/shared-types';
-
-// === Layout ===
-const TILE_SIZE = 32;
-const WORLD_COLS = 50;
-const WORLD_ROWS = 28;
-
-// === Movement & Interaction ===
-const TACTICIAN_SPEED = 200;       // px/s player movement
-const PROXIMITY_THRESHOLD = 64;    // px for interactable detection
-const MOVE_THROTTLE_MS = 66;       // ~15fps network send rate
-
-// === Timing (ms) ===
-const EMOTE_DURATION_MS = 3000;
-const ANIM_FADE_MS = 800;          // standard fade/tween duration
-const DUST_MOTE_INTERVAL_MS = 800; // ambient particle spawn rate
-const STATUS_PARTICLE_INTERVAL_MS = 2000;
-
-// === Spawn Grid ===
-const SPAWN_OFFSET = 48;           // px offset from zone edge for agent placement
-const SPAWN_GRID_SPACING = 48;     // px between agent spawn positions
-
-// === Visual ===
-const HALO_RADIUS = 14;            // px radius for agent status halo
-const HALO_Y_OFFSET = 4;           // px below sprite center
-const EMOTE_Y_OFFSET = -32;        // px above sprite for emote bubbles
 
 // === Feature Flags ===
 const ENABLE_POST_FX = process.env.NEXT_PUBLIC_ENABLE_POST_FX !== 'false';
@@ -190,12 +183,12 @@ export class OfficeScene extends Phaser.Scene {
     });
 
     // Listen for chat focus to suppress game input while typing
-    gameEventBus.on('chat-focus', (detail) => {
+    gameEventBus.on(EVENT_CHAT_FOCUS, (detail) => {
       this.gamepadManager.setChatFocused(detail as boolean);
     });
 
     // Listen for emote picker focus
-    this.emotePickerCleanup = gameEventBus.on('emote-picker-focus', (detail) => {
+    this.emotePickerCleanup = gameEventBus.on(EVENT_EMOTE_PICKER_FOCUS, (detail) => {
       this.gamepadManager.setEmotePickerFocused(detail as boolean);
     });
 

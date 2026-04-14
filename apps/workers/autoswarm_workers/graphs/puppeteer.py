@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import concurrent.futures
 import logging
 from typing import Any, TypedDict
 
@@ -11,19 +10,9 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 
 from ..event_emitter import instrumented_node
-from .base import BaseGraphState
+from .base import BaseGraphState, run_async as _run_async
 
 logger = logging.getLogger(__name__)
-
-
-def _run_async(coro):  # type: ignore[no-untyped-def]
-    """Run an async coroutine from a sync graph node context."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
 
 
 # -- State --------------------------------------------------------------------
@@ -71,7 +60,7 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
                 task_description=description,
             ))
         except Exception:
-            pass
+            logger.debug("Failed to retrieve experience context", exc_info=True)
 
         prompt = (
             "Decompose this task into 2-5 independent subtasks. "

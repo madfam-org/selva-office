@@ -115,7 +115,7 @@ async def compute_token_status(
         if cached:
             daily_limit = int(cached)
     except Exception:
-        pass
+        logger.debug("Failed to fetch cached tier limit from Redis", exc_info=True)
 
     return {
         "daily_limit": daily_limit,
