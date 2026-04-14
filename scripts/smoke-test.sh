@@ -2,10 +2,10 @@
 # Verify all AutoSwarm services are reachable and the agent loop is functional.
 set -euo pipefail
 
-API="http://localhost:4300"
-UI="http://localhost:4301"
-COLYSEUS="http://localhost:4303"
-WORKER="http://localhost:4305"
+API="${NEXUS_API_URL:-http://localhost:${NEXUS_API_PORT:-4300}}"
+UI="${OFFICE_UI_URL:-http://localhost:${OFFICE_UI_PORT:-4301}}"
+COLYSEUS="${COLYSEUS_URL:-http://localhost:${COLYSEUS_PORT:-4303}}"
+WORKER="${WORKER_URL:-http://localhost:${WORKER_PORT:-4305}}"
 
 echo "=== AutoSwarm Smoke Test ==="
 
