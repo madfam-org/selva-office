@@ -113,11 +113,11 @@ export const MetricsDashboard: FC<MetricsDashboardProps> = ({
         </div>
 
         {loading && !dashboard ? (
-          <p className="py-12 text-center font-mono text-[9px] text-slate-500">
+          <p role="status" className="py-12 text-center font-mono text-[9px] text-slate-500">
             Loading metrics...
           </p>
         ) : dashboard ? (
-          <div className="space-y-4">
+          <div className="space-y-4" aria-live="polite">
             {/* Stat cards grid */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <StatCard

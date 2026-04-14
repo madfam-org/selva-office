@@ -344,7 +344,7 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
           )}
 
           {/* DB-backed Kanban columns */}
-          <div className="flex-1 overflow-y-auto px-3 py-3">
+          <div className="flex-1 overflow-y-auto px-3 py-3" aria-live="polite">
             <div className="space-y-3">
               {STATUS_COLUMNS.map((column) => {
                 const columnTasks = board?.columns[column.key] ?? [];
