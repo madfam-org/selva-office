@@ -80,6 +80,16 @@ spec:
                   name: autoswarm-llm-secrets
                   key: RESEND_API_KEY
                   optional: true
+            - name: COLYSEUS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-secrets
+                  key: colyseus-secret
+            - name: WORKER_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-llm-secrets
+                  key: WORKER_API_TOKEN
             - name: MEMORY_PERSIST_DIR
               value: /data/autoswarm/memory
             - name: BANDIT_PERSIST_PATH

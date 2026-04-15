@@ -83,11 +83,16 @@ spec:
                 secretKeyRef:
                   name: autoswarm-secrets
                   key: secret-key
+          workingDir: /data
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: data
+              mountPath: /data
       volumes:
         - name: tmp
+          emptyDir: {}
+        - name: data
           emptyDir: {}
 ---
 apiVersion: v1
