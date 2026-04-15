@@ -18,7 +18,7 @@ from autoswarm_redis_pool import get_redis_pool
 from ..auth import get_current_user, require_non_guest
 from ..config import get_settings
 from ..database import get_db
-from ..models import Agent, ComputeTokenLedger, SwarmTask, TaskEvent, Workflow
+from ..models import Agent, ComputeTokenLedger, SwarmTask, TaskEvent, TenantConfig, Workflow
 from ..tenant import TenantContext, get_tenant
 from ..ws import MessageRateLimiter
 
@@ -224,6 +224,50 @@ async def dispatch_task(
             logging.getLogger(__name__).warning(
                 "Failed to auto-assign fallback agent", exc_info=True,
             )
+
+    # -- Tenant limit enforcement -----------------------------------------------
+    try:
+        tc_result = await db.execute(
+            select(TenantConfig).where(TenantConfig.org_id == tenant.org_id)
+        )
+        tenant_config = tc_result.scalar_one_or_none()
+        if tenant_config is not None:
+            # Check daily task limit
+            today_start_tc = datetime.now(UTC).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            today_count_result = await db.execute(
+                select(func.count(SwarmTask.id)).where(
+                    SwarmTask.org_id == tenant.org_id,
+                    SwarmTask.created_at >= today_start_tc,
+                )
+            )
+            today_count: int = today_count_result.scalar_one()
+            if today_count >= tenant_config.max_daily_tasks:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Daily task limit reached for your organization",
+                )
+
+            # Check agent capacity (warn, don't block)
+            agent_count_result = await db.execute(
+                select(func.count(Agent.id)).where(Agent.org_id == tenant.org_id)
+            )
+            agent_count: int = agent_count_result.scalar_one()
+            if agent_count >= tenant_config.max_agents:
+                logging.getLogger(__name__).warning(
+                    "Org %s at agent capacity (%d/%d)",
+                    tenant.org_id,
+                    agent_count,
+                    tenant_config.max_agents,
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "Tenant limit check failed; proceeding without enforcement",
+            exc_info=True,
+        )
 
     # -- Compute token budget check -------------------------------------------
     dispatch_cost = 10  # matches ComputeTokenManager.COST_TABLE["dispatch_task"]
