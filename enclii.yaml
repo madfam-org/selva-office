@@ -158,10 +158,13 @@ spec:
     - name: NEXT_PUBLIC_DHANAM_URL
       value: https://app.dhan.am
   domains:
-    - domain: hall.selva.town
+    - domain: selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
+    - domain: www.selva.town
+      tls: true
+      redirect: selva.town
 ---
 apiVersion: enclii.dev/v1
 kind: Service

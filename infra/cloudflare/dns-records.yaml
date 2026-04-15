@@ -4,7 +4,11 @@ records:
     content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME
-    name: hall.selva.town
+    name: selva.town
+    content: autoswarm-office.cfargotunnel.com
+    proxied: true
+  - type: CNAME
+    name: www.selva.town
     content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME

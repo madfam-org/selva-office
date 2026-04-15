@@ -4,7 +4,9 @@ credentials-file: /etc/cloudflared/credentials.json
 ingress:
   - hostname: api.selva.town
     service: http://nexus-api.autoswarm.svc.cluster.local:80
-  - hostname: hall.selva.town
+  - hostname: selva.town
+    service: http://office-ui.autoswarm.svc.cluster.local:80
+  - hostname: www.selva.town
     service: http://office-ui.autoswarm.svc.cluster.local:80
   - hostname: ws.selva.town
     service: http://colyseus.autoswarm.svc.cluster.local:80

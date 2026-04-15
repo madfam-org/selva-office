@@ -2,12 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * URL scheme:
- *   hall.selva.town       → Landing page (public)
+ *   selva.town       → Landing page (public)
  *   app.selva.town   → Virtual office app (auth required for /office)
  */
 
 const APP_HOST = 'app.selva.town';
-const LANDING_HOST = 'hall.selva.town';
+const LANDING_HOST = 'selva.town';
 
 const PUBLIC_PATHS = ['/', '/login', '/guest', '/demo', '/api/health'];
 
