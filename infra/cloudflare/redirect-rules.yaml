@@ -1,0 +1,35 @@
+# Cloudflare Redirect Rules for Selva domains
+#
+# selvatown.com → selva.town (301 permanent redirect)
+#
+# Configure via:
+#   Cloudflare Dashboard → selvatown.com zone → Rules → Redirect Rules
+#   Or via Cloudflare API / Terraform cloudflare_ruleset resource
+#
+# Prerequisites:
+#   1. selvatown.com zone must exist in Cloudflare
+#   2. DNS must have a proxied A/AAAA record (can point to 192.0.2.1 placeholder)
+#   3. SSL/TLS must be set to "Flexible" or "Full" on the selvatown.com zone
+
+redirects:
+  - name: selvatown-to-selva-primary
+    description: "Redirect selvatown.com root and all paths to selva.town (301)"
+    expression: (http.host eq "selvatown.com")
+    action: redirect
+    status_code: 301
+    target_url:
+      expression: concat("https://selva.town", http.request.uri.path)
+    preserve_query_string: true
+
+  - name: selvatown-to-selva-wildcard
+    description: "Redirect *.selvatown.com subdomains to selva.town (301)"
+    expression: (http.host matches "*.selvatown.com")
+    action: redirect
+    status_code: 301
+    target_url:
+      expression: concat("https://selva.town", http.request.uri.path)
+    preserve_query_string: true
+
+# Note: www.selvatown.com is covered by the wildcard rule above.
+# For SEO, the 301 permanent redirect tells search engines to index
+# selva.town as the canonical domain.
