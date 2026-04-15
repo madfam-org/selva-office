@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import get_current_user, require_non_guest
+from ..auth import get_current_user, require_non_guest, require_roles
 from ..config import get_settings
 from ..database import get_db
 from ..models import Agent, Department, SwarmTask, TenantConfig
@@ -157,6 +157,12 @@ class TenantResponse(BaseModel):
     intelligence_enabled: bool
     max_agents: int
     max_daily_tasks: int
+    # Enterprise SSO
+    janua_connection_id: str | None = None
+    # White-label branding
+    brand_name: str | None = None
+    brand_logo_url: str | None = None
+    brand_primary_color: str | None = None
     created_at: str
     updated_at: str | None = None
 
@@ -196,9 +202,37 @@ def _to_response(config: TenantConfig) -> TenantResponse:
         intelligence_enabled=config.intelligence_enabled,
         max_agents=config.max_agents,
         max_daily_tasks=config.max_daily_tasks,
+        janua_connection_id=config.janua_connection_id,
+        brand_name=config.brand_name,
+        brand_logo_url=config.brand_logo_url,
+        brand_primary_color=config.brand_primary_color,
         created_at=config.created_at.isoformat(),
         updated_at=config.updated_at.isoformat() if config.updated_at else None,
     )
+
+
+async def _get_tenant_config(db: AsyncSession, org_id: str) -> TenantConfig:
+    """Load TenantConfig for an org, raising 404 if not found."""
+    result = await db.execute(
+        select(TenantConfig).where(TenantConfig.org_id == org_id)
+    )
+    config = result.scalar_one_or_none()
+    if config is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not configured for this organization",
+        )
+    return config
+
+
+async def _get_tenant_config_or_none(
+    db: AsyncSession, org_id: str
+) -> TenantConfig | None:
+    """Load TenantConfig for an org, returning None if not found."""
+    result = await db.execute(
+        select(TenantConfig).where(TenantConfig.org_id == org_id)
+    )
+    return result.scalar_one_or_none()
 
 
 async def _count_tasks_today(db: AsyncSession, org_id: str) -> int:
@@ -437,3 +471,104 @@ async def tenant_usage(
         task_daily_limit=task_daily_limit,
         department_count=department_count,
     )
+
+
+# ---------------------------------------------------------------------------
+# Enterprise SSO Configuration
+# ---------------------------------------------------------------------------
+
+
+class SSOConfig(BaseModel):
+    """Enterprise SSO connection configuration."""
+
+    janua_connection_id: str = Field(..., min_length=1, max_length=255)
+
+
+@router.patch(
+    "/me/sso",
+    dependencies=[Depends(require_non_guest)],
+)
+async def configure_sso(
+    body: SSOConfig,
+    user: dict[str, Any] = Depends(require_roles(["admin"])),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, str]:
+    """Configure enterprise SSO connection for this tenant.
+
+    Stores the Janua connection ID so that users in this org are redirected
+    to the correct IdP during authentication.  Requires admin role.
+    """
+    org_id = user.get("org_id", "default")
+    config = await _get_tenant_config(db, org_id)
+    config.janua_connection_id = body.janua_connection_id
+    config.updated_at = datetime.now(UTC)
+    await db.flush()
+    return {"status": "configured", "janua_connection_id": body.janua_connection_id}
+
+
+# ---------------------------------------------------------------------------
+# White-Label Branding
+# ---------------------------------------------------------------------------
+
+
+class BrandingConfig(BaseModel):
+    """White-label branding settings for the office UI."""
+
+    brand_name: str | None = Field(default=None, max_length=255)
+    brand_logo_url: str | None = Field(default=None, max_length=500)
+    brand_primary_color: str | None = Field(default=None, max_length=7)
+
+
+@router.get("/me/branding")
+async def get_branding(
+    user: dict[str, Any] = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Get tenant branding config for white-label UI.
+
+    Returns sensible defaults when the tenant has no custom branding.
+    """
+    org_id = user.get("org_id", "default")
+    config = await _get_tenant_config_or_none(db, org_id)
+    if not config:
+        return {
+            "brand_name": "Selva Office",
+            "brand_logo_url": None,
+            "brand_primary_color": "#4a9e6e",
+        }
+    return {
+        "brand_name": config.brand_name or "Selva Office",
+        "brand_logo_url": config.brand_logo_url,
+        "brand_primary_color": config.brand_primary_color or "#4a9e6e",
+    }
+
+
+@router.patch(
+    "/me/branding",
+    dependencies=[Depends(require_non_guest)],
+)
+async def update_branding(
+    body: BrandingConfig,
+    user: dict[str, Any] = Depends(require_roles(["admin"])),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Update white-label branding for this tenant.
+
+    Only non-null fields in the request body are applied.  Requires admin role.
+    """
+    org_id = user.get("org_id", "default")
+    config = await _get_tenant_config(db, org_id)
+
+    update_data = body.model_dump(exclude_unset=True)
+    for field_name, value in update_data.items():
+        setattr(config, field_name, value)
+
+    config.updated_at = datetime.now(UTC)
+    await db.flush()
+    await db.refresh(config)
+
+    return {
+        "brand_name": config.brand_name or "Selva Office",
+        "brand_logo_url": config.brand_logo_url,
+        "brand_primary_color": config.brand_primary_color or "#4a9e6e",
+    }
