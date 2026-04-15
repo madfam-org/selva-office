@@ -104,6 +104,22 @@ While horizontal parity is achieved, deep vertical integration for professional 
 
 ---
 
+## Selva Brand Migration Checklist
+
+- `[x]` Rename all `*.madfam.io` domains → `*.selva.town` in codebase
+- `[x]` Rename Python package `madfam-inference` → `selva-inference`
+- `[x]` Update brand text (MADFAM → Selva) across UI, docs, skills, prompts
+- `[x]` Rename Docker network, npm scope, seed scripts, community skills
+- `[ ]` **Email routing**: Configure Cloudflare Email Routing on `selva.town` zone
+  - Catch-all `*@selva.town` → `admin@madfam.io`
+  - Covers: `noreply@selva.town` (transactional), `engineering@selva.town` (package metadata)
+  - Enable in Cloudflare Dashboard → Email → Email Routing → Routing Rules
+- `[ ]` Provision DNS records for `selva.town` (A/CNAME for agents-api, agents, agents-ws, auth, etc.)
+- `[ ]` Update Cloudflare Tunnel routes to serve `*.selva.town` hostnames
+- `[ ]` Migrate GitHub org `madfam-org` → new org name (deferred — update ghcr.io refs after)
+- `[ ]` Update npm registry URL if migrating from `npm.madfam.io` to `npm.selva.town`
+- `[ ]` Set up `selva.town/terms` and `selva.town/privacy` landing pages
+
 ## Production Readiness Checklist
 
 - `[x]` Provision `AUTOSWARM_SKILLS_DIR` persistent volume in K8s
