@@ -9,6 +9,7 @@ from typing import Any
 
 # Per-graph-type timeouts in seconds (env-configurable)
 DEFAULT_TIMEOUTS: dict[str, int] = {
+    "billing": 300,
     "coding": 600,
     "research": 300,
     "crm": 120,

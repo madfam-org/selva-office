@@ -29,6 +29,13 @@ from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, F
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
+from .karafiel import (
+    BlacklistCheckTool,
+    CFDIGenerateTool,
+    CFDIStampTool,
+    CFDIStatusTool,
+    RFCValidationTool,
+)
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
@@ -112,4 +119,10 @@ def get_builtin_tools() -> list[BaseTool]:
         ReadCredentialFileTool(),
         # A2A protocol
         CallExternalAgentTool(),
+        # Karafiel compliance
+        RFCValidationTool(),
+        CFDIGenerateTool(),
+        CFDIStampTool(),
+        CFDIStatusTool(),
+        BlacklistCheckTool(),
     ]

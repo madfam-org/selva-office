@@ -34,6 +34,7 @@ from autoswarm_redis_pool.timeout import get_task_timeout
 from .checkpointer import create_checkpointer
 from .config import get_settings
 from .event_emitter import emit_event as _emit_event
+from .graphs.billing import build_billing_graph
 from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
 from .graphs.deployment import build_deployment_graph
@@ -53,6 +54,7 @@ logger = logging.getLogger("autoswarm.worker")
 
 AGENT_STATUS_CHANNEL = "autoswarm:agent-status"
 GRAPH_BUILDERS = {
+    "billing": build_billing_graph,
     "coding": build_coding_graph,
     "research": build_research_graph,
     "crm": build_crm_graph,
@@ -317,6 +319,16 @@ async def process_task(task_data: dict) -> None:
         initial_state["summary"] = ""
         initial_state["action_items"] = []
         initial_state["recording_url"] = payload.get("recording_url", "")
+    elif graph_type == "billing":
+        payload = task_data.get("payload", {})
+        initial_state["emisor_rfc"] = payload.get("emisor_rfc", "")
+        initial_state["receptor_rfc"] = payload.get("receptor_rfc", "")
+        initial_state["conceptos"] = payload.get("conceptos", [])
+        initial_state["cfdi_xml"] = None
+        initial_state["cfdi_uuid"] = None
+        initial_state["stamp_result"] = None
+        initial_state["customer_phone"] = payload.get("customer_phone")
+        initial_state["customer_email"] = payload.get("customer_email")
 
     handler = InterruptHandler(
         nexus_api_url=settings.nexus_api_url,
