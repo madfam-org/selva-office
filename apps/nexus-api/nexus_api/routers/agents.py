@@ -11,7 +11,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoswarm_skills import DEFAULT_ROLE_SKILLS
+try:
+    from autoswarm_skills import DEFAULT_ROLE_SKILLS
+except ImportError:
+    DEFAULT_ROLE_SKILLS: dict = {}
 
 from ..auth import get_current_user
 from ..database import get_db
