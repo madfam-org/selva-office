@@ -130,32 +130,65 @@ def draft_communication(state: CRMState) -> CRMState:
         except Exception:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
+        locale = state.get("locale", "")
+        if not locale:
+            wf_vars = state.get("workflow_variables", {})
+            locale = wf_vars.get("locale", "en") if isinstance(wf_vars, dict) else "en"
+
         skill_ctx = state.get("agent_system_prompt", "")
-        base_prompt = "Draft a professional communication based on the CRM context provided."
+        if locale == "es-MX":
+            base_prompt = (
+                "Redacte una comunicacion profesional basada en el contexto de CRM proporcionado. "
+                "Use el registro formal (usted). Redacte en espanol mexicano."
+            )
+        else:
+            base_prompt = "Draft a professional communication based on the CRM context provided."
         parts = [p for p in [skill_ctx, experience_ctx, base_prompt] if p]
         system_prompt = "\n\n".join(parts)
+
+        if locale == "es-MX":
+            user_content = (
+                f"Redacte un(a) {crm_action} para {recipient}.\n"
+                f"Contexto CRM: {crm_context}"
+            )
+        else:
+            user_content = (
+                f"Draft a {crm_action} for {recipient}.\n"
+                f"CRM context: {crm_context}"
+            )
+
         draft = _run_async(call_llm(
             router,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Draft a {crm_action} for {recipient}.\n"
-                    f"CRM context: {crm_context}"
-                ),
-            }],
+            messages=[{"role": "user", "content": user_content}],
             system_prompt=system_prompt,
             task_type="crm",
         ))
     except Exception:
-        draft = (
-            f"Subject: Follow-up on our recent discussion\n\n"
-            f"Dear {recipient},\n\n"
-            f"Thank you for your time during our recent conversation. "
-            f"I wanted to follow up on the key points we discussed.\n\n"
-            f"Looking forward to hearing from you.\n\n"
-            f"Best regards,\n"
-            f"AutoSwarm CRM Agent"
-        )
+        locale = state.get("locale", "")
+        if not locale:
+            wf_vars = state.get("workflow_variables", {})
+            locale = wf_vars.get("locale", "en") if isinstance(wf_vars, dict) else "en"
+
+        if locale == "es-MX":
+            draft = (
+                f"Asunto: Seguimiento a nuestra conversacion reciente\n\n"
+                f"Estimado/a {recipient},\n\n"
+                f"Agradezco su tiempo durante nuestra conversacion reciente. "
+                f"Me permito dar seguimiento a los puntos clave que discutimos.\n\n"
+                f"Quedo a sus ordenes para cualquier comentario.\n\n"
+                f"Atentamente,\n"
+                f"Agente CRM AutoSwarm"
+            )
+        else:
+            draft = (
+                f"Subject: Follow-up on our recent discussion\n\n"
+                f"Dear {recipient},\n\n"
+                f"Thank you for your time during our recent conversation. "
+                f"I wanted to follow up on the key points we discussed.\n\n"
+                f"Looking forward to hearing from you.\n\n"
+                f"Best regards,\n"
+                f"AutoSwarm CRM Agent"
+            )
 
     draft_message = AIMessage(
         content=f"Draft {crm_action} prepared for {recipient}.",

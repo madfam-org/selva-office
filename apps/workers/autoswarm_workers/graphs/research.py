@@ -61,7 +61,14 @@ def formulate_query(state: ResearchState) -> ResearchState:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
         skill_ctx = state.get("agent_system_prompt", "")
-        base_prompt = "Rewrite this into an optimal search query. Return only the query."
+        locale = state.get("locale", "en")
+        if locale == "es-MX":
+            base_prompt = (
+                "Reescriba esto como una consulta de busqueda optima. "
+                "Devuelva unicamente la consulta."
+            )
+        else:
+            base_prompt = "Rewrite this into an optimal search query. Return only the query."
         parts = [p for p in [skill_ctx, experience_ctx, base_prompt] if p]
         system_prompt = "\n\n".join(parts)
         refined_query = _run_async(call_llm(
@@ -170,12 +177,22 @@ def synthesize(state: ResearchState) -> ResearchState:
         from ..inference import call_llm, get_model_router
 
         router = get_model_router()
-        prompt = f"Synthesize these sources:\n{source_summaries}"
+        locale = state.get("locale", "en")
+        if locale == "es-MX":
+            prompt = f"Sintetice estas fuentes:\n{source_summaries}"
+        else:
+            prompt = f"Synthesize these sources:\n{source_summaries}"
         skill_ctx = state.get("agent_system_prompt", "")
-        base_prompt = (
-            "You are a research analyst. Synthesize sources "
-            "into a coherent analysis."
-        )
+        if locale == "es-MX":
+            base_prompt = (
+                "Usted es un analista de investigacion. Sintetice las fuentes "
+                "en un analisis coherente."
+            )
+        else:
+            base_prompt = (
+                "You are a research analyst. Synthesize sources "
+                "into a coherent analysis."
+            )
         system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
         synthesis_text = _run_async(call_llm(
             router,
@@ -219,11 +236,20 @@ def format_report(state: ResearchState) -> ResearchState:
 
         router = get_model_router()
         skill_ctx = state.get("agent_system_prompt", "")
-        base_prompt = "Format the research synthesis into a structured report with sections."
+        locale = state.get("locale", "en")
+        if locale == "es-MX":
+            base_prompt = (
+                "Formatee la sintesis de investigacion en un reporte estructurado "
+                "con secciones."
+            )
+            user_content = f"Formatee esto como un reporte:\n{synthesis}"
+        else:
+            base_prompt = "Format the research synthesis into a structured report with sections."
+            user_content = f"Format this into a report:\n{synthesis}"
         system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
         formatted = _run_async(call_llm(
             router,
-            messages=[{"role": "user", "content": f"Format this into a report:\n{synthesis}"}],
+            messages=[{"role": "user", "content": user_content}],
             system_prompt=system_prompt,
             task_type="research",
         ))

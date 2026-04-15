@@ -73,9 +73,10 @@ def plan(state: CodingState) -> CodingState:
 
         skill_ctx = state.get("agent_system_prompt", "")
         repo_path = state.get("repo_path")
+        locale = state.get("locale", "en")
         system_prompt = build_plan_prompt(
             task_description.strip(), repo_path=repo_path, skill_ctx=skill_ctx,
-            experience_ctx=experience_ctx,
+            experience_ctx=experience_ctx, locale=locale,
         )
         llm_response = _run_async(call_llm(
             router,
@@ -185,12 +186,14 @@ def implement(state: CodingState) -> CodingState:
         from ..prompts import build_implement_prompt
 
         skill_ctx = state.get("agent_system_prompt", "")
+        locale = state.get("locale", "en")
         system_prompt = build_implement_prompt(
             step=current_step,
             iteration=iteration,
             repo_path=state.get("repo_path"),
             worktree_path=worktree_path,
             skill_ctx=skill_ctx,
+            locale=locale,
         )
 
         last_error: str | None = None
@@ -423,7 +426,10 @@ def review(state: CodingState) -> CodingState:
 
         changes_text = "\n".join(c.get("summary", "") for c in code_changes)
         skill_ctx = state.get("agent_system_prompt", "")
-        system_prompt = build_review_prompt(changes_text, skill_ctx=skill_ctx)
+        locale = state.get("locale", "en")
+        system_prompt = build_review_prompt(
+            changes_text, skill_ctx=skill_ctx, locale=locale,
+        )
         review_text = _run_async(call_llm(
             router,
             messages=[{"role": "user", "content": f"Review these changes:\n{changes_text}"}],

@@ -414,6 +414,11 @@ def notify_customer(state: BillingState) -> BillingState:
     cfdi_uuid = state.get("cfdi_uuid", "unknown")
     receptor_rfc = state.get("receptor_rfc", "unknown")
 
+    locale = state.get("locale", "")
+    if not locale:
+        wf_vars = state.get("workflow_variables", {})
+        locale = wf_vars.get("locale", "es-MX") if isinstance(wf_vars, dict) else "es-MX"
+
     notification_channel = "none"
     notification_detail = ""
 
@@ -458,15 +463,22 @@ def notify_customer(state: BillingState) -> BillingState:
                 if whatsapp_url:
                     import httpx
 
+                    if locale == "es-MX":
+                        wa_message = (
+                            f"Su factura CFDI {cfdi_uuid} ha sido generada "
+                            f"y timbrada exitosamente."
+                        )
+                    else:
+                        wa_message = (
+                            f"Your CFDI invoice {cfdi_uuid} has been generated "
+                            f"and stamped successfully."
+                        )
                     resp = _run_async(
                         httpx.AsyncClient(timeout=10.0).post(
                             f"{whatsapp_url}/send",
                             json={
                                 "phone": customer_phone,
-                                "message": (
-                                    f"Su factura CFDI {cfdi_uuid} ha sido generada "
-                                    f"y timbrada exitosamente."
-                                ),
+                                "message": wa_message,
                             },
                         )
                     )
