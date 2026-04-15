@@ -6,14 +6,14 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from selva_inference import InferenceProvider, InferenceRequest, InferenceResponse, ModelRouter
-from selva_inference.org_config import load_org_config
-from selva_inference.providers.anthropic import AnthropicProvider
-from selva_inference.providers.generic import GenericOpenAIProvider
-from selva_inference.providers.ollama import OllamaProvider
-from selva_inference.providers.openai import OpenAIProvider
-from selva_inference.providers.openrouter import OpenRouterProvider
-from selva_inference.types import RoutingPolicy, Sensitivity
+from madfam_inference import InferenceProvider, InferenceRequest, InferenceResponse, ModelRouter
+from madfam_inference.org_config import load_org_config
+from madfam_inference.providers.anthropic import AnthropicProvider
+from madfam_inference.providers.generic import GenericOpenAIProvider
+from madfam_inference.providers.ollama import OllamaProvider
+from madfam_inference.providers.openai import OpenAIProvider
+from madfam_inference.providers.openrouter import OpenRouterProvider
+from madfam_inference.types import RoutingPolicy, Sensitivity
 
 from .config import get_settings
 
@@ -42,7 +42,7 @@ def build_model_router() -> ModelRouter:
             "Org config not found at %s — using default provider routing",
             settings.org_config_path,
         )
-        from selva_inference.org_config import OrgConfig
+        from madfam_inference.org_config import OrgConfig
         org_config = OrgConfig()
     providers: dict[str, InferenceProvider] = {}
 

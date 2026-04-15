@@ -1,11 +1,11 @@
-# Selva Ecosystem Integration
+# MADFAM Ecosystem Integration
 
-AutoSwarm Office integrates with three sibling Selva platform services:
+AutoSwarm Office integrates with three sibling MADFAM platform services:
 Janua (authentication), Dhanam (billing), and Enclii (deployment).
 
 ## Janua Auth Setup
 
-Janua is the Selva platform's OpenID Connect identity provider. AutoSwarm Office
+Janua is the MADFAM platform's OpenID Connect identity provider. AutoSwarm Office
 delegates all authentication to Janua -- never implement custom auth logic.
 
 ### OIDC Client Configuration
@@ -60,7 +60,7 @@ For the full Janua API surface, read the `llms-full.txt` file in the Janua repos
 
 ## Dhanam Billing
 
-Dhanam is the Selva platform's billing and subscription management service.
+Dhanam is the MADFAM platform's billing and subscription management service.
 AutoSwarm uses Dhanam to enforce compute token budgets and tier-based feature gates.
 
 ### SDK Installation
@@ -113,7 +113,7 @@ For the full Dhanam API surface, read the `llms-full.txt` file in the Dhanam rep
 
 ## Enclii Deployment
 
-Enclii is the Selva platform's deployment orchestration layer. It watches for
+Enclii is the MADFAM platform's deployment orchestration layer. It watches for
 container image pushes to GHCR and manages ArgoCD-based rollouts.
 
 ### Configuration File
@@ -134,7 +134,7 @@ The `.enclii.yml` at the project root defines three services:
 3. The workflow POSTs a lifecycle callback to `https://api.enclii.dev/v1/callbacks/lifecycle-event`
    with the commit SHA and image tags.
 4. Enclii receives the callback and updates the ArgoCD Application manifests in the
-   Selva infrastructure repository.
+   MADFAM infrastructure repository.
 5. ArgoCD detects the manifest change and performs a rolling update across the
    Kubernetes cluster.
 

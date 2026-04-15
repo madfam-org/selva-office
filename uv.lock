@@ -23,7 +23,7 @@ members = [
     "autoswarm-tools",
     "autoswarm-workers",
     "autoswarm-workflows",
-    "selva-inference",
+    "madfam-inference",
 ]
 
 [[package]]
@@ -306,10 +306,10 @@ source = { editable = "packages/memory" }
 dependencies = [
     { name = "asyncpg" },
     { name = "httpx" },
+    { name = "madfam-inference" },
     { name = "numpy" },
     { name = "pgvector" },
     { name = "pydantic" },
-    { name = "selva-inference" },
     { name = "sqlalchemy" },
 ]
 
@@ -317,10 +317,10 @@ dependencies = [
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "madfam-inference", editable = "packages/inference" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "pgvector", specifier = ">=0.2.4" },
     { name = "pydantic", specifier = ">=2.10.5" },
-    { name = "selva-inference", editable = "packages/inference" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
 ]
 
@@ -342,12 +342,12 @@ dependencies = [
     { name = "celery" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "madfam-inference" },
     { name = "prometheus-fastapi-instrumentator" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-jose", extra = ["cryptography"] },
     { name = "redis" },
-    { name = "selva-inference" },
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
@@ -370,12 +370,12 @@ requires-dist = [
     { name = "celery", specifier = ">=5.4.0" },
     { name = "fastapi", specifier = ">=0.115.6" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "madfam-inference", editable = "packages/inference" },
     { name = "prometheus-fastapi-instrumentator", specifier = ">=7.0.0" },
     { name = "pydantic", specifier = ">=2.10.5" },
     { name = "pydantic-settings", specifier = ">=2.7.1" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3.0" },
     { name = "redis", specifier = ">=5.2.1" },
-    { name = "selva-inference", editable = "packages/inference" },
     { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.19.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
     { name = "structlog", specifier = ">=24.0" },
@@ -437,7 +437,7 @@ dependencies = [
     { name = "autoswarm-tools" },
     { name = "autoswarm-workers" },
     { name = "autoswarm-workflows" },
-    { name = "selva-inference" },
+    { name = "madfam-inference" },
 ]
 
 [package.dev-dependencies]
@@ -465,7 +465,7 @@ requires-dist = [
     { name = "autoswarm-tools", editable = "packages/tools" },
     { name = "autoswarm-workers", editable = "apps/workers" },
     { name = "autoswarm-workflows", editable = "packages/workflows" },
-    { name = "selva-inference", editable = "packages/inference" },
+    { name = "madfam-inference", editable = "packages/inference" },
 ]
 
 [package.metadata.requires-dev]
@@ -577,12 +577,12 @@ dependencies = [
     { name = "langchain-core" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
+    { name = "madfam-inference" },
     { name = "prometheus-client" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "redis" },
-    { name = "selva-inference" },
     { name = "sentry-sdk" },
 ]
 
@@ -599,12 +599,12 @@ requires-dist = [
     { name = "langchain-core", specifier = ">=0.3.28" },
     { name = "langgraph", specifier = ">=0.2.60" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0" },
+    { name = "madfam-inference", editable = "packages/inference" },
     { name = "prometheus-client", specifier = ">=0.21.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
     { name = "pydantic", specifier = ">=2.10.5" },
     { name = "pydantic-settings", specifier = ">=2.7.1" },
     { name = "redis", specifier = ">=5.2.1" },
-    { name = "selva-inference", editable = "packages/inference" },
     { name = "sentry-sdk", specifier = ">=2.19.0" },
 ]
 
@@ -616,11 +616,11 @@ dependencies = [
     { name = "autoswarm-permissions" },
     { name = "langchain-core" },
     { name = "langgraph" },
+    { name = "madfam-inference" },
     { name = "mcp" },
     { name = "playwright" },
     { name = "pydantic" },
     { name = "pyyaml" },
-    { name = "selva-inference" },
 ]
 
 [package.metadata]
@@ -628,11 +628,11 @@ requires-dist = [
     { name = "autoswarm-permissions", editable = "packages/permissions" },
     { name = "langchain-core", specifier = ">=0.3.28" },
     { name = "langgraph", specifier = ">=0.2.60" },
+    { name = "madfam-inference", editable = "packages/inference" },
     { name = "mcp", specifier = ">=1.2.0" },
     { name = "playwright", specifier = ">=1.49.0" },
     { name = "pydantic", specifier = ">=2.10.5" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "selva-inference", editable = "packages/inference" },
 ]
 
 [[package]]
@@ -1633,6 +1633,44 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7c/72/34bf2eb7a15414a23e5e70ecb9440c1d3179f393d9349338a91e2781c0fb/librt-0.8.1-cp314-cp314t-win_amd64.whl", hash = "sha256:89815a22daf9c51884fb5dbe4f1ef65ee6a146e0b6a8df05f753e2e4a9359bf4", size = 58722, upload-time = "2026-02-17T16:12:46.85Z" },
     { url = "https://files.pythonhosted.org/packages/b2/c8/d148e041732d631fc76036f8b30fae4e77b027a1e95b7a84bb522481a940/librt-0.8.1-cp314-cp314t-win_arm64.whl", hash = "sha256:bf512a71a23504ed08103a13c941f763db13fb11177beb3d9244c98c29fb4a61", size = 48755, upload-time = "2026-02-17T16:12:47.943Z" },
 ]
+
+[[package]]
+name = "madfam-inference"
+version = "0.1.0"
+source = { editable = "packages/inference" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "anthropic" },
+    { name = "openai" },
+    { name = "pyyaml" },
+]
+anthropic = [
+    { name = "anthropic" },
+]
+openai = [
+    { name = "openai" },
+]
+yaml = [
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.43.0" },
+    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.43.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "openai", marker = "extra == 'all'", specifier = ">=1.59.0" },
+    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.59.0" },
+    { name = "pydantic", specifier = ">=2.10.5" },
+    { name = "pyyaml", marker = "extra == 'all'", specifier = ">=6.0" },
+    { name = "pyyaml", marker = "extra == 'yaml'", specifier = ">=6.0" },
+]
+provides-extras = ["yaml", "anthropic", "openai", "crm", "all"]
 
 [[package]]
 name = "mako"
@@ -2864,44 +2902,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b8/00/bf077a505b4e649bdd3c47ff8ec967735ce2544c8e4a43aba42ee9bf935d/ruff-0.15.5-py3-none-win_amd64.whl", hash = "sha256:821d41c5fa9e19117616c35eaa3f4b75046ec76c65e7ae20a333e9a8696bc7fe", size = 11678972, upload-time = "2026-03-05T20:06:45.379Z" },
     { url = "https://files.pythonhosted.org/packages/fe/4e/cd76eca6db6115604b7626668e891c9dd03330384082e33662fb0f113614/ruff-0.15.5-py3-none-win_arm64.whl", hash = "sha256:b498d1c60d2fe5c10c45ec3f698901065772730b411f164ae270bb6bfcc4740b", size = 10965572, upload-time = "2026-03-05T20:06:16.984Z" },
 ]
-
-[[package]]
-name = "selva-inference"
-version = "0.1.0"
-source = { editable = "packages/inference" }
-dependencies = [
-    { name = "httpx" },
-    { name = "pydantic" },
-]
-
-[package.optional-dependencies]
-all = [
-    { name = "anthropic" },
-    { name = "openai" },
-    { name = "pyyaml" },
-]
-anthropic = [
-    { name = "anthropic" },
-]
-openai = [
-    { name = "openai" },
-]
-yaml = [
-    { name = "pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.43.0" },
-    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.43.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "openai", marker = "extra == 'all'", specifier = ">=1.59.0" },
-    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.59.0" },
-    { name = "pydantic", specifier = ">=2.10.5" },
-    { name = "pyyaml", marker = "extra == 'all'", specifier = ">=6.0" },
-    { name = "pyyaml", marker = "extra == 'yaml'", specifier = ">=6.0" },
-]
-provides-extras = ["yaml", "anthropic", "openai", "crm", "all"]
 
 [[package]]
 name = "sentry-sdk"

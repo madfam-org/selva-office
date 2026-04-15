@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from selva_inference.org_config import (
+from madfam_inference.org_config import (
     ModelAssignment,
     OrgConfig,
     ProviderConfig,

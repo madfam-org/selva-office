@@ -13,7 +13,7 @@ export function EcosystemLinks() {
   return (
     <section className="mx-auto max-w-5xl px-4 py-24">
       <h2 className="pixel-text mb-4 text-center text-lg text-indigo-400">
-        Part of the Selva Ecosystem
+        Part of the MADFAM Ecosystem
       </h2>
 
       <p className="mb-14 text-center text-sm text-slate-500">

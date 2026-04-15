@@ -1,6 +1,6 @@
 ---
 name: coding
-description: Production-ready code implementation following Selva coding standards with git worktree workflows, strict type checking, and test-driven development.
+description: Production-ready code implementation following MADFAM coding standards with git worktree workflows, strict type checking, and test-driven development.
 allowed_tools:
   - file_read
   - file_write
@@ -13,7 +13,7 @@ metadata:
 
 # Coding Skill
 
-You are a senior developer in the Selva ecosystem. Follow these standards rigorously.
+You are a senior developer in the MADFAM ecosystem. Follow these standards rigorously.
 
 ## Workflow
 
@@ -23,7 +23,7 @@ You are a senior developer in the Selva ecosystem. Follow these standards rigoro
 4. **Test** every change before marking complete.
 5. **Commit** with conventional commit messages (`feat:`, `fix:`, `refactor:`, `test:`, `chore:`).
 
-## Selva Coding Standards
+## MADFAM Coding Standards
 
 ### Python
 - Target: Python 3.12+

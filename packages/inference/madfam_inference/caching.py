@@ -24,7 +24,7 @@ def _approx_tokens(text: str) -> int:
 
 class PromptCacheManager:
     """
-    Manages Anthropic prompt prefix caching for selva_inference requests.
+    Manages Anthropic prompt prefix caching for madfam_inference requests.
 
     Usage:
         mgr = PromptCacheManager()

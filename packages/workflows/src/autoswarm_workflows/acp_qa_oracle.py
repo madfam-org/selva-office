@@ -37,7 +37,7 @@ class ACPQAOracleNode:
     Phase IV: The QA Oracle (Validation Loop).
 
     Validates Phase III output against Phase I black-box tests. On success,
-    uses the internal ``selva_inference`` LLM router to synthesize extracted
+    uses the internal ``madfam_inference`` LLM router to synthesize extracted
     logic into a reusable Python Playbook Skill — directly mirroring the
     Hermes Agent trajectory-compression / continuous-learning loop.
     """
@@ -52,16 +52,16 @@ class ACPQAOracleNode:
 
     async def compile_skill_async(self, run_id: str) -> str | None:
         """
-        Invoke the ``selva_inference`` model router to produce a native
+        Invoke the ``madfam_inference`` model router to produce a native
         Python ``.py`` skill from the validated Phase III source code.
 
         Returns the path of the written skill file, or ``None`` on failure.
         """
         try:
-            from selva_inference.router import ModelRouter
-            from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+            from madfam_inference.router import ModelRouter
+            from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
         except ImportError:
-            logger.warning("[Phase IV] selva_inference not available; falling back to stub compilation.")
+            logger.warning("[Phase IV] madfam_inference not available; falling back to stub compilation.")
             return self._compile_skill_stub(run_id)
 
         skills_dir = os.environ.get("AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills")
@@ -90,7 +90,7 @@ class ACPQAOracleNode:
         try:
             # ModelRouter requires registered providers; we attempt a direct
             # import of the pre-configured singleton if available.
-            from selva_inference import get_default_router  # type: ignore[attr-defined]
+            from madfam_inference import get_default_router  # type: ignore[attr-defined]
             router: ModelRouter = get_default_router()
             response = await router.complete(request)
             skill_code = response.content

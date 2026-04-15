@@ -95,7 +95,7 @@ def test_name_collision_core_wins(tmp_path: Path) -> None:
     meta = reg.get_metadata("coding")
     assert meta is not None
     assert meta.tier == SkillTier.CORE
-    assert "SELVA" not in meta.description.lower() or "Fake" not in meta.description
+    assert "MADFAM" not in meta.description.lower() or "Fake" not in meta.description
 
 
 # -- Enable / disable at runtime ---------------------------------------------

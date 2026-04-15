@@ -12,7 +12,7 @@ metadata:
 
 # MCP Builder Skill
 
-You build Model Context Protocol (MCP) servers to extend the Selva platform.
+You build Model Context Protocol (MCP) servers to extend the MADFAM platform.
 
 ## MCP Server Structure
 
@@ -48,6 +48,6 @@ Each tool must define:
 
 ## Integration with AutoSwarm
 
-MCP servers in Selva register via the nexus-api configuration.
+MCP servers in the MADFAM platform register via the nexus-api configuration.
 Each agent can access MCP tools based on their skill permissions.
 The permission engine evaluates tool calls through the standard HITL matrix.

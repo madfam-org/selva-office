@@ -1,7 +1,7 @@
 # AutoSwarm Office -- Full Reference
 
 > Gamified multi-agent business orchestration platform
-> Part of the Selva ecosystem (Janua, Dhanam, Enclii)
+> Part of the MADFAM ecosystem (Janua, Dhanam, Enclii)
 
 ## Project Structure
 
