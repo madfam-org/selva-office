@@ -34,6 +34,7 @@ from autoswarm_redis_pool.timeout import get_task_timeout
 from .checkpointer import create_checkpointer
 from .config import get_settings
 from .event_emitter import emit_event as _emit_event
+from .graphs.accounting import build_accounting_graph
 from .graphs.billing import build_billing_graph
 from .graphs.coding import build_coding_graph
 from .graphs.crm import build_crm_graph
@@ -54,6 +55,7 @@ logger = logging.getLogger("autoswarm.worker")
 
 AGENT_STATUS_CHANNEL = "autoswarm:agent-status"
 GRAPH_BUILDERS = {
+    "accounting": build_accounting_graph,
     "billing": build_billing_graph,
     "coding": build_coding_graph,
     "research": build_research_graph,
@@ -329,6 +331,19 @@ async def process_task(task_data: dict) -> None:
         initial_state["summary"] = ""
         initial_state["action_items"] = []
         initial_state["recording_url"] = payload.get("recording_url", "")
+    elif graph_type == "accounting":
+        payload = task_data.get("payload", {})
+        initial_state["org_id"] = payload.get("org_id", "")
+        initial_state["period"] = payload.get("period", "")
+        initial_state["rfc"] = payload.get("rfc", "")
+        initial_state["regime"] = payload.get("regime", "pf")
+        initial_state["transactions"] = []
+        initial_state["bank_statements"] = []
+        initial_state["pos_transactions"] = []
+        initial_state["payment_summary"] = None
+        initial_state["reconciliation"] = None
+        initial_state["tax_computation"] = None
+        initial_state["declaration_data"] = None
     elif graph_type == "billing":
         payload = task_data.get("payload", {})
         initial_state["emisor_rfc"] = payload.get("emisor_rfc", "")
