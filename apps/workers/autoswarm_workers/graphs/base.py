@@ -135,7 +135,33 @@ def check_permission(
         risk_score=state.get("risk_score"),  # type: ignore[arg-type]
         agent_role=state.get("agent_role"),  # type: ignore[arg-type]
     )
-    return engine.evaluate(category, context=perm_context)
+
+    # Resolve playbook guard for bounded autonomous execution (Axiom IV)
+    playbook_guard = None
+    playbook_data = state.get("playbook")
+    if playbook_data and isinstance(playbook_data, dict):
+        try:
+            from autoswarm_permissions.playbook import (
+                PlaybookDefinition,
+                PlaybookExecutionState,
+                PlaybookGuard,
+            )
+
+            playbook_def = PlaybookDefinition(
+                id=playbook_data.get("id", ""),
+                name=playbook_data.get("name", ""),
+                trigger_event=playbook_data.get("trigger_event", ""),
+                allowed_actions=set(playbook_data.get("allowed_actions", [])),
+                token_budget=playbook_data.get("token_budget", 50),
+                financial_cap_cents=playbook_data.get("financial_cap_cents", 0),
+                require_approval=playbook_data.get("require_approval", False),
+            )
+            exec_state = PlaybookExecutionState(playbook=playbook_def)
+            playbook_guard = PlaybookGuard(exec_state)
+        except Exception:
+            pass
+
+    return engine.evaluate(category, context=perm_context, playbook_guard=playbook_guard)
 
 
 def permission_check(state: BaseGraphState) -> BaseGraphState:

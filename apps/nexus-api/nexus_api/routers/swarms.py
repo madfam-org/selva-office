@@ -347,6 +347,19 @@ async def dispatch_task(
         }
         if workflow_yaml is not None:
             task_msg_data["workflow_yaml"] = workflow_yaml
+
+        # Resolve matching playbook for autonomous execution (Axiom IV)
+        try:
+            from .playbooks import _playbooks
+            trigger_event = (task.payload or {}).get("trigger_event", "")
+            if trigger_event:
+                for pb in _playbooks.values():
+                    if pb["trigger_event"] == trigger_event and pb["enabled"] and not pb["require_approval"]:
+                        task_msg_data["playbook_id"] = pb["id"]
+                        task_msg_data["playbook"] = pb
+                        break
+        except Exception:
+            pass
         task_msg = json.dumps(task_msg_data)
         await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
     except Exception:
