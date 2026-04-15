@@ -269,6 +269,24 @@ async def dispatch_task(
             exc_info=True,
         )
 
+    # -- Compute token budget enforcement (Dhanam subscription tier) ----------
+    if tenant_config and tenant_config.dhanam_space_id:
+        try:
+            from ..billing_client import get_billing_status
+
+            billing = await get_billing_status(tenant_config.dhanam_space_id)
+            if billing and billing.get("compute_tokens_remaining", float("inf")) <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail="Compute token budget exhausted. Upgrade your subscription at dhan.am",
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Compute budget check skipped (Dhanam unavailable)", exc_info=True
+            )
+
     # -- Compute token budget check -------------------------------------------
     dispatch_cost = 10  # matches ComputeTokenManager.COST_TABLE["dispatch_task"]
 

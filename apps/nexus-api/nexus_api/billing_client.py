@@ -60,3 +60,31 @@ class DhanamClient:
             hashlib.sha256,
         ).hexdigest()
         return hmac.compare_digest(expected, signature)
+
+
+async def get_billing_status(dhanam_space_id: str) -> dict[str, Any] | None:
+    """Fetch compute token budget from Dhanam for a given space.
+
+    Returns a dict with at least ``compute_tokens_remaining`` on success,
+    or ``None`` when the Dhanam API is not configured or unreachable.
+    Designed to be called from dispatch-time budget enforcement.
+    """
+    from .config import get_settings
+
+    settings = get_settings()
+    if not settings.dhanam_api_url:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{settings.dhanam_api_url.rstrip('/')}/v1/spaces/{dhanam_space_id}/budget",
+                headers={"Authorization": f"Bearer {settings.dhanam_webhook_secret}"},
+            )
+            resp.raise_for_status()
+            return resp.json()
+    except Exception:
+        logger.debug(
+            "Failed to fetch billing status for space %s", dhanam_space_id, exc_info=True
+        )
+        return None

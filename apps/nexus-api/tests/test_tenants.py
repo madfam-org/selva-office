@@ -329,3 +329,318 @@ class TestRFCValidation:
             )
             assert resp.status_code == 400
             assert "Karafiel" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Tests: Enterprise SSO Configuration
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestConfigureSSO:
+    async def test_configure_sso_stores_connection_id(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """PATCH /me/sso should store the Janua connection ID."""
+        await _create_tenant(client, auth_headers)
+
+        resp = await client.patch(
+            f"{_TENANTS_URL}/me/sso",
+            headers=auth_headers,
+            json={"janua_connection_id": "conn-okta-enterprise-123"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "configured"
+        assert data["janua_connection_id"] == "conn-okta-enterprise-123"
+
+        # Verify it persisted by reading the tenant config
+        me_resp = await client.get(f"{_TENANTS_URL}/me", headers=auth_headers)
+        assert me_resp.status_code == 200
+        assert me_resp.json()["janua_connection_id"] == "conn-okta-enterprise-123"
+
+    async def test_configure_sso_404_when_not_provisioned(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """PATCH /me/sso should return 404 if tenant not provisioned."""
+        resp = await client.patch(
+            f"{_TENANTS_URL}/me/sso",
+            headers=auth_headers,
+            json={"janua_connection_id": "conn-xyz"},
+        )
+        assert resp.status_code == 404
+
+    async def test_configure_sso_rejects_empty_connection_id(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """PATCH /me/sso should reject an empty janua_connection_id."""
+        await _create_tenant(client, auth_headers)
+
+        resp = await client.patch(
+            f"{_TENANTS_URL}/me/sso",
+            headers=auth_headers,
+            json={"janua_connection_id": ""},
+        )
+        assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Tests: White-Label Branding
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestBranding:
+    async def test_get_branding_returns_defaults(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """GET /me/branding returns defaults when tenant has no config."""
+        resp = await client.get(f"{_TENANTS_URL}/me/branding", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["brand_name"] == "Selva Office"
+        assert data["brand_primary_color"] == "#4a9e6e"
+        assert data["brand_logo_url"] is None
+
+    async def test_get_branding_returns_defaults_when_provisioned_but_unset(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """GET /me/branding returns defaults when tenant exists but branding is null."""
+        await _create_tenant(client, auth_headers)
+
+        resp = await client.get(f"{_TENANTS_URL}/me/branding", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["brand_name"] == "Selva Office"
+        assert data["brand_primary_color"] == "#4a9e6e"
+
+    async def test_update_branding_sets_values(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """PATCH /me/branding should persist custom branding."""
+        await _create_tenant(client, auth_headers)
+
+        resp = await client.patch(
+            f"{_TENANTS_URL}/me/branding",
+            headers=auth_headers,
+            json={
+                "brand_name": "MADFAM Hub",
+                "brand_logo_url": "https://cdn.madfam.dev/logo.svg",
+                "brand_primary_color": "#1a2b3c",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["brand_name"] == "MADFAM Hub"
+        assert data["brand_logo_url"] == "https://cdn.madfam.dev/logo.svg"
+        assert data["brand_primary_color"] == "#1a2b3c"
+
+        # Verify via GET
+        get_resp = await client.get(
+            f"{_TENANTS_URL}/me/branding", headers=auth_headers
+        )
+        assert get_resp.status_code == 200
+        assert get_resp.json()["brand_name"] == "MADFAM Hub"
+
+    async def test_update_branding_partial(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """PATCH /me/branding with partial body only updates provided fields."""
+        await _create_tenant(client, auth_headers)
+
+        resp = await client.patch(
+            f"{_TENANTS_URL}/me/branding",
+            headers=auth_headers,
+            json={"brand_name": "Custom Name"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["brand_name"] == "Custom Name"
+        # Other fields should retain defaults
+        assert data["brand_primary_color"] == "#4a9e6e"
+
+    async def test_update_branding_404_when_not_provisioned(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """PATCH /me/branding should return 404 if tenant not provisioned."""
+        resp = await client.patch(
+            f"{_TENANTS_URL}/me/branding",
+            headers=auth_headers,
+            json={"brand_name": "Nope"},
+        )
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Tests: Compute Budget Enforcement (Dhanam)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestComputeBudgetEnforcement:
+    async def test_compute_budget_enforcement_402(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        db_session,
+    ) -> None:
+        """Dispatch returns 402 when Dhanam reports zero remaining tokens."""
+        # Create tenant with a dhanam_space_id
+        await _create_tenant(client, auth_headers)
+
+        # Manually set dhanam_space_id on the tenant config
+        from sqlalchemy import select
+
+        from nexus_api.models import TenantConfig
+
+        result = await db_session.execute(
+            select(TenantConfig).where(TenantConfig.org_id == "dev-org")
+        )
+        config = result.scalar_one()
+        config.dhanam_space_id = "space-test-123"
+        await db_session.commit()
+
+        # Create an agent so dispatch can assign it
+        agent_resp = await client.post(
+            "/api/v1/agents/",
+            headers=auth_headers,
+            json={"name": "BudgetTestBot", "role": "coder"},
+        )
+        agent_id = agent_resp.json()["id"]
+
+        # Mock Redis and billing status to return exhausted budget
+        mock_pool = AsyncMock()
+        mock_pool.execute_with_retry = AsyncMock()
+
+        async def _mock_billing_status(space_id: str):
+            return {"compute_tokens_remaining": 0}
+
+        with (
+            patch(
+                "nexus_api.routers.swarms.get_redis_pool",
+                return_value=mock_pool,
+            ),
+            patch(
+                "nexus_api.billing_client.get_billing_status",
+                side_effect=_mock_billing_status,
+            ),
+        ):
+            resp = await client.post(
+                "/api/v1/swarms/dispatch",
+                headers=auth_headers,
+                json={
+                    "description": "Should be blocked by budget",
+                    "graph_type": "sequential",
+                    "assigned_agent_ids": [agent_id],
+                },
+            )
+            assert resp.status_code == 402
+            assert "budget exhausted" in resp.json()["detail"].lower()
+
+    async def test_compute_budget_allows_when_tokens_remain(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        db_session,
+    ) -> None:
+        """Dispatch succeeds when Dhanam reports positive remaining tokens."""
+        await _create_tenant(client, auth_headers)
+
+        from sqlalchemy import select
+
+        from nexus_api.models import TenantConfig
+
+        result = await db_session.execute(
+            select(TenantConfig).where(TenantConfig.org_id == "dev-org")
+        )
+        config = result.scalar_one()
+        config.dhanam_space_id = "space-test-456"
+        await db_session.commit()
+
+        agent_resp = await client.post(
+            "/api/v1/agents/",
+            headers=auth_headers,
+            json={"name": "BudgetOKBot", "role": "coder"},
+        )
+        agent_id = agent_resp.json()["id"]
+
+        mock_pool = AsyncMock()
+        mock_pool.execute_with_retry = AsyncMock()
+
+        async def _mock_billing_ok(space_id: str):
+            return {"compute_tokens_remaining": 9999}
+
+        with (
+            patch(
+                "nexus_api.routers.swarms.get_redis_pool",
+                return_value=mock_pool,
+            ),
+            patch(
+                "nexus_api.billing_client.get_billing_status",
+                side_effect=_mock_billing_ok,
+            ),
+        ):
+            resp = await client.post(
+                "/api/v1/swarms/dispatch",
+                headers=auth_headers,
+                json={
+                    "description": "Should pass budget check",
+                    "graph_type": "sequential",
+                    "assigned_agent_ids": [agent_id],
+                },
+            )
+            assert resp.status_code == 201
+
+    async def test_compute_budget_skipped_when_dhanam_unavailable(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        db_session,
+    ) -> None:
+        """Dispatch proceeds gracefully when Dhanam API is unreachable."""
+        await _create_tenant(client, auth_headers)
+
+        from sqlalchemy import select
+
+        from nexus_api.models import TenantConfig
+
+        result = await db_session.execute(
+            select(TenantConfig).where(TenantConfig.org_id == "dev-org")
+        )
+        config = result.scalar_one()
+        config.dhanam_space_id = "space-test-789"
+        await db_session.commit()
+
+        agent_resp = await client.post(
+            "/api/v1/agents/",
+            headers=auth_headers,
+            json={"name": "FallbackBot", "role": "coder"},
+        )
+        agent_id = agent_resp.json()["id"]
+
+        mock_pool = AsyncMock()
+        mock_pool.execute_with_retry = AsyncMock()
+
+        async def _mock_billing_fail(space_id: str):
+            raise ConnectionError("Dhanam unavailable")
+
+        with (
+            patch(
+                "nexus_api.routers.swarms.get_redis_pool",
+                return_value=mock_pool,
+            ),
+            patch(
+                "nexus_api.billing_client.get_billing_status",
+                side_effect=_mock_billing_fail,
+            ),
+        ):
+            resp = await client.post(
+                "/api/v1/swarms/dispatch",
+                headers=auth_headers,
+                json={
+                    "description": "Should proceed despite Dhanam failure",
+                    "graph_type": "sequential",
+                    "assigned_agent_ids": [agent_id],
+                },
+            )
+            assert resp.status_code == 201

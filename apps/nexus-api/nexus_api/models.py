@@ -503,6 +503,16 @@ class TenantConfig(Base):
     max_agents: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     max_daily_tasks: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
 
+    # Enterprise SSO (migration 0016)
+    janua_connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # White-label branding (migration 0016)
+    brand_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    brand_logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    brand_primary_color: Mapped[str | None] = mapped_column(
+        String(7), nullable=True
+    )  # hex e.g. #4a9e6e
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
