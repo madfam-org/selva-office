@@ -63,7 +63,9 @@ function persistMessage(
       is_system: isSystem,
     }),
   }).catch((err) => {
-    console.warn("Failed to persist chat message:", err.message);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist chat message:", err.message);
+    }
   });
 }
 

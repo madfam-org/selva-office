@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import random
 from dataclasses import dataclass, field
 from typing import Any
@@ -40,7 +41,7 @@ class InterruptHandler:
     """
 
     nexus_api_url: str
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = field(default_factory=lambda: os.environ.get("REDIS_URL", "redis://localhost:6379"))
     default_timeout: int = 300
     auth_headers: dict[str, str] = field(default_factory=dict)
     client: httpx.AsyncClient = field(init=False)

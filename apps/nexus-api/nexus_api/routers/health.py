@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import httpx
 from fastapi import APIRouter, Response, status
@@ -97,7 +98,8 @@ async def health_detail(response: Response) -> dict[str, object]:
     # -- Colyseus check -------------------------------------------------------
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get("http://localhost:4303/health")
+            _colyseus_url = os.environ.get("COLYSEUS_URL", "http://localhost:4303")
+            resp = await client.get(f"{_colyseus_url}/health")
             checks["colyseus"] = "ok" if resp.status_code == 200 else "degraded"
     except Exception:
         logger.debug("Colyseus health check failed", exc_info=True)

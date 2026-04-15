@@ -149,7 +149,7 @@ const DEFAULT_DEPARTMENTS: Array<{
 ];
 
 export class OfficeRoom extends Room<OfficeStateSchema> {
-  private nexusApiUrl: string = "http://localhost:4300";
+  private nexusApiUrl: string = process.env.NEXUS_API_URL ?? "http://localhost:4300";
   private stopProximityLoop: (() => void) | null = null;
   private agentIndex = new Map<string, { deptId: string; agentIndex: number }>();
   private redisSubscriber: RedisClientType | null = null;
