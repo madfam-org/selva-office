@@ -120,6 +120,15 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Enterprise Mexican Market (v2.0.0)
+
+- **Sprints 1-7**: KarafielAdapter (compliance), DhanamAdapter (billing+
+  economic data), TezcaAdapter (legal), CrawlerAdapter (scraping).
+  74 tools, 12 graphs (billing, accounting, sales, intelligence),
+  15 es-MX locale skills, TenantConfig with RFC validation, multi-tenant
+  provisioning with 6 Mexican departments, daily task limits.
+  See ROADMAP.md for detailed sprint breakdown.
+
 ## Final Remediation (v1.2.1)
 
 - **Hub client test fix**: `test_hub_client.py` used `AsyncMock` for
