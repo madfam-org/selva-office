@@ -120,6 +120,17 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Competitive Dominance Wave 4 (v0.9.0)
+
+- **Mobile UX Polish**: Haptic feedback (`navigator.vibrate(50)`) on
+  touch action buttons. Compact layout for screens <640px. `MobileNav`
+  bottom tab bar (Office/Chat/Tasks/Settings) visible only on touch
+  devices. CSS safe area padding for notched phones.
+- **Competitive Benchmark**: `docs/BENCHMARK.md` — living document with
+  feature matrices vs Hermes Agent, OpenClaw, Gather, WorkAdventure,
+  CrewAI, LangGraph, MS Agent Framework. Platform stats, security posture,
+  parity scorecard.
+
 ## Competitive Dominance Wave 3 (v0.8.0)
 
 - **Tool Expansion (40→54)**: 14 new tools across 5 categories:

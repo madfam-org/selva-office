@@ -119,9 +119,9 @@ While horizontal parity is achieved, deep vertical integration for professional 
 - `[x]` Tool expansion (40→54): email, calendar, database, HTTP, document tools + SSRF/SQL security
 - `[x]` A2A protocol: AgentCard discovery, task send/subscribe/SSE, A2AClient, CallExternalAgentTool
 
-### Wave 4: Polish (Planned)
-- `[ ]` **Mobile UX**: Haptic feedback, compact touch layout, bottom tab bar
-- `[ ]` **Benchmark docs**: Competitive metrics dashboard (BENCHMARK.md)
+### Wave 4: Polish (v0.9.0) ✅
+- `[x]` Mobile UX: haptic feedback, compact touch layout, MobileNav bottom tab bar, CSS safe areas
+- `[x]` Benchmark docs: `docs/BENCHMARK.md` — full competitive matrix vs 7 platforms
 
 ---
 
