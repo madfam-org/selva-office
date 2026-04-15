@@ -186,3 +186,84 @@ class InflationTool(BaseTool):
             ),
             data=result.model_dump(),
         )
+
+
+class SATMonitorTool(BaseTool):
+    name = "sat_monitor"
+    description = (
+        "Check RFC tax obligation status and alerts via Karafiel SAT module"
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "rfc": {
+                    "type": "string",
+                    "description": (
+                        "RFC to check obligations for (e.g. 'XAXX010101000')"
+                    ),
+                },
+            },
+            "required": ["rfc"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        from madfam_inference.adapters.karafiel import KarafielAdapter
+
+        rfc: str = kwargs.get("rfc", "")
+        if not rfc:
+            return ToolResult(success=False, error="rfc is required")
+
+        adapter = KarafielAdapter()
+        result = await adapter.get_sat_obligations(rfc)
+        success = not result.get("status", "").startswith("error")
+        return ToolResult(
+            success=success,
+            output=(
+                f"SAT obligations for RFC {rfc}: "
+                f"{result.get('pending_count', 0)} pending, "
+                f"{result.get('alert_count', 0)} alert(s)"
+            ),
+            data=result,
+        )
+
+
+class SIEMComplianceTool(BaseTool):
+    name = "siem_compliance"
+    description = (
+        "Check SIEM (Sistema de Informacion Empresarial Mexicano) "
+        "registration status"
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "rfc": {
+                    "type": "string",
+                    "description": "RFC of the entity to check SIEM status for",
+                },
+            },
+            "required": ["rfc"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        from madfam_inference.adapters.karafiel import KarafielAdapter
+
+        rfc: str = kwargs.get("rfc", "")
+        if not rfc:
+            return ToolResult(success=False, error="rfc is required")
+
+        adapter = KarafielAdapter()
+        result = await adapter.get_siem_status(rfc)
+        success = not result.get("status", "").startswith("error")
+        return ToolResult(
+            success=success,
+            output=(
+                f"SIEM status for RFC {rfc}: "
+                f"registered={result.get('registered', False)}, "
+                f"renewal_date={result.get('renewal_date', 'N/A')}"
+            ),
+            data=result,
+        )

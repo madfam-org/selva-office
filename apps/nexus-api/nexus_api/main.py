@@ -17,6 +17,7 @@ from .analytics import shutdown as shutdown_posthog
 from .config import get_settings
 from .database import engine
 from .logging_config import configure_logging
+from .middleware.audit import AuditMiddleware
 from .middleware.csrf import CSRFMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .middleware.request_id import RequestIdMiddleware
@@ -24,8 +25,10 @@ from .middleware.security import SecurityHeadersMiddleware, TenantRLSMiddleware
 from .routers import (
     admin,
     agents,
+    analytics,
     approvals,
     artifacts,
+    audit,
     billing,
     billing_internal,
     calendar,
@@ -137,6 +140,7 @@ def create_app() -> FastAPI:
         requests_per_minute=settings.rate_limit_per_minute,
     )
     app.add_middleware(CSRFMiddleware)
+    app.add_middleware(AuditMiddleware)
 
     # -- Root health endpoint (K8s liveness probe) ----------------------------
     @app.get("/health", tags=["health"])
@@ -164,6 +168,8 @@ def create_app() -> FastAPI:
     app.include_router(events.router, prefix="/api/v1/events")
     app.include_router(metrics.router, prefix="/api/v1/metrics")
     app.include_router(admin.router, prefix="/api/v1/admin")
+    app.include_router(audit.router, prefix="/api/v1/audit")
+    app.include_router(analytics.router, prefix="/api/v1/analytics")
     app.include_router(tenants.router, prefix="/api/v1/tenants")
     app.include_router(voice.router, prefix="/api/v1/voice")
     app.include_router(schedules.router, prefix="/api/v1")
