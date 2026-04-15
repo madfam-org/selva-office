@@ -48,7 +48,7 @@ def analyze(state: ProjectState) -> ProjectState:
 
             router = get_model_router()
             prompt = (
-                "You are a strategic advisor for MADFAM, a sovereign tech ecosystem.\n"
+                "You are a strategic advisor for Selva, a sovereign tech ecosystem.\n"
                 "Analyze this goal and identify:\n"
                 "1. Key constraints and dependencies\n"
                 "2. Available resources (agents, infrastructure, services)\n"
@@ -66,7 +66,7 @@ def analyze(state: ProjectState) -> ProjectState:
         except Exception as exc:
             return json.dumps({
                 "constraints": ["LLM unavailable"],
-                "resources": ["10 MADFAM agents"],
+                "resources": ["10 Selva agents"],
                 "risks": [str(exc)],
                 "metrics": ["task completion rate"],
             })

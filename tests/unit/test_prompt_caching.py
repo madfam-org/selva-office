@@ -2,7 +2,7 @@
 Unit tests — Gap 7: Prompt Caching (Anthropic Prefix Caching)
 """
 import pytest
-from madfam_inference.caching import PromptCacheManager
+from selva_inference.caching import PromptCacheManager
 
 
 class TestPromptCacheManager:

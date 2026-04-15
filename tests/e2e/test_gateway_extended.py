@@ -103,10 +103,10 @@ class TestEmailGateway:
     def test_whitelisted_sender_triggers_acp(self, test_client, monkeypatch):
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
-            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist="boss@madfam.io"),
+            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist="boss@selva.town"),
         )
         resp = test_client.post(self.URL, json={
-            "from": "boss@madfam.io",
+            "from": "boss@selva.town",
             "text": "Hey agent,\ninitiate_acp: https://target.example.com\nThanks",
         })
         assert resp.status_code == 200
@@ -115,7 +115,7 @@ class TestEmailGateway:
     def test_unlisted_sender_is_rejected(self, test_client, monkeypatch):
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
-            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist="boss@madfam.io"),
+            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist="boss@selva.town"),
         )
         resp = test_client.post(self.URL, json={
             "from": "stranger@evil.com",

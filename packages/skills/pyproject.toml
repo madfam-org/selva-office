@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "AutoSwarm Office skills registry for storing and retrieving procedurally generated tools and agent logics."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{ name = "MADFAM Org" }]
+authors = [{ name = "Selva" }]
 dependencies = [
     "pydantic>=2.0.0",
 ]

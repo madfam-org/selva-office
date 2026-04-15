@@ -1,4 +1,4 @@
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agents-app.madfam.io';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agents-app.selva.town';
 const YEAR = new Date().getFullYear();
 
 const LINKS = [
@@ -18,7 +18,7 @@ export function Footer() {
             AutoSwarm Office
           </span>
           <p className="mt-1 text-xs text-slate-600">
-            by MADFAM &middot; {YEAR}
+            by Selva &middot; {YEAR}
           </p>
         </div>
 
@@ -42,7 +42,7 @@ export function Footer() {
 
         {/* Right: status badge */}
         <a
-          href="https://status.madfam.io"
+          href="https://status.selva.town"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 px-3 py-1.5 text-xs text-slate-500 transition-colors hover:border-emerald-600/40 hover:text-emerald-400"

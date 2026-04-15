@@ -7,7 +7,7 @@ dependencies = [
   "pydantic>=2.10.5",
   "numpy>=2.0",
   "httpx>=0.28.1",
-  "madfam-inference",
+  "selva-inference",
   "sqlalchemy>=2.0.0",
   "pgvector>=0.2.4",
   "asyncpg>=0.29.0",

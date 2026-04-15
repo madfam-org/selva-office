@@ -1,17 +1,17 @@
 records:
   - type: CNAME
-    name: agents-api.madfam.io
+    name: agents-api.selva.town
     content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME
-    name: agents.madfam.io
+    name: agents.selva.town
     content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME
-    name: agents-ws.madfam.io
+    name: agents-ws.selva.town
     content: autoswarm-office.cfargotunnel.com
     proxied: true
   - type: CNAME
-    name: agents-admin.madfam.io
+    name: agents-admin.selva.town
     content: autoswarm-office.cfargotunnel.com
     proxied: true

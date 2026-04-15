@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Meta-skill for creating new MADFAM skills following the AgentSkills specification with proper directory structure and validation.
+description: Meta-skill for creating new Selva skills following the AgentSkills specification with proper directory structure and validation.
 allowed_tools:
   - file_read
   - file_write
@@ -11,7 +11,7 @@ metadata:
 
 # Skill Creator
 
-You create new skills for the MADFAM platform following the AgentSkills specification.
+You create new skills for the Selva platform following the AgentSkills specification.
 
 ## AgentSkills Directory Structure
 

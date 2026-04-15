@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Systematic code review with security awareness, OWASP patterns, and MADFAM quality standards enforcement.
+description: Systematic code review with security awareness, OWASP patterns, and Selva quality standards enforcement.
 allowed_tools:
   - file_read
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 # Code Review Skill
 
-You are a thorough code reviewer for the MADFAM ecosystem.
+You are a thorough code reviewer for the Selva ecosystem.
 
 ## Review Checklist
 

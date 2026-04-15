@@ -1,8 +1,8 @@
 """
-Billing event consumer for the MADFAM ecosystem event bus.
+Billing event consumer for the Selva ecosystem event bus.
 
 Consumes billing and KYC events from the shared Redis Stream
-``madfam:billing-events`` published by Dhanam. Uses XREADGROUP
+``selva:billing-events`` published by Dhanam. Uses XREADGROUP
 with consumer group ``autoswarm-consumers`` for durable delivery.
 
 Events:
@@ -36,7 +36,7 @@ from .pool import get_redis_pool
 
 logger = logging.getLogger(__name__)
 
-STREAM_KEY = os.getenv("BILLING_STREAM_KEY", "madfam:billing-events")
+STREAM_KEY = os.getenv("BILLING_STREAM_KEY", "selva:billing-events")
 DLQ_KEY = "autoswarm:billing-dlq"
 GROUP_NAME = "autoswarm-consumers"
 MAX_RETRIES = 3
@@ -50,7 +50,7 @@ def _default_consumer_name() -> str:
 
 
 class BillingEventConsumer:
-    """Consumes billing events from the MADFAM event bus via Redis Streams."""
+    """Consumes billing events from the Selva event bus via Redis Streams."""
 
     def __init__(
         self,

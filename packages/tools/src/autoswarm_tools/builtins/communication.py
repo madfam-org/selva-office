@@ -55,7 +55,7 @@ class SendNotificationTool(BaseTool):
 
     async def _send_email(self, to: str, subject: str, body: str) -> ToolResult:
         api_key = os.environ.get("RESEND_API_KEY")
-        from_addr = os.environ.get("EMAIL_FROM", "AutoSwarm <noreply@madfam.io>")
+        from_addr = os.environ.get("EMAIL_FROM", "AutoSwarm <noreply@selva.town>")
 
         if not api_key:
             logger.warning("RESEND_API_KEY not configured — email logged only")

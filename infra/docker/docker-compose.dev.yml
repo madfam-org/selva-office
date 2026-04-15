@@ -19,7 +19,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
   redis:
     image: redis:7-alpine
@@ -41,7 +41,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
   coturn:
     image: coturn/coturn:latest
@@ -52,7 +52,7 @@ services:
     volumes:
       - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
 volumes:
   pgdata:
@@ -61,5 +61,5 @@ volumes:
     driver: local
 
 networks:
-  madfam-shared-network:
+  selva-shared-network:
     external: false

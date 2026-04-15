@@ -17,7 +17,7 @@ dependencies = [
   "websockets>=14.1",
   "autoswarm-orchestrator",
   "autoswarm-permissions",
-  "madfam-inference",
+  "selva-inference",
   "autoswarm-skills",
   "autoswarm-workflows",
   "autoswarm-observability",

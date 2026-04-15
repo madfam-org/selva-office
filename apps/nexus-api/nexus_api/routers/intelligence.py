@@ -1,4 +1,4 @@
-"""Intelligence configuration endpoint — control plane for MADFAM inference."""
+"""Intelligence configuration endpoint — control plane for Selva inference."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from madfam_inference.org_config import OrgConfig, TaskType, load_org_config
+from selva_inference.org_config import OrgConfig, TaskType, load_org_config
 
 from ..auth import get_current_user
 from ..config import get_settings

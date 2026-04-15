@@ -25,7 +25,7 @@ describe('HeroSection', () => {
     const ctaLink = screen.getByText(/Enter the Office/);
     expect(ctaLink).toBeTruthy();
     expect(ctaLink.closest('a')?.getAttribute('href')).toBe(
-      'https://agents-app.madfam.io',
+      'https://agents-app.selva.town',
     );
   });
 
@@ -34,7 +34,7 @@ describe('HeroSection', () => {
     const demoLink = screen.getByText('Try Demo');
     expect(demoLink).toBeTruthy();
     expect(demoLink.closest('a')?.getAttribute('href')).toBe(
-      'https://agents-app.madfam.io/demo',
+      'https://agents-app.selva.town/demo',
     );
   });
 });

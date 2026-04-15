@@ -57,7 +57,7 @@ class AgentNodeHandler:
                 if router is None:
                     raise RuntimeError("No model router available")  # noqa: TRY301
 
-                from madfam_inference import InferenceRequest, RoutingPolicy
+                from selva_inference import InferenceRequest, RoutingPolicy
 
                 policy = RoutingPolicy()
                 if node.temperature is not None:

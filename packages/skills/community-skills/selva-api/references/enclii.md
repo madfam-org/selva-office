@@ -1,7 +1,7 @@
 # Enclii Deployment API
 
 ## Overview
-Enclii handles deployment and infrastructure management for the MADFAM ecosystem.
+Enclii handles deployment and infrastructure management for the Selva ecosystem.
 
 ## Configuration
 The `.enclii.yml` file at the repository root defines all services:
