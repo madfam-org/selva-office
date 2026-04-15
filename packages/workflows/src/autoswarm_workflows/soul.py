@@ -49,10 +49,16 @@ class SoulLoader:
                 try:
                     text = path.read_text(encoding="utf-8", errors="replace").strip()
                     if len(text) > _MAX_CHARS:
-                        logger.warning("SOUL.md at %s exceeds %d chars — truncating.", path, _MAX_CHARS)
+                        logger.warning(
+                            "SOUL.md at %s exceeds %d chars — truncating.",
+                            path, _MAX_CHARS,
+                        )
                         text = text[:_MAX_CHARS] + "\n\n[... truncated ...]"
                     self._cached = text
-                    logger.info("SoulLoader: loaded personality from %s (%d chars).", path, len(text))
+                    logger.info(
+                        "SoulLoader: loaded personality from %s (%d chars).",
+                        path, len(text),
+                    )
                     return text
                 except Exception as exc:
                     logger.warning("SoulLoader: could not read %s: %s", path, exc)

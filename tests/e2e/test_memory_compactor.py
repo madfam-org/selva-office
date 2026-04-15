@@ -20,7 +20,9 @@ def _seed_old_run(db, run_id: str, days_ago: int = 60):
     """Insert an episode and two transcripts backdated by days_ago."""
     cutoff = time.time() - (days_ago * 86400)
     db._conn.execute(
-        "INSERT INTO conversation_episodes (id, run_id, agent_role, started_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO conversation_episodes"
+        " (id, run_id, agent_role, started_at)"
+        " VALUES (?, ?, ?, ?)",
         (f"ep-{run_id}", run_id, "acp-analyst", cutoff),
     )
     for i, content in enumerate(["Phase I started scraping.", "Extracted 42 endpoints."]):
@@ -62,7 +64,9 @@ def test_compact_memory_replaces_old_rows(fresh_db, monkeypatch):
 
     # After replacement, raw rows should be gone and summary row should exist
     cursor = fresh_db._conn.execute(
-        "SELECT role, content FROM transcripts t JOIN conversation_episodes e ON t.episode_id = e.id WHERE e.run_id = ?",
+        "SELECT role, content FROM transcripts t"
+        " JOIN conversation_episodes e ON t.episode_id = e.id"
+        " WHERE e.run_id = ?",
         ("old-run-001",),
     )
     rows = cursor.fetchall()
@@ -75,5 +79,8 @@ def test_recent_runs_not_compacted(fresh_db, monkeypatch):
     """Runs started recently should not be compacted."""
     _seed_old_run(fresh_db, "new-run-001", days_ago=1)
 
-    old_runs = __import__("nexus_api.tasks.memory_tasks", fromlist=["_get_old_run_ids"])._get_old_run_ids(fresh_db, before_days=30)
+    mod = __import__(
+        "nexus_api.tasks.memory_tasks", fromlist=["_get_old_run_ids"],
+    )
+    old_runs = mod._get_old_run_ids(fresh_db, before_days=30)
     assert "new-run-001" not in old_runs

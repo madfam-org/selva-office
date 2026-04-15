@@ -43,12 +43,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _validate_production_safety(self) -> Settings:
         """Reject insecure defaults in non-development environments."""
-        if self.environment != "development":
-            if self.worker_api_token == "dev-bypass":
-                raise ValueError(
-                    "WORKER_API_TOKEN must be set in production (cannot use 'dev-bypass' default). "
-                    "Generate with: openssl rand -hex 32"
-                )
+        if self.environment != "development" and self.worker_api_token == "dev-bypass":
+            raise ValueError(
+                "WORKER_API_TOKEN must be set in production (cannot use 'dev-bypass' default). "
+                "Generate with: openssl rand -hex 32"
+            )
         return self
     git_author_name: str = "autoswarm-bot"
     git_author_email: str = "bot@autoswarm.dev"

@@ -183,7 +183,10 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
         semaphore = asyncio.Semaphore(max_parallel)
         api_url = os.environ.get("NEXUS_API_URL", "")
         api_token = os.environ.get("WORKER_API_TOKEN", "dev-bypass")
-        use_dispatch = bool(api_url) and os.environ.get("PUPPETEER_DISPATCH_SUBTASKS", "false") == "true"
+        use_dispatch = (
+            bool(api_url)
+            and os.environ.get("PUPPETEER_DISPATCH_SUBTASKS", "false") == "true"
+        )
 
         async def _dispatch_subtask(
             subtask: dict[str, Any], index: int
@@ -200,7 +203,10 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
                                 "description": subtask.get("description", ""),
                                 "graph_type": subtask.get("graph_type", "fast_coding"),
                                 "required_skills": subtask.get("required_skills", ["coding"]),
-                                "metadata": {"parent_task": state.get("task_id"), "subtask_index": index},
+                                "metadata": {
+                            "parent_task": state.get("task_id"),
+                            "subtask_index": index,
+                        },
                             },
                         )
                         if resp.status_code not in (200, 201):
@@ -224,10 +230,20 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
                                         "success": task_data.get("status") == "completed",
                                         "task_id": task_id,
                                     }
-                        return {"index": index, "description": subtask.get("description", ""), "result": "Timeout", "success": False}
+                        return {
+                            "index": index,
+                            "description": subtask.get("description", ""),
+                            "result": "Timeout",
+                            "success": False,
+                        }
                 except Exception as exc:
                     logger.error("Subtask dispatch failed: %s", exc)
-                    return {"index": index, "description": subtask.get("description", ""), "result": str(exc), "success": False}
+                    return {
+                        "index": index,
+                        "description": subtask.get("description", ""),
+                        "result": str(exc),
+                        "success": False,
+                    }
 
         async def _run_subtask_locally(
             subtask: dict[str, Any], index: int

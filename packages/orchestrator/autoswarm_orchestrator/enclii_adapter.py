@@ -38,7 +38,12 @@ class EncliiAdapter:
             return response.json()
         except httpx.HTTPError as e:
             # Fallback to mock for local testing if API isn't up
-            return {"status": "success", "run_id": run_id, "pod_name": f"acp-dirty-analyst-{run_id}", "mocked_fallback": str(e)}
+            return {
+                "status": "success",
+                "run_id": run_id,
+                "pod_name": f"acp-dirty-analyst-{run_id}",
+                "mocked_fallback": str(e),
+            }
 
     async def deploy_clean_pod(self, sanitized_spec: str) -> dict[str, Any]:
         """
@@ -60,7 +65,12 @@ class EncliiAdapter:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            return {"status": "success", "run_id": run_id, "pod_name": f"acp-clean-swarm-{run_id}", "mocked_fallback": str(e)}
+            return {
+                "status": "success",
+                "run_id": run_id,
+                "pod_name": f"acp-clean-swarm-{run_id}",
+                "mocked_fallback": str(e),
+            }
 
     async def suspend_pod(self, run_id: str) -> bool:
         """

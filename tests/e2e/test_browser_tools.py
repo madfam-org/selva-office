@@ -36,7 +36,10 @@ class TestBrowserExtract:
         """browser_extract falls back to requests when Playwright is absent."""
         with patch("autoswarm_tools.browser.PLAYWRIGHT_AVAILABLE", False):
             with patch("requests.get") as mock_get:
-                mock_get.return_value = MagicMock(text="<html><body>Plain content</body></html>", status_code=200)
+                mock_get.return_value = MagicMock(
+                    text="<html><body>Plain content</body></html>",
+                    status_code=200,
+                )
                 mock_get.return_value.raise_for_status = MagicMock()
                 from autoswarm_tools.browser import browser_extract
                 result = await browser_extract("https://example.com")
@@ -87,7 +90,10 @@ class TestVisionDescribe:
         mock_router = AsyncMock()
         mock_router.complete = AsyncMock(return_value=mock_response)
 
-        with patch("autoswarm_tools.browser.get_default_router", return_value=mock_router, create=True):
+        with patch(
+            "autoswarm_tools.browser.get_default_router",
+            return_value=mock_router, create=True,
+        ):
             with patch("autoswarm_tools.browser.InferenceRequest", create=True):
                 with patch("autoswarm_tools.browser.RoutingPolicy", create=True):
                     with patch("autoswarm_tools.browser.Sensitivity", create=True):
@@ -98,7 +104,10 @@ class TestVisionDescribe:
     @pytest.mark.asyncio
     async def test_vision_describe_fallback_on_error(self):
         """vision_describe returns placeholder when LLM is unavailable."""
-        with patch("autoswarm_tools.browser.get_default_router", side_effect=Exception("No provider"), create=True):
+        with patch(
+            "autoswarm_tools.browser.get_default_router",
+            side_effect=Exception("No provider"), create=True,
+        ):
             from autoswarm_tools.browser import vision_describe
             result = await vision_describe("base64fakeimage==")
             assert "unavailable" in result.lower()

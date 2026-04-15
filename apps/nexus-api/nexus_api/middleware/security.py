@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import logging
-
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-
-logger = logging.getLogger(__name__)
 import base64
 import json
+import logging
 from contextvars import ContextVar
 
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
+
+logger = logging.getLogger(__name__)
 
 org_id_var: ContextVar[str] = ContextVar("org_id", default="default")
 

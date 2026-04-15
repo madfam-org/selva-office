@@ -26,7 +26,10 @@ router = APIRouter(prefix="/schedules", tags=["Schedules"])
 # ---------------------------------------------------------------------------
 
 class ScheduleCreate(BaseModel):
-    cron_expr: str = Field(..., example="0 9 * * 1", description="Standard 5-field crontab expression")
+    cron_expr: str = Field(
+        ..., example="0 9 * * 1",
+        description="Standard 5-field crontab expression",
+    )
     action: ScheduledAction
     payload: dict[str, Any] = Field(default_factory=dict)
     description: str | None = None
@@ -71,7 +74,10 @@ async def create_schedule(
     db.add(schedule)
     await db.commit()
     await db.refresh(schedule)
-    logger.info("Schedule %s created by user %s: %s @ %s", schedule.id, user.sub, schedule.action, schedule.cron_expr)
+    logger.info(
+        "Schedule %s created by user %s: %s @ %s",
+        schedule.id, user.sub, schedule.action, schedule.cron_expr,
+    )
     return _to_response(schedule)
 
 

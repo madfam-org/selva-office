@@ -33,7 +33,8 @@ CREATE TRIGGER IF NOT EXISTS transcripts_fts_insert AFTER INSERT ON transcripts 
 END;
 
 CREATE TRIGGER IF NOT EXISTS transcripts_fts_delete AFTER DELETE ON transcripts BEGIN
-    INSERT INTO transcripts_fts(transcripts_fts, rowid, content) VALUES('delete', old.id, old.content);
+    INSERT INTO transcripts_fts(transcripts_fts, rowid, content)
+    VALUES('delete', old.id, old.content);
 END;
 """
 
@@ -85,13 +86,18 @@ class EdgeMemoryDB:
         import uuid
 
         # Verify or spin up the episode id first to conform with FK constraint
-        cursor = self._conn.execute("SELECT id FROM conversation_episodes WHERE run_id = ?", (run_id,))
+        cursor = self._conn.execute(
+            "SELECT id FROM conversation_episodes WHERE run_id = ?",
+            (run_id,),
+        )
         row = cursor.fetchone()
 
         if not row:
             episode_id = f"ep-{uuid.uuid4().hex[:8]}"
             self._conn.execute(
-                "INSERT INTO conversation_episodes (id, run_id, agent_role, started_at) VALUES (?, ?, ?, ?)",
+                "INSERT INTO conversation_episodes"
+                " (id, run_id, agent_role, started_at)"
+                " VALUES (?, ?, ?, ?)",
                 (episode_id, run_id, agent_role, time.time())
             )
         else:

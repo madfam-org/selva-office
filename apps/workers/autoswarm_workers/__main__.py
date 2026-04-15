@@ -678,7 +678,9 @@ async def main() -> None:
     await _cleanup_stale_worktrees(settings.repo_base_path, settings.worktree_stale_hours)
 
     # Start periodic cleanup task
-    cleanup_task = asyncio.create_task(_periodic_cleanup(settings.repo_base_path, settings.worktree_stale_hours))
+    cleanup_task = asyncio.create_task(
+        _periodic_cleanup(settings.repo_base_path, settings.worktree_stale_hours),
+    )
     _active_tasks.add(cleanup_task)
     cleanup_task.add_done_callback(_active_tasks.discard)
 

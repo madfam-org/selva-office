@@ -36,11 +36,16 @@ class TestContextCompressor:
         mock_router = AsyncMock()
         mock_router.complete = AsyncMock(return_value=mock_response)
 
-        with patch("autoswarm_workflows.context_compressor.get_default_router", return_value=mock_router, create=True):
+        with patch(
+            "autoswarm_workflows.context_compressor.get_default_router",
+            return_value=mock_router, create=True,
+        ):
             with patch("autoswarm_workflows.context_compressor.InferenceRequest", create=True):
                 with patch("autoswarm_workflows.context_compressor.RoutingPolicy", create=True):
                     with patch("autoswarm_workflows.context_compressor.Sensitivity", create=True):
-                        compressor = ContextCompressor(keep_head=2, keep_tail=3, compress_threshold=10)
+                        compressor = ContextCompressor(
+                            keep_head=2, keep_tail=3, compress_threshold=10,
+                        )
                         messages = self._make_messages(15)
                         result = await compressor.compress(messages)
 
@@ -52,14 +57,20 @@ class TestContextCompressor:
     async def test_compression_preserves_system_head(self):
         """System prompt is always in the first position after compression."""
         from autoswarm_workflows.context_compressor import ContextCompressor
-        with patch("autoswarm_workflows.context_compressor.get_default_router", create=True) as mock_router_fn:
+        with patch(
+            "autoswarm_workflows.context_compressor.get_default_router",
+            create=True,
+        ) as mock_router_fn:
             mock_router = AsyncMock()
             mock_router.complete = AsyncMock(return_value=MagicMock(content="summary"))
             mock_router_fn.return_value = mock_router
             with patch("autoswarm_workflows.context_compressor.InferenceRequest", create=True):
                 with patch("autoswarm_workflows.context_compressor.RoutingPolicy", create=True):
                     with patch("autoswarm_workflows.context_compressor.Sensitivity", create=True):
-                        compressor = ContextCompressor(keep_head=2, keep_tail=3, compress_threshold=10)
+                        compressor = ContextCompressor(
+                            keep_head=2, keep_tail=3,
+                            compress_threshold=10,
+                        )
                         messages = self._make_messages(15)
                         result = await compressor.compress(messages)
         assert result[0]["role"] == "system"
@@ -100,7 +111,10 @@ class TestSoulLoader:
         loader = SoulLoader()
         # Override paths to point to temp dir
         with patch("autoswarm_workflows.soul._PROJECT_SOUL_PATH", tmp_path / "nonexistent.md"):
-            with patch("autoswarm_workflows.soul._DEFAULT_SOUL_PATH", tmp_path / "also_nonexistent.md"):
+            with patch(
+                "autoswarm_workflows.soul._DEFAULT_SOUL_PATH",
+                tmp_path / "also_nonexistent.md",
+            ):
                 result = loader.load(force_reload=True)
         assert result == ""
 

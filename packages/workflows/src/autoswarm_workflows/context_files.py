@@ -174,7 +174,10 @@ class ContextFileLoader:
                     path.name,
                     self._max_chars,
                 )
-                text = text[: self._max_chars] + "\n\n[... truncated — file exceeds token limit ...]"
+                text = (
+                    text[: self._max_chars]
+                    + "\n\n[... truncated — file exceeds token limit ...]"
+                )
             return text
         except Exception as exc:
             logger.error("ContextFileLoader: could not read %s: %s", path, exc)

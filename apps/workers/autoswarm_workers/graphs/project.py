@@ -103,9 +103,22 @@ def decompose(state: ProjectState) -> ProjectState:
                 messages=[{"role": "user", "content": prompt}],
                 task_type="planning",
             )
-            return json.loads(resp) if resp.strip().startswith("[") else [{"title": "Execute goal", "description": goal, "graph_type": "research", "required_skills": ["research"], "estimated_days": 3}]
+            fallback = [{
+                "title": "Execute goal",
+                "description": goal,
+                "graph_type": "research",
+                "required_skills": ["research"],
+                "estimated_days": 3,
+            }]
+            return json.loads(resp) if resp.strip().startswith("[") else fallback
         except Exception:
-            return [{"title": "Execute goal", "description": goal, "graph_type": "research", "required_skills": ["research"], "estimated_days": 3}]
+            return [{
+                "title": "Execute goal",
+                "description": goal,
+                "graph_type": "research",
+                "required_skills": ["research"],
+                "estimated_days": 3,
+            }]
 
     milestones = _run_async(_decompose())
     return {
@@ -126,7 +139,11 @@ def dispatch_batch(state: ProjectState) -> ProjectState:
     dispatched = state.get("dispatched_tasks", [])
 
     if current >= len(milestones):
-        return {**state, "messages": [*messages, AIMessage(content="All milestones dispatched")], "status": "all_dispatched"}
+        return {
+            **state,
+            "messages": [*messages, AIMessage(content="All milestones dispatched")],
+            "status": "all_dispatched",
+        }
 
     milestone = milestones[current]
     api_url = os.environ.get("NEXUS_API_URL", "")
@@ -142,22 +159,35 @@ def dispatch_batch(state: ProjectState) -> ProjectState:
                 f"{api_url}/api/v1/swarms/dispatch",
                 headers={"Authorization": f"Bearer {api_token}"},
                 json={
-                    "description": f"[Project M{current+1}] {milestone.get('title', '')}: {milestone.get('description', '')}",
+                    "description": (
+                        f"[Project M{current+1}] "
+                        f"{milestone.get('title', '')}: "
+                        f"{milestone.get('description', '')}"
+                    ),
                     "graph_type": milestone.get("graph_type", "research"),
                     "required_skills": milestone.get("required_skills", ["research"]),
-                    "metadata": {"project_milestone": current, "milestone_title": milestone.get("title", "")},
+                    "metadata": {
+                        "project_milestone": current,
+                        "milestone_title": milestone.get("title", ""),
+                    },
                 },
             )
             if resp.status_code in (200, 201):
                 task_id = resp.json().get("task", {}).get("id", "")
                 return {"milestone": current, "task_id": task_id, "status": "dispatched"}
-            return {"milestone": current, "task_id": "", "status": "failed", "error": resp.text[:200]}
+            return {
+                "milestone": current, "task_id": "",
+                "status": "failed", "error": resp.text[:200],
+            }
 
     result = _run_async(_dispatch())
     return {
         **state,
         "dispatched_tasks": [*dispatched, result],
-        "messages": [*messages, AIMessage(content=f"Milestone {current+1} dispatched: {milestone.get('title', '')}")],
+        "messages": [
+            *messages,
+            AIMessage(content=f"Milestone {current+1} dispatched: {milestone.get('title', '')}"),
+        ],
         "status": "dispatched",
     }
 
@@ -179,7 +209,10 @@ def monitor(state: ProjectState) -> ProjectState:
             **state,
             "completed_tasks": [*completed, {**latest, "status": "completed"}],
             "current_milestone": current + 1,
-            "messages": [*messages, AIMessage(content=f"Milestone {current+1} completed (simulated)")],
+            "messages": [
+                *messages,
+                AIMessage(content=f"Milestone {current+1} completed (simulated)"),
+            ],
             "status": "milestone_complete",
         }
 
@@ -246,7 +279,10 @@ def build_project_graph() -> StateGraph:
     graph.add_edge("analyze", "decompose")
     graph.add_edge("decompose", "dispatch_batch")
     graph.add_edge("dispatch_batch", "monitor")
-    graph.add_conditional_edges("monitor", should_continue, {"dispatch_batch": "dispatch_batch", "report": "report"})
+    graph.add_conditional_edges(
+        "monitor", should_continue,
+        {"dispatch_batch": "dispatch_batch", "report": "report"},
+    )
     graph.add_edge("report", END)
 
     return graph

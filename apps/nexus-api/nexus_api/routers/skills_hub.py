@@ -14,7 +14,10 @@ from autoswarm_skills.hub import SkillsHubClient
 from ..auth import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/skills/hub", tags=["Skills Hub"], dependencies=[Depends(get_current_user)])
+router = APIRouter(
+    prefix="/skills/hub", tags=["Skills Hub"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 class HubSkillResponse(BaseModel):
@@ -55,11 +58,15 @@ async def search_hub(q: str) -> list[HubSkillResponse]:
 async def install_skill(body: InstallRequest) -> dict:
     """Download and install a skill from agentskills.io."""
     import os
-    target_dir = body.target_dir or os.environ.get("AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills")
+    target_dir = body.target_dir or os.environ.get(
+        "AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills",
+    )
     client = SkillsHubClient()
     try:
         path = await client.install(body.skill_name, target_dir)
         return {"status": "installed", "skill": body.skill_name, "path": str(path)}
     except Exception as exc:
         logger.error("Skill install failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Install failed: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Install failed: {exc}",
+        ) from exc

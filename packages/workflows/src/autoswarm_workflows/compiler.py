@@ -82,20 +82,31 @@ class WorkflowCompiler:
         if self._workspace_path:
             self._workspace_context = _context_loader.load_context(self._workspace_path)
             if self._workspace_context:
-                logger.info("WorkflowCompiler: workspace context loaded (%d chars).", len(self._workspace_context))
+                logger.info(
+                    "WorkflowCompiler: workspace context loaded (%d chars).",
+                    len(self._workspace_context),
+                )
 
     def _load_plugins(self) -> None:
         """Discover and load plugins (Gap 3)."""
         try:
             from autoswarm_plugins.manager import PluginManager  # type: ignore
-            extra_dirs = [d for d in os.environ.get("AUTOSWARM_PLUGIN_DIRS", "").split(":") if d]
+            plugin_dirs_str = os.environ.get("AUTOSWARM_PLUGIN_DIRS", "")
+            extra_dirs = [d for d in plugin_dirs_str.split(":") if d]
             manager = PluginManager(extra_dirs=extra_dirs)
             count = manager.discover()
             if count:
                 self._plugin_tools = manager.get_all_tools()
-                for phase in ("phase_i_analyst", "phase_ii_sanitizer", "phase_iii_clean_swarm", "phase_iv_qa_oracle"):
+                phases = (
+                    "phase_i_analyst", "phase_ii_sanitizer",
+                    "phase_iii_clean_swarm", "phase_iv_qa_oracle",
+                )
+                for phase in phases:
                     self._plugin_context[phase] = manager.get_context_addenda(phase)
-                logger.info("WorkflowCompiler: loaded %d plugin(s) with %d tools.", count, len(self._plugin_tools))
+                logger.info(
+                    "WorkflowCompiler: loaded %d plugin(s) with %d tools.",
+                    count, len(self._plugin_tools),
+                )
         except ImportError:
             logger.debug("autoswarm_plugins not installed — plugin discovery skipped.")
         except Exception as exc:

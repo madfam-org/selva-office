@@ -25,7 +25,10 @@ class SlackMessageTool(BaseTool):
                     "type": "string",
                     "description": "Slack channel name or ID (e.g., #alerts-critical, #deploys)",
                 },
-                "message": {"type": "string", "description": "Message text (supports Slack markdown)"},
+                "message": {
+                    "type": "string",
+                    "description": "Message text (supports Slack markdown)",
+                },
                 "thread_ts": {
                     "type": "string",
                     "description": "Thread timestamp to reply in a thread (optional)",

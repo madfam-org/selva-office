@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
 
-class SkillTier(str, Enum):
+class SkillTier(StrEnum):
     """Classification tier for skills."""
 
     CORE = "core"

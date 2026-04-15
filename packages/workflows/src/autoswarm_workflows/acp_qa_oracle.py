@@ -61,7 +61,10 @@ class ACPQAOracleNode:
             from madfam_inference.router import ModelRouter
             from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
         except ImportError:
-            logger.warning("[Phase IV] madfam_inference not available; falling back to stub compilation.")
+            logger.warning(
+                "[Phase IV] madfam_inference not available;"
+                " falling back to stub compilation.",
+            )
             return self._compile_skill_stub(run_id)
 
         skills_dir = os.environ.get("AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills")
@@ -153,11 +156,15 @@ class ACPQAOracleNode:
                         request_approval(self.source_code[:200], run_id=run_id, reason=reason)
                     )
                 except RuntimeError:
-                    approval = asyncio.run(
-                        request_approval(self.source_code[:200], run_id=run_id, reason=reason)
-                    )
+                    approval = asyncio.run(request_approval(
+                        self.source_code[:200],
+                        run_id=run_id, reason=reason,
+                    ))
                 if not approval.approved:
-                    logger.error("[Phase IV] Dangerous command denied for run %s — aborting.", run_id)
+                    logger.error(
+                        "[Phase IV] Dangerous command denied for run %s"
+                        " — aborting.", run_id,
+                    )
                     return False
         except ImportError:
             logger.warning("[Phase IV] autoswarm_tools not available — skipping approval gate.")

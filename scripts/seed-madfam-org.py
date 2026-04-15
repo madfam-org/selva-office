@@ -26,7 +26,10 @@ DEPARTMENTS = [
     {
         "name": "Executive Brain Trust",
         "slug": "executive",
-        "description": "Strategic oversight, risk analysis, architectural vision. Read-heavy, decision-making node.",
+        "description": (
+            "Strategic oversight, risk analysis, architectural vision."
+            " Read-heavy, decision-making node."
+        ),
         "max_agents": 6,
         "position_x": 250,
         "position_y": 100,
@@ -34,7 +37,10 @@ DEPARTMENTS = [
     {
         "name": "Build & Run Engine",
         "slug": "build-engine",
-        "description": "Product execution, code delivery, infrastructure reliability. The execution backbone.",
+        "description": (
+            "Product execution, code delivery, infrastructure"
+            " reliability. The execution backbone."
+        ),
         "max_agents": 12,
         "position_x": 750,
         "position_y": 100,
@@ -42,7 +48,10 @@ DEPARTMENTS = [
     {
         "name": "Growth & Market Syndicate",
         "slug": "growth",
-        "description": "Market analysis, content creation, customer relationships, conversion optimization.",
+        "description": (
+            "Market analysis, content creation, customer"
+            " relationships, conversion optimization."
+        ),
         "max_agents": 8,
         "position_x": 250,
         "position_y": 500,
@@ -50,7 +59,10 @@ DEPARTMENTS = [
     {
         "name": "Physical-Digital Bridge",
         "slug": "operations",
-        "description": "Financial control, supply chain, manufacturing orchestration, digital twin management.",
+        "description": (
+            "Financial control, supply chain, manufacturing"
+            " orchestration, digital twin management."
+        ),
         "max_agents": 6,
         "position_x": 750,
         "position_y": 500,
@@ -198,7 +210,10 @@ def seed_agents(dept_map: dict[str, str]) -> None:
 
         dept_id = dept_map.get(agent_def["department_slug"])
         if not dept_id:
-            print(f"  ✗  {agent_def['name']} — department '{agent_def['department_slug']}' not found")
+            print(
+                f"  ✗  {agent_def['name']}"
+                f" — department '{agent_def['department_slug']}' not found",
+            )
             continue
 
         payload = {
@@ -211,7 +226,10 @@ def seed_agents(dept_map: dict[str, str]) -> None:
 
         result = api("POST", "/api/v1/agents/", payload)
         if result:
-            print(f"  ✚  {agent_def['name']} [{agent_def['role']}] → {agent_def['department_slug']}")
+            print(
+                f"  ✚  {agent_def['name']} [{agent_def['role']}]"
+                f" → {agent_def['department_slug']}",
+            )
         else:
             print(f"  ✗  Failed to create {agent_def['name']}")
 

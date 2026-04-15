@@ -116,12 +116,15 @@ class MemoryStore:
                 .limit(top_k)
             )
             result = await session.execute(stmt)
-            rows = result.scalars().all()
+            result.scalars().all()
 
-            # Since pgvector doesn't return the distance directly in simple selects, we'd need a tuple
-            # Let's adjust to get distance:
+            # pgvector doesn't return distance directly in simple
+            # selects, so we need a tuple. Adjust to get distance:
+            dist_col = MemoryEntryModel.embedding.cosine_distance(
+                query_vector,
+            ).label('distance')
             stmt_with_dist = (
-                select(MemoryEntryModel, MemoryEntryModel.embedding.cosine_distance(query_vector).label('distance'))
+                select(MemoryEntryModel, dist_col)
                 .filter(MemoryEntryModel.agent_id == self.agent_id)
                 .order_by('distance')
                 .limit(top_k)
@@ -148,10 +151,11 @@ class MemoryStore:
         self, filter_metadata: dict[str, Any] | None = None
     ) -> list[MemoryEntry]:
         """List all entries, optionally filtered by metadata keys.
-        
-        In an async pgvector context, this signature is ideally awaited. 
-        But if keeping synchronous signature compatibility is strict, this might fail unless used safely.
-        Here we implement the async version assuming clients will adapt, or handle it via a new async method.
+
+        In an async pgvector context, this signature is ideally
+        awaited. But if keeping synchronous signature compatibility
+        is strict, this might fail unless used safely. Here we
+        implement the async version assuming clients will adapt.
         """
         await self._init_db()
         async with self._session_factory() as session:
@@ -161,11 +165,17 @@ class MemoryStore:
 
             entries = []
             for row in rows:
-                if filter_metadata:
-                    if not all(row.metadata_.get(k) == v for k, v in filter_metadata.items()):
-                        continue
+                if filter_metadata and not all(
+                    row.metadata_.get(k) == v
+                    for k, v in filter_metadata.items()
+                ):
+                    continue
                 entries.append(MemoryEntry(
-                    id=row.id, text=row.text, metadata=row.metadata_, created_at=row.created_at, agent_id=row.agent_id
+                    id=row.id,
+                    text=row.text,
+                    metadata=row.metadata_,
+                    created_at=row.created_at,
+                    agent_id=row.agent_id,
                 ))
             return entries
 
@@ -175,7 +185,11 @@ class MemoryStore:
             return 0
         await self._init_db()
         async with self._session_factory() as session:
-            stmt = delete(MemoryEntryModel).where(MemoryEntryModel.id.in_(entry_ids)).where(MemoryEntryModel.agent_id == self.agent_id)
+            stmt = (
+                delete(MemoryEntryModel)
+                .where(MemoryEntryModel.id.in_(entry_ids))
+                .where(MemoryEntryModel.agent_id == self.agent_id)
+            )
             result = await session.execute(stmt)
             await session.commit()
             return result.rowcount
