@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, require_roles
 from ..database import get_db
-from ..models.schedule import Schedule, ScheduledAction
+from ..models import Schedule, ScheduledAction
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/schedules", tags=["Schedules"])

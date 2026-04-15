@@ -5,9 +5,12 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+import enum
+
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Enum,
     Float,
     ForeignKey,
     Index,
@@ -391,3 +394,62 @@ class ChatMessage(Base):
         String(255), nullable=False, default="default", index=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Wave 4 models (Gap 2: Command Approvals, Gap 3: Cron Scheduler)
+# ---------------------------------------------------------------------------
+
+
+class ApprovalStatus(str, enum.Enum):
+    """Status for dangerous-command approval requests."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    DENIED = "denied"
+    EXPIRED = "expired"
+
+
+class CommandApprovalRequest(Base):
+    """Approval gate for dangerous commands detected by the ACP QA Oracle."""
+
+    __tablename__ = "command_approval_requests"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    run_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    command: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[ApprovalStatus] = mapped_column(
+        Enum(ApprovalStatus), nullable=False, default=ApprovalStatus.PENDING
+    )
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class ScheduledAction(str, enum.Enum):
+    """Actions that can be scheduled via cron expressions."""
+
+    ACP_INITIATE = "acp_initiate"
+    SKILL_REFINE = "skill_refine"
+    MEMORY_COMPACT = "memory_compact"
+
+
+class Schedule(Base):
+    """A user-defined recurring schedule executed by Celery Beat."""
+
+    __tablename__ = "schedules"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    cron_expr: Mapped[str] = mapped_column(String(100), nullable=False)
+    action: Mapped[ScheduledAction] = mapped_column(Enum(ScheduledAction), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

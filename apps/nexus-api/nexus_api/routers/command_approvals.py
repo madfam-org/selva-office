@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, require_roles
 from ..database import get_db
-from ..models.approval_request import ApprovalRequest, ApprovalStatus
+from ..models import ApprovalStatus, CommandApprovalRequest as ApprovalRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/command-approvals", tags=["Command Approvals"])
