@@ -1,7 +1,7 @@
 import logging
-from typing import Dict, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, HttpUrl
 
 from ..auth import require_role
@@ -35,11 +35,12 @@ def run_acp_workflow_background(target_url: str):
 
 from ..tasks.acp_tasks import run_acp_workflow_task
 
+
 @router.post("/initiate")
 async def initiate_acp(
     request: InitiateACPRequest,
     user: dict = Depends(require_role("enterprise-cleanroom"))
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Initiates the Autonomous Cleanroom Protocol (ACP).
     Requires 'enterprise-cleanroom' Janua RBAC role.
@@ -55,27 +56,30 @@ async def initiate_acp(
     }
 
 
-import hmac
 import hashlib
-from fastapi import Request, Header, HTTPException
+import hmac
+
+from fastapi import Header, Request
+
 from ..config import get_settings
 from ..memory_store.db import memory_store
 
+
 @router.get("/payloads/{run_id}")
-async def get_acp_payload(run_id: str) -> Dict[str, Any]:
+async def get_acp_payload(run_id: str) -> dict[str, Any]:
     """
     Secure endpoint providing the sanitized Phase II PRD to the Clean Swarm.
     Acts as the Airgap storage intermediary pulling from Redis.
     """
-    # Pseudocode for Redis retrieval 
+    # Pseudocode for Redis retrieval
     # redis = request.app.state.redis
     # payload = await redis.get(f"acp:prd:{run_id}")
     logger.info(f"Clean Swarm requested payload for {run_id}")
-    
+
     memory_store.insert_transcript(
-        run_id=run_id, 
-        agent_role="acp-clean-swarm", 
-        role="system", 
+        run_id=run_id,
+        agent_role="acp-clean-swarm",
+        role="system",
         content="Requested sanitized payload via secure airgap bridge."
     )
     return {"status": "success", "run_id": run_id, "prd": "Sanitized PRD SPEC from Redis Proxy"}
@@ -86,30 +90,30 @@ async def qa_oracle_webhook(
     request: Request,
     payload: QAOracleWebhook,
     x_enclii_signature: str = Header(None)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Phase IV webhook entry. The Enclii QA pod posts results here.
     Validates Enclii HMAC webhook signature.
     """
     settings = get_settings()
-    
+
     # Enforce webhook security via HMAC SHA256 if secret is set
     if settings.enclii_webhook_secret:
         if not x_enclii_signature:
             raise HTTPException(status_code=401, detail="Missing X-Enclii-Signature header")
-        
+
         body = await request.body()
         expected_mac = hmac.new(
             settings.enclii_webhook_secret.encode(), body, hashlib.sha256
         ).hexdigest()
-        
+
         if not hmac.compare_digest(expected_mac, x_enclii_signature):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     memory_store.insert_transcript(
-        run_id=payload.run_id, 
-        agent_role="acp-qa-oracle", 
-        role="assistant", 
+        run_id=payload.run_id,
+        agent_role="acp-qa-oracle",
+        role="assistant",
         content=f"Phase IV validation returned status: {payload.status}"
     )
 

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ async def browser_navigate(url: str, timeout_ms: int = 30_000) -> dict:
 
 async def browser_extract(
     url: str,
-    selector: Optional[str] = None,
+    selector: str | None = None,
     timeout_ms: int = 30_000,
 ) -> str:
     """
@@ -193,8 +192,9 @@ def _requests_fallback_nav(url: str) -> dict:
 
 def _requests_fallback_extract(url: str) -> str:
     try:
-        import requests
         from html.parser import HTMLParser
+
+        import requests
 
         class _TextExtractor(HTMLParser):
             def __init__(self):

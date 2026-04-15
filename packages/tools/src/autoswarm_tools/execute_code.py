@@ -8,9 +8,7 @@ import asyncio
 import logging
 import os
 import sys
-import tempfile
 import time
-from pathlib import Path
 from typing import Any
 
 from .base import BaseTool, ToolResult
@@ -185,7 +183,7 @@ class ExecuteCodeTool(BaseTool):
                 success=(proc.returncode or 0) == 0,
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ToolResult(
                 success=False,
                 error=f"Code execution timed out after {timeout}s",

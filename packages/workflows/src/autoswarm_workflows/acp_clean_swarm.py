@@ -4,7 +4,7 @@ class ACPCleanSwarmNode:
     Operates strictly within an airgapped pod.
     Rebuilds the application solely from the sanitized Phase II PRD.
     """
-    
+
     SYSTEM_PROMPT = """
     You are an autonomous engineering swarm.
     You must construct the required product based ONLY on the functional specification provided.

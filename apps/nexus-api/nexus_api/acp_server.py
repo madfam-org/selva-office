@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ async def handle_initialize(params: dict, req_id: Any) -> None:
             "get_result": True,
             "list_skills": True,
         },
-        "started_at": datetime.now(tz=timezone.utc).isoformat(),
+        "started_at": datetime.now(tz=UTC).isoformat(),
     }))
 
 

@@ -10,7 +10,8 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 
 from ..event_emitter import instrumented_node
-from .base import BaseGraphState, run_async as _run_async
+from .base import BaseGraphState
+from .base import run_async as _run_async
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,7 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
     # fall back to in-process LLM execution otherwise
     async def _execute_subtasks() -> list[dict[str, Any]]:
         import os
+
         import httpx
 
         semaphore = asyncio.Semaphore(max_parallel)

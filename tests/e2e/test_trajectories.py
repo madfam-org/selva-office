@@ -2,10 +2,7 @@
 E2E tests — Gap 6: Trajectory Export (ShareGPT format)
 """
 import json
-import tempfile
-from unittest.mock import MagicMock, patch
-import pytest
-
+from unittest.mock import MagicMock
 
 _FAKE_TRANSCRIPTS = [
     {"role": "user", "content": "Initiate ACP for https://example.com", "timestamp": "2026-04-13T20:00:00Z"},

@@ -43,8 +43,11 @@ def test_compact_memory_replaces_old_rows(fresh_db, monkeypatch):
         {**__builtins__} if isinstance(__builtins__, dict) else vars(__builtins__),
     )
 
-    import asyncio
-    from nexus_api.tasks.memory_tasks import compact_memory, _get_old_run_ids, _replace_with_summary, _fetch_raw_transcript
+    from nexus_api.tasks.memory_tasks import (
+        _fetch_raw_transcript,
+        _get_old_run_ids,
+        _replace_with_summary,
+    )
 
     # Verify old runs are detected
     old_runs = _get_old_run_ids(fresh_db, before_days=30)

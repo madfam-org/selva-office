@@ -4,7 +4,6 @@ Mirrors Hermes' tools/process_registry.py.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import signal
 import subprocess

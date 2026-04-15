@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     worker_api_token: str = "dev-bypass"  # overridden by WORKER_API_TOKEN env var
 
     @model_validator(mode="after")
-    def _validate_production_safety(self) -> "Settings":
+    def _validate_production_safety(self) -> Settings:
         """Reject insecure defaults in non-development environments."""
         if self.environment != "development":
             if self.worker_api_token == "dev-bypass":

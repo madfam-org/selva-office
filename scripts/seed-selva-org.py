@@ -12,9 +12,9 @@ Usage:
   python scripts/seed-selva-org.py [--api-url URL] [--token TOKEN]
 """
 import argparse
-import json
 import os
 import sys
+
 import httpx
 
 API_URL = os.environ.get("AUTOSWARM_API_URL", "https://agents-api.selva.town")

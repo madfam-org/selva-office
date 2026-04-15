@@ -6,14 +6,14 @@ from __future__ import annotations
 import io
 import json
 import logging
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ..auth import CurrentUser, require_roles
 from autoswarm_workflows.trajectory import TrajectoryExporter  # type: ignore
+
+from ..auth import CurrentUser, require_roles
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/trajectories", tags=["Trajectories"])
@@ -23,11 +23,11 @@ _exporter = TrajectoryExporter()
 
 class TrajectoryResponse(BaseModel):
     id: str
-    conversations: List[dict]
+    conversations: list[dict]
 
 
 class BatchExportRequest(BaseModel):
-    run_ids: List[str]
+    run_ids: list[str]
     format: str = "sharegpt"
 
 
@@ -35,10 +35,10 @@ class BatchExportRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.get("", response_model=List[str])
+@router.get("", response_model=list[str])
 async def list_trajectories(
     user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
-) -> List[str]:
+) -> list[str]:
     """List all exportable ACP run IDs."""
     return _exporter.list_exportable_runs()
 

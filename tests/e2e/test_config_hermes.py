@@ -4,7 +4,6 @@ Verifies default values, type expectations, and that the new keys are present.
 """
 from __future__ import annotations
 
-import pytest
 from nexus_api.config import Settings
 
 

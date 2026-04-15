@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import uuid
@@ -10,10 +9,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Column, String, JSON, Float, select, delete
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import JSON, Column, String, delete, select
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from .embeddings import DEFAULT_DIM, EmbeddingProvider
 
@@ -60,7 +59,7 @@ class MemoryStore:
         self.agent_id = agent_id
         self._embedder = embedding_provider
         self._dim = dim
-        
+
         # Read database url from env, fallback to default docker-compose url
         db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://autoswarm:autoswarm@localhost:5432/autoswarm")
         # Ensure driver is asyncpg
@@ -84,9 +83,9 @@ class MemoryStore:
         await self._init_db()
         entry_id = str(uuid.uuid4())
         created_at = datetime.now(UTC).isoformat()
-        
+
         vector = await self._embedder.embed_single(text)
-        
+
         db_entry = MemoryEntryModel(
             id=entry_id,
             agent_id=self.agent_id,
@@ -95,7 +94,7 @@ class MemoryStore:
             created_at=created_at,
             embedding=vector
         )
-        
+
         async with self._session_factory() as session:
             session.add(db_entry)
             await session.commit()
@@ -107,7 +106,7 @@ class MemoryStore:
         """Search for memories similar to the query text."""
         await self._init_db()
         query_vector = await self._embedder.embed_single(query)
-        
+
         async with self._session_factory() as session:
             # Using inner product (<#>) which matches FAISS IndexFlatIP
             stmt = (
@@ -118,7 +117,7 @@ class MemoryStore:
             )
             result = await session.execute(stmt)
             rows = result.scalars().all()
-            
+
             # Since pgvector doesn't return the distance directly in simple selects, we'd need a tuple
             # Let's adjust to get distance:
             stmt_with_dist = (
@@ -128,13 +127,13 @@ class MemoryStore:
                 .limit(top_k)
             )
             result_dist = await session.execute(stmt_with_dist)
-            
+
             results = []
             for row, distance in result_dist:
                 meta = dict(row.metadata_)
                 # Convert cosine distance back to a similarity score if matched FAISS
                 meta["_similarity_score"] = 1.0 - float(distance)
-                
+
                 results.append(MemoryEntry(
                     id=row.id,
                     text=row.text,
@@ -142,7 +141,7 @@ class MemoryStore:
                     created_at=row.created_at,
                     agent_id=row.agent_id,
                 ))
-            
+
             return results
 
     async def list_entries(
@@ -159,7 +158,7 @@ class MemoryStore:
             stmt = select(MemoryEntryModel).filter(MemoryEntryModel.agent_id == self.agent_id)
             result = await session.execute(stmt)
             rows = result.scalars().all()
-            
+
             entries = []
             for row in rows:
                 if filter_metadata:

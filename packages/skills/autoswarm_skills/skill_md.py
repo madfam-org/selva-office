@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class SkillDocument:
     requires_toolsets: list[str] = field(default_factory=list)
     fallback_for_toolsets: list[str] = field(default_factory=list)
     raw_content: str = ""
-    skill_dir: Optional[Path] = None
+    skill_dir: Path | None = None
 
     @property
     def compact(self) -> dict[str, str]:
@@ -41,7 +41,7 @@ class SkillDocument:
         return {"name": self.name, "description": self.description, "category": self.category}
 
 
-def _parse_skill_md(path: Path) -> Optional[SkillDocument]:
+def _parse_skill_md(path: Path) -> SkillDocument | None:
     """Parse a SKILL.md file, extracting YAML frontmatter metadata."""
     try:
         import yaml
@@ -84,7 +84,7 @@ class SkillMDRegistry:
     directory-based skills, with 3-level progressive disclosure.
     """
 
-    def __init__(self, skills_dir: Optional[str] = None) -> None:
+    def __init__(self, skills_dir: str | None = None) -> None:
         import os
         self._skills_dir = Path(
             skills_dir or os.environ.get("AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills")
@@ -114,14 +114,14 @@ class SkillMDRegistry:
         """
         return [doc.compact for doc in self._md_skills.values()]
 
-    def get_skill_full(self, name: str) -> Optional[str]:
+    def get_skill_full(self, name: str) -> str | None:
         """Level 1 — returns the full SKILL.md content for *name*."""
         doc = self._md_skills.get(name)
         if not doc:
             return None
         return doc.raw_content
 
-    def get_skill_reference(self, name: str, ref_path: str) -> Optional[str]:
+    def get_skill_reference(self, name: str, ref_path: str) -> str | None:
         """Level 2 — returns the content of a reference file inside the skill directory."""
         doc = self._md_skills.get(name)
         if not doc or not doc.skill_dir:

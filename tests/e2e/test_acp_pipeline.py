@@ -1,9 +1,10 @@
-import pytest
-import hmac
 import hashlib
-from fastapi.testclient import TestClient
-from apps.nexus_api.nexus_api.main import app
+import hmac
+
+import pytest
 from apps.nexus_api.nexus_api.config import get_settings
+from apps.nexus_api.nexus_api.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -20,7 +21,7 @@ def test_initiate_acp(auth_headers):
         headers=auth_headers
     )
     # Testing mock success
-    assert response.status_code in [200, 404]  # 404 if router not mounted in test app correctly, assuming 200 for mock 
+    assert response.status_code in [200, 404]  # 404 if router not mounted in test app correctly, assuming 200 for mock
 
 def test_get_acp_payload():
     # Test our secure redis proxy endpoint
@@ -34,18 +35,18 @@ def test_get_acp_payload():
 def test_qa_oracle_webhook_hmac():
     settings = get_settings()
     settings.enclii_webhook_secret = "test_secret_key"
-    
+
     payload = b'{"run_id": "test_run", "status": "success", "logs": "All tests passed"}'
-    
+
     # Valid Signature
     valid_mac = hmac.new(settings.enclii_webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
-    
+
     response = client.post(
         "/acp/webhook/qa-oracle",
         content=payload,
         headers={"X-Enclii-Signature": valid_mac, "Content-Type": "application/json"}
     )
-    
+
     # 200 if router active, 422 if mismatched schema (FastAPI standard), passing generic validation checks
     assert response.status_code != 401
 
@@ -56,6 +57,6 @@ def test_qa_oracle_webhook_hmac():
         content=payload,
         headers={"X-Enclii-Signature": invalid_mac, "Content-Type": "application/json"}
     )
-    
+
     if response_invalid.status_code == 401:
         assert response_invalid.json()["detail"] == "Invalid webhook signature"

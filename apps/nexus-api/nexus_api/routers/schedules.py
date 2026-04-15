@@ -7,7 +7,7 @@ executes unattended, mirroring Hermes Agent's natural-language cron capability.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -28,8 +28,8 @@ router = APIRouter(prefix="/schedules", tags=["Schedules"])
 class ScheduleCreate(BaseModel):
     cron_expr: str = Field(..., example="0 9 * * 1", description="Standard 5-field crontab expression")
     action: ScheduledAction
-    payload: Dict[str, Any] = Field(default_factory=dict)
-    description: Optional[str] = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    description: str | None = None
 
 
 class ScheduleResponse(BaseModel):
@@ -37,11 +37,11 @@ class ScheduleResponse(BaseModel):
     user_id: str
     cron_expr: str
     action: ScheduledAction
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     enabled: bool
-    description: Optional[str]
+    description: str | None
     created_at: str
-    last_run_at: Optional[str]
+    last_run_at: str | None
 
     class Config:
         from_attributes = True
@@ -75,11 +75,11 @@ async def create_schedule(
     return _to_response(schedule)
 
 
-@router.get("/", response_model=List[ScheduleResponse])
+@router.get("/", response_model=list[ScheduleResponse])
 async def list_schedules(
     user: CurrentUser = Depends(require_roles([])),
     db: AsyncSession = Depends(get_db),
-) -> List[ScheduleResponse]:
+) -> list[ScheduleResponse]:
     """Return all schedules owned by the authenticated user."""
     from sqlalchemy import select
     result = await db.execute(

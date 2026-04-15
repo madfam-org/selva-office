@@ -1,6 +1,5 @@
-import json
 import asyncio
-import subprocess
+import json
 import os
 
 MCP_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "mcp_config.json")

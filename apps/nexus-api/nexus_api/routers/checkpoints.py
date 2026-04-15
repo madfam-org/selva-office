@@ -7,7 +7,6 @@ and re-run ACP workflows from any phase boundary.
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -38,12 +37,12 @@ class CheckpointState(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.get("/{run_id}", response_model=List[CheckpointListItem])
+@router.get("/{run_id}", response_model=list[CheckpointListItem])
 async def list_checkpoints(
     run_id: str,
     user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
     db: AsyncSession = Depends(get_db),
-) -> List[CheckpointListItem]:
+) -> list[CheckpointListItem]:
     """List all phase checkpoints for an ACP run."""
     mgr = CheckpointManager(db)
     items = await mgr.list_checkpoints(run_id)

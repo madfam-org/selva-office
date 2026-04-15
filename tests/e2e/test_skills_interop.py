@@ -8,12 +8,11 @@ Verifies:
 """
 from __future__ import annotations
 
-import textwrap
 import logging
+import textwrap
 from pathlib import Path
 
 import pytest
-
 
 V1_SKILL = textwrap.dedent('''\
     SKILL_SCHEMA_VERSION = "agentskills/v1"

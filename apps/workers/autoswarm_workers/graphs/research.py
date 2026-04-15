@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, TypedDict
 
@@ -10,7 +9,8 @@ from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 
 from ..event_emitter import instrumented_node
-from .base import BaseGraphState, run_async as _run_async
+from .base import BaseGraphState
+from .base import run_async as _run_async
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +101,6 @@ async def compact_memory(retention_days: int = 30) -> dict:
 
         if llm_available:
             try:
-                import asyncio
                 request = InferenceRequest(
                     messages=[{"role": "user", "content": SUMMARIZE_PROMPT.format(transcript=raw[:4000])}],
                     system_prompt="You are a concise technical summarizer. Output plain text only.",

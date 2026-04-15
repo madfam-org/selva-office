@@ -100,8 +100,8 @@ class WebExtractTool(BaseTool):
 
         # Try Playwright browser_extract first
         try:
+
             from autoswarm_tools.browser import browser_extract  # type: ignore
-            import asyncio
             content = await browser_extract(url)
         except Exception as exc:
             logger.warning("web_extract: browser_extract failed (%s) — falling back to requests", exc)

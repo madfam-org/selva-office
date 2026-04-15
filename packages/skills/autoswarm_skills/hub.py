@@ -83,7 +83,9 @@ class SkillsHubClient:
             archive_resp.raise_for_status()
 
         # Extract
-        import io, tarfile, zipfile
+        import io
+        import tarfile
+        import zipfile
         content = archive_resp.content
         skill_dir = target_dir / skill_name
         skill_dir.mkdir(exist_ok=True)

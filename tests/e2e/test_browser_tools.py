@@ -2,6 +2,7 @@
 E2E tests — Gap 1: Browser & Vision Tools
 """
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 

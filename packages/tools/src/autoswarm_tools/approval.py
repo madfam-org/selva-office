@@ -8,15 +8,14 @@ for destructive shell or Python commands dispatched inside ACP runs.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 import os
 import re
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import UTC
 from enum import Enum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +109,7 @@ class ApprovalResult:
     request_id: str
     command: str
     reason: str
-    resolved_by: Optional[str] = None
+    resolved_by: str | None = None
     elapsed_s: float = 0.0
 
     @property
@@ -136,7 +135,7 @@ async def request_approval(
     command: str,
     run_id: str,
     reason: str,
-    timeout_s: Optional[int] = None,
+    timeout_s: int | None = None,
 ) -> ApprovalResult:
     """
     Insert an approval request and block until a human approves/denies it
@@ -194,9 +193,11 @@ async def _persist_and_broadcast(
 ) -> None:
     """Persist approval request to Postgres and broadcast to Redis pub/sub."""
     try:
+        from datetime import datetime
+
         from nexus_api.database import AsyncSessionLocal
-        from nexus_api.models.approval_request import ApprovalRequest, ApprovalStatus as DBStatus
-        from datetime import datetime, timezone
+        from nexus_api.models.approval_request import ApprovalRequest
+        from nexus_api.models.approval_request import ApprovalStatus as DBStatus
 
         async with AsyncSessionLocal() as session:
             req = ApprovalRequest(
@@ -205,7 +206,7 @@ async def _persist_and_broadcast(
                 command=command,
                 reason=reason,
                 status=DBStatus.PENDING,
-                requested_at=datetime.now(tz=timezone.utc),
+                requested_at=datetime.now(tz=UTC),
             )
             session.add(req)
             await session.commit()
@@ -214,6 +215,7 @@ async def _persist_and_broadcast(
 
     try:
         import json
+
         from nexus_api.redis_pool import get_redis
         redis = await get_redis()
         await redis.publish(

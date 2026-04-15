@@ -2,7 +2,8 @@
 E2E tests — Gap 2: Dangerous Command Approval System
 """
 import pytest
-from autoswarm_tools.approval import is_dangerous, ApprovalStatus
+
+from autoswarm_tools.approval import is_dangerous
 
 
 class TestIsDangerous:
@@ -63,14 +64,14 @@ class TestRequestApproval:
         """Approval request expires after timeout and is DENIED (fail-closed)."""
         monkeypatch.setenv("AUTO_APPROVE", "false")
 
-        from unittest.mock import MagicMock, patch, AsyncMock
+        from unittest.mock import AsyncMock, MagicMock, patch
         mock_settings = MagicMock()
         mock_settings.auto_approve_dangerous = False
         mock_settings.command_approval_timeout_seconds = 1  # Very short for test
 
         with patch("autoswarm_tools.approval.get_settings", return_value=mock_settings):
             with patch("autoswarm_tools.approval._persist_and_broadcast", new_callable=AsyncMock):
-                from autoswarm_tools.approval import request_approval, ApprovalStatus
+                from autoswarm_tools.approval import ApprovalStatus, request_approval
                 result = await request_approval(
                     command="rm -rf /tmp/old2",
                     run_id="test-run-002",

@@ -1,7 +1,9 @@
-import pytest
 import os
-import asyncio
+
+import pytest
+
 from autoswarm_tools.execute_code import ExecuteCodeTool
+
 
 @pytest.mark.asyncio
 async def test_execute_python_basic():

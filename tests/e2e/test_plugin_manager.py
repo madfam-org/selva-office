@@ -1,12 +1,7 @@
 """
 E2E tests — Gap 3: Plugin Architecture
 """
-import os
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
-
 
 MINIMAL_PLUGIN_PY = '''
 from autoswarm_plugins.plugin_base import AutoSwarmPlugin, HookType
