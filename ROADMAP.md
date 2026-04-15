@@ -125,7 +125,13 @@ While horizontal parity is achieved, deep vertical integration for professional 
 - `[x]` Provision `AUTOSWARM_SKILLS_DIR` persistent volume in K8s
 - `[ ]` Inject Wave 3/4 Gateway secrets (DingTalk, Feishu, BlueBubbles, HA, etc.)
 - `[x]` Add `TAVILY_API_KEY` and `OPENAI_API_KEY` to worker pods
-- `[ ]` Run `alembic upgrade head` to apply checkpoint/approval tables
+- `[x]` Run `alembic upgrade head` to apply checkpoint/approval tables (migrations 0000-0014)
 - `[ ]` Map local Docker socket to Celery worker pods for sandboxing
+- `[x]` Fix auth exports (`CurrentUser`, `require_roles`) for Wave 4 routers
+- `[x]` Add Wave 4 ORM models (`Schedule`, `CommandApprovalRequest`) to `models.py`
+- `[x]` Fix worker test mock signatures (emit_event + **kwargs)
+- `[x]` Auto-fix 323 Python lint errors (ruff --fix)
+- `[x]` Add gateway service to docker-compose.yml
+- `[x]` Document `NEXUS_API_URL`, `NEXUS_API_WS_URL`, `GATEWAY_HEALTH_PORT` in .env.example
 
 
