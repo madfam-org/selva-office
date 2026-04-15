@@ -55,7 +55,7 @@ class DOFMonitorTool(BaseTool):
 
 class ExchangeRateTool(BaseTool):
     name = "exchange_rate"
-    description = "Get current USD/MXN exchange rate from Banxico"
+    description = "Get current USD/MXN exchange rate via Dhanam market data API"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -71,10 +71,10 @@ class ExchangeRateTool(BaseTool):
         }
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        from madfam_inference.adapters.banxico import BanxicoAdapter
+        from madfam_inference.adapters.dhanam import DhanamAdapter
 
         currency: str = kwargs.get("currency", "USD")
-        adapter = BanxicoAdapter()
+        adapter = DhanamAdapter()
         result = await adapter.get_exchange_rate(currency)
         success = bool(result.rate)
         return ToolResult(
@@ -92,7 +92,7 @@ class ExchangeRateTool(BaseTool):
 class UMATrackerTool(BaseTool):
     name = "uma_tracker"
     description = (
-        "Get current UMA (Unidad de Medida y Actualizacion) value from Banxico"
+        "Get current UMA (Unidad de Medida y Actualizacion) value via Dhanam"
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -103,9 +103,9 @@ class UMATrackerTool(BaseTool):
         }
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        from madfam_inference.adapters.banxico import BanxicoAdapter
+        from madfam_inference.adapters.dhanam import DhanamAdapter
 
-        adapter = BanxicoAdapter()
+        adapter = DhanamAdapter()
         result = await adapter.get_uma()
         success = bool(result.value)
         return ToolResult(
@@ -121,7 +121,7 @@ class UMATrackerTool(BaseTool):
 
 class TIIETool(BaseTool):
     name = "tiie_rate"
-    description = "Get current TIIE interbank interest rate from Banxico"
+    description = "Get current TIIE interbank interest rate via Dhanam"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -137,7 +137,7 @@ class TIIETool(BaseTool):
         }
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        from madfam_inference.adapters.banxico import BanxicoAdapter
+        from madfam_inference.adapters.dhanam import DhanamAdapter
 
         term: str = kwargs.get("term", "28")
         if term not in ("28", "91"):
@@ -146,7 +146,7 @@ class TIIETool(BaseTool):
                 error="term must be '28' or '91'",
             )
 
-        adapter = BanxicoAdapter()
+        adapter = DhanamAdapter()
         result = await adapter.get_tiie(term)
         success = bool(result.value)
         return ToolResult(
@@ -162,7 +162,7 @@ class TIIETool(BaseTool):
 
 class InflationTool(BaseTool):
     name = "inflation_rate"
-    description = "Get current Mexican CPI/INPC annual inflation rate"
+    description = "Get current Mexican CPI/INPC annual inflation rate via Dhanam"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -172,9 +172,9 @@ class InflationTool(BaseTool):
         }
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        from madfam_inference.adapters.banxico import BanxicoAdapter
+        from madfam_inference.adapters.dhanam import DhanamAdapter
 
-        adapter = BanxicoAdapter()
+        adapter = DhanamAdapter()
         result = await adapter.get_inflation()
         success = bool(result.value)
         return ToolResult(

@@ -175,14 +175,14 @@ class ExecuteCodeTool(BaseTool):
             stderr = stderr_b.decode(errors="replace")
             combined = stdout + stderr
 
-            if len(combined) > _OUTPUT_CAP:
-                combined = combined[:_OUTPUT_CAP] + "\n[... output truncated ...]"
-                stdout = combined
+            truncated = len(combined) > _OUTPUT_CAP
+            if truncated:
+                stdout = combined[:_OUTPUT_CAP] + "\n[... output truncated ...]"
 
             duration_ms = int((time.monotonic() - start) * 1000)
 
             return ToolResult(
-                output=stdout[:_OUTPUT_CAP],
+                output=stdout if truncated else stdout[:_OUTPUT_CAP],
                 data={
                     "stderr": stderr[:2048],
                     "return_code": proc.returncode or 0,

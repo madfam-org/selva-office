@@ -69,11 +69,12 @@ def scan_dof(state: IntelligenceState) -> IntelligenceState:
 
 @instrumented_node
 def fetch_economic_data(state: IntelligenceState) -> IntelligenceState:
-    """Fetch exchange rates, TIIE, inflation, and UMA from Banxico.
+    """Fetch exchange rates, TIIE, inflation, and UMA via Dhanam market data API.
 
-    Aggregates all economic indicators into a single dict.
-    Degrades gracefully -- each indicator is fetched independently
-    so a failure in one does not block the others.
+    Dhanam proxies to Banxico SIE internally so callers do not need
+    a direct Banxico dependency.  Aggregates all economic indicators
+    into a single dict.  Degrades gracefully -- each indicator is
+    fetched independently so a failure in one does not block the others.
     """
     messages = state.get("messages", [])
 
@@ -81,9 +82,9 @@ def fetch_economic_data(state: IntelligenceState) -> IntelligenceState:
     exchange_rate_data: dict[str, Any] | None = None
 
     try:
-        from madfam_inference.adapters.banxico import BanxicoAdapter
+        from madfam_inference.adapters.dhanam import DhanamAdapter
 
-        adapter = BanxicoAdapter()
+        adapter = DhanamAdapter()
 
         # Exchange rate
         try:
@@ -116,7 +117,7 @@ def fetch_economic_data(state: IntelligenceState) -> IntelligenceState:
 
     except Exception:
         logger.warning(
-            "Banxico adapter initialization failed; skipping economic data",
+            "Dhanam adapter initialization failed; skipping economic data",
             exc_info=True,
         )
 
