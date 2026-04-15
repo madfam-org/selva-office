@@ -120,6 +120,16 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Final Remediation (v1.2.1)
+
+- **Hub client test fix**: `test_hub_client.py` used `AsyncMock` for
+  httpx response objects, but httpx `Response.json()` and
+  `raise_for_status()` are synchronous. Fixed to use `MagicMock` for
+  responses, `AsyncMock` only for the `get()` method. 2/2 tests now pass.
+- **selvatown.com redirect**: `infra/cloudflare/redirect-rules.yaml` —
+  301 permanent redirect from `selvatown.com` (and `*.selvatown.com`)
+  to `selva.town` preserving path and query string.
+
 ## Solarpunk Visual Overhaul Phase 3-4 (v1.2.0)
 
 - **Solarpunk Companions**: 5 companion sprites redrawn — cat with flower

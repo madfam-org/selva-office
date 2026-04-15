@@ -137,6 +137,9 @@ While horizontal parity is achieved, deep vertical integration for professional 
   - Enable in Cloudflare Dashboard → Email → Email Routing → Routing Rules
 - `[ ]` Provision DNS records for `selva.town` (A/CNAME for agents-api, agents, agents-ws, auth, etc.)
 - `[ ]` Update Cloudflare Tunnel routes to serve `*.selva.town` hostnames
+- `[ ]` **Domain redirect**: `selvatown.com` → `selva.town` (301 permanent)
+  - Config reference: `infra/cloudflare/redirect-rules.yaml`
+  - Requires: selvatown.com zone in Cloudflare with proxied A record + redirect rules
 - `[ ]` Migrate GitHub org `madfam-org` → new org name (deferred — update ghcr.io refs after)
 - `[ ]` Update npm registry URL if migrating from `npm.madfam.io` to `npm.selva.town`
 - `[ ]` Set up `selva.town/terms` and `selva.town/privacy` landing pages
