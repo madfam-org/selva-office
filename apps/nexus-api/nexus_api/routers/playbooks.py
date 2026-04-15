@@ -96,6 +96,34 @@ _SEED_PLAYBOOKS = [
         "require_approval": False,
         "enabled": True,
     },
+    # ═══ INFRASTRUCTURE PLAYBOOKS ═══
+    {
+        "name": "Auto-Restart on Pod Crash",
+        "trigger_event": "infra:pod_crash",
+        "allowed_actions": ["infra_monitor", "deploy"],
+        "token_budget": 20,
+        "financial_cap_cents": 0,
+        "require_approval": False,
+        "enabled": True,
+    },
+    {
+        "name": "Automated Health Analysis",
+        "trigger_event": "infra:health_degraded",
+        "allowed_actions": ["infra_monitor", "api_call"],
+        "token_budget": 10,
+        "financial_cap_cents": 0,
+        "require_approval": False,
+        "enabled": True,
+    },
+    {
+        "name": "Database Migration Runner",
+        "trigger_event": "infra:migration_pending",
+        "allowed_actions": ["infrastructure_exec", "database_migration", "infra_monitor"],
+        "token_budget": 30,
+        "financial_cap_cents": 0,
+        "require_approval": True,
+        "enabled": True,
+    },
 ]
 
 for _seed in _SEED_PLAYBOOKS:

@@ -29,6 +29,10 @@ class ActionCategory(StrEnum):
     API_CALL = "api_call"
     BILLING_WRITE = "billing_write"
     MARKETING_SEND = "marketing_send"
+    INFRASTRUCTURE_EXEC = "infrastructure_exec"
+    SECRET_MANAGEMENT = "secret_management"
+    INFRASTRUCTURE_MONITOR = "infra_monitor"
+    DATABASE_MIGRATION = "database_migration"
 
 
 class PermissionResult(BaseModel):

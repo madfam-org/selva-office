@@ -138,7 +138,7 @@ AGENTS = [
         "level": 8,
         "department_slug": "build-engine",
         "node_id": "orchestration",
-        "skill_ids": ["coding", "webapp-testing", "mcp-builder", "research"],
+        "skill_ids": ["coding", "webapp-testing", "mcp-builder", "research", "operations", "infrastructure-monitoring"],
     },
     # ═══ LEDGER NODE ═══
     {

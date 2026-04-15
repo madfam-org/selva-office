@@ -69,6 +69,14 @@ from .legal import (
 )
 from .billing_tools import CreateCheckoutLinkTool, GetRevenueMetricsTool
 from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
+from .enclii_infra import (
+    EncliiExecTool,
+    EncliiHealthTool,
+    EncliiLogsTool,
+    EncliiRestartTool,
+    EncliiScaleTool,
+    EncliiSecretsTool,
+)
 from .marketing_tools import SendMarketingEmailTool
 from .operations import CarrierTrackingTool, InventoryCheckTool, PedimentoLookupTool
 from .phygital_tools import (
@@ -222,4 +230,11 @@ def get_builtin_tools() -> list[BaseTool]:
         RunDFMAnalysisTool(),
         GenerateQuoteTool(),
         CreateWorkOrderTool(),
+        # Infrastructure tools (Orchestration Node — SecOps gated)
+        EncliiExecTool(),
+        EncliiRestartTool(),
+        EncliiScaleTool(),
+        EncliiLogsTool(),
+        EncliiHealthTool(),
+        EncliiSecretsTool(),
     ]

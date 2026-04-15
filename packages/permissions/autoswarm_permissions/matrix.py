@@ -20,4 +20,8 @@ DEFAULT_PERMISSION_MATRIX: dict[ActionCategory, PermissionLevel] = {
     ActionCategory.API_CALL: PermissionLevel.ALLOW,
     ActionCategory.BILLING_WRITE: PermissionLevel.ASK,
     ActionCategory.MARKETING_SEND: PermissionLevel.ASK,
+    ActionCategory.INFRASTRUCTURE_EXEC: PermissionLevel.ASK,
+    ActionCategory.SECRET_MANAGEMENT: PermissionLevel.ASK,
+    ActionCategory.INFRASTRUCTURE_MONITOR: PermissionLevel.ALLOW,
+    ActionCategory.DATABASE_MIGRATION: PermissionLevel.ASK,
 }
