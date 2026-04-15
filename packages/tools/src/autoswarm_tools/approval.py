@@ -15,7 +15,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from datetime import UTC
-from enum import Enum
+from enum import StrEnum
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ def is_dangerous(command: str) -> tuple[bool, str]:
 # Approval result
 # ---------------------------------------------------------------------------
 
-class ApprovalStatus(str, Enum):
+class ApprovalStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     DENIED = "denied"
@@ -184,7 +184,10 @@ async def request_approval(
     result.status = ApprovalStatus.EXPIRED
     result.elapsed_s = timeout_s
     _PENDING.pop(request_id, None)
-    logger.warning("Approval request %s expired after %ss — command DENIED (fail-closed).", request_id, timeout_s)
+    logger.warning(
+        "Approval request %s expired after %ss — command DENIED (fail-closed).",
+        request_id, timeout_s,
+    )
     return result
 
 
@@ -220,7 +223,10 @@ async def _persist_and_broadcast(
         redis = await get_redis()
         await redis.publish(
             "autoswarm:approval_requests",
-            json.dumps({"id": request_id, "run_id": run_id, "command": command[:200], "reason": reason}),
+            json.dumps({
+                "id": request_id, "run_id": run_id,
+                "command": command[:200], "reason": reason,
+            }),
         )
     except Exception as exc:
         logger.warning("Could not broadcast approval request via Redis: %s", exc)

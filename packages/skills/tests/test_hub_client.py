@@ -12,7 +12,11 @@ async def test_hub_browse_mock():
     mock_resp.raise_for_status = MagicMock()
     mock_resp.json.return_value = {
         "skills": [
-            {"name": "test-skill", "description": "desc", "author": "me", "version": "1.0", "category": "it", "downloads": 10}
+            {
+                "name": "test-skill", "description": "desc",
+                "author": "me", "version": "1.0",
+                "category": "it", "downloads": 10,
+            }
         ]
     }
 
@@ -36,7 +40,11 @@ async def test_hub_install_mock(tmp_path):
     mock_resp_dl.raise_for_status = MagicMock()
     mock_resp_dl.content = b"print('installed')"
 
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=[mock_resp_meta, mock_resp_dl]):
+    with patch(
+        "httpx.AsyncClient.get",
+        new_callable=AsyncMock,
+        side_effect=[mock_resp_meta, mock_resp_dl],
+    ):
         client = SkillsHubClient()
         path = await client.install("test-skill", tmp_path)
 

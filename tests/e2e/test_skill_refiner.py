@@ -84,7 +84,7 @@ def test_refine_all_flags_broken_skill(skills_dir):
     from autoswarm_skills.refiner import SkillRefiner
     refiner = SkillRefiner(skills_dir=str(skills_dir), refine_interval_days=7)
 
-    with patch.object(refiner, "_llm_refine", return_value="refined") as mock_refine:
+    with patch.object(refiner, "_llm_refine", return_value="refined"):
         results = refiner.refine_all()
 
     assert results.get("broken_skill") == "refined"

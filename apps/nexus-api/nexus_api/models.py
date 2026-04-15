@@ -400,7 +400,7 @@ class ChatMessage(Base):
 # ---------------------------------------------------------------------------
 
 
-class ApprovalStatus(str, enum.Enum):
+class ApprovalStatus(enum.StrEnum):
     """Status for dangerous-command approval requests."""
 
     PENDING = "pending"
@@ -428,7 +428,7 @@ class CommandApprovalRequest(Base):
     resolved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
-class ScheduledAction(str, enum.Enum):
+class ScheduledAction(enum.StrEnum):
     """Actions that can be scheduled via cron expressions."""
 
     ACP_INITIATE = "acp_initiate"

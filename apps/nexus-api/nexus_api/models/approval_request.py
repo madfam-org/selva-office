@@ -12,7 +12,7 @@ from sqlalchemy import Column, DateTime, Enum, String, Text
 from ..database import Base
 
 
-class ApprovalStatus(str, enum.Enum):
+class ApprovalStatus(enum.StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     DENIED = "denied"
@@ -26,7 +26,12 @@ class ApprovalRequest(Base):
     run_id: str = Column(String(255), nullable=False, index=True)
     command: str = Column(Text, nullable=False)
     reason: str = Column(Text, nullable=False)
-    status: ApprovalStatus = Column(Enum(ApprovalStatus), nullable=False, default=ApprovalStatus.PENDING)
-    requested_at: datetime = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC))
+    status: ApprovalStatus = Column(
+        Enum(ApprovalStatus), nullable=False, default=ApprovalStatus.PENDING,
+    )
+    requested_at: datetime = Column(
+        DateTime(timezone=True), nullable=False,
+        default=lambda: datetime.now(tz=UTC),
+    )
     resolved_at: datetime = Column(DateTime(timezone=True), nullable=True)
     resolved_by: str = Column(String(255), nullable=True)

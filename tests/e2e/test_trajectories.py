@@ -5,10 +5,26 @@ import json
 from unittest.mock import MagicMock
 
 _FAKE_TRANSCRIPTS = [
-    {"role": "user", "content": "Initiate ACP for https://example.com", "timestamp": "2026-04-13T20:00:00Z"},
-    {"role": "acp-analyst", "content": "Phase I analysis complete. PRD generated.", "timestamp": "2026-04-13T20:01:00Z"},
-    {"role": "acp-clean-swarm", "content": "Phase III skill compiled successfully.", "timestamp": "2026-04-13T20:05:00Z"},
-    {"role": "acp-qa-oracle", "content": "All tests passed. Skill approved.", "timestamp": "2026-04-13T20:10:00Z"},
+    {
+        "role": "user",
+        "content": "Initiate ACP for https://example.com",
+        "timestamp": "2026-04-13T20:00:00Z",
+    },
+    {
+        "role": "acp-analyst",
+        "content": "Phase I analysis complete. PRD generated.",
+        "timestamp": "2026-04-13T20:01:00Z",
+    },
+    {
+        "role": "acp-clean-swarm",
+        "content": "Phase III skill compiled successfully.",
+        "timestamp": "2026-04-13T20:05:00Z",
+    },
+    {
+        "role": "acp-qa-oracle",
+        "content": "All tests passed. Skill approved.",
+        "timestamp": "2026-04-13T20:10:00Z",
+    },
 ]
 
 
@@ -57,7 +73,8 @@ class TestTrajectoryExporter:
         out_path = str(tmp_path / "trajectories.jsonl")
         count = exporter.export_batch(["run-1", "run-2"], out_path)
         assert count == 2
-        lines = open(out_path).readlines()
+        with open(out_path) as f:
+            lines = f.readlines()
         assert len(lines) == 2
         for line in lines:
             obj = json.loads(line)

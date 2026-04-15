@@ -21,7 +21,8 @@ def test_initiate_acp(auth_headers):
         headers=auth_headers
     )
     # Testing mock success
-    assert response.status_code in [200, 404]  # 404 if router not mounted in test app correctly, assuming 200 for mock
+    # 404 if router not mounted in test app correctly, assuming 200 for mock
+    assert response.status_code in [200, 404]
 
 def test_get_acp_payload():
     # Test our secure redis proxy endpoint
@@ -39,7 +40,9 @@ def test_qa_oracle_webhook_hmac():
     payload = b'{"run_id": "test_run", "status": "success", "logs": "All tests passed"}'
 
     # Valid Signature
-    valid_mac = hmac.new(settings.enclii_webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
+    valid_mac = hmac.new(
+        settings.enclii_webhook_secret.encode(), payload, hashlib.sha256,
+    ).hexdigest()
 
     response = client.post(
         "/acp/webhook/qa-oracle",
@@ -47,7 +50,8 @@ def test_qa_oracle_webhook_hmac():
         headers={"X-Enclii-Signature": valid_mac, "Content-Type": "application/json"}
     )
 
-    # 200 if router active, 422 if mismatched schema (FastAPI standard), passing generic validation checks
+    # 200 if router active, 422 if mismatched schema (FastAPI standard),
+    # passing generic validation checks
     assert response.status_code != 401
 
     # Invalid Signature

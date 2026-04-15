@@ -156,7 +156,14 @@ async def vision_describe(image_b64: str, prompt: str = "Describe this image in 
                 {
                     "role": "user",
                     "content": [
-                        {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": image_b64}},
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/png",
+                                "data": image_b64,
+                            },
+                        },
                         {"type": "text", "text": prompt},
                     ],
                 }

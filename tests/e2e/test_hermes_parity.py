@@ -43,7 +43,8 @@ def test_qa_oracle_stub_fallback(tmp_path, monkeypatch):
     path = node._compile_skill_stub("stub-run-xyz")
 
     assert os.path.isfile(path)
-    text = open(path).read()
+    with open(path) as f:
+        text = f.read()
     assert "SKILL_DESCRIPTION" in text
     assert "SKILL_METADATA" in text
     assert "SKILL_ENTRYPOINT" in text

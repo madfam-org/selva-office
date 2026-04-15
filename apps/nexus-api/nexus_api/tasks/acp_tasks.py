@@ -21,4 +21,4 @@ def run_acp_workflow_task(self, target_url: str):
         return result
     except Exception as exc:
         logger.error(f"Error in ACP Analyst workflow for {target_url}: {exc}")
-        raise self.retry(exc=exc, countdown=60)
+        raise self.retry(exc=exc, countdown=60) from exc

@@ -57,11 +57,21 @@ class WebSearchTool(BaseTool):
                     resp.raise_for_status()
                     data = resp.json()
                     results = [
-                        {"title": r.get("title"), "url": r.get("url"), "snippet": r.get("content", "")[:300]}
+                        {
+                            "title": r.get("title"),
+                            "url": r.get("url"),
+                            "snippet": r.get("content", "")[:300],
+                        }
                         for r in data.get("results", [])
                     ]
-                    lines = [f"{i+1}. {r['title']}\n   {r['url']}\n   {r['snippet']}" for i, r in enumerate(results)]
-                    return ToolResult(output="\n\n".join(lines), data={"results": results, "provider": "tavily"})
+                    lines = [
+                        f"{i+1}. {r['title']}\n   {r['url']}\n   {r['snippet']}"
+                        for i, r in enumerate(results)
+                    ]
+                    return ToolResult(
+                        output="\n\n".join(lines),
+                        data={"results": results, "provider": "tavily"},
+                    )
             except Exception as exc:
                 logger.warning("web_search Tavily failed: %s — falling back to DuckDuckGo", exc)
 
@@ -71,9 +81,19 @@ class WebSearchTool(BaseTool):
             results = []
             with DDGS() as ddgs:
                 for r in ddgs.text(query, max_results=n):
-                    results.append({"title": r.get("title"), "url": r.get("href"), "snippet": r.get("body", "")[:300]})
-            lines = [f"{i+1}. {r['title']}\n   {r['url']}\n   {r['snippet']}" for i, r in enumerate(results)]
-            return ToolResult(output="\n\n".join(lines), data={"results": results, "provider": "duckduckgo"})
+                    results.append({
+                        "title": r.get("title"),
+                        "url": r.get("href"),
+                        "snippet": r.get("body", "")[:300],
+                    })
+            lines = [
+                f"{i+1}. {r['title']}\n   {r['url']}\n   {r['snippet']}"
+                for i, r in enumerate(results)
+            ]
+            return ToolResult(
+                output="\n\n".join(lines),
+                data={"results": results, "provider": "duckduckgo"},
+            )
         except Exception as exc:
             return ToolResult(success=False, error=f"All web search providers failed: {exc}")
 
@@ -89,7 +109,11 @@ class WebExtractTool(BaseTool):
             "type": "object",
             "properties": {
                 "url": {"type": "string", "description": "URL to fetch and parse"},
-                "format": {"type": "string", "enum": ["markdown", "text", "html"], "default": "markdown"},
+                "format": {
+                    "type": "string",
+                    "enum": ["markdown", "text", "html"],
+                    "default": "markdown",
+                },
             },
             "required": ["url"],
         }
@@ -104,7 +128,10 @@ class WebExtractTool(BaseTool):
             from autoswarm_tools.browser import browser_extract  # type: ignore
             content = await browser_extract(url)
         except Exception as exc:
-            logger.warning("web_extract: browser_extract failed (%s) — falling back to requests", exc)
+            logger.warning(
+                "web_extract: browser_extract failed (%s)"
+                " — falling back to requests", exc,
+            )
             try:
                 import httpx
                 async with httpx.AsyncClient(timeout=15.0) as client:
@@ -201,7 +228,10 @@ class DelegateTaskTool(BaseTool):
 
             if not task.ready():
                 return ToolResult(
-                    output=f"Subagent task dispatched (id={task.id}) but did not complete within {timeout}s.",
+                    output=(
+                        f"Subagent task dispatched (id={task.id})"
+                        f" but did not complete within {timeout}s."
+                    ),
                     data={"task_id": task.id, "status": "pending"},
                 )
             result = task.result or {}
@@ -255,13 +285,19 @@ class ReadCredentialFileTool(BaseTool):
         if target.suffix not in _ALLOWED_EXTENSIONS:
             return ToolResult(
                 success=False,
-                error=f"File type '{target.suffix}' not allowed. Allowed: {_ALLOWED_EXTENSIONS}",
+                error=(
+                    f"File type '{target.suffix}' not allowed."
+                    f" Allowed: {_ALLOWED_EXTENSIONS}"
+                ),
             )
         if not target.exists():
             return ToolResult(success=False, error=f"Credential file not found: {filename}")
 
         try:
             content = target.read_text(encoding="utf-8")
-            return ToolResult(output=content[:4096], data={"filename": filename, "path": str(target)})
+            return ToolResult(
+                output=content[:4096],
+                data={"filename": filename, "path": str(target)},
+            )
         except Exception as exc:
             return ToolResult(success=False, error=str(exc))

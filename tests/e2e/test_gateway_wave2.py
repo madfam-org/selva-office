@@ -9,14 +9,21 @@ from httpx import AsyncClient
 
 def _make_whatsapp_payload(text: str, from_number: str = "+15551234567") -> dict:
     return {
-        "entry": [{"changes": [{"value": {"messages": [{"text": {"body": text}, "from": from_number}]}}]}]
+        "entry": [{
+            "changes": [{"value": {"messages": [
+                {"text": {"body": text}, "from": from_number},
+            ]}}],
+        }]
     }
 
 
 def _make_matrix_payload(text: str, sender: str = "@user:matrix.example.com") -> dict:
     return {
         "events": [
-            {"type": "m.room.message", "sender": sender, "content": {"msgtype": "m.text", "body": text}}
+            {
+                "type": "m.room.message", "sender": sender,
+                "content": {"msgtype": "m.text", "body": text},
+            }
         ]
     }
 
@@ -29,7 +36,11 @@ class TestWhatsAppGateway:
             mock_settings.return_value.whatsapp_verify_token = "my-verify-token"
             response = await async_client.get(
                 "/api/v1/gateway/whatsapp/webhook",
-                params={"hub.mode": "subscribe", "hub.verify_token": "my-verify-token", "hub.challenge": "abc123"},
+                params={
+                    "hub.mode": "subscribe",
+                    "hub.verify_token": "my-verify-token",
+                    "hub.challenge": "abc123",
+                },
             )
         assert response.status_code == 200
         assert response.text == "abc123"
@@ -40,7 +51,11 @@ class TestWhatsAppGateway:
             mock_settings.return_value.whatsapp_verify_token = "correct-token"
             response = await async_client.get(
                 "/api/v1/gateway/whatsapp/webhook",
-                params={"hub.mode": "subscribe", "hub.verify_token": "wrong-token", "hub.challenge": "abc123"},
+                params={
+                    "hub.mode": "subscribe",
+                    "hub.verify_token": "wrong-token",
+                    "hub.challenge": "abc123",
+                },
             )
         assert response.status_code == 403
 
@@ -52,7 +67,9 @@ class TestWhatsAppGateway:
                 with patch("nexus_api.routers.gateway.memory_store"):
                     mock_settings.return_value.whatsapp_access_token = ""  # Skip sig validation
                     mock_task.delay.return_value = MagicMock(id="task-wa-001")
-                    response = await async_client.post("/api/v1/gateway/whatsapp/webhook", json=payload)
+                    response = await async_client.post(
+                        "/api/v1/gateway/whatsapp/webhook", json=payload,
+                    )
         assert response.status_code == 200
         assert response.json()["action"] == "acp_triggered"
 
@@ -97,7 +114,11 @@ class TestMattermostGateway:
                     mock_task.delay.return_value = MagicMock(id="task-mm-001")
                     response = await async_client.post(
                         "/api/v1/gateway/mattermost/webhook",
-                        data={"token": "mm-secret", "text": "https://example.com", "user_name": "alice"},
+                        data={
+                            "token": "mm-secret",
+                            "text": "https://example.com",
+                            "user_name": "alice",
+                        },
                     )
         assert response.status_code == 200
         body = response.json()
@@ -124,7 +145,9 @@ class TestSignalGateway:
                 with patch("nexus_api.routers.gateway.memory_store"):
                     mock_settings.return_value.signal_allowed_numbers = "+15559998888"
                     mock_task.delay.return_value = MagicMock(id="task-sig-001")
-                    response = await async_client.post("/api/v1/gateway/signal/webhook", json=payload)
+                    response = await async_client.post(
+                        "/api/v1/gateway/signal/webhook", json=payload,
+                    )
         assert response.status_code == 200
         assert response.json()["action"] == "acp_triggered"
 

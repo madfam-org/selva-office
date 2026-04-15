@@ -102,7 +102,10 @@ async def compact_memory(retention_days: int = 30) -> dict:
         if llm_available:
             try:
                 request = InferenceRequest(
-                    messages=[{"role": "user", "content": SUMMARIZE_PROMPT.format(transcript=raw[:4000])}],
+                    messages=[{
+                        "role": "user",
+                        "content": SUMMARIZE_PROMPT.format(transcript=raw[:4000]),
+                    }],
                     system_prompt="You are a concise technical summarizer. Output plain text only.",
                     policy=RoutingPolicy(
                         sensitivity=Sensitivity.CONFIDENTIAL,
@@ -118,7 +121,7 @@ async def compact_memory(retention_days: int = 30) -> dict:
                 summary = f"[Auto-summary unavailable] Raw transcript length: {len(raw)} chars."
         else:
             # Extractive fallback: first 3 lines
-            lines = [l for l in raw.split("\n") if l.strip()]
+            lines = [ln for ln in raw.split("\n") if ln.strip()]
             summary = " | ".join(lines[:3]) + f" ... [{len(lines)} total entries]"
 
         _replace_with_summary(memory_store, run_id, summary)

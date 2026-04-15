@@ -92,4 +92,6 @@ async def rollback_to_phase(
         return {"status": "requeued", "new_task_id": task.id, "rolled_back_to": phase}
     except Exception as exc:
         logger.error("Rollback re-queue failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Rollback re-queue failed: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Rollback re-queue failed: {exc}",
+        ) from exc

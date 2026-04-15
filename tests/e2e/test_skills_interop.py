@@ -95,6 +95,7 @@ class TestQAOracleV1Synthesis:
         node = ACPQAOracleNode(source_code="x = 1", test_suite="")
         path = node._compile_skill_stub("run-v1-check")
 
-        content = open(path).read()
+        with open(path) as f:
+            content = f.read()
         assert "run-v1-check" in content
         assert "SKILL_ENTRYPOINT" in content

@@ -133,7 +133,9 @@ class SkillsHubClient:
                     params=params or {},
                 )
                 resp.raise_for_status()
-                skills = resp.json().get("skills", resp.json() if isinstance(resp.json(), list) else [])
+                data = resp.json()
+                fallback = data if isinstance(data, list) else []
+                skills = data.get("skills", fallback) if isinstance(data, dict) else data
                 return [
                     HubSkill(
                         name=s.get("name", ""),

@@ -83,7 +83,11 @@ class TestSlackGateway:
         secret = "slack-signing-secret"
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
-            lambda: MagicMock(slack_signing_secret=secret, discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist=""),
+            lambda: MagicMock(
+                slack_signing_secret=secret, discord_webhook_secret="",
+                telegram_webhook_secret="", twilio_auth_token="",
+                gateway_email_whitelist="",
+            ),
         )
         stale_ts = int(time.time()) - 400  # > 5 minutes old
         body = "command=%2Finitiate_acp&text=https%3A%2F%2Fhacker.com&user_name=bad"
@@ -101,7 +105,11 @@ class TestEmailGateway:
     def test_whitelisted_sender_triggers_acp(self, test_client, monkeypatch):
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
-            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist="boss@selva.town"),
+            lambda: MagicMock(
+                slack_signing_secret="", discord_webhook_secret="",
+                telegram_webhook_secret="", twilio_auth_token="",
+                gateway_email_whitelist="boss@selva.town",
+            ),
         )
         resp = test_client.post(self.URL, json={
             "from": "boss@selva.town",
@@ -113,7 +121,11 @@ class TestEmailGateway:
     def test_unlisted_sender_is_rejected(self, test_client, monkeypatch):
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
-            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist="boss@selva.town"),
+            lambda: MagicMock(
+                slack_signing_secret="", discord_webhook_secret="",
+                telegram_webhook_secret="", twilio_auth_token="",
+                gateway_email_whitelist="boss@selva.town",
+            ),
         )
         resp = test_client.post(self.URL, json={
             "from": "stranger@evil.com",
@@ -132,7 +144,11 @@ class TestSMSGateway:
     def test_acp_sms_command_no_auth_configured(self, test_client, monkeypatch):
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
-            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist=""),
+            lambda: MagicMock(
+                slack_signing_secret="", discord_webhook_secret="",
+                telegram_webhook_secret="", twilio_auth_token="",
+                gateway_email_whitelist="",
+            ),
         )
         body = "From=%2B15550001234&Body=acp+https%3A%2F%2Ftarget.com"
         resp = test_client.post(
@@ -146,7 +162,11 @@ class TestSMSGateway:
     def test_unknown_sms_body_ignored(self, test_client, monkeypatch):
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
-            lambda: MagicMock(slack_signing_secret="", discord_webhook_secret="", telegram_webhook_secret="", twilio_auth_token="", gateway_email_whitelist=""),
+            lambda: MagicMock(
+                slack_signing_secret="", discord_webhook_secret="",
+                telegram_webhook_secret="", twilio_auth_token="",
+                gateway_email_whitelist="",
+            ),
         )
         body = "From=%2B15550001234&Body=hello+world"
         resp = test_client.post(

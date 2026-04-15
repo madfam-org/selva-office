@@ -157,7 +157,8 @@ class TestCompileSkillStub:
         assert filepath is not None
         assert os.path.isfile(filepath)
 
-        content = open(filepath).read()
+        with open(filepath) as f:
+            content = f.read()
         assert "SKILL_DESCRIPTION" in content
         assert run_id in content
         assert "SKILL_ENTRYPOINT" in content

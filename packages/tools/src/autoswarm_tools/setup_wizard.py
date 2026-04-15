@@ -67,7 +67,7 @@ def step_env_vars(collected: dict) -> dict:
 def step_llm_credentials(collected: dict) -> dict:
     """Step 2: Probe LLM provider credentials."""
     _header("Step 2 — LLM Provider Credentials")
-    for var, placeholder in OPTIONAL_LLM_VARS:
+    for var, _placeholder in OPTIONAL_LLM_VARS:
         existing = os.environ.get(var, "")
         if existing:
             _ok(f"{var} found")

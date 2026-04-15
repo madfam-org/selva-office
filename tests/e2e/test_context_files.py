@@ -14,7 +14,7 @@ class TestContextFileLoader:
         assert "hexagonal architecture" in result
 
     def test_autoswarm_md_takes_precedence(self, tmp_path):
-        """Both files are present: both are injected, .autoswarm.md listed last (highest priority)."""
+        """Both present: both injected, .autoswarm.md listed last (highest priority)."""
         (tmp_path / "AGENTS.md").write_text("# AGENTS\nBase instructions.")
         (tmp_path / ".autoswarm.md").write_text("# Local Override\nWorkspace-specific override.")
         from autoswarm_workflows.context_files import ContextFileLoader

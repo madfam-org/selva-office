@@ -125,7 +125,7 @@ class BillingEventConsumer:
         self, msg_id: str, fields: dict[str, Any]
     ) -> None:
         """Process a single stream message with retry/DLQ logic."""
-        pool = get_redis_pool()
+        get_redis_pool()
 
         try:
             raw = fields.get("data") or fields.get(b"data", "")

@@ -26,7 +26,7 @@ def refine_skills_task(self, force: bool = False) -> dict:
         return results
     except Exception as exc:
         logger.error("SkillRefiner task failed: %s", exc)
-        raise self.retry(exc=exc, countdown=3600)
+        raise self.retry(exc=exc, countdown=3600) from exc
 
 
 @celery_app.task(bind=True, max_retries=2, name="tasks.compact_memory")
@@ -43,4 +43,4 @@ def compact_memory_task(self, retention_days: int = 30) -> dict:
         return result
     except Exception as exc:
         logger.error("MemoryCompactor task failed: %s", exc)
-        raise self.retry(exc=exc, countdown=3600)
+        raise self.retry(exc=exc, countdown=3600) from exc

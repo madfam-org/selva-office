@@ -11,5 +11,7 @@ class ACPSanitizerNode:
     def parse_and_audit(self) -> str:
         print("[Phase II] Sanitizing dirty PRD...")
         # Pseudocode for rigid parsing and LLM audit:
-        # scrubbed_prd = llm_chain.invoke({"text": self.dirty_prd, "constraints": "REMOVE ALL CODE HINTS"})
+        # scrubbed_prd = llm_chain.invoke(
+        #     {"text": self.dirty_prd, "constraints": "REMOVE ALL CODE HINTS"}
+        # )
         return self.dirty_prd + "\n\n[STERILIZATION COMPLETE]"

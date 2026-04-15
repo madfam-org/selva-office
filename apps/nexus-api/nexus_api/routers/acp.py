@@ -1,10 +1,15 @@
+import hashlib
+import hmac
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, HttpUrl
 
 from ..auth import require_role
+from ..config import get_settings
+from ..memory_store.db import memory_store
+from ..tasks.acp_tasks import run_acp_workflow_task
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +38,6 @@ def run_acp_workflow_background(target_url: str):
     # run_analyst(target_url)
 
 
-from ..tasks.acp_tasks import run_acp_workflow_task
-
 
 @router.post("/initiate")
 async def initiate_acp(
@@ -55,14 +58,6 @@ async def initiate_acp(
         "target_url": str(request.target_url)
     }
 
-
-import hashlib
-import hmac
-
-from fastapi import Header, Request
-
-from ..config import get_settings
-from ..memory_store.db import memory_store
 
 
 @router.get("/payloads/{run_id}")

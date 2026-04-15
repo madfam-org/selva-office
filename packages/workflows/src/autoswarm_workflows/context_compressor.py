@@ -32,7 +32,9 @@ def _extract_text(message: dict) -> str:
         return content
     if isinstance(content, list):
         return " ".join(
-            part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") == "text"
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
         )
     return str(content)
 
@@ -126,7 +128,10 @@ class ContextCompressor:
             response = await router.complete(request)
             return response.content
         except Exception as exc:
-            logger.warning("ContextCompressor: LLM summarization failed (%s) — using truncated transcript.", exc)
+            logger.warning(
+                "ContextCompressor: LLM summarization failed (%s)"
+                " — using truncated transcript.", exc,
+            )
             return transcript[:600] + "\n[... further context elided ...]"
 
     def compress_sync(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:

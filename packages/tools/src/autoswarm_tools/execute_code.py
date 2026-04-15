@@ -86,7 +86,10 @@ class ExecuteCodeTool(BaseTool):
         if language not in _SUPPORTED_LANGUAGES:
             return ToolResult(
                 success=False,
-                error=f"Unsupported language '{language}'. Supported: {sorted(_SUPPORTED_LANGUAGES)}",
+                error=(
+            f"Unsupported language '{language}'."
+            f" Supported: {sorted(_SUPPORTED_LANGUAGES)}"
+        ),
             )
 
         # ----------------------------------------------------------------
@@ -99,7 +102,10 @@ class ExecuteCodeTool(BaseTool):
                 if policy == "block":
                     return ToolResult(
                         success=False,
-                        error=f"Execution blocked: dangerous patterns detected: {dangerous_matches}",
+                        error=(
+                            "Execution blocked: dangerous patterns"
+                            f" detected: {dangerous_matches}"
+                        ),
                     )
                 # policy == 'approve' — request HITL
                 try:
@@ -115,7 +121,10 @@ class ExecuteCodeTool(BaseTool):
                             error="Code execution denied by operator approval gate.",
                         )
                 except ImportError:
-                    logger.warning("execute_code: approval module not available — blocking by default.")
+                    logger.warning(
+                        "execute_code: approval module not available"
+                        " — blocking by default.",
+                    )
                     return ToolResult(success=False, error="Approval module unavailable; blocking.")
 
         sandbox = ToolSandbox(level=SandboxLevel.FILESYSTEM)

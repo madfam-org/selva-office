@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from ..database import Base
 
 
-class ScheduledAction(str, enum.Enum):
+class ScheduledAction(enum.StrEnum):
     ACP_INITIATE = "acp_initiate"
     SKILL_REFINE = "skill_refine"
     MEMORY_COMPACT = "memory_compact"

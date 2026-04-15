@@ -6,11 +6,11 @@ Defines the AutoSwarmPlugin ABC and HookType enum.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class HookType(str, Enum):
+class HookType(StrEnum):
     PRE_PHASE = "pre_phase"
     POST_PHASE = "post_phase"
     ON_SKILL_LOAD = "on_skill_load"
@@ -41,10 +41,10 @@ class AutoSwarmPlugin(ABC):
     def version(self) -> str:
         return self._manifest.get("version", "0.0.1")
 
-    def setup(self) -> None:
+    def setup(self) -> None:  # noqa: B027
         """Called once on plugin load. Register hooks here."""
 
-    def teardown(self) -> None:
+    def teardown(self) -> None:  # noqa: B027
         """Called on plugin unload or application shutdown."""
 
     @abstractmethod
