@@ -28,6 +28,7 @@ export interface PalettePreset {
     carpetSupport?: string;
     carpetResearch?: string;
     carpetBlueprint?: string;
+    accent?: string;
   };
   /** Override outfit colors (index 0-3) for the preset */
   outfitOverrides?: string[];
@@ -44,7 +45,7 @@ export const PALETTE_PRESETS: Record<string, PalettePreset> = {
       deptSales: '#6b5a2a',
       deptSupport: '#3a5a3a',
       deptResearch: '#2a4a5a',
-      reviewStation: '#7a6a3a',
+      reviewStation: '#f6d55c',
       corridor: '#9a8a6a',
       lobby: '#a89a7a',
       furnitureBase: '#6b5a42',
@@ -54,11 +55,11 @@ export const PALETTE_PRESETS: Record<string, PalettePreset> = {
       carpetSupport: '#3a5a3a',
       carpetResearch: '#2a4a5a',
       carpetBlueprint: '#5a4a3a',
+      accent: '#4a9e6e',
     },
   },
   default: {
     name: 'Default',
-    avatarTint: '#f0e8d0',
     environment: {
       floor: '#8b7355',
       wall: '#c8b896',
@@ -66,7 +67,7 @@ export const PALETTE_PRESETS: Record<string, PalettePreset> = {
       deptSales: '#6b5a2a',
       deptSupport: '#3a5a3a',
       deptResearch: '#2a4a5a',
-      reviewStation: '#7a6a3a',
+      reviewStation: '#f6d55c',
       corridor: '#9a8a6a',
       lobby: '#a89a7a',
       furnitureBase: '#6b5a42',
@@ -76,6 +77,7 @@ export const PALETTE_PRESETS: Record<string, PalettePreset> = {
       carpetSupport: '#3a5a3a',
       carpetResearch: '#2a4a5a',
       carpetBlueprint: '#5a4a3a',
+      accent: '#4a9e6e',
     },
   },
   cyberpunk: {
