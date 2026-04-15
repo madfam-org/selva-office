@@ -14,9 +14,8 @@ from __future__ import annotations
 import importlib
 import importlib.metadata
 import logging
-import os
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml  # type: ignore
 

@@ -1,9 +1,6 @@
 """
 E2E tests — Gap 5: Project Context Files (AGENTS.md / .autoswarm.md)
 """
-import tempfile
-from pathlib import Path
-import pytest
 
 
 class TestContextFileLoader:

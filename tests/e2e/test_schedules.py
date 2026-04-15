@@ -3,9 +3,11 @@ Tests for Gap 3: Cron Scheduler API (POST/GET/DELETE /api/v1/schedules).
 """
 from __future__ import annotations
 
+from datetime import UTC
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, AsyncMock, patch
 
 
 @pytest.fixture()
@@ -42,8 +44,9 @@ def _mock_db(monkeypatch):
 
 class TestSchedulesRouter:
     def test_create_schedule_returns_201(self, test_client, _mock_db):
+        from datetime import datetime
+
         from nexus_api.models.schedule import Schedule
-        from datetime import datetime, timezone
 
         fake_schedule = MagicMock(spec=Schedule)
         fake_schedule.id = "sched-abc"
@@ -53,7 +56,7 @@ class TestSchedulesRouter:
         fake_schedule.payload = {"target_url": "https://example.com"}
         fake_schedule.enabled = True
         fake_schedule.description = "Weekly test"
-        fake_schedule.created_at = datetime.now(tz=timezone.utc)
+        fake_schedule.created_at = datetime.now(tz=UTC)
         fake_schedule.last_run_at = None
 
         _mock_db.refresh = AsyncMock(side_effect=lambda s: None)

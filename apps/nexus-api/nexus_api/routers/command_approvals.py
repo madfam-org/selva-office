@@ -7,17 +7,17 @@ resolve them from the API, UI, or any connected gateway channel.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, require_roles
 from ..database import get_db
-from ..models.approval_request import ApprovalRequest, ApprovalStatus
+from ..models import ApprovalStatus
+from ..models import CommandApprovalRequest as ApprovalRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/command-approvals", tags=["Command Approvals"])
@@ -34,8 +34,8 @@ class ApprovalRequestResponse(BaseModel):
     reason: str
     status: ApprovalStatus
     requested_at: str
-    resolved_at: Optional[str]
-    resolved_by: Optional[str]
+    resolved_at: str | None
+    resolved_by: str | None
 
     class Config:
         from_attributes = True
@@ -45,11 +45,11 @@ class ApprovalRequestResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.get("/pending", response_model=List[ApprovalRequestResponse])
+@router.get("/pending", response_model=list[ApprovalRequestResponse])
 async def list_pending(
     user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
     db: AsyncSession = Depends(get_db),
-) -> List[ApprovalRequestResponse]:
+) -> list[ApprovalRequestResponse]:
     """List all pending dangerous command approval requests."""
     result = await db.execute(
         select(ApprovalRequest)
@@ -93,7 +93,7 @@ async def _resolve(
         raise HTTPException(status_code=409, detail=f"Request already {req.status}")
 
     req.status = ApprovalStatus.APPROVED if approved else ApprovalStatus.DENIED
-    req.resolved_at = datetime.now(tz=timezone.utc)
+    req.resolved_at = datetime.now(tz=UTC)
     req.resolved_by = user.sub
     await db.commit()
     await db.refresh(req)

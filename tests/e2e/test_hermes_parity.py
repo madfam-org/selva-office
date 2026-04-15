@@ -8,8 +8,6 @@ Covers:
 from __future__ import annotations
 
 import os
-import sys
-import pytest
 
 # ---------------------------------------------------------------------------
 # QA Oracle — Skill Compilation (stub path)
@@ -80,7 +78,7 @@ def test_honcho_update_profile_reflects_in_addendum():
 
 
 def test_honcho_system_addendum_contains_all_fields():
-    from autoswarm_workflows.honcho import HonchoProfiler, DEFAULT_PROFILE
+    from autoswarm_workflows.honcho import DEFAULT_PROFILE, HonchoProfiler
 
     profiler = HonchoProfiler(memory_store=None)
     addendum = profiler.get_system_addendum("carol")

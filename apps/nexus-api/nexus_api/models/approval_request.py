@@ -5,9 +5,10 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Column, DateTime, Enum, String, Text
+
 from ..database import Base
 
 
@@ -26,6 +27,6 @@ class ApprovalRequest(Base):
     command: str = Column(Text, nullable=False)
     reason: str = Column(Text, nullable=False)
     status: ApprovalStatus = Column(Enum(ApprovalStatus), nullable=False, default=ApprovalStatus.PENDING)
-    requested_at: datetime = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=timezone.utc))
+    requested_at: datetime = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=UTC))
     resolved_at: datetime = Column(DateTime(timezone=True), nullable=True)
     resolved_by: str = Column(String(255), nullable=True)

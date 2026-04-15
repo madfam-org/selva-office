@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Enum, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -43,6 +43,6 @@ class Schedule(Base):
     created_at: datetime = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(tz=timezone.utc),
+        default=lambda: datetime.now(tz=UTC),
     )
     last_run_at: datetime = Column(DateTime(timezone=True), nullable=True)

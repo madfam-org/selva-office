@@ -5,12 +5,12 @@ Exposes agentskills.io browse/search/install endpoints.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from autoswarm_skills.hub import SkillsHubClient
+
 from ..auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -25,24 +25,24 @@ class HubSkillResponse(BaseModel):
     category: str
     downloads: int
     url: str
-    tags: List[str]
+    tags: list[str]
 
 
 class InstallRequest(BaseModel):
     skill_name: str
-    target_dir: Optional[str] = None
+    target_dir: str | None = None
 
 
-@router.get("/", response_model=List[HubSkillResponse])
-async def browse_hub(category: Optional[str] = None, page: int = 1) -> List[HubSkillResponse]:
+@router.get("/", response_model=list[HubSkillResponse])
+async def browse_hub(category: str | None = None, page: int = 1) -> list[HubSkillResponse]:
     """Browse community skills on agentskills.io."""
     client = SkillsHubClient()
     skills = await client.browse(category=category, page=page)
     return [HubSkillResponse(**s.__dict__) for s in skills]
 
 
-@router.get("/search", response_model=List[HubSkillResponse])
-async def search_hub(q: str) -> List[HubSkillResponse]:
+@router.get("/search", response_model=list[HubSkillResponse])
+async def search_hub(q: str) -> list[HubSkillResponse]:
     """Full-text search the agentskills.io hub."""
     if not q.strip():
         raise HTTPException(status_code=422, detail="Search query cannot be empty")

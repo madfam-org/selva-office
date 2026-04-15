@@ -1,10 +1,8 @@
 """
 E2E tests — Gap 8: Gateway Wave 2 (WhatsApp, Matrix, Mattermost, Signal)
 """
-import hashlib
-import hmac
-import json
 from unittest.mock import MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
 

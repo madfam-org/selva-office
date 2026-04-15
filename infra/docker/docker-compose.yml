@@ -102,6 +102,24 @@ services:
     networks:
       - selva-shared-network
 
+  gateway:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.gateway
+    container_name: autoswarm-gateway
+    ports:
+      - "4304:4304"
+    environment:
+      NEXUS_API_URL: http://nexus-api:4300
+      NEXUS_API_WS_URL: ws://nexus-api:4300/api/v1/approvals/ws
+      GATEWAY_HEALTH_PORT: "4304"
+      REDIS_URL: redis://redis:6379/0  # DB 0: shares with nexus-api
+    depends_on:
+      - nexus-api
+      - redis
+    networks:
+      - selva-shared-network
+
 volumes:
   pgdata:
     driver: local

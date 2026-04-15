@@ -1,7 +1,6 @@
-import os
-import sqlite3
 import logging
-from typing import List, Dict, Any
+import sqlite3
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +60,7 @@ class EdgeMemoryDB:
         except Exception as e:
             logger.error(f"Failed to initialize SQLite FTS5 Schema: {e}")
 
-    def fts_search(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def fts_search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
         """
         Executes a Full-Text Search against all historical swarms and ACP operators.
         """
@@ -84,11 +83,11 @@ class EdgeMemoryDB:
         """
         import time
         import uuid
-        
+
         # Verify or spin up the episode id first to conform with FK constraint
         cursor = self._conn.execute("SELECT id FROM conversation_episodes WHERE run_id = ?", (run_id,))
         row = cursor.fetchone()
-        
+
         if not row:
             episode_id = f"ep-{uuid.uuid4().hex[:8]}"
             self._conn.execute(
@@ -97,7 +96,7 @@ class EdgeMemoryDB:
             )
         else:
             episode_id = row['id']
-            
+
         self._conn.execute(
             "INSERT INTO transcripts (episode_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
             (episode_id, role, content, time.time())

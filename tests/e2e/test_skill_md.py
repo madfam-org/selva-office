@@ -1,9 +1,7 @@
 """
 E2E tests — Gap 4: SKILL.md Progressive Disclosure Format
 """
-import tempfile
 from pathlib import Path
-import pytest
 
 SAMPLE_SKILL_MD = """---
 name: deploy-k8s
@@ -105,8 +103,9 @@ class TestSkillMDRegistry:
             (skill_dir / "SKILL.md").write_text(
                 f"---\nname: skill-{i:02d}\ndescription: Test skill {i}\n---\n# Skill {i}\n"
             )
-        from autoswarm_skills.skill_md import SkillMDRegistry
         import json
+
+        from autoswarm_skills.skill_md import SkillMDRegistry
         registry = SkillMDRegistry(skills_dir=str(tmp_path))
         registry.load_md_skills()
         compact = registry.list_skills_compact()

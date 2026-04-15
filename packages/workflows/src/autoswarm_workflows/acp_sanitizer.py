@@ -4,7 +4,7 @@ class ACPSanitizerNode:
     Deterministic regex parser + constrained LLM auditor.
     Removes any proprietary variable names or architecture choices from the Phase I PRD.
     """
-    
+
     def __init__(self, dirty_prd: str):
         self.dirty_prd = dirty_prd
 

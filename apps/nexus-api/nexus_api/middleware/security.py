@@ -7,12 +7,12 @@ import logging
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 logger = logging.getLogger(__name__)
-from starlette.requests import Request
-from starlette.responses import Response
-
-from contextvars import ContextVar
 import base64
 import json
+from contextvars import ContextVar
+
+from starlette.requests import Request
+from starlette.responses import Response
 
 org_id_var: ContextVar[str] = ContextVar("org_id", default="default")
 
@@ -32,7 +32,7 @@ class TenantRLSMiddleware(BaseHTTPMiddleware):
                 org_id = claims.get("org_id", "default")
             except Exception as e:
                 logger.debug("JWT org_id extraction failed (using default): %s", e)
-        
+
         token_ctx = org_id_var.set(org_id)
         try:
             return await call_next(request)

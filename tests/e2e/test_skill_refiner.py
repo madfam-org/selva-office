@@ -3,13 +3,12 @@ Tests for Gap 1: Skill Self-Improvement Loop (SkillRefiner).
 """
 from __future__ import annotations
 
-import os
 import textwrap
+from datetime import UTC
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 
 VALID_SKILL = textwrap.dedent('''\
     SKILL_SCHEMA_VERSION = "agentskills/v1"
@@ -49,12 +48,11 @@ def _write(skills_dir: Path, name: str, code: str) -> Path:
 
 def test_refine_all_skips_healthy_fresh_skill(skills_dir):
     """A passing, fresh skill should be reported as 'skipped'."""
-    from datetime import datetime, timezone
-    import textwrap
+    from datetime import datetime
 
     fresh_skill = VALID_SKILL.replace(
         '"2020-01-01T00:00:00+00:00"',
-        f'"{datetime.now(tz=timezone.utc).isoformat()}"',
+        f'"{datetime.now(tz=UTC).isoformat()}"',
     )
     _write(skills_dir, "healthy_skill", fresh_skill)
 
@@ -94,10 +92,10 @@ def test_refine_all_flags_broken_skill(skills_dir):
 
 def test_refine_one_force(skills_dir):
     """refine_one(force=True) should refine regardless of freshness."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     fresh_skill = VALID_SKILL.replace(
         '"2020-01-01T00:00:00+00:00"',
-        f'"{datetime.now(tz=timezone.utc).isoformat()}"',
+        f'"{datetime.now(tz=UTC).isoformat()}"',
     )
     _write(skills_dir, "forced_skill", fresh_skill)
 

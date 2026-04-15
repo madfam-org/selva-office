@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from typing import List, Optional
 
 from autoswarm_skills import SkillTier, get_skill_registry
 from autoswarm_skills.skill_md import SkillMDRegistry  # Gap 4
@@ -76,8 +75,8 @@ async def community_status() -> dict[str, bool]:
 # Gap 4: Progressive disclosure endpoints (3-level, SKILL.md format)
 # ---------------------------------------------------------------------------
 
-@router.get("/compact", response_model=List[SkillCompactResponse])
-async def list_skills_compact() -> List[SkillCompactResponse]:
+@router.get("/compact", response_model=list[SkillCompactResponse])
+async def list_skills_compact() -> list[SkillCompactResponse]:
     """
     Level 0: Compact skill index.
 

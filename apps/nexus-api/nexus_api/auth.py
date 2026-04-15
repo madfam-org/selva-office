@@ -169,3 +169,36 @@ async def require_non_guest(
             detail="Guest users cannot perform this action",
         )
     return user
+
+
+# ---------------------------------------------------------------------------
+# Type alias & multi-role factory used by Wave 4 routers
+# ---------------------------------------------------------------------------
+
+#: Type alias for the user dict returned by all auth dependencies.
+CurrentUser = dict[str, Any]
+
+
+def require_roles(roles: list[str]):
+    """Dependency factory that enforces ANY of the given roles.
+
+    Usage::
+
+        @router.get("/admin-or-cleanroom")
+        async def endpoint(
+            user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
+        ): ...
+    """
+
+    async def _roles_checker(
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> dict[str, Any]:
+        user_roles = user.get("roles", [])
+        if not any(r in user_roles for r in roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"One of roles {roles} is required",
+            )
+        return user
+
+    return _roles_checker

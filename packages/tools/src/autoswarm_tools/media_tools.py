@@ -4,7 +4,6 @@ Track B6: tts — OpenAI TTS tool.
 """
 from __future__ import annotations
 
-import base64
 import logging
 import os
 from pathlib import Path

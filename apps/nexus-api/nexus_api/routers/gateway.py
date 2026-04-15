@@ -6,7 +6,7 @@ import ipaddress
 import logging
 import socket
 import urllib.parse
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
@@ -94,7 +94,7 @@ def _verify_hmac(body: bytes, signature: str, secret: str) -> bool:
 async def telegram_webhook(
     request: Request,
     x_telegram_bot_api_secret_token: str = Header(None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Hermes-style multi-channel gateway — Telegram.
 
@@ -145,7 +145,7 @@ async def telegram_webhook(
 async def discord_webhook(
     request: Request,
     x_signature_256: str = Header(None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Hermes-style multi-channel gateway — Discord.
 
@@ -201,7 +201,7 @@ async def slack_webhook(
     request: Request,
     x_slack_signature: str = Header(None),
     x_slack_request_timestamp: str = Header(None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Hermes-style multi-channel gateway — Slack.
 
@@ -271,7 +271,7 @@ async def slack_webhook(
 # ---------------------------------------------------------------------------
 
 @router.post("/email/inbound")
-async def email_inbound(request: Request) -> Dict[str, Any]:
+async def email_inbound(request: Request) -> dict[str, Any]:
     """
     Accepts inbound email parse payloads from SendGrid or Postmark.
     Routes commands from whitelisted sender addresses.
@@ -334,7 +334,7 @@ async def whatsapp_webhook_verify(
 
 
 @router.post("/whatsapp/webhook")
-async def whatsapp_inbound(request: Request) -> Dict[str, Any]:
+async def whatsapp_inbound(request: Request) -> dict[str, Any]:
     """
     Receive inbound WhatsApp messages via Meta Cloud API webhook.
     Validates X-Hub-Signature-256 and routes /acp commands.
@@ -380,7 +380,7 @@ async def whatsapp_inbound(request: Request) -> Dict[str, Any]:
 async def matrix_inbound(
     request: Request,
     authorization: str = Header(None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Receive events from a Matrix appservice registration.
     Validates the Authorization: Bearer <token> header.
@@ -427,7 +427,7 @@ async def matrix_inbound(
 # ── Mattermost (Slash Command) ──────────────────────────────────────────────
 
 @router.post("/mattermost/webhook")
-async def mattermost_inbound(request: Request) -> Dict[str, Any]:
+async def mattermost_inbound(request: Request) -> dict[str, Any]:
     """
     Receive Mattermost slash command: /initiate_acp <url>.
     Validates the shared mattermost_token from the request body.
@@ -466,7 +466,7 @@ async def mattermost_inbound(request: Request) -> Dict[str, Any]:
 # ── Signal (via signal-cli REST API) ───────────────────────────────────────
 
 @router.post("/signal/webhook")
-async def signal_inbound(request: Request) -> Dict[str, Any]:
+async def signal_inbound(request: Request) -> dict[str, Any]:
     """
     Receive inbound Signal messages via signal-cli REST API envelope format.
     Validates source number against the configured whitelist.
@@ -509,7 +509,7 @@ async def signal_inbound(request: Request) -> Dict[str, Any]:
 async def sms_inbound(
     request: Request,
     x_twilio_signature: str = Header(None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Accepts Twilio SMS webhook payloads.
     Validates the X-Twilio-Signature HMAC and routes commands.
@@ -519,7 +519,7 @@ async def sms_inbound(
 
     if settings.twilio_auth_token:
         try:
-            from urllib.parse import parse_qs, urlencode
+            from urllib.parse import parse_qs
             form_data = parse_qs(body.decode(), keep_blank_values=True)
             # Twilio signature = HMAC-SHA1 of URL + sorted params
             url = str(request.url)
@@ -565,14 +565,15 @@ async def sms_inbound(
 # ===========================================================================
 
 @router.post("/dingtalk/webhook")
-async def dingtalk_webhook(request: Request) -> Dict[str, Any]:
+async def dingtalk_webhook(request: Request) -> dict[str, Any]:
     """DingTalk inbound webhook — HMAC-SHA256 validated."""
     settings = get_settings()
     body = await request.body()
     timestamp = request.headers.get("timestamp", "")
     sign = request.headers.get("sign", "")
     if getattr(settings, "dingtalk_app_secret", None):
-        import base64 as _b64, hashlib as _hs
+        import base64 as _b64
+        import hashlib as _hs
         string_to_sign = f"{timestamp}\n{settings.dingtalk_app_secret}"
         expected = _b64.b64encode(hmac.new(settings.dingtalk_app_secret.encode(), string_to_sign.encode(), _hs.sha256).digest()).decode()
         if not hmac.compare_digest(expected, sign):
@@ -594,7 +595,7 @@ async def dingtalk_webhook(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/feishu/webhook")
-async def feishu_webhook(request: Request) -> Dict[str, Any]:
+async def feishu_webhook(request: Request) -> dict[str, Any]:
     """Feishu (Lark) event webhook — challenge verification + ACP routing."""
     try:
         data = await request.json()
@@ -628,7 +629,7 @@ async def feishu_webhook(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/wecom/webhook")
-async def wecom_webhook(request: Request) -> Dict[str, Any]:
+async def wecom_webhook(request: Request) -> dict[str, Any]:
     """WeCom outgoing webhook — token-validated."""
     settings = get_settings()
     token = request.query_params.get("token", "")
@@ -659,7 +660,7 @@ async def wecom_callback(request: Request, echostr: str = None) -> Any:
 
 
 @router.post("/weixin/webhook")
-async def weixin_webhook(request: Request) -> Dict[str, Any]:
+async def weixin_webhook(request: Request) -> dict[str, Any]:
     """Weixin via WxPusher — appToken validated."""
     settings = get_settings()
     token = request.query_params.get("appToken", "")
@@ -681,7 +682,7 @@ async def weixin_webhook(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/bluebubbles/webhook")
-async def bluebubbles_webhook(request: Request) -> Dict[str, Any]:
+async def bluebubbles_webhook(request: Request) -> dict[str, Any]:
     """BlueBubbles iMessage bridge webhook — password validated."""
     settings = get_settings()
     auth = request.headers.get("Authorization", "")
@@ -703,7 +704,7 @@ async def bluebubbles_webhook(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/homeassistant/webhook")
-async def homeassistant_webhook(request: Request) -> Dict[str, Any]:
+async def homeassistant_webhook(request: Request) -> dict[str, Any]:
     """Home Assistant webhook — Bearer long-lived token validated."""
     settings = get_settings()
     ha_token = getattr(settings, "ha_token", None)
@@ -727,7 +728,7 @@ async def homeassistant_webhook(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/webhook/{channel_id}")
-async def generic_webhook(channel_id: str, request: Request, x_webhook_signature: str = None) -> Dict[str, Any]:
+async def generic_webhook(channel_id: str, request: Request, x_webhook_signature: str = None) -> dict[str, Any]:
     """Generic HMAC-signed webhook. channel_id used for routing/logging."""
     body = await request.body()
     from ..config import get_settings as _get_settings
@@ -751,7 +752,7 @@ async def generic_webhook(channel_id: str, request: Request, x_webhook_signature
 
 
 @router.post("/api/complete")
-async def api_complete(request: Request) -> Dict[str, Any]:
+async def api_complete(request: Request) -> dict[str, Any]:
     """Direct API completion — fire-and-forget ACP dispatch. Mirrors Hermes api_server mode."""
     if not request.headers.get("Authorization", "").startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Bearer token required")

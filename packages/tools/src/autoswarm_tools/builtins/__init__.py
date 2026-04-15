@@ -3,22 +3,28 @@
 from __future__ import annotations
 
 from ..base import BaseTool
+
+# Wave 4 additions
+from ..execute_code import ExecuteCodeTool
+from ..extra_tools import DelegateTaskTool, ReadCredentialFileTool, WebExtractTool
+from ..extra_tools import WebSearchTool as WebSearchToolV2
+from ..media_tools import GenerateImageTool, TextToSpeechTool
+from ..process_registry import (
+    KillBackgroundProcessTool,
+    ListBackgroundProcessesTool,
+    StartBackgroundProcessTool,
+)
 from .artifact import ListArtifactsTool, RetrieveArtifactTool, SaveArtifactTool
 from .code import BashExecTool, PythonExecTool
 from .communication import CreateReportTool, SendNotificationTool
-from .slack import SlackMessageTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
 from .deploy import DeployStatusTool, DeployTool
 from .environment import EnvInfoTool, PackageInstallTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
 from .image_analysis import ImageAnalysisTool
+from .slack import SlackMessageTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
-# Wave 4 additions
-from ..execute_code import ExecuteCodeTool
-from ..process_registry import StartBackgroundProcessTool, ListBackgroundProcessesTool, KillBackgroundProcessTool
-from ..media_tools import GenerateImageTool, TextToSpeechTool
-from ..extra_tools import WebSearchTool as WebSearchToolV2, WebExtractTool, DelegateTaskTool, ReadCredentialFileTool
 
 
 def get_builtin_tools() -> list[BaseTool]:

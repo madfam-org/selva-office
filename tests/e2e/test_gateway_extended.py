@@ -3,12 +3,10 @@ Tests for Gap 4: Extended Gateway Platforms (Slack, Email, SMS).
 """
 from __future__ import annotations
 
-import base64
 import hashlib
 import hmac as _hmac
-import json
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient

@@ -8,8 +8,8 @@ Note: approval_requests table already exists from migration 0000.
 Only session_checkpoints (used by checkpoints.py) was missing.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0014"
 down_revision = "0013"

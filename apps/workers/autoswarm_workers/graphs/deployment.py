@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TypedDict
 
@@ -11,7 +10,8 @@ from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
 from ..event_emitter import instrumented_node
-from .base import BaseGraphState, check_permission, run_async as _run_async
+from .base import BaseGraphState, check_permission
+from .base import run_async as _run_async
 
 logger = logging.getLogger(__name__)
 

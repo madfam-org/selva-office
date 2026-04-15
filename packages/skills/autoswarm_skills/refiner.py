@@ -14,14 +14,11 @@ Resolution order per skill:
 """
 from __future__ import annotations
 
-import importlib.util
-import json
 import logging
 import os
 import subprocess
 import sys
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -147,18 +144,18 @@ class SkillRefiner:
             lv = meta.get("last_validated")
             if lv is None:
                 return True
-            last = datetime.fromisoformat(str(lv)).replace(tzinfo=timezone.utc)
-            return datetime.now(tz=timezone.utc) - last > timedelta(days=self.refine_interval_days)
+            last = datetime.fromisoformat(str(lv)).replace(tzinfo=UTC)
+            return datetime.now(tz=UTC) - last > timedelta(days=self.refine_interval_days)
         except Exception:
             return True
 
     def _llm_refine(self, path: Path, original_code: str, failure_details: str) -> str:
         """Invoke selva_inference to rewrite the skill; fallback to stamping last_validated."""
         try:
+            import asyncio
+
             from selva_inference import get_default_router  # type: ignore[attr-defined]
             from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
-
-            import asyncio
 
             request = InferenceRequest(
                 messages=[
@@ -187,7 +184,7 @@ class SkillRefiner:
             logger.warning("LLM refinement unavailable (%s); stamping last_validated.", exc)
             # Fallback: just update the last_validated timestamp so we don't hammer the LLM
             refined_code = original_code.replace(
-                '"last_validated":', f'"last_validated": "{datetime.now(tz=timezone.utc).isoformat()}", "_prev":'
+                '"last_validated":', f'"last_validated": "{datetime.now(tz=UTC).isoformat()}", "_prev":'
             )
 
         path.write_text(refined_code)

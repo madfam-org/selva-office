@@ -12,11 +12,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

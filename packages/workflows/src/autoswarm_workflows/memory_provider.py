@@ -103,7 +103,8 @@ class RedisMemoryProvider(MemoryProvider):
     async def insert(self, episode: dict[str, Any]) -> None:
         if not self._redis:
             return
-        import json, time
+        import json
+        import time
         await self._redis.zadd(self._KEY, {json.dumps(episode, default=str): time.time()})
         # Keep only the last _MAX_EPISODES
         await self._redis.zremrangebyrank(self._KEY, 0, -(self._MAX_EPISODES + 1))
@@ -111,7 +112,6 @@ class RedisMemoryProvider(MemoryProvider):
     async def recall(self, query: str, top_k: int = 5) -> list[str]:
         if not self._redis:
             return []
-        import json
         entries = await self._redis.zrevrangebyscore(self._KEY, "+inf", "-inf", start=0, num=50)
         query_lower = query.lower()
         matches = []

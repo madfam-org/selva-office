@@ -11,8 +11,8 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +38,7 @@ try:
         created_at: datetime = Column(
             DateTime(timezone=True),
             nullable=False,
-            default=lambda: datetime.now(tz=timezone.utc),
+            default=lambda: datetime.now(tz=UTC),
         )
 
 except ImportError:
@@ -62,7 +62,7 @@ class CheckpointManager:
         # Re-invoke the graph from this state
     """
 
-    def __init__(self, db: Optional[AsyncSession] = None) -> None:
+    def __init__(self, db: AsyncSession | None = None) -> None:
         self._db = db
 
     async def save(self, run_id: str, phase: str, phase_index: int, state: dict[str, Any]) -> str:
@@ -88,7 +88,7 @@ class CheckpointManager:
 
         return checkpoint_id
 
-    async def restore(self, run_id: str, phase: str) -> Optional[dict[str, Any]]:
+    async def restore(self, run_id: str, phase: str) -> dict[str, Any] | None:
         """Retrieve the most recent checkpoint for *run_id* at *phase*."""
         if self._db and SessionCheckpoint is not None:
             from sqlalchemy import select
