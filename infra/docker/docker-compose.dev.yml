@@ -54,6 +54,19 @@ services:
     networks:
       - selva-shared-network
 
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: autoswarm-livekit
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    command: ["--config", "/etc/livekit.yaml"]
+    networks:
+      - selva-shared-network
+
 volumes:
   pgdata:
     driver: local

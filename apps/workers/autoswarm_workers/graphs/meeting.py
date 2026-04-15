@@ -43,6 +43,28 @@ def transcribe(state: MeetingState) -> MeetingState:
     recording_url = state.get("recording_url", "")
     description = state.get("description", "")
 
+    # Try real STT first if recording_url points to an audio file on disk
+    if recording_url and recording_url.startswith("/"):
+        try:
+            from autoswarm_tools.builtins.stt import SpeechToTextTool
+
+            tool = SpeechToTextTool()
+            result = _run_async(tool.execute(audio_path=recording_url))
+            if result.success and result.output:
+                transcript = result.output
+                transcribe_msg = AIMessage(
+                    content=f"Transcription completed via Whisper ({len(transcript)} chars).",
+                    additional_kwargs={"action_category": "api_call"},
+                )
+                return {
+                    **state,
+                    "messages": [*messages, transcribe_msg],
+                    "transcript": transcript,
+                    "status": "transcribed",
+                }
+        except Exception:
+            logger.debug("STT tool unavailable, falling back to LLM", exc_info=True)
+
     try:
         from autoswarm_workers.inference import call_llm, get_model_router
 

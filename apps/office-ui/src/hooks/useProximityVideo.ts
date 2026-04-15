@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type SimplePeerType from 'simple-peer';
 import type { ProximityUpdate, WebRTCSignal } from './useColyseus';
+import { useProximityVideoLiveKit } from './useProximityVideoLiveKit';
 import { logger } from '../lib/logger';
 
 interface PeerConnection {
@@ -16,11 +17,18 @@ export interface ProximityPeer {
   stream: MediaStream | null;
 }
 
+export interface LiveKitCredentials {
+  url: string;
+  token: string;
+}
+
 interface ProximityVideoOptions {
   localSessionId: string | null;
   sendSignal: (targetSessionId: string, signal: unknown) => void;
   enabled: boolean;
   playerStatus?: string;
+  /** LiveKit credentials set by useColyseus when the server sends them. */
+  liveKitCredentials?: LiveKitCredentials | null;
 }
 
 export type ScreenShareQuality = 'auto' | '720p' | '1080p';
@@ -77,14 +85,17 @@ export function useProximityVideo({
   sendSignal,
   enabled,
   playerStatus,
+  liveKitCredentials,
 }: ProximityVideoOptions): ProximityVideoState {
-  const [peers, setPeers] = useState<ProximityPeer[]>([]);
+  const [p2pPeers, setP2pPeers] = useState<ProximityPeer[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
   const [noiseSuppression, setNoiseSuppression] = useState(false);
   const [screenShareQuality, setScreenShareQuality] = useState<ScreenShareQuality>('auto');
+  const [proximityMode, setProximityMode] = useState<'p2p' | 'sfu'>('p2p');
+  const [nearbySessionIds, setNearbySessionIds] = useState<string[]>([]);
 
   const connectionsRef = useRef<Map<string, PeerConnection>>(new Map());
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -145,7 +156,7 @@ export function useProximityVideo({
         stream: conn.stream,
       });
     });
-    setPeers(peerList);
+    setP2pPeers(peerList);
   }, []);
 
   const destroyPeer = useCallback((sessionId: string) => {
@@ -242,8 +253,25 @@ export function useProximityVideo({
       const sid = localSessionIdRef.current;
       if (!sid) return;
 
+      // Read transport mode from server (defaults to p2p for backward compat)
+      const mode = (update as ProximityUpdate & { mode?: 'p2p' | 'sfu' }).mode ?? 'p2p';
+      setProximityMode(mode);
+
       // DND status suppresses all proximity connections
       const effectiveNearby = playerStatusRef.current === 'dnd' ? [] : update.nearbySessionIds;
+
+      // Always track nearby IDs for LiveKit subscription management
+      setNearbySessionIds(effectiveNearby);
+
+      // When in SFU mode, skip simple-peer connection management entirely.
+      // The LiveKit hook handles subscriptions based on nearbySessionIds.
+      if (mode === 'sfu') {
+        // Tear down any existing P2P connections when switching to SFU
+        connectionsRef.current.forEach((conn) => conn.peer.destroy());
+        connectionsRef.current.clear();
+        updatePeersState();
+        return;
+      }
 
       const currentPeerIds = new Set(connectionsRef.current.keys());
       const nearbySet = new Set(effectiveNearby);
@@ -502,6 +530,19 @@ export function useProximityVideo({
     }
     setNoiseSuppression(true);
   }, [noiseSuppression]);
+
+  // ── LiveKit SFU hook (conditional on credentials + mode) ──────────
+  const sfuActive = proximityMode === 'sfu' && !!liveKitCredentials;
+  const { peers: sfuPeers } = useProximityVideoLiveKit({
+    url: sfuActive ? liveKitCredentials!.url : '',
+    token: sfuActive ? liveKitCredentials!.token : '',
+    nearbySessionIds: sfuActive ? nearbySessionIds : [],
+    audioEnabled,
+    videoEnabled,
+  });
+
+  // Select peers from the active transport
+  const peers = sfuActive ? sfuPeers : p2pPeers;
 
   return {
     peers,
