@@ -120,6 +120,21 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Competitive Dominance Wave 3 (v0.8.0)
+
+- **Tool Expansion (40→54)**: 14 new tools across 5 categories:
+  Email (SendEmail via Resend, ReadEmail), Calendar (Create/List via
+  Google adapter), Database (SQLQuery read-only, SQLWrite with approval,
+  DatabaseSchema), HTTP (HTTPRequest SSRF-protected, GraphQL, Webhook
+  with HMAC), Documents (GeneratePDF, ParsePDF, MarkdownToHTML,
+  GenerateChart). All follow BaseTool ABC with graceful degradation.
+- **A2A Protocol**: Agent-to-Agent interop package (`packages/a2a/`).
+  `GET /api/v1/a2a/.well-known/agent.json` — AgentCard discovery.
+  `POST /api/v1/a2a/tasks/send` — task exchange.
+  `POST /api/v1/a2a/tasks/sendSubscribe` — SSE streaming.
+  `A2AClient` for calling external agents. `CallExternalAgentTool`
+  registered in tool registry. CSRF-exempt (Bearer auth).
+
 ## Competitive Dominance Wave 2 (v0.7.0)
 
 - **Voice Mode (STT)**: `SpeechToTextTool` in `builtins/stt.py` — OpenAI
