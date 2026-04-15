@@ -299,6 +299,200 @@ class TestGetTransaction:
         assert result == {}
 
 
+class TestGetExchangeRate:
+    """DhanamAdapter.get_exchange_rate() -- economic data via Dhanam market API."""
+
+    @pytest.mark.asyncio
+    async def test_get_exchange_rate_success(self) -> None:
+        from madfam_inference.adapters.dhanam import ExchangeRate
+
+        client = _mock_client("get", {
+            "date": "14/04/2026",
+            "rate": "17.0500",
+            "currency_pair": "USD/MXN",
+        })
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
+            result = await adapter.get_exchange_rate("USD")
+
+        assert isinstance(result, ExchangeRate)
+        assert result.rate == "17.0500"
+        assert result.currency_pair == "USD/MXN"
+        assert result.date == "14/04/2026"
+
+    @pytest.mark.asyncio
+    async def test_get_exchange_rate_error_returns_default(self) -> None:
+        import httpx as httpx_mod
+
+        from madfam_inference.adapters.dhanam import ExchangeRate
+
+        client = AsyncMock()
+        client.get.side_effect = httpx_mod.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter()
+            result = await adapter.get_exchange_rate("USD")
+
+        assert isinstance(result, ExchangeRate)
+        assert result.rate == ""
+        assert result.currency_pair == "USD/MXN"
+
+
+class TestGetTIIE:
+    """DhanamAdapter.get_tiie() -- TIIE rate via Dhanam market API."""
+
+    @pytest.mark.asyncio
+    async def test_get_tiie_success(self) -> None:
+        from madfam_inference.adapters.dhanam import EconomicIndicator
+
+        client = _mock_client("get", {
+            "series_id": "SF43783",
+            "name": "TIIE 28 dias",
+            "date": "14/04/2026",
+            "value": "11.2500",
+        })
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
+            result = await adapter.get_tiie("28")
+
+        assert isinstance(result, EconomicIndicator)
+        assert result.series_id == "SF43783"
+        assert result.value == "11.2500"
+
+    @pytest.mark.asyncio
+    async def test_get_tiie_error_returns_default(self) -> None:
+        import httpx as httpx_mod
+
+        from madfam_inference.adapters.dhanam import EconomicIndicator
+
+        client = AsyncMock()
+        client.get.side_effect = httpx_mod.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter()
+            result = await adapter.get_tiie("28")
+
+        assert isinstance(result, EconomicIndicator)
+        assert result.value == ""
+        assert "TIIE" in result.name
+
+
+class TestGetInflation:
+    """DhanamAdapter.get_inflation() -- CPI/INPC via Dhanam market API."""
+
+    @pytest.mark.asyncio
+    async def test_get_inflation_success(self) -> None:
+        from madfam_inference.adapters.dhanam import EconomicIndicator
+
+        client = _mock_client("get", {
+            "series_id": "SP74665",
+            "name": "INPC Variacion Anual",
+            "date": "14/04/2026",
+            "value": "4.2100",
+        })
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
+            result = await adapter.get_inflation()
+
+        assert isinstance(result, EconomicIndicator)
+        assert result.series_id == "SP74665"
+        assert result.value == "4.2100"
+        assert "INPC" in result.name
+
+    @pytest.mark.asyncio
+    async def test_get_inflation_error_returns_default(self) -> None:
+        import httpx as httpx_mod
+
+        from madfam_inference.adapters.dhanam import EconomicIndicator
+
+        client = AsyncMock()
+        client.get.side_effect = httpx_mod.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter()
+            result = await adapter.get_inflation()
+
+        assert isinstance(result, EconomicIndicator)
+        assert result.value == ""
+        assert "INPC" in result.name
+
+
+class TestGetUMA:
+    """DhanamAdapter.get_uma() -- UMA value via Dhanam market API."""
+
+    @pytest.mark.asyncio
+    async def test_get_uma_success(self) -> None:
+        from madfam_inference.adapters.dhanam import EconomicIndicator
+
+        client = _mock_client("get", {
+            "series_id": "SP74668",
+            "name": "UMA Valor Diario",
+            "date": "14/04/2026",
+            "value": "113.14",
+        })
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
+            result = await adapter.get_uma()
+
+        assert isinstance(result, EconomicIndicator)
+        assert result.series_id == "SP74668"
+        assert result.value == "113.14"
+        assert "UMA" in result.name
+
+    @pytest.mark.asyncio
+    async def test_get_uma_error_returns_default(self) -> None:
+        import httpx as httpx_mod
+
+        from madfam_inference.adapters.dhanam import EconomicIndicator
+
+        client = AsyncMock()
+        client.get.side_effect = httpx_mod.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = DhanamAdapter()
+            result = await adapter.get_uma()
+
+        assert isinstance(result, EconomicIndicator)
+        assert result.value == ""
+        assert "UMA" in result.name
+
+
 class TestBillingModuleReexport:
     """The billing.py re-export module works for existing billing graph imports."""
 

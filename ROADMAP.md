@@ -158,7 +158,7 @@ auth exports, skills package fix, Colyseus state sync, brand correction
 - `[ ]` **SAT monitor agent**: RFC status, tax obligation alerts, constancia updates
 - `[ ]` **DOF agent**: Daily scan of Diario Oficial de la Federación for regulatory changes
 - `[ ]` **INEGI data integration**: GDP, inflation, employment, industry-specific indicators
-- `[ ]` **Banxico API**: Real-time USD/MXN, TIIE rates, monetary policy alerts
+- `[ ]` **Economic indicators via Dhanam**: Real-time USD/MXN, TIIE rates, monetary policy alerts (Dhanam proxies Banxico SIE internally)
 - `[ ]` **UMA/UMI tracker**: Current values for labor and tax calculations (updated annually by INEGI)
 - `[ ]` **SIEM compliance**: Annual Sistema de Información Empresarial Mexicano registration automation
 - `[ ]` **Profeco monitor**: Consumer protection regulation changes

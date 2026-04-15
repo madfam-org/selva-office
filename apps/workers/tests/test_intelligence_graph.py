@@ -101,31 +101,31 @@ class TestScanDOFNode:
 
 
 class TestFetchEconomicDataNode:
-    """fetch_economic_data() fetches indicators from Banxico."""
+    """fetch_economic_data() fetches indicators via Dhanam."""
 
     def test_fetch_economic_data_success(self) -> None:
-        """When Banxico responds, all indicators are aggregated."""
+        """When Dhanam responds, all indicators are aggregated."""
         from autoswarm_workers.graphs.intelligence import fetch_economic_data
-        from madfam_inference.adapters.banxico import EconomicIndicator, ExchangeRate
+        from madfam_inference.adapters.dhanam import EconomicIndicator, ExchangeRate
 
         with patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_exchange_rate",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_exchange_rate",
             new_callable=AsyncMock,
             return_value=ExchangeRate(date="14/04/2026", rate="17.05", currency_pair="USD/MXN"),
         ), patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_tiie",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_tiie",
             new_callable=AsyncMock,
             return_value=EconomicIndicator(
                 series_id="SF43783", name="TIIE 28", date="14/04/2026", value="11.25"
             ),
         ), patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_inflation",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_inflation",
             new_callable=AsyncMock,
             return_value=EconomicIndicator(
                 series_id="SP74665", name="INPC", date="14/04/2026", value="4.21"
             ),
         ), patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_uma",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_uma",
             new_callable=AsyncMock,
             return_value=EconomicIndicator(
                 series_id="SP74668", name="UMA", date="14/04/2026", value="113.14"
@@ -145,24 +145,24 @@ class TestFetchEconomicDataNode:
     def test_fetch_economic_data_partial_failure(self) -> None:
         """If one indicator fails, others still succeed."""
         from autoswarm_workers.graphs.intelligence import fetch_economic_data
-        from madfam_inference.adapters.banxico import EconomicIndicator, ExchangeRate
+        from madfam_inference.adapters.dhanam import EconomicIndicator, ExchangeRate
 
         with patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_exchange_rate",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_exchange_rate",
             new_callable=AsyncMock,
             return_value=ExchangeRate(date="14/04/2026", rate="17.05", currency_pair="USD/MXN"),
         ), patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_tiie",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_tiie",
             new_callable=AsyncMock,
             side_effect=RuntimeError("Timeout"),
         ), patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_inflation",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_inflation",
             new_callable=AsyncMock,
             return_value=EconomicIndicator(
                 series_id="SP74665", name="INPC", date="14/04/2026", value="4.21"
             ),
         ), patch(
-            "madfam_inference.adapters.banxico.BanxicoAdapter.get_uma",
+            "madfam_inference.adapters.dhanam.DhanamAdapter.get_uma",
             new_callable=AsyncMock,
             side_effect=RuntimeError("Timeout"),
         ):
