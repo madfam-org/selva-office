@@ -26,7 +26,8 @@ import { useTaskDispatch } from '@/hooks/useTaskDispatch';
 import { useCalendar } from '@/hooks/useCalendar';
 import { useMeetingNotes } from '@/hooks/useMeetingNotes';
 import { useColyseus } from '@/hooks/useColyseus';
-import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal, SpotlightActiveEvent } from '@/hooks/useColyseus';
+import type { PlayerEmoteEvent, ProximityUpdate, WebRTCSignal, SpotlightActiveEvent, LiveKitCredentialsEvent } from '@/hooks/useColyseus';
+import type { LiveKitCredentials } from '@/hooks/useProximityVideo';
 import { useAvatarConfig } from '@/hooks/useAvatarConfig';
 import { usePlayerStatus } from '@/hooks/usePlayerStatus';
 import { StatusSelector } from '@/components/StatusSelector';
@@ -109,6 +110,12 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
     spotlightActiveRef.current(event);
   }, []);
 
+  // LiveKit SFU credentials received from Colyseus
+  const [liveKitCredentials, setLiveKitCredentials] = useState<LiveKitCredentials | null>(null);
+  const handleLiveKitCredentials = useCallback((creds: LiveKitCredentialsEvent) => {
+    setLiveKitCredentials({ url: creds.url, token: creds.token });
+  }, []);
+
   const sessionUser = useMemo(() => getSessionUser(), []);
 
   const {
@@ -136,6 +143,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
     onProximityUpdate: handleProximityUpdate,
     onWebRTCSignal: handleWebRTCSignal,
     onSpotlightActive: handleSpotlightActive,
+    onLiveKitCredentials: handleLiveKitCredentials,
   });
 
   const { status: playerStatus, changeStatus: changePlayerStatus } = usePlayerStatus({
@@ -169,6 +177,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
     sendSignal,
     enabled: colyseusConnected,
     playerStatus,
+    liveKitCredentials,
   });
 
   const {

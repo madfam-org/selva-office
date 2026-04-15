@@ -20,6 +20,8 @@ export interface PlayerEmoteEvent {
 
 export interface ProximityUpdate {
   nearbySessionIds: string[];
+  /** Transport mode: 'p2p' (simple-peer) or 'sfu' (LiveKit). Defaults to 'p2p'. */
+  mode?: 'p2p' | 'sfu';
 }
 
 export interface WebRTCSignal {
@@ -33,12 +35,18 @@ export interface SpotlightActiveEvent {
   active: boolean;
 }
 
+export interface LiveKitCredentialsEvent {
+  url: string;
+  token: string;
+}
+
 interface ColyseusOptions {
   playerName?: string;
   onPlayerEmote?: (event: PlayerEmoteEvent) => void;
   onProximityUpdate?: (update: ProximityUpdate) => void;
   onWebRTCSignal?: (signal: WebRTCSignal) => void;
   onSpotlightActive?: (event: SpotlightActiveEvent) => void;
+  onLiveKitCredentials?: (creds: LiveKitCredentialsEvent) => void;
 }
 
 interface ColyseusState {
@@ -123,6 +131,8 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
   onWebRTCSignalRef.current = opts.onWebRTCSignal;
   const onSpotlightActiveRef = useRef(opts.onSpotlightActive);
   onSpotlightActiveRef.current = opts.onSpotlightActive;
+  const onLiveKitCredentialsRef = useRef(opts.onLiveKitCredentials);
+  onLiveKitCredentialsRef.current = opts.onLiveKitCredentials;
 
   const sendMove = useCallback((x: number, y: number) => {
     roomRef.current?.send('move', { x, y });
@@ -246,6 +256,11 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
       // Listen for spotlight presentation broadcasts
       (room as unknown as RoomLike).onMessage('spotlight_active', (message: unknown) => {
         onSpotlightActiveRef.current?.(message as SpotlightActiveEvent);
+      });
+
+      // Listen for LiveKit SFU credentials (sent on join when LiveKit is configured)
+      (room as unknown as RoomLike).onMessage('livekit_credentials', (message: unknown) => {
+        onLiveKitCredentialsRef.current?.(message as LiveKitCredentialsEvent);
       });
 
       room.onLeave((code: number) => {

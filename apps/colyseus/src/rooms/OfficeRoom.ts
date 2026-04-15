@@ -19,6 +19,11 @@ import {
   isInLockedBubble,
 } from "../handlers/proximity";
 import {
+  generateLiveKitToken,
+  isLiveKitEnabled,
+  getLiveKitUrl,
+} from "../handlers/livekit";
+import {
   handleMegaphoneStart,
   handleMegaphoneStop,
   releaseMegaphone,
@@ -406,6 +411,22 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     player.direction = "down";
     player.isGuest = isGuest;
     this.state.players.set(client.sessionId, player);
+
+    // Send LiveKit SFU credentials when configured so the client can
+    // seamlessly switch from peer-to-peer to SFU mode when the room
+    // exceeds the player threshold.
+    if (isLiveKitEnabled()) {
+      generateLiveKitToken(client.sessionId, playerName, this.roomId)
+        .then((token) => {
+          client.send("livekit_credentials", {
+            url: getLiveKitUrl(),
+            token,
+          });
+        })
+        .catch((err) => {
+          logger.warn({ err }, "Failed to generate LiveKit token");
+        });
+    }
 
     addSystemMessage(this.state, `${playerName} joined`);
     this.broadcast("player_joined", {

@@ -1,6 +1,7 @@
 import type { Client } from "@colyseus/core";
 import type { OfficeStateSchema } from "../schema/OfficeState";
 import { getMegaphoneSpeaker } from "./megaphone";
+import { LIVEKIT_THRESHOLD, isLiveKitEnabled } from "./livekit";
 
 const PROXIMITY_RADIUS = 200; // pixels
 const MAX_PEERS = 6;
@@ -177,6 +178,12 @@ export function startProximityLoop(
       }
     }
 
+    // Determine transport mode: switch to SFU when LiveKit is configured
+    // and the player count exceeds the threshold.
+    const playerCount = state.players.size;
+    const mode: "p2p" | "sfu" =
+      isLiveKitEnabled() && playerCount > LIVEKIT_THRESHOLD ? "sfu" : "p2p";
+
     for (const group of groups) {
       const client = clients.find(
         (c) => c.sessionId === group.sessionId
@@ -184,6 +191,7 @@ export function startProximityLoop(
       if (client) {
         client.send("proximity_players", {
           nearbySessionIds: group.nearbySessionIds,
+          mode,
         });
       }
     }
