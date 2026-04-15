@@ -148,8 +148,8 @@ async def vision_describe(image_b64: str, prompt: str = "Describe this image in 
     Falls back to a placeholder description if no vision provider is available.
     """
     try:
-        from selva_inference import get_default_router  # type: ignore
-        from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+        from madfam_inference import get_default_router  # type: ignore
+        from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
 
         request = InferenceRequest(
             messages=[

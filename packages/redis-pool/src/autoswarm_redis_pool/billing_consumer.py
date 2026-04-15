@@ -1,5 +1,5 @@
 """
-Billing event consumer for the Selva ecosystem event bus.
+Billing event consumer for the MADFAM ecosystem event bus.
 
 Consumes billing and KYC events from the shared Redis Stream
 ``selva:billing-events`` published by Dhanam. Uses XREADGROUP
@@ -50,7 +50,7 @@ def _default_consumer_name() -> str:
 
 
 class BillingEventConsumer:
-    """Consumes billing events from the Selva event bus via Redis Streams."""
+    """Consumes billing events from the MADFAM event bus via Redis Streams."""
 
     def __init__(
         self,

@@ -75,7 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Skill Marketplace for community skill discovery and installation.
 - Python SDK with CLI (`autoswarm dispatch/agents/tasks`).
 - Full-stack observability: TaskEvent stream, OpsFeed, MetricsDashboard.
-- Selva Intelligence Architecture: org-config-driven model routing, task-type
+- MADFAM Intelligence Architecture: org-config-driven model routing, task-type
   assignments, Thompson Sampling orchestration.
 - Production infrastructure: Redis Streams task queue, connection pooling with
   circuit breaker, Prometheus metrics, Sentry integration, K8s PDB/HPA/NetworkPolicy.

@@ -118,7 +118,7 @@ class EmbeddingProvider:
         # Try to resolve the API key from the provider's config
         api_key = ""
         try:
-            from selva_inference.org_config import load_org_config
+            from madfam_inference.org_config import load_org_config
 
             org_config = load_org_config()
             provider_name = None
@@ -198,7 +198,7 @@ def get_embedding_provider(
         # Try loading embedding config from org config
         if provider_name is None and model is None:
             try:
-                from selva_inference.org_config import load_org_config
+                from madfam_inference.org_config import load_org_config
 
                 org_config = load_org_config()
                 if org_config.embedding_provider != "openai" or \

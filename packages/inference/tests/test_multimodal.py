@@ -9,12 +9,12 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
-from selva_inference.base import InferenceProvider
-from selva_inference.providers.anthropic import AnthropicProvider
-from selva_inference.providers.ollama import OllamaProvider
-from selva_inference.providers.openai import OpenAIProvider
-from selva_inference.router import ModelRouter
-from selva_inference.types import (
+from madfam_inference.base import InferenceProvider
+from madfam_inference.providers.anthropic import AnthropicProvider
+from madfam_inference.providers.ollama import OllamaProvider
+from madfam_inference.providers.openai import OpenAIProvider
+from madfam_inference.router import ModelRouter
+from madfam_inference.types import (
     ContentType,
     InferenceRequest,
     InferenceResponse,
@@ -453,7 +453,7 @@ class TestSupportsVision:
         assert provider.supports_vision is True
 
     def test_generic_vision_default_true(self) -> None:
-        from selva_inference.providers.generic import GenericOpenAIProvider
+        from madfam_inference.providers.generic import GenericOpenAIProvider
 
         provider = GenericOpenAIProvider(
             base_url="http://localhost:8000/v1",
@@ -462,7 +462,7 @@ class TestSupportsVision:
         assert provider.supports_vision is True
 
     def test_generic_vision_disabled(self) -> None:
-        from selva_inference.providers.generic import GenericOpenAIProvider
+        from madfam_inference.providers.generic import GenericOpenAIProvider
 
         provider = GenericOpenAIProvider(
             base_url="http://localhost:8000/v1",

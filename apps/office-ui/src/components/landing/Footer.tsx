@@ -18,7 +18,7 @@ export function Footer() {
             AutoSwarm Office
           </span>
           <p className="mt-1 text-xs text-slate-600">
-            by Selva &middot; {YEAR}
+            by MADFAM &middot; {YEAR}
           </p>
         </div>
 
@@ -42,7 +42,7 @@ export function Footer() {
 
         {/* Right: status badge */}
         <a
-          href="https://status.selva.town"
+          href="https://status.madfam.io"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 px-3 py-1.5 text-xs text-slate-500 transition-colors hover:border-emerald-600/40 hover:text-emerald-400"

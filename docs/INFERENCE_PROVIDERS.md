@@ -207,7 +207,7 @@ For providers that should always be available:
        )
    ```
 
-3. Add to priority lists in `packages/inference/selva_inference/router.py`:
+3. Add to priority lists in `packages/inference/madfam_inference/router.py`:
    ```python
    CLOUD_PRIORITY = [..., "my-provider", ...]
    CHEAPEST_PRIORITY = [..., "my-provider", ...]

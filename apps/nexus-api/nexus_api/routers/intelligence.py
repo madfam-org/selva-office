@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from selva_inference.org_config import OrgConfig, TaskType, load_org_config
+from madfam_inference.org_config import OrgConfig, TaskType, load_org_config
 
 from ..auth import get_current_user
 from ..config import get_settings

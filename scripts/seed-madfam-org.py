@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed the Selva organizational structure into AutoSwarm Office.
+Seed the MADFAM organizational structure into AutoSwarm Office.
 
 4 Nodes, 10 Primary Agents:
   - Node 1: Executive Brain Trust (Oráculo, Centinela, Forjador)
@@ -217,7 +217,7 @@ def seed_agents(dept_map: dict[str, str]) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Seed Selva org structure")
+    parser = argparse.ArgumentParser(description="Seed MADFAM org structure")
     parser.add_argument("--api-url", default=API_URL)
     parser.add_argument("--token", default=TOKEN)
     args = parser.parse_args()
@@ -227,7 +227,7 @@ def main():
     globals()["API_URL"] = args.api_url
     globals()["TOKEN"] = args.token
 
-    print(f"🏛  Seeding Selva organization at {args.api_url}")
+    print(f"🏛  Seeding MADFAM organization at {args.api_url}")
     print(f"   Token: {'***' + args.token[-4:] if len(args.token) > 8 else '(dev)'}")
 
     # Health check
@@ -240,7 +240,7 @@ def main():
     dept_map = seed_departments()
     seed_agents(dept_map)
 
-    print(f"\n✅  Selva org seeded: {len(DEPARTMENTS)} departments, {len(AGENTS)} agents")
+    print(f"\n✅  MADFAM org seeded: {len(DEPARTMENTS)} departments, {len(AGENTS)} agents")
 
 
 if __name__ == "__main__":

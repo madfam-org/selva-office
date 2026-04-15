@@ -128,7 +128,7 @@ While horizontal parity is achieved, deep vertical integration for professional 
 ## Selva Brand Migration Checklist
 
 - `[x]` Rename all `*.madfam.io` domains → `*.selva.town` in codebase
-- `[x]` Rename Python package `madfam-inference` → `selva-inference`
+- `[ ]` Rename Python package `madfam-inference` → `selva-inference` (reverted)
 - `[x]` Update brand text (MADFAM → Selva) across UI, docs, skills, prompts
 - `[x]` Rename Docker network, npm scope, seed scripts, community skills
 - `[ ]` **Email routing**: Configure Cloudflare Email Routing on `selva.town` zone

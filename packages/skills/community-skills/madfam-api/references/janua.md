@@ -1,7 +1,7 @@
 # Janua Authentication API
 
 ## Overview
-Janua is the Selva authentication service. All services delegate auth to Janua.
+Janua is the MADFAM authentication service. All services delegate auth to Janua.
 
 ## JWT Claims
 - `sub`: User ID (UUID)
