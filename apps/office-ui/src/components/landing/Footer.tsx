@@ -5,7 +5,7 @@ const LINKS = [
   { label: 'Office App', href: APP_URL },
   { label: 'Demo', href: `${APP_URL}/demo` },
   { label: 'API Docs', href: `${APP_URL}/api/v1/docs` },
-  { label: 'GitHub', href: 'https://github.com/madfam' },
+  { label: 'GitHub', href: 'https://github.com/madfam-org' },
 ];
 
 export function Footer() {
