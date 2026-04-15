@@ -67,6 +67,9 @@ from .legal import (
     LawSearchTool,
     REPSECheckTool,
 )
+from .billing_tools import CreateCheckoutLinkTool, GetRevenueMetricsTool
+from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
+from .marketing_tools import SendMarketingEmailTool
 from .operations import CarrierTrackingTool, InventoryCheckTool, PedimentoLookupTool
 from .product_catalog import ProductCatalogTool
 from .privacy import DataDeletionTool, PIIClassificationTool, PrivacyNoticeGeneratorTool
@@ -199,4 +202,13 @@ def get_builtin_tools() -> list[BaseTool]:
         GenericERPExportTool(),
         # Product catalog (MADFAM ecosystem)
         ProductCatalogTool(),
+        # Revenue tools (Ledger Node)
+        CreateCheckoutLinkTool(),
+        GetRevenueMetricsTool(),
+        # CRM tools (Growth Node)
+        CreateLeadTool(),
+        UpdateLeadStatusTool(),
+        CreateActivityTool(),
+        # Marketing tools (Growth Node)
+        SendMarketingEmailTool(),
     ]
