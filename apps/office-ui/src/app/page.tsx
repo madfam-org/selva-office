@@ -7,9 +7,17 @@ import { EcosystemLinks } from '@/components/landing/EcosystemLinks';
 import { Footer } from '@/components/landing/Footer';
 
 export const metadata: Metadata = {
-  title: 'AutoSwarm Office — AI Agents in a Virtual Office',
+  title: 'Selva — Your AI Workforce, Alive in a Virtual Office',
   description:
-    'Dispatch tasks to AI agents, watch them collaborate in real-time, and approve every action. Try the demo now.',
+    'Meet your AI team. 10 specialized agents working in a living virtual office — coding, researching, filing, and deploying — with you in full control. Try the live demo.',
+  openGraph: {
+    title: 'Selva — Your AI Workforce, Alive in a Virtual Office',
+    description:
+      'Meet your AI team. 10 specialized agents working in a living virtual office with you in full control.',
+    url: 'https://selva.town',
+    siteName: 'Selva',
+    type: 'website',
+  },
 };
 
 export default function LandingPage() {

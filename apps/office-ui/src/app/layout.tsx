@@ -19,8 +19,11 @@ const pressStart2P = Press_Start_2P({
 });
 
 export const metadata: Metadata = {
-  title: 'AutoSwarm Office',
-  description: 'Gamified multi-agent business orchestration',
+  title: {
+    default: 'Selva — AI Workforce',
+    template: '%s | Selva',
+  },
+  description: 'Your AI workforce, alive in a virtual office. 10 specialized agents building, researching, and deploying under your control.',
 };
 
 export default function RootLayout({

@@ -43,6 +43,12 @@ from .karafiel import (
     CFDIStatusTool,
     RFCValidationTool,
 )
+from .legal import (
+    ComplianceCheckTool,
+    ContractGenerateTool,
+    LawSearchTool,
+    REPSECheckTool,
+)
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
@@ -135,6 +141,11 @@ def get_builtin_tools() -> list[BaseTool]:
         BlacklistCheckTool(),
         # WhatsApp Business API
         WhatsAppTemplateTool(),
+        # Legal tools (Karafiel CLM + Tezca)
+        ContractGenerateTool(),
+        REPSECheckTool(),
+        LawSearchTool(),
+        ComplianceCheckTool(),
         # Accounting / Contabilidad
         ISRCalculatorTool(),
         IVACalculatorTool(),

@@ -3,38 +3,38 @@ import { render, screen } from '@testing-library/react';
 import { HeroSection } from '../HeroSection';
 
 describe('HeroSection', () => {
-  it('renders the main title', () => {
+  it('renders the Selva brand title', () => {
     render(<HeroSection />);
-    expect(screen.getByText('AutoSwarm Office')).toBeTruthy();
+    expect(screen.getByText('Selva')).toBeTruthy();
   });
 
-  it('renders the subtitle text', () => {
+  it('renders the tagline', () => {
     render(<HeroSection />);
-    expect(screen.getByText(/Your AI team/)).toBeTruthy();
+    expect(screen.getByText(/Your AI workforce/)).toBeTruthy();
   });
 
-  it('renders the metrics line', () => {
+  it('renders metrics', () => {
     render(<HeroSection />);
-    expect(screen.getByText('10 AI Agents')).toBeTruthy();
-    expect(screen.getByText('4 Departments')).toBeTruthy();
-    expect(screen.getByText('HITL Safety')).toBeTruthy();
+    expect(screen.getByText('Named Agents')).toBeTruthy();
+    expect(screen.getByText('Built-in Tools')).toBeTruthy();
+    expect(screen.getByText('Human-in-the-Loop')).toBeTruthy();
   });
 
-  it('renders primary CTA linking to the office app', () => {
+  it('renders primary CTA linking to the demo', () => {
     render(<HeroSection />);
-    const ctaLink = screen.getByText(/Enter the Office/);
+    const ctaLink = screen.getByText(/Try the Live Demo/);
     expect(ctaLink).toBeTruthy();
     expect(ctaLink.closest('a')?.getAttribute('href')).toBe(
-      'https://app.selva.town',
+      'https://app.selva.town/demo',
     );
   });
 
-  it('renders Try Demo CTA linking to the demo', () => {
+  it('renders Sign In CTA linking to the office app', () => {
     render(<HeroSection />);
-    const demoLink = screen.getByText('Try Demo');
-    expect(demoLink).toBeTruthy();
-    expect(demoLink.closest('a')?.getAttribute('href')).toBe(
-      'https://app.selva.town/demo',
+    const signInLink = screen.getByText('Sign In');
+    expect(signInLink).toBeTruthy();
+    expect(signInLink.closest('a')?.getAttribute('href')).toBe(
+      'https://app.selva.town',
     );
   });
 });

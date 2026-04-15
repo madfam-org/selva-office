@@ -12,12 +12,12 @@ const SERVICES = [
 export function EcosystemLinks() {
   return (
     <section className="mx-auto max-w-5xl px-4 py-24">
-      <h2 className="pixel-text mb-4 text-center text-lg text-indigo-400">
+      <h2 className="pixel-text mb-4 text-center text-lg text-emerald-400">
         Part of the MADFAM Ecosystem
       </h2>
 
       <p className="mb-14 text-center text-sm text-slate-500">
-        AutoSwarm Office powers the AI backbone for an entire product ecosystem.
+        Selva powers the AI backbone for an entire product ecosystem.
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
