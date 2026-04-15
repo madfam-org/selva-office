@@ -51,6 +51,22 @@ class FiscalResult(BaseModel):
     details: dict[str, Any] = {}
 
 
+class DeclarationResult(BaseModel):
+    declaration_type: str = ""  # "isr_provisional" | "iva_mensual" | "diot"
+    period: str = ""
+    status: str = ""
+    data: dict[str, Any] = {}
+
+
+class CFDIListItem(BaseModel):
+    uuid: str = ""
+    emisor_rfc: str = ""
+    receptor_rfc: str = ""
+    total: str = ""
+    fecha: str = ""
+    tipo_comprobante: str = ""  # "I" ingreso | "E" egreso | "P" pago
+
+
 class BlacklistResult(BaseModel):
     rfc: str
     listed: bool = False
@@ -207,6 +223,85 @@ class KarafielAdapter:
         except Exception as exc:
             logger.warning("Karafiel IVA computation failed: %s", exc)
             return FiscalResult(tax_type="iva", details={"error": str(exc)})
+
+    # -- CFDI listing (period-based) --------------------------------------------
+
+    async def list_cfdis(
+        self,
+        rfc: str,
+        since: str,
+        until: str,
+    ) -> list[CFDIListItem]:
+        """List CFDIs for an RFC within a date range via Karafiel."""
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    f"{self._base_url}/api/v1/cfdi/list/",
+                    headers=self._headers(),
+                    params={"rfc": rfc, "since": since, "until": until},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if isinstance(data, list):
+                    return [CFDIListItem(**item) for item in data]
+                return []
+        except Exception as exc:
+            logger.warning("Karafiel CFDI listing failed: %s", exc)
+            return []
+
+    # -- Declaration preparation ------------------------------------------------
+
+    async def build_declaration(
+        self,
+        org_id: str,
+        period: str,
+        declaration_type: str = "isr_provisional",
+        income: float = 0.0,
+        expenses: float = 0.0,
+        iva_acreditable: float = 0.0,
+        iva_trasladado: float = 0.0,
+        diot_data: dict[str, Any] | None = None,
+    ) -> DeclarationResult:
+        """Build a tax declaration via Karafiel fiscal module.
+
+        Args:
+            org_id: Organization identifier.
+            period: Period string (e.g. ``"2026-04"``).
+            declaration_type: One of ``isr_provisional``, ``iva_mensual``, ``diot``.
+            income: Total income for the period.
+            expenses: Total deductible expenses.
+            iva_acreditable: IVA paid on purchases (creditable).
+            iva_trasladado: IVA charged on sales (transferred).
+            diot_data: DIOT breakdown data (domestic/foreign transactions by RFC).
+
+        Returns:
+            DeclarationResult with prepared declaration data.
+        """
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/api/v1/fiscal/declarations/build/",
+                    headers=self._headers(),
+                    json={
+                        "org_id": org_id,
+                        "period": period,
+                        "declaration_type": declaration_type,
+                        "income": income,
+                        "expenses": expenses,
+                        "iva_acreditable": iva_acreditable,
+                        "iva_trasladado": iva_trasladado,
+                        "diot_data": diot_data or {},
+                    },
+                )
+                resp.raise_for_status()
+                return DeclarationResult(**resp.json())
+        except Exception as exc:
+            logger.warning("Karafiel declaration build failed: %s", exc)
+            return DeclarationResult(
+                declaration_type=declaration_type,
+                period=period,
+                status=f"error: {exc}",
+            )
 
     # -- Blacklist (Article 69-B) ------------------------------------------------
 

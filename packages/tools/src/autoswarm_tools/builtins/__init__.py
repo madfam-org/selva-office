@@ -15,6 +15,13 @@ from ..process_registry import (
     StartBackgroundProcessTool,
 )
 from .a2a_tool import CallExternalAgentTool
+from .accounting import (
+    BankReconciliationTool,
+    DeclarationPrepTool,
+    ISRCalculatorTool,
+    IVACalculatorTool,
+    PaymentSummaryTool,
+)
 from .artifact import ListArtifactsTool, RetrieveArtifactTool, SaveArtifactTool
 from .calendar_tools import CreateCalendarEventTool, ListCalendarEventsTool
 from .code import BashExecTool, PythonExecTool
@@ -128,4 +135,10 @@ def get_builtin_tools() -> list[BaseTool]:
         BlacklistCheckTool(),
         # WhatsApp Business API
         WhatsAppTemplateTool(),
+        # Accounting / Contabilidad
+        ISRCalculatorTool(),
+        IVACalculatorTool(),
+        BankReconciliationTool(),
+        DeclarationPrepTool(),
+        PaymentSummaryTool(),
     ]

@@ -51,7 +51,7 @@ class DispatchRequest(BaseModel):
     description: str = Field(..., min_length=1, max_length=2000)
     graph_type: str = Field(
         default="sequential",
-        pattern=r"^(sequential|parallel|coding|research|crm|custom|deployment|puppeteer|meeting|billing)$",
+        pattern=r"^(sequential|parallel|coding|research|crm|custom|deployment|puppeteer|meeting|billing|accounting)$",
     )
     assigned_agent_ids: list[str] = Field(default_factory=list)
     required_skills: list[str] = Field(default_factory=list)
