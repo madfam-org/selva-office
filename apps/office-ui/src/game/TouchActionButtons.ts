@@ -14,25 +14,40 @@ export interface TouchButtonEvents {
 export class TouchActionButtons {
   private scene: Phaser.Scene;
   private buttons: Phaser.GameObjects.Container;
+  private compact: boolean;
 
   constructor(scene: Phaser.Scene, events: TouchButtonEvents) {
     this.scene = scene;
+    this.compact = window.innerWidth < 640;
 
-    const baseX = scene.scale.width - 80;
-    const baseY = scene.scale.height - 80;
+    const baseX = scene.scale.width - (this.compact ? 60 : 80);
+    const baseY = scene.scale.height - (this.compact ? 60 : 80);
+    const spacing = this.compact ? 33 : 44;
 
     this.buttons = scene.add.container(baseX, baseY)
       .setScrollFactor(0)
       .setDepth(200);
 
     // Approve (top) — green
-    this.createButton(0, -44, 0x22c55e, 'A', () => events.onApprove());
+    this.createButton(0, -spacing, 0x22c55e, 'A', () => {
+      events.onApprove();
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
     // Deny (left) — red
-    this.createButton(-44, 0, 0xef4444, 'D', () => events.onDeny());
+    this.createButton(-spacing, 0, 0xef4444, 'D', () => {
+      events.onDeny();
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
     // Inspect (right) — cyan
-    this.createButton(44, 0, 0x06b6d4, 'E', () => events.onInspect());
+    this.createButton(spacing, 0, 0x06b6d4, 'E', () => {
+      events.onInspect();
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
     // Emote (bottom) — yellow
-    this.createButton(0, 44, 0xfbbf24, 'R', () => events.onEmote());
+    this.createButton(0, spacing, 0xfbbf24, 'R', () => {
+      events.onEmote();
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
   }
 
   setVisible(visible: boolean): void {
@@ -50,7 +65,8 @@ export class TouchActionButtons {
     label: string,
     callback: () => void,
   ): void {
-    const circle = this.scene.add.circle(x, y, 24, color, 0.6)
+    const radius = this.compact ? 18 : 24;
+    const circle = this.scene.add.circle(x, y, radius, color, 0.6)
       .setInteractive()
       .on('pointerdown', () => {
         circle.setScale(0.85).setAlpha(0.9);
@@ -65,7 +81,7 @@ export class TouchActionButtons {
 
     const text = this.scene.add.text(x, y, label, {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: '8px',
+      fontSize: this.compact ? '6px' : '8px',
       color: '#ffffff',
     }).setOrigin(0.5);
 

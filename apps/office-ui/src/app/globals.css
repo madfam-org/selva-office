@@ -296,6 +296,18 @@
   display: none;
 }
 
+/* Mobile safe area for bottom nav */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Compact panels on small screens */
+@media (max-width: 640px) {
+  .retro-panel {
+    max-width: calc(100vw - 1rem) !important;
+  }
+}
+
 /* CRT scanline overlay */
 .scanline-overlay::after {
   content: '';

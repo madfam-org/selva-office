@@ -37,6 +37,7 @@ import { useRecording } from '@/hooks/useRecording';
 import { useWhiteboard } from '@/hooks/useWhiteboard';
 import { useSpotlight } from '@/hooks/useSpotlight';
 import { useNotifications } from '@/hooks/useNotifications';
+import { MobileNav } from '@/components/MobileNav';
 import { MegaphoneControls } from '@/components/MegaphoneControls';
 import { SpotlightControls } from '@/components/SpotlightControls';
 import { SpotlightView } from '@/components/SpotlightView';
@@ -289,6 +290,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
     return '';
   });
   const [musicStatus, setMusicStatus] = useState('');
+  const [mobileTab, setMobileTab] = useState('office');
   const [followingPlayer, setFollowingPlayer] = useState<string | null>(null);
   const [explorerMode, setExplorerMode] = useState(false);
   const [spotlightViewDismissed, setSpotlightViewDismissed] = useState(false);
@@ -409,6 +411,24 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
 
   const handleDispatchClose = useCallback(() => {
     setDispatchPanelOpen(false);
+  }, []);
+
+  const handleMobileTabChange = useCallback((tab: string) => {
+    setMobileTab(tab);
+    if (tab === 'chat') {
+      // Ensure chat panel is visible when switching to chat tab
+      setDashboardOpen(false);
+      setDispatchPanelOpen(false);
+      setApprovalPanelOpen(false);
+    } else if (tab === 'tasks') {
+      setDashboardOpen(true);
+      setDispatchPanelOpen(false);
+      setApprovalPanelOpen(false);
+    } else if (tab === 'office') {
+      setDashboardOpen(false);
+    } else if (tab === 'settings') {
+      setAvatarEditorOpen(true);
+    }
   }, []);
 
   const handleAvatarSave = useCallback(
@@ -856,6 +876,8 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
           onDeny={handleDeny}
         />
       )}
+
+      <MobileNav activeTab={mobileTab} onTabChange={handleMobileTabChange} />
     </main>
     </ToastProvider>
     </ErrorBoundary>
