@@ -159,34 +159,48 @@ def build_plan_prompt(
     repo_path: str | None = None,
     skill_ctx: str = "",
     experience_ctx: str = "",
+    locale: str = "en",
 ) -> str:
     """Build a system prompt for the plan() node with repo context."""
     ctx = _read_repo_context(repo_path)
     lang = _detect_language(repo_path)
 
-    sections = [
-        "You are a senior developer creating an implementation plan.",
-        "Break the task into an ordered list of concrete file changes.",
-        "Return a JSON object with keys: 'description' (string) and 'steps' (array of strings).",
-    ]
+    if locale == "es-MX":
+        sections = [
+            "Usted es un desarrollador senior creando un plan de implementacion.",
+            "Descomponga la tarea en una lista ordenada de cambios concretos en archivos.",
+            (
+                "Devuelva un objeto JSON con las claves: 'description' (cadena de texto) "
+                "y 'steps' (arreglo de cadenas de texto)."
+            ),
+        ]
+        lang_label = "Lenguaje principal"
+        listing_label = "Archivos de nivel superior del repositorio"
+        readme_label = f"Extracto del README (primeras {_MAX_CONTEXT_LINES} lineas)"
+        conventions_label = "Convenciones del proyecto (extracto de CLAUDE.md)"
+    else:
+        sections = [
+            "You are a senior developer creating an implementation plan.",
+            "Break the task into an ordered list of concrete file changes.",
+            "Return a JSON object with keys: 'description' (string) "
+            "and 'steps' (array of strings).",
+        ]
+        lang_label = "Primary language"
+        listing_label = "Repository top-level files"
+        readme_label = f"README excerpt (first {_MAX_CONTEXT_LINES} lines)"
+        conventions_label = "Project conventions (CLAUDE.md excerpt)"
 
     if lang != "unknown":
-        sections.append(f"Primary language: {lang}.")
+        sections.append(f"{lang_label}: {lang}.")
 
     if ctx["listing"]:
-        sections.append(f"Repository top-level files:\n```\n{ctx['listing']}\n```")
+        sections.append(f"{listing_label}:\n```\n{ctx['listing']}\n```")
 
     if ctx["readme"]:
-        sections.append(
-            f"README excerpt (first {_MAX_CONTEXT_LINES} lines):\n"
-            f"```\n{ctx['readme']}\n```"
-        )
+        sections.append(f"{readme_label}:\n```\n{ctx['readme']}\n```")
 
     if ctx["claude_md"]:
-        sections.append(
-            f"Project conventions (CLAUDE.md excerpt):\n"
-            f"```\n{ctx['claude_md']}\n```"
-        )
+        sections.append(f"{conventions_label}:\n```\n{ctx['claude_md']}\n```")
 
     base = "\n\n".join(sections)
     parts: list[str] = []
@@ -205,31 +219,55 @@ def build_implement_prompt(
     worktree_path: str | None = None,
     skill_ctx: str = "",
     experience_ctx: str = "",
+    locale: str = "en",
 ) -> str:
     """Build a system prompt for the implement() node with strict JSON instructions."""
     ctx = _read_repo_context(worktree_path or repo_path)
 
-    sections = [
-        "You are a senior developer implementing code changes.",
-        "IMPORTANT: Return ONLY a JSON object with key 'files' containing an array of objects.",
-        "Each object must have 'path' (relative to project root) and 'content' (full file text).",
-        'Example: {"files": [{"path": "src/main.py", "content": "# full file content..."}]}',
-        "Do NOT return markdown, explanations, or anything other than the JSON object.",
-    ]
-
-    if ctx["listing"]:
-        sections.append(f"Existing project files:\n```\n{ctx['listing']}\n```")
-
-    if ctx["claude_md"]:
-        sections.append(
-            f"Project conventions (CLAUDE.md excerpt):\n"
-            f"```\n{ctx['claude_md']}\n```"
+    if locale == "es-MX":
+        sections = [
+            "Usted es un desarrollador senior implementando cambios de codigo.",
+            (
+                "IMPORTANTE: Devuelva UNICAMENTE un objeto JSON con la clave 'files' "
+                "que contenga un arreglo de objetos."
+            ),
+            (
+                "Cada objeto debe tener 'path' (ruta relativa a la raiz del proyecto) "
+                "y 'content' (texto completo del archivo)."
+            ),
+            'Ejemplo: {"files": [{"path": "src/main.py", "content": "# contenido completo..."}]}',
+            "NO devuelva markdown, explicaciones ni nada que no sea el objeto JSON.",
+        ]
+        listing_label = "Archivos existentes del proyecto"
+        conventions_label = "Convenciones del proyecto (extracto de CLAUDE.md)"
+        style_note = (
+            "Prefiera editar archivos existentes en lugar de crear nuevos. "
+            "Siga el estilo y convenciones de codificacion existentes del proyecto."
+        )
+    else:
+        sections = [
+            "You are a senior developer implementing code changes.",
+            "IMPORTANT: Return ONLY a JSON object with key 'files' "
+            "containing an array of objects.",
+            "Each object must have 'path' (relative to project root) "
+            "and 'content' (full file text).",
+            'Example: {"files": [{"path": "src/main.py", "content": "# full file content..."}]}',
+            "Do NOT return markdown, explanations, or anything other than the JSON object.",
+        ]
+        listing_label = "Existing project files"
+        conventions_label = "Project conventions (CLAUDE.md excerpt)"
+        style_note = (
+            "Prefer editing existing files over creating new ones. "
+            "Match the project's existing coding style and conventions."
         )
 
-    sections.append(
-        "Prefer editing existing files over creating new ones. "
-        "Match the project's existing coding style and conventions."
-    )
+    if ctx["listing"]:
+        sections.append(f"{listing_label}:\n```\n{ctx['listing']}\n```")
+
+    if ctx["claude_md"]:
+        sections.append(f"{conventions_label}:\n```\n{ctx['claude_md']}\n```")
+
+    sections.append(style_note)
 
     base = "\n\n".join(sections)
     parts_impl: list[str] = []
@@ -245,18 +283,33 @@ def build_review_prompt(
     changes: str,
     skill_ctx: str = "",
     experience_ctx: str = "",
+    locale: str = "en",
 ) -> str:
     """Build a system prompt for the review() node with enhanced criteria."""
-    sections = [
-        "You are a thorough code reviewer. Evaluate the changes for:",
-        "1. Correctness — does the code do what the task requires?",
-        "2. Security — path traversal, injection, credential exposure?",
-        "3. Style — matches project conventions and language idioms?",
-        "4. Completeness — are all required files modified? Any missing imports?",
-        "",
-        "Return JSON with keys: 'changes_reviewed' (int), 'issues_found' (int), "
-        "'recommendation' ('approve' or 'revise'), 'issues' (array of strings, optional).",
-    ]
+    if locale == "es-MX":
+        sections = [
+            "Usted es un revisor minucioso de codigo. Evalue los cambios en cuanto a:",
+            "1. Correccion -- el codigo hace lo que la tarea requiere?",
+            "2. Seguridad -- traversal de rutas, inyeccion, exposicion de credenciales?",
+            "3. Estilo -- coincide con las convenciones del proyecto y los modismos del lenguaje?",
+            "4. Completitud -- se modificaron todos los archivos requeridos? Faltan importaciones?",
+            "",
+            (
+                "Devuelva JSON con las claves: 'changes_reviewed' (int), 'issues_found' (int), "
+                "'recommendation' ('approve' o 'revise'), 'issues' (arreglo de cadenas, opcional)."
+            ),
+        ]
+    else:
+        sections = [
+            "You are a thorough code reviewer. Evaluate the changes for:",
+            "1. Correctness — does the code do what the task requires?",
+            "2. Security — path traversal, injection, credential exposure?",
+            "3. Style — matches project conventions and language idioms?",
+            "4. Completeness — are all required files modified? Any missing imports?",
+            "",
+            "Return JSON with keys: 'changes_reviewed' (int), 'issues_found' (int), "
+            "'recommendation' ('approve' or 'revise'), 'issues' (array of strings, optional).",
+        ]
 
     base = "\n".join(sections)
     parts_rev: list[str] = []

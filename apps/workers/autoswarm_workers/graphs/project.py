@@ -41,22 +41,41 @@ def analyze(state: ProjectState) -> ProjectState:
     messages = state.get("messages", [])
     goal = state.get("goal", state.get("description", ""))
 
+    locale = state.get("locale", "")
+    if not locale:
+        wf_vars = state.get("workflow_variables", {})
+        locale = wf_vars.get("locale", "en") if isinstance(wf_vars, dict) else "en"
+
     async def _analyze() -> str:
         try:
             from autoswarm_workers.inference import call_llm, get_model_router
 
             router = get_model_router()
-            prompt = (
-                "You are a strategic advisor for MADFAM, a sovereign tech ecosystem.\n"
-                "Analyze this goal and identify:\n"
-                "1. Key constraints and dependencies\n"
-                "2. Available resources (agents, infrastructure, services)\n"
-                "3. Risks and mitigation strategies\n"
-                "4. Success metrics\n\n"
-                f"Goal: {goal}\n\n"
-                "Respond in JSON: {\"constraints\": [...], \"resources\": [...], "
-                "\"risks\": [...], \"metrics\": [...]}"
-            )
+            if locale == "es-MX":
+                prompt = (
+                    "Usted es un asesor estrategico para MADFAM, un ecosistema "
+                    "tecnologico soberano.\n"
+                    "Analice este objetivo e identifique:\n"
+                    "1. Restricciones y dependencias clave\n"
+                    "2. Recursos disponibles (agentes, infraestructura, servicios)\n"
+                    "3. Riesgos y estrategias de mitigacion\n"
+                    "4. Metricas de exito\n\n"
+                    f"Objetivo: {goal}\n\n"
+                    "Responda en JSON: {\"constraints\": [...], \"resources\": [...], "
+                    "\"risks\": [...], \"metrics\": [...]}"
+                )
+            else:
+                prompt = (
+                    "You are a strategic advisor for MADFAM, a sovereign tech ecosystem.\n"
+                    "Analyze this goal and identify:\n"
+                    "1. Key constraints and dependencies\n"
+                    "2. Available resources (agents, infrastructure, services)\n"
+                    "3. Risks and mitigation strategies\n"
+                    "4. Success metrics\n\n"
+                    f"Goal: {goal}\n\n"
+                    "Respond in JSON: {\"constraints\": [...], \"resources\": [...], "
+                    "\"risks\": [...], \"metrics\": [...]}"
+                )
             return await call_llm(
                 router,
                 messages=[{"role": "user", "content": prompt}],
@@ -84,20 +103,34 @@ def decompose(state: ProjectState) -> ProjectState:
     """Decompose the goal into ordered milestones with estimated timelines."""
     messages = state.get("messages", [])
     goal = state.get("goal", "")
+    locale = state.get("locale", "")
+    if not locale:
+        wf_vars = state.get("workflow_variables", {})
+        locale = wf_vars.get("locale", "en") if isinstance(wf_vars, dict) else "en"
 
     async def _decompose() -> list[dict[str, Any]]:
         try:
             from autoswarm_workers.inference import call_llm, get_model_router
 
             router = get_model_router()
-            prompt = (
-                "Decompose this goal into 3-7 sequential milestones.\n"
-                "Each milestone should be achievable in 1-5 days.\n\n"
-                f"Goal: {goal}\n\n"
-                "Respond in JSON array: [{\"title\": str, \"description\": str, "
-                "\"graph_type\": str (coding|research|crm|review|deployment), "
-                "\"required_skills\": [str], \"estimated_days\": int}]"
-            )
+            if locale == "es-MX":
+                prompt = (
+                    "Descomponga este objetivo en 3-7 hitos secuenciales.\n"
+                    "Cada hito debe ser alcanzable en 1-5 dias.\n\n"
+                    f"Objetivo: {goal}\n\n"
+                    "Responda en arreglo JSON: [{\"title\": str, \"description\": str, "
+                    "\"graph_type\": str (coding|research|crm|review|deployment), "
+                    "\"required_skills\": [str], \"estimated_days\": int}]"
+                )
+            else:
+                prompt = (
+                    "Decompose this goal into 3-7 sequential milestones.\n"
+                    "Each milestone should be achievable in 1-5 days.\n\n"
+                    f"Goal: {goal}\n\n"
+                    "Respond in JSON array: [{\"title\": str, \"description\": str, "
+                    "\"graph_type\": str (coding|research|crm|review|deployment), "
+                    "\"required_skills\": [str], \"estimated_days\": int}]"
+                )
             resp = await call_llm(
                 router,
                 messages=[{"role": "user", "content": prompt}],

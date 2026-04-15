@@ -126,16 +126,44 @@ class SkillRegistry:
         """Return DEFAULT_ROLE_SKILLS[role], or empty list for unknown roles."""
         return list(DEFAULT_ROLE_SKILLS.get(role, []))
 
-    def build_system_prompt(self, skill_names: list[str]) -> str:
-        """Activate each skill, concatenate instructions with headers."""
+    def build_system_prompt(self, skill_names: list[str], locale: str = "en") -> str:
+        """Activate each skill, concatenate instructions with headers.
+
+        When *locale* is not ``"en"``, the registry looks for a locale-specific
+        ``SKILL.{locale}.md`` file alongside the canonical ``SKILL.md``.  If
+        found, its body replaces the default English instructions.
+        """
         sections: list[str] = []
         for name in skill_names:
             try:
                 defn = self.activate(name)
-                sections.append(f"## Skill: {defn.meta.name}\n\n{defn.instructions}")
+                locale_body = self._load_locale_body(name, locale)
+                body = locale_body or defn.instructions
+                sections.append(f"## Skill: {defn.meta.name}\n\n{body}")
             except (KeyError, Exception):
                 logger.warning("Could not activate skill '%s' for prompt", name)
         return "\n\n---\n\n".join(sections)
+
+    def _load_locale_body(self, skill_id: str, locale: str) -> str | None:
+        """Load ``SKILL.{locale}.md`` if it exists alongside ``SKILL.md``.
+
+        Returns only the markdown body (after YAML frontmatter), or ``None``
+        when no locale-specific file is available.
+        """
+        if locale == "en":
+            return None
+        for skills_dir in (self._skills_dir, self._community_skills_dir):
+            locale_path = skills_dir / skill_id / f"SKILL.{locale}.md"
+            if locale_path.exists():
+                try:
+                    content = locale_path.read_text(encoding="utf-8")
+                    if content.startswith("---"):
+                        parts = content.split("---", 2)
+                        if len(parts) >= 3:
+                            return parts[2].strip()
+                except OSError:
+                    logger.warning("Failed to read locale file %s", locale_path)
+        return None
 
     def get_allowed_tools(self, skill_names: list[str]) -> list[str]:
         """Union of allowed-tools from named skills."""

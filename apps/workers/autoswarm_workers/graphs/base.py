@@ -79,6 +79,7 @@ class BaseGraphState(TypedDict, total=False):
     workflow_variables: dict[str, Any]
     current_node_id: str
     description: str
+    locale: str
 
 
 # -- Shared node functions ----------------------------------------------------

@@ -264,16 +264,25 @@ async def process_task(task_data: dict) -> None:
     settings = get_settings()
     skill_ids: list[str] = []
     agent_system_prompt = ""
+    locale = task_data.get("payload", {}).get("locale", "en") if task_data.get("payload") else "en"
     try:
         skill_ids = await _fetch_agent_skills(settings.nexus_api_url, agent_id)
         if skill_ids:
             from autoswarm_skills import get_skill_registry
 
             registry = get_skill_registry()
-            agent_system_prompt = registry.build_system_prompt(skill_ids)
-            logger.info("Built skill prompt for agent %s with skills: %s", agent_id, skill_ids)
+            agent_system_prompt = registry.build_system_prompt(skill_ids, locale=locale)
+            logger.info(
+                "Built skill prompt for agent %s with skills: %s (locale=%s)",
+                agent_id, skill_ids, locale,
+            )
     except Exception:
         logger.warning("Failed to build skill prompt for agent %s", agent_id, exc_info=True)
+
+    # Merge locale into workflow_variables so graph nodes can read it.
+    workflow_variables = task_data.get("payload", {}).get("variables", {}) or {}
+    if locale != "en" and "locale" not in workflow_variables:
+        workflow_variables["locale"] = locale
 
     initial_state: dict = {
         "messages": [],
@@ -285,7 +294,8 @@ async def process_task(task_data: dict) -> None:
         "approval_request_id": None,
         "agent_system_prompt": agent_system_prompt,
         "agent_skill_ids": skill_ids,
-        "workflow_variables": task_data.get("payload", {}).get("variables", {}),
+        "workflow_variables": workflow_variables,
+        "locale": locale,
         "description": task_data.get("description", ""),
         "current_node_id": "",
     }
