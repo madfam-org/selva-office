@@ -161,6 +161,70 @@ export class BootScene extends Phaser.Scene {
     this.createRectTexture('particle-dot', 2, 2, 0xffffff);
     this.createRectTexture('particle-dust', 3, 3, 0x94a3b8);
 
+    // Solarpunk particle textures
+    // Leaf particle (6x4, green)
+    const leafCanvas = this.textures.createCanvas('particle-leaf', 6, 4);
+    if (leafCanvas) {
+      const leafCtx = leafCanvas.getContext();
+      leafCtx.fillStyle = '#4a9e6e';
+      leafCtx.fillRect(1, 0, 4, 1);
+      leafCtx.fillRect(0, 1, 6, 2);
+      leafCtx.fillRect(1, 3, 4, 1);
+      leafCanvas.refresh();
+    }
+
+    // Petal particle (4x4, pink)
+    const petalCanvas = this.textures.createCanvas('particle-petal', 4, 4);
+    if (petalCanvas) {
+      const petalCtx = petalCanvas.getContext();
+      petalCtx.fillStyle = '#ffb4b4';
+      petalCtx.fillRect(1, 0, 2, 1);
+      petalCtx.fillRect(0, 1, 4, 2);
+      petalCtx.fillRect(1, 3, 2, 1);
+      petalCanvas.refresh();
+    }
+
+    // Firefly particle (3x3, yellow-green glow)
+    const fireflyCanvas = this.textures.createCanvas('particle-firefly', 3, 3);
+    if (fireflyCanvas) {
+      const fireflyCtx = fireflyCanvas.getContext();
+      fireflyCtx.fillStyle = '#a8d8b9';
+      fireflyCtx.fillRect(0, 1, 3, 1);
+      fireflyCtx.fillRect(1, 0, 1, 3);
+      fireflyCtx.fillStyle = '#f6d55c';
+      fireflyCtx.fillRect(1, 1, 1, 1);
+      fireflyCanvas.refresh();
+    }
+
+    // Spore particle (3x3, blue-green soft)
+    const sporeCanvas = this.textures.createCanvas('particle-spore', 3, 3);
+    if (sporeCanvas) {
+      const sporeCtx = sporeCanvas.getContext();
+      sporeCtx.fillStyle = 'rgba(168, 218, 188, 0.7)';
+      sporeCtx.fillRect(0, 0, 3, 3);
+      sporeCanvas.refresh();
+    }
+
+    // Sparkle particle (3x3, diamond, white)
+    const sparkleCanvas = this.textures.createCanvas('particle-sparkle', 3, 3);
+    if (sparkleCanvas) {
+      const sparkleCtx = sparkleCanvas.getContext();
+      sparkleCtx.fillStyle = '#ffffff';
+      sparkleCtx.fillRect(1, 0, 1, 1);
+      sparkleCtx.fillRect(0, 1, 3, 1);
+      sparkleCtx.fillRect(1, 2, 1, 1);
+      sparkleCanvas.refresh();
+    }
+
+    // Glint particle (2x2, gold)
+    const glintCanvas = this.textures.createCanvas('particle-glint', 2, 2);
+    if (glintCanvas) {
+      const glintCtx = glintCanvas.getContext();
+      glintCtx.fillStyle = '#f6d55c';
+      glintCtx.fillRect(0, 0, 2, 2);
+      glintCanvas.refresh();
+    }
+
     this.scene.start('OfficeScene');
   }
 

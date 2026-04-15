@@ -182,6 +182,27 @@
   .animate-float {
     animation: float 4s ease-in-out infinite;
   }
+
+  /* Solarpunk animations */
+  @keyframes solarpunk-glow {
+    0%, 100% { text-shadow: 0 0 4px rgba(74, 158, 110, 0.4); }
+    50% { text-shadow: 0 0 12px rgba(74, 158, 110, 0.7), 0 0 20px rgba(246, 213, 92, 0.3); }
+  }
+
+  .animate-solarpunk-glow {
+    animation: solarpunk-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes leaf-float {
+    0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.4; }
+    100% { transform: translateY(100px) rotate(45deg); opacity: 0; }
+  }
+
+  .animate-leaf-float {
+    animation: leaf-float 8s ease-in-out infinite;
+  }
 }
 
 /* Pixelact UI scoped styles — avoids collision with .retro-btn/.pixel-border */
@@ -306,6 +327,67 @@
   .retro-panel {
     max-width: calc(100vw - 1rem) !important;
   }
+}
+
+/* ── Solarpunk Theme ──────────────────────────── */
+
+.solarpunk-panel {
+  background: rgba(42, 34, 24, 0.95);
+  border: 2px solid #c8b896;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px #6b5a42,
+    inset 0 1px 0 rgba(232, 220, 196, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.solarpunk-panel:hover {
+  box-shadow:
+    0 0 0 1px #6b5a42,
+    0 0 8px rgba(74, 158, 110, 0.2),
+    inset 0 1px 0 rgba(232, 220, 196, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.solarpunk-btn {
+  background: linear-gradient(180deg, #8b7355 0%, #6b5a42 100%);
+  border: 2px solid #4a3a2a;
+  color: #e8dcc4;
+  font-family: var(--font-pixel);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition: all 150ms ease;
+}
+
+.solarpunk-btn:hover {
+  background: linear-gradient(180deg, #9a8a6a 0%, #7a6a4a 100%);
+  box-shadow: 0 0 8px rgba(74, 158, 110, 0.3);
+  transform: translateY(-1px);
+}
+
+.solarpunk-btn:active {
+  background: linear-gradient(180deg, #6b5a42 0%, #4a3a2a 100%);
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.solarpunk-border {
+  border: 2px solid #c8b896;
+  outline: 1px solid #6b5a42;
+  outline-offset: -3px;
+}
+
+/* Leaf overlay (replaces scanline) */
+.leaf-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 2px 3px at 15% 20%, rgba(74, 158, 110, 0.04) 50%, transparent 50%),
+    radial-gradient(ellipse 3px 2px at 45% 60%, rgba(104, 182, 132, 0.03) 50%, transparent 50%),
+    radial-gradient(ellipse 2px 4px at 75% 35%, rgba(74, 158, 110, 0.04) 50%, transparent 50%),
+    radial-gradient(ellipse 3px 3px at 85% 80%, rgba(104, 182, 132, 0.03) 50%, transparent 50%);
+  z-index: 9999;
 }
 
 /* CRT scanline overlay */

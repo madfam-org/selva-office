@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${pressStart2P.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#1e1b4b" />
+        <meta name="theme-color" content="#2a2218" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/assets/icons/icon-192.png" />
