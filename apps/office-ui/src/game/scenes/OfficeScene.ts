@@ -3,7 +3,7 @@ import { GamepadManager } from '../GamepadManager';
 import { gameEventBus } from '../PhaserGame';
 import { loadTiledMap } from '../TiledMapLoader';
 import type { DepartmentZone } from '../TiledMapLoader';
-import { compositeAvatar } from '../AvatarCompositor';
+import { compositeAvatar, createAvatarAnimations } from '../AvatarCompositor';
 import { VirtualJoystick } from '../VirtualJoystick';
 import { TouchActionButtons } from '../TouchActionButtons';
 import { InteractableManager } from '../InteractableManager';
@@ -94,6 +94,8 @@ interface RemotePlayerSprite {
   targetX: number;
   targetY: number;
   direction: string;
+  /** Texture key used as animation prefix (e.g. 'tactician' or 'avatar-...') */
+  textureKey: string;
 }
 
 /** Department zone layout positions on the office grid (procedural fallback, 50x28 map) */
@@ -133,6 +135,8 @@ export class OfficeScene extends Phaser.Scene {
   private isTouchDevice: boolean = false;
   private helpOverlay!: Phaser.GameObjects.Container;
   private lastDirection: string = 'down';
+  /** Current texture key used for the local tactician animation prefix */
+  private localTextureKey: string = 'tactician';
   private lastMoveTime: number = 0;
   private lastSentX: number = 0;
   private lastSentY: number = 0;
@@ -277,20 +281,36 @@ export class OfficeScene extends Phaser.Scene {
       this.cameras.main.postFX.addVignette(0.5, 0.5, 0.9, 0.15);
     }
 
-    // === Ambient dust particles ===
-    if (ENABLE_PARTICLES && this.textures.exists('particle-dot')) {
-      this.ambientEmitter = this.add.particles(0, 0, 'particle-dot', {
+    // === Floating leaves (solarpunk ambient) ===
+    if (ENABLE_PARTICLES && this.textures.exists('particle-leaf')) {
+      this.ambientEmitter = this.add.particles(0, 0, 'particle-leaf', {
         x: { min: 0, max: this.worldWidth },
-        y: { min: 0, max: this.worldHeight },
-        lifespan: 6000,
-        frequency: 800,
-        alpha: { start: 0, end: 0.3 },
-        scale: { start: 0.5, end: 1 },
-        speedY: { min: -8, max: -3 },
-        speedX: { min: -5, max: 5 },
-        blendMode: 'ADD',
+        y: -10,
+        lifespan: 8000,
+        speedX: { min: -15, max: 15 },
+        speedY: { min: 8, max: 20 },
+        alpha: { start: 0, end: 0, ease: 'Sine.easeInOut',
+          interpolation: [0, 0.5, 0.4, 0] as unknown as string },
+        rotate: { min: 0, max: 360 },
+        frequency: 2000,
+        blendMode: 'NORMAL',
       });
       this.ambientEmitter.setDepth(1);
+    }
+
+    // === Fireflies (solarpunk ambient, wandering) ===
+    if (ENABLE_PARTICLES && this.textures.exists('particle-firefly')) {
+      const fireflyEmitter = this.add.particles(0, 0, 'particle-firefly', {
+        x: { min: 100, max: this.worldWidth - 100 },
+        y: { min: 100, max: this.worldHeight - 100 },
+        lifespan: 4000,
+        speed: { min: 5, max: 15 },
+        alpha: { start: 0, end: 0, ease: 'Sine.easeInOut',
+          interpolation: [0, 0.8, 0.3, 0.9, 0] as unknown as string },
+        frequency: 3000,
+        blendMode: 'ADD',
+      });
+      fireflyEmitter.setDepth(1);
     }
 
     // === Dust trail emitter (inactive, emitted on movement) ===
@@ -550,7 +570,7 @@ export class OfficeScene extends Phaser.Scene {
         this.lastDirection = dy > 0 ? 'down' : 'up';
       }
 
-      const walkKey = `tactician-walk-${this.lastDirection}`;
+      const walkKey = `${this.localTextureKey}-walk-${this.lastDirection}`;
       if (this.anims.exists(walkKey) && this.tactician.anims.currentAnim?.key !== walkKey) {
         this.tactician.play(walkKey);
       }
@@ -571,7 +591,7 @@ export class OfficeScene extends Phaser.Scene {
       }
     } else {
       // Idle: show single frame for current direction
-      const idleKey = `tactician-idle-${this.lastDirection}`;
+      const idleKey = `${this.localTextureKey}-idle-${this.lastDirection}`;
       if (this.anims.exists(idleKey) && this.tactician.anims.currentAnim?.key !== idleKey) {
         this.tactician.play(idleKey);
       }
@@ -608,16 +628,17 @@ export class OfficeScene extends Phaser.Scene {
         remote.musicLabel.setPosition(remote.sprite.x, remote.sprite.y - 16);
       }
 
-      // Play walk/idle animation based on movement
+      // Play walk/idle animation based on movement (per-texture animation keys)
+      const animPrefix = remote.textureKey;
       const moving = Math.abs(remote.targetX - remote.sprite.x) > 0.5 ||
         Math.abs(remote.targetY - remote.sprite.y) > 0.5;
       if (moving) {
-        const walkKey = `tactician-walk-${remote.direction}`;
+        const walkKey = `${animPrefix}-walk-${remote.direction}`;
         if (this.anims.exists(walkKey) && remote.sprite.anims.currentAnim?.key !== walkKey) {
           remote.sprite.play(walkKey);
         }
       } else {
-        const idleKey = `tactician-idle-${remote.direction}`;
+        const idleKey = `${animPrefix}-idle-${remote.direction}`;
         if (this.anims.exists(idleKey) && remote.sprite.anims.currentAnim?.key !== idleKey) {
           remote.sprite.play(idleKey);
         }
@@ -703,25 +724,27 @@ export class OfficeScene extends Phaser.Scene {
         agentSprite.alertIcon.setVisible(false);
       }
 
-      // Status particles (timer-gated)
-      if (ENABLE_PARTICLES && this.textures.exists('particle-dot') && updateTime - agentSprite.lastParticleTime > 2000) {
-        if (agentSprite.agentStatus === 'working') {
+      // Status particles (timer-gated) — solarpunk themed
+      if (ENABLE_PARTICLES && updateTime - agentSprite.lastParticleTime > 2000) {
+        if (agentSprite.agentStatus === 'working' && this.textures.exists('particle-glint')) {
+          // Working: gold solar glint particles
           agentSprite.lastParticleTime = updateTime;
-          const sparkle = this.add.particles(agentSprite.sprite.x, agentSprite.sprite.y - 8, 'particle-dot', {
+          const sparkle = this.add.particles(agentSprite.sprite.x, agentSprite.sprite.y - 8, 'particle-glint', {
             speed: { min: 10, max: 30 },
             angle: { min: 230, max: 310 },
             lifespan: 600,
-            alpha: { start: 0.6, end: 0 },
-            tint: 0x06b6d4,
+            alpha: { start: 0.7, end: 0 },
+            tint: 0xf6d55c,
             scale: { start: 1, end: 0.3 },
             emitting: false,
           });
           sparkle.setDepth(6);
           sparkle.emitParticle(2);
           this.time.delayedCall(700, () => sparkle.destroy());
-        } else if (agentSprite.agentStatus === 'error') {
+        } else if (agentSprite.agentStatus === 'error' && this.textures.exists('particle-spore')) {
+          // Error: fading spore particles (wilting effect)
           agentSprite.lastParticleTime = updateTime;
-          const wisps = this.add.particles(agentSprite.sprite.x, agentSprite.sprite.y, 'particle-dot', {
+          const wisps = this.add.particles(agentSprite.sprite.x, agentSprite.sprite.y, 'particle-spore', {
             speed: { min: 5, max: 15 },
             angle: { min: 250, max: 290 },
             lifespan: 800,
@@ -804,31 +827,12 @@ export class OfficeScene extends Phaser.Scene {
   private createAnimations(): void {
     // Tactician animations — 4 directions × 3 walk frames
     // Spritesheet layout: frames 0-2 = down, 3-5 = left, 6-8 = up, 9-11 = right
-    const directions = ['down', 'left', 'up', 'right'] as const;
+    // Walk cycle uses classic JRPG 1-2-1-3 pattern (stand, walkL, stand, walkR)
     const hasTacticianSheet = this.textures.exists('tactician') &&
       this.textures.get('tactician').frameTotal > 1;
 
     if (hasTacticianSheet) {
-      directions.forEach((dir, dirIndex) => {
-        const startFrame = dirIndex * 3;
-
-        this.anims.create({
-          key: `tactician-walk-${dir}`,
-          frames: this.anims.generateFrameNumbers('tactician', {
-            start: startFrame,
-            end: startFrame + 2,
-          }),
-          frameRate: 8,
-          repeat: -1,
-        });
-
-        this.anims.create({
-          key: `tactician-idle-${dir}`,
-          frames: [{ key: 'tactician', frame: startFrame }],
-          frameRate: 1,
-          repeat: 0,
-        });
-      });
+      createAvatarAnimations(this, 'tactician');
     }
 
     // Agent animations — 2 frames each (idle + working)
@@ -934,11 +938,22 @@ export class OfficeScene extends Phaser.Scene {
     // Default spawn position (lobby center of 50x28 map)
     const spawnX = 768;
     const spawnY = 432;
-    this.tactician = this.add.sprite(spawnX, spawnY, 'tactician').setDepth(10).setAlpha(0).setScale(0.5);
+
+    // If avatar config exists, generate the multi-frame spritesheet and use it
+    let initialTexture = 'tactician';
+    if (this.localAvatarConfig) {
+      const avatarKey = compositeAvatar(this, this.localAvatarConfig);
+      createAvatarAnimations(this, avatarKey);
+      initialTexture = avatarKey;
+      this.localTextureKey = avatarKey;
+    }
+
+    this.tactician = this.add.sprite(spawnX, spawnY, initialTexture).setDepth(10).setAlpha(0).setScale(0.5);
 
     // Play initial idle animation if available
-    if (this.anims.exists('tactician-idle-down')) {
-      this.tactician.play('tactician-idle-down');
+    const idleKey = `${this.localTextureKey}-idle-down`;
+    if (this.anims.exists(idleKey)) {
+      this.tactician.play(idleKey);
     }
 
     // Spawn-in effect: scale up with overshoot + fade in
@@ -951,20 +966,36 @@ export class OfficeScene extends Phaser.Scene {
       ease: 'Back.easeOut',
     });
 
-    // Indigo particle burst at spawn
-    if (ENABLE_PARTICLES && this.textures.exists('particle-dot')) {
-      const burst = this.add.particles(spawnX, spawnY, 'particle-dot', {
-        speed: { min: 20, max: 60 },
+    // Solarpunk leaf + sparkle burst at spawn
+    if (ENABLE_PARTICLES && this.textures.exists('particle-leaf')) {
+      const leafBurst = this.add.particles(spawnX, spawnY, 'particle-leaf', {
+        speed: { min: 15, max: 45 },
         angle: { min: 0, max: 360 },
-        lifespan: 500,
+        lifespan: 700,
         alpha: { start: 0.6, end: 0 },
-        tint: 0x6366f1,
+        tint: 0x4a9e6e,
+        rotate: { min: 0, max: 360 },
         scale: { start: 1.5, end: 0.5 },
         emitting: false,
       });
-      burst.setDepth(11);
-      burst.emitParticle(8);
-      this.time.delayedCall(600, () => burst.destroy());
+      leafBurst.setDepth(11);
+      leafBurst.emitParticle(6);
+      this.time.delayedCall(800, () => leafBurst.destroy());
+    }
+    if (ENABLE_PARTICLES && this.textures.exists('particle-sparkle')) {
+      const sparkleBurst = this.add.particles(spawnX, spawnY, 'particle-sparkle', {
+        speed: { min: 30, max: 70 },
+        angle: { min: 0, max: 360 },
+        lifespan: 400,
+        alpha: { start: 0.8, end: 0 },
+        tint: 0xf6d55c,
+        scale: { start: 1, end: 0.3 },
+        emitting: false,
+        blendMode: 'ADD',
+      });
+      sparkleBurst.setDepth(11);
+      sparkleBurst.emitParticle(4);
+      this.time.delayedCall(500, () => sparkleBurst.destroy());
     }
 
     this.cameras.main.startFollow(this.tactician, true, 0.08, 0.08);
@@ -1207,6 +1238,8 @@ export class OfficeScene extends Phaser.Scene {
             const key = compositeAvatar(this, cfg);
             if (existing.sprite.texture.key !== key) {
               existing.sprite.setTexture(key);
+              createAvatarAnimations(this, key);
+              existing.textureKey = key;
             }
           } catch { /* ignore bad config */ }
         }
@@ -1219,9 +1252,12 @@ export class OfficeScene extends Phaser.Scene {
             remoteTexture = compositeAvatar(this, cfg);
           } catch { /* ignore */ }
         }
+        // Register per-texture walk/idle animations for this remote player
+        createAvatarAnimations(this, remoteTexture);
         const sprite = this.add.sprite(player.x, player.y, remoteTexture).setDepth(9).setAlpha(0.85);
-        if (this.anims.exists('tactician-idle-down')) {
-          sprite.play('tactician-idle-down');
+        const remoteIdleKey = `${remoteTexture}-idle-down`;
+        if (this.anims.exists(remoteIdleKey)) {
+          sprite.play(remoteIdleKey);
         }
 
         const label = this.add
@@ -1257,6 +1293,7 @@ export class OfficeScene extends Phaser.Scene {
           targetX: player.x,
           targetY: player.y,
           direction: player.direction,
+          textureKey: remoteTexture,
         });
 
         // Create companion sprite if player has one
@@ -1563,7 +1600,14 @@ export class OfficeScene extends Phaser.Scene {
   private updateLocalAvatarTexture(): void {
     if (!this.localAvatarConfig || !this.tactician) return;
     const textureKey = compositeAvatar(this, this.localAvatarConfig);
+    createAvatarAnimations(this, textureKey);
+    this.localTextureKey = textureKey;
     this.tactician.setTexture(textureKey);
+    // Play idle animation for current direction with new texture
+    const idleKey = `${textureKey}-idle-${this.lastDirection}`;
+    if (this.anims.exists(idleKey)) {
+      this.tactician.play(idleKey);
+    }
   }
 
   private showEmoteBubble(sessionId: string, emoteType: string): void {

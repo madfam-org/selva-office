@@ -5,8 +5,8 @@
   "start_url": "/office",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#1e1b4b",
-  "background_color": "#0f172a",
+  "theme_color": "#2a2218",
+  "background_color": "#1a1610",
   "icons": [
     {
       "src": "/assets/icons/icon-192.png",

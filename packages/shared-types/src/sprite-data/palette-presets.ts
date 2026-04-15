@@ -28,31 +28,56 @@ export interface PalettePreset {
     carpetSupport?: string;
     carpetResearch?: string;
     carpetBlueprint?: string;
+    accent?: string;
   };
   /** Override outfit colors (index 0-3) for the preset */
   outfitOverrides?: string[];
 }
 
 export const PALETTE_PRESETS: Record<string, PalettePreset> = {
+  solarpunk: {
+    name: 'Solarpunk',
+    avatarTint: '#f0e8d0',
+    environment: {
+      floor: '#8b7355',
+      wall: '#c8b896',
+      deptEngineering: '#2d5a4a',
+      deptSales: '#6b5a2a',
+      deptSupport: '#3a5a3a',
+      deptResearch: '#2a4a5a',
+      reviewStation: '#f6d55c',
+      corridor: '#9a8a6a',
+      lobby: '#a89a7a',
+      furnitureBase: '#6b5a42',
+      furnitureHighlight: '#d4b896',
+      carpetEngineering: '#2d5a4a',
+      carpetSales: '#6b5a2a',
+      carpetSupport: '#3a5a3a',
+      carpetResearch: '#2a4a5a',
+      carpetBlueprint: '#5a4a3a',
+      accent: '#4a9e6e',
+    },
+  },
   default: {
     name: 'Default',
     environment: {
-      floor: '#3d3552',
-      wall: '#584f72',
-      deptEngineering: '#1a3d6b',
-      deptSales: '#5a1d48',
-      deptSupport: '#4a461d',
-      deptResearch: '#1a4d3d',
-      reviewStation: '#fbbf24',
-      corridor: '#3d3752',
-      lobby: '#4a4268',
-      furnitureBase: '#6b5842',
-      furnitureHighlight: '#a08d62',
-      carpetEngineering: '#1a3d6b',
-      carpetSales: '#5a1d48',
-      carpetSupport: '#4a461d',
-      carpetResearch: '#1a4d3d',
-      carpetBlueprint: '#1d3458',
+      floor: '#8b7355',
+      wall: '#c8b896',
+      deptEngineering: '#2d5a4a',
+      deptSales: '#6b5a2a',
+      deptSupport: '#3a5a3a',
+      deptResearch: '#2a4a5a',
+      reviewStation: '#f6d55c',
+      corridor: '#9a8a6a',
+      lobby: '#a89a7a',
+      furnitureBase: '#6b5a42',
+      furnitureHighlight: '#d4b896',
+      carpetEngineering: '#2d5a4a',
+      carpetSales: '#6b5a2a',
+      carpetSupport: '#3a5a3a',
+      carpetResearch: '#2a4a5a',
+      carpetBlueprint: '#5a4a3a',
+      accent: '#4a9e6e',
     },
   },
   cyberpunk: {
