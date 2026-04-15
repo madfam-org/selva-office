@@ -263,10 +263,23 @@ async def approve_request(
 ) -> ApprovalRequestResponse:
     """Approve a pending request (the Tactician presses 'A')."""
     feedback = body.feedback if body else None
-    return await _respond_to_request(
+    result = await _respond_to_request(
         request_id, "approved", feedback, db,
         responded_by=user.get("sub"),
     )
+
+    # PostHog analytics
+    try:
+        from nexus_api.analytics import track
+
+        track(str(user.get("sub", "")), "selva_approval_responded", {
+            "action": "approved",
+            "task_id": result.id,
+        })
+    except Exception:
+        pass
+
+    return result
 
 
 @router.post(
@@ -282,10 +295,23 @@ async def deny_request(
 ) -> ApprovalRequestResponse:
     """Deny a pending request with optional feedback (the Tactician presses 'B')."""
     feedback = body.feedback if body else None
-    return await _respond_to_request(
+    result = await _respond_to_request(
         request_id, "denied", feedback, db,
         responded_by=user.get("sub"),
     )
+
+    # PostHog analytics
+    try:
+        from nexus_api.analytics import track
+
+        track(str(user.get("sub", "")), "selva_approval_responded", {
+            "action": "denied",
+            "task_id": result.id,
+        })
+    except Exception:
+        pass
+
+    return result
 
 
 @router.websocket("/ws")

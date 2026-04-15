@@ -140,6 +140,15 @@ export function useApprovals(): ApprovalsState {
           // Optimistically remove from pending -- the WS will also broadcast the
           // resolution, but removing immediately gives a snappy UI.
           setPendingApprovals((prev) => prev.filter((a) => a.id !== requestId));
+
+          // PostHog analytics
+          try {
+            const { trackEvent } = await import('@/lib/analytics/posthog');
+            trackEvent('selva_approval_responded', { action: decision, request_id: requestId });
+          } catch {
+            // analytics failure should not affect approval flow
+          }
+
           return true;
         }
         return false;

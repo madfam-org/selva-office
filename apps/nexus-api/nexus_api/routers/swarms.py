@@ -374,6 +374,17 @@ async def dispatch_task(
             "Failed to emit task.dispatched event", exc_info=True,
         )
 
+    # PostHog analytics
+    try:
+        from nexus_api.analytics import track
+
+        track(str(tenant.org_id), "selva_task_dispatched", {
+            "graph_type": body.graph_type,
+            "task_id": str(task.id),
+        })
+    except Exception:
+        pass
+
     return _task_to_response(task)
 
 

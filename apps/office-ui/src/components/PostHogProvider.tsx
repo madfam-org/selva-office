@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import posthog from "posthog-js";
 import { usePathname, useSearchParams } from "next/navigation";
 import { initPostHog } from "@/lib/analytics/posthog";
 
@@ -9,6 +10,18 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initPostHog();
+
+    // Capture UTM parameters on first visit
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const utmSource = params.get("utm_source");
+    if (utmSource && posthog.__loaded) {
+      posthog.people.set_once({
+        first_utm_source: utmSource,
+        first_utm_medium: params.get("utm_medium") || undefined,
+        first_utm_campaign: params.get("utm_campaign") || undefined,
+      });
+    }
   }, []);
 
   useEffect(() => {

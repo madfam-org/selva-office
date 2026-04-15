@@ -71,6 +71,15 @@ export function useTaskDispatch(): {
       const data = (await res.json()) as DispatchResponse;
       setLastDispatchedTask(data);
       setStatus('success');
+
+      // PostHog analytics
+      try {
+        const { trackEvent } = await import('@/lib/analytics/posthog');
+        trackEvent('selva_task_submitted', { graph_type: request.graph_type });
+      } catch {
+        // analytics failure should not affect dispatch
+      }
+
       return data;
     } catch {
       setError('Network error — could not reach server');
