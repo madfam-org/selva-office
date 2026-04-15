@@ -24,6 +24,7 @@ from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, F
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
 from .image_analysis import ImageAnalysisTool
 from .slack import SlackMessageTool
+from .stt import SpeechToTextTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
 
 
@@ -79,6 +80,8 @@ def get_builtin_tools() -> list[BaseTool]:
         ImageAnalysisTool(),
         GenerateImageTool(),
         TextToSpeechTool(),
+        # Voice: speech-to-text
+        SpeechToTextTool(),
         # Wave 4: delegation + credentials
         DelegateTaskTool(),
         ReadCredentialFileTool(),
