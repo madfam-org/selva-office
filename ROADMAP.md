@@ -104,6 +104,27 @@ While horizontal parity is achieved, deep vertical integration for professional 
 
 ---
 
+## Competitive Dominance Roadmap
+
+### Wave 1: Quick Wins (v0.6.0) ✅
+- `[x]` Screen sharing polish — quality presets + system audio capture
+- `[x]` Iterative skill refinement — refine→validate→retry loop + metrics API
+- `[x]` PWA installable — manifest, service worker, icons, apple-mobile-web-app
+
+### Wave 2: Strategic (Planned)
+- `[ ]` **Voice mode (STT)**: Whisper API integration, push-to-talk UI, voice-to-task dispatch
+- `[ ]` **LiveKit SFU**: Replace simple-peer (6 peer cap) with LiveKit for 50+ simultaneous streams
+
+### Wave 3: Ecosystem (Planned)
+- `[ ]` **Tool expansion to 60+**: Email, database, HTTP, document, analytics tool categories
+- `[ ]` **A2A protocol**: Agent-to-Agent interop (AgentCard, task send/subscribe, discovery)
+
+### Wave 4: Polish (Planned)
+- `[ ]` **Mobile UX**: Haptic feedback, compact touch layout, bottom tab bar
+- `[ ]` **Benchmark docs**: Competitive metrics dashboard (BENCHMARK.md)
+
+---
+
 ## Selva Brand Migration Checklist
 
 - `[x]` Rename all `*.madfam.io` domains → `*.selva.town` in codebase

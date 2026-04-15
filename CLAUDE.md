@@ -120,6 +120,22 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Competitive Dominance Wave 1 (v0.6.0)
+
+- **Screen Sharing Polish**: Quality presets (`auto`/`720p`/`1080p`) via
+  `getDisplayMedia` video constraints. System audio capture via
+  `AudioContext.createMediaStreamDestination()` mixing system + mic tracks.
+  Quality dropdown in `MediaControls.tsx` (visible during sharing).
+- **Iterative Skill Refinement**: `SkillRefiner._llm_refine()` now loops
+  up to `max_iterations=3` — refine via LLM, validate in sandbox, retry
+  with error context on failure. `RefinerMetrics` dataclass tracks
+  `skills_checked`, `skills_refined`, `skills_failed`, `total_iterations`,
+  `avg_refinement_ms`. API: `GET /api/v1/skills/refiner/metrics`.
+- **PWA Support**: `manifest.json` ("Selva Office", standalone, indigo
+  theme), minimal service worker (`sw.js` — cache shell, network-first,
+  skip API/WS), `ServiceWorkerRegistrar` client component, PWA icons
+  (192x192 + 512x512). Mobile "Add to Home Screen" now works.
+
 ## Codebase Stability (v0.5.2)
 
 - **Skills Package Fix**: Resolved dual-path collision — `pyproject.toml`
