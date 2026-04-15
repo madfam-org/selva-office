@@ -157,6 +157,16 @@ export class OfficeScene extends Phaser.Scene {
   private companionBehavior: CompanionBehavior = new CompanionBehavior();
   private companionSprites: Map<string, Phaser.GameObjects.Rectangle> = new Map();
 
+  // === Animated Tile System ===
+  private animatedTileOverlays: Array<{
+    graphics: Phaser.GameObjects.Rectangle[];
+    frames: Array<{ color: number; alpha: number }[]>;
+    frameDuration: number;
+    currentFrame: number;
+    elapsed: number;
+  }> = [];
+  private tileAnimTimer: Phaser.Time.TimerEvent | null = null;
+
   constructor() {
     super({ key: 'OfficeScene' });
   }
@@ -556,6 +566,109 @@ export class OfficeScene extends Phaser.Scene {
         }).setDepth(3);
       }
     });
+  }
+
+  /**
+   * Set up animated tile overlays on the decoration/furniture layer.
+   * Scans for specific tile IDs and creates cycling color overlays
+   * that simulate water shimmer, candle flicker, and grow-light pulses.
+   */
+  private setupTileAnimations(furnitureLayer: Phaser.Tilemaps.TilemapLayer): void {
+    // Animated tile definitions: map furniture tile IDs to overlay behavior.
+    // Each entry creates a small colored rectangle overlay that cycles alpha/color.
+    const WATER_COOLER_ID = 39; // coffee_machine doubles as water feature
+    const CANDLE_ID = 35;       // plant_small position (candle in some maps)
+    const GROW_LIGHT_ID = 41;   // server_rack position (grow light in some maps)
+
+    const animDefs: Array<{
+      tileId: number;
+      colors: number[];
+      alphas: number[];
+      duration: number;
+      offsetY: number;
+      width: number;
+      height: number;
+    }> = [
+      {
+        tileId: WATER_COOLER_ID,
+        colors: [0x67e8f9, 0xa8dadc, 0x67e8f9, 0xa8dadc],
+        alphas: [0.1, 0.18, 0.14, 0.08],
+        duration: 250,
+        offsetY: 2,
+        width: 10,
+        height: 6,
+      },
+      {
+        tileId: CANDLE_ID,
+        colors: [0xf6d55c, 0xf59e0b, 0xf6d55c, 0xd4a43a],
+        alphas: [0.2, 0.3, 0.25, 0.15],
+        duration: 200,
+        offsetY: -8,
+        width: 6,
+        height: 6,
+      },
+      {
+        tileId: GROW_LIGHT_ID,
+        colors: [0x9b59b6, 0xbb88ff, 0xd4b0ff, 0xbb88ff],
+        alphas: [0.1, 0.2, 0.3, 0.2],
+        duration: 400,
+        offsetY: -6,
+        width: 10,
+        height: 4,
+      },
+    ];
+
+    furnitureLayer.forEachTile((tile) => {
+      if (!tile || tile.index <= 0) return;
+
+      for (const def of animDefs) {
+        if (tile.index !== def.tileId) continue;
+
+        const worldX = tile.pixelX + 16;
+        const worldY = tile.pixelY + 16 + def.offsetY;
+
+        // Create a single rectangle overlay that we'll tween through color/alpha
+        const overlay = this.add.rectangle(
+          worldX, worldY, def.width, def.height,
+          def.colors[0], def.alphas[0],
+        ).setDepth(3);
+
+        // Store frames as color+alpha pairs for cycling
+        const frames = def.colors.map((color, i) => ({
+          color,
+          alpha: def.alphas[i],
+        }));
+
+        this.animatedTileOverlays.push({
+          graphics: [overlay],
+          frames: [frames],
+          frameDuration: def.duration,
+          currentFrame: 0,
+          elapsed: 0,
+        });
+      }
+    });
+
+    // Single timer drives all animated tile overlays
+    if (this.animatedTileOverlays.length > 0) {
+      this.tileAnimTimer = this.time.addEvent({
+        delay: 50, // tick at 20Hz, frame switching handled by elapsed time
+        callback: () => {
+          for (const anim of this.animatedTileOverlays) {
+            anim.elapsed += 50;
+            if (anim.elapsed >= anim.frameDuration) {
+              anim.elapsed = 0;
+              anim.currentFrame = (anim.currentFrame + 1) % anim.frames[0].length;
+              for (let i = 0; i < anim.graphics.length; i++) {
+                const frame = anim.frames[i][anim.currentFrame];
+                anim.graphics[i].setFillStyle(frame.color, frame.alpha);
+              }
+            }
+          }
+        },
+        loop: true,
+      });
+    }
   }
 
   /** Tilemap reference for deferred interactable loading */
