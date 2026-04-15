@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import type { ScreenShareQuality } from '@/hooks/useProximityVideo';
 
 interface MediaControlsProps {
   audioEnabled: boolean;
@@ -9,6 +10,8 @@ interface MediaControlsProps {
   onToggleVideo: () => void;
   screenSharing?: boolean;
   onToggleScreenShare?: () => void;
+  screenShareQuality?: ScreenShareQuality;
+  onScreenShareQualityChange?: (quality: ScreenShareQuality) => void;
   bubbleLocked?: boolean;
   onToggleLockBubble?: () => void;
   noiseSuppression?: boolean;
@@ -27,6 +30,8 @@ export function MediaControls({
   onToggleVideo,
   screenSharing,
   onToggleScreenShare,
+  screenShareQuality,
+  onScreenShareQualityChange,
   bubbleLocked,
   onToggleLockBubble,
   noiseSuppression,
@@ -109,6 +114,22 @@ export function MediaControls({
         >
           {screenSharing ? 'SHARING' : 'SCREEN'}
         </button>
+      )}
+
+      {screenSharing && onScreenShareQualityChange && (
+        <select
+          value={screenShareQuality ?? 'auto'}
+          onChange={(e) =>
+            onScreenShareQualityChange(e.target.value as ScreenShareQuality)
+          }
+          className="rounded bg-slate-700/80 px-1 py-1 text-xs font-mono text-slate-300 transition-colors hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          title="Screen share quality"
+          aria-label="Screen share quality preset"
+        >
+          <option value="auto">AUTO</option>
+          <option value="720p">720p</option>
+          <option value="1080p">1080p</option>
+        </select>
       )}
 
       {onToggleLockBubble && (

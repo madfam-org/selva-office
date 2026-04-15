@@ -156,6 +156,8 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
     videoEnabled,
     screenSharing,
     noiseSuppression,
+    screenShareQuality,
+    setScreenShareQuality,
     toggleAudio,
     toggleVideo,
     toggleScreenShare,
@@ -600,6 +602,8 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
             onToggleVideo={toggleVideo}
             screenSharing={screenSharing}
             onToggleScreenShare={toggleScreenShare}
+            screenShareQuality={screenShareQuality}
+            onScreenShareQualityChange={setScreenShareQuality}
             bubbleLocked={bubbleLocked}
             noiseSuppression={noiseSuppression}
             onToggleNoiseSuppression={toggleNoiseSuppression}
