@@ -68,6 +68,7 @@ from .legal import (
     REPSECheckTool,
 )
 from .operations import CarrierTrackingTool, InventoryCheckTool, PedimentoLookupTool
+from .product_catalog import ProductCatalogTool
 from .privacy import DataDeletionTool, PIIClassificationTool, PrivacyNoticeGeneratorTool
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
@@ -196,4 +197,6 @@ def get_builtin_tools() -> list[BaseTool]:
         # ERP export
         CONTPAQiExportTool(),
         GenericERPExportTool(),
+        # Product catalog (MADFAM ecosystem)
+        ProductCatalogTool(),
     ]

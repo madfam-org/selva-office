@@ -49,6 +49,14 @@ class DhanamClient:
             resp.raise_for_status()
             return resp.json()
 
+    async def get_catalog(self, product_slug: str | None = None) -> dict[str, Any]:
+        """GET /billing/catalog -- full product catalog or single product (public, no auth)."""
+        path = f"/billing/catalog/{product_slug}" if product_slug else "/billing/catalog"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{self.base_url}{path}")
+            resp.raise_for_status()
+            return resp.json()
+
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """Verify HMAC-SHA256 webhook signature from Dhanam."""
         if not self.webhook_secret:
