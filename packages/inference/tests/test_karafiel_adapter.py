@@ -10,8 +10,10 @@ from madfam_inference.adapters.karafiel import (
     BlacklistResult,
     CFDIResult,
     CFDIStatus,
+    ConstanciaResult,
     FiscalResult,
     KarafielAdapter,
+    NOM035Result,
     RFCValidationResult,
     StampResult,
 )
@@ -204,6 +206,173 @@ class TestKarafielAdapter:
         assert result.listed is True
         assert result.article_69b is True
         assert result.definitive is False
+
+    @pytest.mark.asyncio
+    async def test_get_constancia(self) -> None:
+        client = _mock_client("get", {
+            "rfc": "XAXX010101000",
+            "situacion": "Activo",
+            "regimen_fiscal": "601 - General de Ley Personas Morales",
+            "domicilio_fiscal": "CDMX",
+            "fecha_consulta": "2026-04-14",
+        })
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050", token="t")
+            result = await adapter.get_constancia("XAXX010101000")
+
+        assert isinstance(result, ConstanciaResult)
+        assert result.situacion == "Activo"
+        assert result.regimen_fiscal == "601 - General de Ley Personas Morales"
+
+    @pytest.mark.asyncio
+    async def test_get_constancia_error_returns_graceful_fallback(self) -> None:
+        import httpx
+
+        client = AsyncMock()
+        client.get.side_effect = httpx.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050")
+            result = await adapter.get_constancia("BAD_RFC")
+
+        assert isinstance(result, ConstanciaResult)
+        assert "error" in result.situacion
+
+    @pytest.mark.asyncio
+    async def test_generate_complemento_pago(self) -> None:
+        client = _mock_client("post", {
+            "uuid": "comp-pago-uuid-001",
+            "xml": "<cfdi:complemento>...</cfdi:complemento>",
+            "total": "5000.00",
+            "status": "generated",
+        })
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050", token="t")
+            result = await adapter.generate_complemento_pago(
+                cfdi_uuid="original-cfdi-uuid",
+                payment_data={
+                    "monto_pagado": "5000.00",
+                    "fecha_pago": "2026-04-14",
+                    "forma_pago": "03",
+                },
+            )
+
+        assert isinstance(result, CFDIResult)
+        assert result.uuid == "comp-pago-uuid-001"
+        assert result.status == "generated"
+
+    @pytest.mark.asyncio
+    async def test_generate_complemento_pago_error(self) -> None:
+        import httpx
+
+        client = AsyncMock()
+        client.post.side_effect = httpx.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050")
+            result = await adapter.generate_complemento_pago("uuid", {})
+
+        assert isinstance(result, CFDIResult)
+        assert "error" in result.status
+
+    @pytest.mark.asyncio
+    async def test_generate_nom035_survey(self) -> None:
+        client = _mock_client("post", {
+            "org_id": "org-123",
+            "survey_type": "general",
+            "status": "generated",
+            "data": {"questions": 72, "categories": 5},
+        })
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050", token="t")
+            result = await adapter.generate_nom035_survey("org-123", "general")
+
+        assert isinstance(result, NOM035Result)
+        assert result.status == "generated"
+        assert result.data["questions"] == 72
+
+    @pytest.mark.asyncio
+    async def test_generate_nom035_survey_error(self) -> None:
+        import httpx
+
+        client = AsyncMock()
+        client.post.side_effect = httpx.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050")
+            result = await adapter.generate_nom035_survey("org-123")
+
+        assert isinstance(result, NOM035Result)
+        assert "error" in result.status
+
+    @pytest.mark.asyncio
+    async def test_generate_nom035_report(self) -> None:
+        client = _mock_client("post", {
+            "org_id": "org-123",
+            "survey_type": "",
+            "status": "completed",
+            "data": {"risk_level": "medio", "recommendations": 3},
+        })
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050", token="t")
+            result = await adapter.generate_nom035_report(
+                "org-123",
+                {"responses": [1, 2, 3]},
+            )
+
+        assert isinstance(result, NOM035Result)
+        assert result.status == "completed"
+        assert result.data["risk_level"] == "medio"
+
+    @pytest.mark.asyncio
+    async def test_generate_nom035_report_error(self) -> None:
+        import httpx
+
+        client = AsyncMock()
+        client.post.side_effect = httpx.ConnectError("Connection refused")
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch(
+            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
+            return_value=client,
+        ):
+            adapter = KarafielAdapter(base_url="http://karafiel:3050")
+            result = await adapter.generate_nom035_report("org-123", {})
+
+        assert isinstance(result, NOM035Result)
+        assert "error" in result.status
 
     @pytest.mark.asyncio
     async def test_auth_header_propagation(self) -> None:

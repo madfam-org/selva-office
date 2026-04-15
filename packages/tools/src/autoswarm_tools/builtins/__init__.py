@@ -48,6 +48,10 @@ from .karafiel import (
     CFDIGenerateTool,
     CFDIStampTool,
     CFDIStatusTool,
+    ComplementoPagoTool,
+    ConstanciaFiscalTool,
+    NOM035ReportTool,
+    NOM035SurveyTool,
     RFCValidationTool,
 )
 from .legal import (
@@ -56,6 +60,7 @@ from .legal import (
     LawSearchTool,
     REPSECheckTool,
 )
+from .privacy import DataDeletionTool, PIIClassificationTool, PrivacyNoticeGeneratorTool
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
@@ -146,6 +151,14 @@ def get_builtin_tools() -> list[BaseTool]:
         CFDIStampTool(),
         CFDIStatusTool(),
         BlacklistCheckTool(),
+        ConstanciaFiscalTool(),
+        ComplementoPagoTool(),
+        NOM035SurveyTool(),
+        NOM035ReportTool(),
+        # LFPDPPP privacy
+        PIIClassificationTool(),
+        PrivacyNoticeGeneratorTool(),
+        DataDeletionTool(),
         # WhatsApp Business API
         WhatsAppTemplateTool(),
         # Legal tools (Karafiel CLM + Tezca)
