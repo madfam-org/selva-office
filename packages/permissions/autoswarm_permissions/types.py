@@ -27,6 +27,8 @@ class ActionCategory(StrEnum):
     CRM_UPDATE = "crm_update"
     DEPLOY = "deploy"
     API_CALL = "api_call"
+    BILLING_WRITE = "billing_write"
+    MARKETING_SEND = "marketing_send"
 
 
 class PermissionResult(BaseModel):

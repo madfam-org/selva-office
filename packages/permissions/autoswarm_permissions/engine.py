@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .context_rules import ContextRule, PermissionContext
 from .matrix import DEFAULT_PERMISSION_MATRIX
+from .playbook import PlaybookGuard
 from .types import ActionCategory, PermissionLevel, PermissionResult
 
 
@@ -36,6 +37,7 @@ class PermissionEngine:
         self,
         category: ActionCategory,
         context: PermissionContext | dict | None = None,
+        playbook_guard: PlaybookGuard | None = None,
     ) -> PermissionResult:
         """Evaluate whether an action is permitted.
 
@@ -43,11 +45,31 @@ class PermissionEngine:
             category: The action category to evaluate.
             context: Optional ``PermissionContext`` (or raw dict) for
                      context-aware rule evaluation.
+            playbook_guard: Optional ``PlaybookGuard`` for bounded autonomous
+                     execution. Playbooks can relax ASK→ALLOW within their
+                     declared boundaries, but NEVER override DENY.
 
         Returns:
             A ``PermissionResult`` with the decision and reasoning.
         """
         level = self._matrix.get(category, PermissionLevel.ASK)
+
+        # Playbook check: if a playbook is active and the default level is ASK,
+        # the playbook can relax it to ALLOW within its boundaries.
+        # Playbooks NEVER override DENY (safety first).
+        if playbook_guard is not None and level == PermissionLevel.ASK:
+            playbook_level = playbook_guard.evaluate(category)
+            if playbook_level == PermissionLevel.ALLOW:
+                return PermissionResult(
+                    action_category=category,
+                    level=PermissionLevel.ALLOW,
+                    requires_approval=False,
+                    reason=(
+                        f"Action '{category.value}' auto-approved by playbook "
+                        f"'{playbook_guard.state.playbook.name}' "
+                        f"(tokens: {playbook_guard.state.tokens_used}/{playbook_guard.state.playbook.token_budget})."
+                    ),
+                )
 
         # Apply context rules if context is provided.
         perm_context: PermissionContext | None = None
