@@ -122,9 +122,9 @@ The `.enclii.yml` at the project root defines three services:
 
 | Service | Dockerfile | Port | Domain |
 |---------|-----------|------|--------|
-| `autoswarm-nexus-api` | `infra/docker/Dockerfile.nexus-api` | 4300 | `agents-api.selva.town` |
-| `autoswarm-office-ui` | `infra/docker/Dockerfile.office-ui` | 3000 | `agents.selva.town` |
-| `autoswarm-colyseus` | `infra/docker/Dockerfile.colyseus` | 4303 | `agents-ws.selva.town` |
+| `autoswarm-nexus-api` | `infra/docker/Dockerfile.nexus-api` | 4300 | `api.selva.town` |
+| `autoswarm-office-ui` | `infra/docker/Dockerfile.office-ui` | 3000 | `hall.selva.town` |
+| `autoswarm-colyseus` | `infra/docker/Dockerfile.colyseus` | 4303 | `ws.selva.town` |
 
 ### Deployment Pipeline
 

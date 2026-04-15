@@ -56,7 +56,7 @@ spec:
           name: autoswarm-secrets
           key: janua-client-secret
   domains:
-    - domain: agents-api.selva.town
+    - domain: api.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -127,9 +127,9 @@ spec:
     dockerfile: infra/docker/Dockerfile.office-ui
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://agents-api.selva.town
+      NEXT_PUBLIC_API_URL: https://api.selva.town
       NEXT_PUBLIC_JANUA_URL: https://auth.selva.town
-      NEXT_PUBLIC_COLYSEUS_URL: wss://agents-ws.selva.town
+      NEXT_PUBLIC_COLYSEUS_URL: wss://ws.selva.town
     source:
       git:
         repository: https://github.com/madfam-org/autoswarm-office
@@ -158,7 +158,7 @@ spec:
     - name: NEXT_PUBLIC_DHANAM_URL
       value: https://app.dhan.am
   domains:
-    - domain: agents.selva.town
+    - domain: hall.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -199,7 +199,7 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: agents-ws.selva.town
+    - domain: ws.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -216,7 +216,7 @@ spec:
     dockerfile: infra/docker/Dockerfile.admin
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://agents-api.selva.town
+      NEXT_PUBLIC_API_URL: https://api.selva.town
       NEXT_PUBLIC_JANUA_URL: https://auth.selva.town
     source:
       git:
@@ -247,7 +247,7 @@ spec:
       initialDelaySeconds: 10
       periodSeconds: 30
   domains:
-    - domain: agents-admin.selva.town
+    - domain: admin.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -288,7 +288,7 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: agents-gw.selva.town
+    - domain: gw.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true

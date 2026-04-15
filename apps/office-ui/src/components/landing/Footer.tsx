@@ -1,4 +1,4 @@
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://agents-app.selva.town';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.selva.town';
 const YEAR = new Date().getFullYear();
 
 const LINKS = [

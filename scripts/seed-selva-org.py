@@ -17,7 +17,7 @@ import sys
 
 import httpx
 
-API_URL = os.environ.get("AUTOSWARM_API_URL", "https://agents-api.selva.town")
+API_URL = os.environ.get("AUTOSWARM_API_URL", "https://api.selva.town")
 TOKEN = os.environ.get("AUTOSWARM_TOKEN", "dev-bypass")
 
 # ─── Departments ──────────────────────────────────────────────────────────────

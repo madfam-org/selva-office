@@ -27,8 +27,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json turbo.json ./
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Next.js bakes NEXT_PUBLIC_* at build time — these must be ARGs
-ARG NEXT_PUBLIC_API_URL=https://agents-api.selva.town
-ARG NEXT_PUBLIC_COLYSEUS_URL=wss://agents-ws.selva.town
+ARG NEXT_PUBLIC_API_URL=https://api.selva.town
+ARG NEXT_PUBLIC_COLYSEUS_URL=wss://ws.selva.town
 ARG NEXT_PUBLIC_JANUA_ISSUER_URL=https://auth.selva.town
 ARG NEXT_PUBLIC_JANUA_CLIENT_ID=autoswarm-office
 ARG NEXT_PUBLIC_DEMO_ENABLED=true

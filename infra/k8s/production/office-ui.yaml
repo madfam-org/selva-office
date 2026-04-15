@@ -69,9 +69,9 @@ spec:
                 - ALL
           env:
             - name: NEXT_PUBLIC_API_URL
-              value: https://agents-api.selva.town
+              value: https://api.selva.town
             - name: NEXT_PUBLIC_COLYSEUS_URL
-              value: wss://agents-ws.selva.town
+              value: wss://ws.selva.town
             - name: NEXT_PUBLIC_JANUA_ISSUER_URL
               value: https://auth.selva.town
             - name: NEXT_PUBLIC_JANUA_CLIENT_ID

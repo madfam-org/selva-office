@@ -2,12 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * URL scheme:
- *   agents.selva.town       → Landing page (public)
- *   agents-app.selva.town   → Virtual office app (auth required for /office)
+ *   hall.selva.town       → Landing page (public)
+ *   app.selva.town   → Virtual office app (auth required for /office)
  */
 
-const APP_HOST = 'agents-app.selva.town';
-const LANDING_HOST = 'agents.selva.town';
+const APP_HOST = 'app.selva.town';
+const LANDING_HOST = 'hall.selva.town';
 
 const PUBLIC_PATHS = ['/', '/login', '/guest', '/demo', '/api/health'];
 
@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get('host') || '';
 
-  // --- App host (agents-app.selva.town) ---
+  // --- App host (app.selva.town) ---
   // Redirect root to /office, allow /demo and /login as entry points
   if (isAppHost(host) && pathname === '/') {
     return NextResponse.redirect(new URL('/office', request.url));
