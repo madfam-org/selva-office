@@ -67,6 +67,21 @@ class CFDIListItem(BaseModel):
     tipo_comprobante: str = ""  # "I" ingreso | "E" egreso | "P" pago
 
 
+class ConstanciaResult(BaseModel):
+    rfc: str = ""
+    situacion: str = ""  # "Activo", "Cancelado", etc.
+    regimen_fiscal: str = ""
+    domicilio_fiscal: str = ""
+    fecha_consulta: str = ""
+
+
+class NOM035Result(BaseModel):
+    org_id: str = ""
+    survey_type: str = ""
+    status: str = ""
+    data: dict[str, Any] = {}
+
+
 class BlacklistResult(BaseModel):
     rfc: str
     listed: bool = False
@@ -319,3 +334,87 @@ class KarafielAdapter:
         except Exception as exc:
             logger.warning("Karafiel blacklist check failed: %s", exc)
             return BlacklistResult(rfc=rfc, details={"error": str(exc)})
+
+    # -- Constancia de Situacion Fiscal -----------------------------------------
+
+    async def get_constancia(self, rfc: str) -> ConstanciaResult:
+        """Get Constancia de Situacion Fiscal via Karafiel SAT portal."""
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    f"{self._base_url}/api/v1/sat/constancia/{rfc}/",
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+                return ConstanciaResult(**resp.json())
+        except Exception as exc:
+            logger.warning("Karafiel constancia lookup failed: %s", exc)
+            return ConstanciaResult(rfc=rfc, situacion=f"error: {exc}")
+
+    # -- Complemento de Pagos ---------------------------------------------------
+
+    async def generate_complemento_pago(
+        self,
+        cfdi_uuid: str,
+        payment_data: dict[str, Any],
+    ) -> CFDIResult:
+        """Generate Complemento de Pagos via Karafiel CFDI module."""
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/api/v1/cfdi/complemento-pago/",
+                    headers=self._headers(),
+                    json={"cfdi_uuid": cfdi_uuid, **payment_data},
+                )
+                resp.raise_for_status()
+                return CFDIResult(**resp.json())
+        except Exception as exc:
+            logger.warning("Karafiel complemento de pago failed: %s", exc)
+            return CFDIResult(status=f"error: {exc}")
+
+    # -- NOM-035 Compliance -----------------------------------------------------
+
+    async def generate_nom035_survey(
+        self,
+        org_id: str,
+        survey_type: str = "general",
+    ) -> NOM035Result:
+        """Generate NOM-035 psychosocial risk survey via Karafiel."""
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/api/v1/compliance/nom035/survey/",
+                    headers=self._headers(),
+                    json={"org_id": org_id, "survey_type": survey_type},
+                )
+                resp.raise_for_status()
+                return NOM035Result(**resp.json())
+        except Exception as exc:
+            logger.warning("Karafiel NOM-035 survey generation failed: %s", exc)
+            return NOM035Result(
+                org_id=org_id,
+                survey_type=survey_type,
+                status=f"error: {exc}",
+            )
+
+    async def generate_nom035_report(
+        self,
+        org_id: str,
+        survey_results: dict[str, Any],
+    ) -> NOM035Result:
+        """Generate NOM-035 STPS report via Karafiel."""
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/api/v1/compliance/nom035/report/",
+                    headers=self._headers(),
+                    json={"org_id": org_id, "survey_results": survey_results},
+                )
+                resp.raise_for_status()
+                return NOM035Result(**resp.json())
+        except Exception as exc:
+            logger.warning("Karafiel NOM-035 report generation failed: %s", exc)
+            return NOM035Result(
+                org_id=org_id,
+                status=f"error: {exc}",
+            )

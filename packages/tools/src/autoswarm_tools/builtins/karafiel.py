@@ -1,4 +1,4 @@
-"""Karafiel compliance tools -- RFC validation, CFDI, blacklist."""
+"""Karafiel compliance tools -- RFC validation, CFDI, blacklist, constancia, NOM-035."""
 
 from __future__ import annotations
 
@@ -202,4 +202,189 @@ class BlacklistCheckTool(BaseTool):
                 f"article_69b={result.article_69b}, definitive={result.definitive}"
             ),
             data=result.model_dump(),
+        )
+
+
+class ConstanciaFiscalTool(BaseTool):
+    name = "constancia_fiscal"
+    description = (
+        "Look up Constancia de Situacion Fiscal for an RFC via Karafiel SAT portal"
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "rfc": {
+                    "type": "string",
+                    "description": "RFC to look up (e.g. 'XAXX010101000')",
+                },
+            },
+            "required": ["rfc"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        from madfam_inference.adapters.karafiel import KarafielAdapter
+
+        rfc: str = kwargs.get("rfc", "")
+        if not rfc:
+            return ToolResult(success=False, error="rfc is required")
+
+        adapter = KarafielAdapter()
+        result = await adapter.get_constancia(rfc)
+        success = not result.situacion.startswith("error")
+        return ToolResult(
+            success=success,
+            output=(
+                f"RFC {result.rfc}: situacion={result.situacion}, "
+                f"regimen={result.regimen_fiscal}"
+            ),
+            data=result.model_dump(),
+        )
+
+
+class ComplementoPagoTool(BaseTool):
+    name = "complemento_pago"
+    description = (
+        "Generate Complemento de Pagos CFDI for partial payments via Karafiel"
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "cfdi_uuid": {
+                    "type": "string",
+                    "description": "UUID of the original CFDI being paid",
+                },
+                "monto_pagado": {
+                    "type": "string",
+                    "description": "Amount paid (e.g. '5000.00')",
+                },
+                "fecha_pago": {
+                    "type": "string",
+                    "description": "Payment date in ISO format (e.g. '2026-04-14')",
+                },
+                "forma_pago": {
+                    "type": "string",
+                    "description": "Payment form code (c_FormaPago, e.g. '03' for transfer)",
+                    "default": "03",
+                },
+            },
+            "required": ["cfdi_uuid", "monto_pagado", "fecha_pago"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        from madfam_inference.adapters.karafiel import KarafielAdapter
+
+        cfdi_uuid: str = kwargs.get("cfdi_uuid", "")
+        monto_pagado: str = kwargs.get("monto_pagado", "")
+        fecha_pago: str = kwargs.get("fecha_pago", "")
+        forma_pago: str = kwargs.get("forma_pago", "03")
+
+        if not cfdi_uuid or not monto_pagado or not fecha_pago:
+            return ToolResult(
+                success=False,
+                error="cfdi_uuid, monto_pagado, and fecha_pago are required",
+            )
+
+        adapter = KarafielAdapter()
+        result = await adapter.generate_complemento_pago(
+            cfdi_uuid=cfdi_uuid,
+            payment_data={
+                "monto_pagado": monto_pagado,
+                "fecha_pago": fecha_pago,
+                "forma_pago": forma_pago,
+            },
+        )
+        success = bool(result.uuid) and not result.status.startswith("error")
+        return ToolResult(
+            success=success,
+            output=f"Complemento {result.uuid or 'N/A'}: status={result.status}",
+            data=result.model_dump(),
+        )
+
+
+class NOM035SurveyTool(BaseTool):
+    name = "nom035_survey"
+    description = (
+        "Generate NOM-035 psychosocial risk survey via Karafiel compliance module"
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "org_id": {
+                    "type": "string",
+                    "description": "Organization identifier",
+                },
+                "survey_type": {
+                    "type": "string",
+                    "description": "Survey type: 'general' or 'specific'",
+                    "enum": ["general", "specific"],
+                    "default": "general",
+                },
+            },
+            "required": ["org_id"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        from madfam_inference.adapters.karafiel import KarafielAdapter
+
+        org_id: str = kwargs.get("org_id", "")
+        survey_type: str = kwargs.get("survey_type", "general")
+
+        if not org_id:
+            return ToolResult(success=False, error="org_id is required")
+
+        adapter = KarafielAdapter()
+        result = await adapter.generate_nom035_survey(org_id, survey_type)
+        success = not result.status.startswith("error")
+        return ToolResult(
+            success=success,
+            output=f"NOM-035 survey ({survey_type}): status={result.status}",
+            data=result.data,
+        )
+
+
+class NOM035ReportTool(BaseTool):
+    name = "nom035_report"
+    description = "Generate NOM-035 STPS compliance report via Karafiel"
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "org_id": {
+                    "type": "string",
+                    "description": "Organization identifier",
+                },
+                "survey_results": {
+                    "type": "object",
+                    "description": "Completed survey results to analyze",
+                },
+            },
+            "required": ["org_id", "survey_results"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        from madfam_inference.adapters.karafiel import KarafielAdapter
+
+        org_id: str = kwargs.get("org_id", "")
+        survey_results: dict[str, Any] = kwargs.get("survey_results", {})
+
+        if not org_id or not survey_results:
+            return ToolResult(
+                success=False,
+                error="org_id and survey_results are required",
+            )
+
+        adapter = KarafielAdapter()
+        result = await adapter.generate_nom035_report(org_id, survey_results)
+        success = not result.status.startswith("error")
+        return ToolResult(
+            success=success,
+            output=f"NOM-035 report for org {org_id}: status={result.status}",
+            data=result.data,
         )

@@ -9,6 +9,10 @@ from autoswarm_tools.builtins.karafiel import (
     CFDIGenerateTool,
     CFDIStampTool,
     CFDIStatusTool,
+    ComplementoPagoTool,
+    ConstanciaFiscalTool,
+    NOM035ReportTool,
+    NOM035SurveyTool,
     RFCValidationTool,
 )
 
@@ -18,6 +22,10 @@ KARAFIEL_TOOLS = [
     ("cfdi_stamp", CFDIStampTool),
     ("cfdi_status", CFDIStatusTool),
     ("blacklist_check", BlacklistCheckTool),
+    ("constancia_fiscal", ConstanciaFiscalTool),
+    ("complemento_pago", ComplementoPagoTool),
+    ("nom035_survey", NOM035SurveyTool),
+    ("nom035_report", NOM035ReportTool),
 ]
 
 
@@ -97,4 +105,30 @@ class TestKarafielToolsMissingInput:
     async def test_blacklist_check_missing_rfc(self) -> None:
         tool = BlacklistCheckTool()
         result = await tool.execute()
+        assert not result.success
+
+    @pytest.mark.asyncio
+    async def test_constancia_fiscal_missing_rfc(self) -> None:
+        tool = ConstanciaFiscalTool()
+        result = await tool.execute()
+        assert not result.success
+        assert "rfc" in (result.error or "").lower()
+
+    @pytest.mark.asyncio
+    async def test_complemento_pago_missing_fields(self) -> None:
+        tool = ComplementoPagoTool()
+        result = await tool.execute(cfdi_uuid="abc")
+        assert not result.success
+
+    @pytest.mark.asyncio
+    async def test_nom035_survey_missing_org_id(self) -> None:
+        tool = NOM035SurveyTool()
+        result = await tool.execute()
+        assert not result.success
+        assert "org_id" in (result.error or "").lower()
+
+    @pytest.mark.asyncio
+    async def test_nom035_report_missing_fields(self) -> None:
+        tool = NOM035ReportTool()
+        result = await tool.execute(org_id="org-1")
         assert not result.success
