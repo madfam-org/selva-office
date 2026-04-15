@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from autoswarm_workers.graphs.coding import _write_files_to_worktree, implement
 
@@ -61,7 +61,7 @@ def test_implement_retries_on_json_error(tmp_path):
 
     call_count = {"n": 0}
 
-    async def mock_call_llm(router, messages, system_prompt, task_type):
+    async def mock_call_llm(router, messages, system_prompt="", task_type="coding", **kwargs):
         call_count["n"] += 1
         if call_count["n"] == 1:
             return "not valid json {{"
@@ -80,6 +80,7 @@ def test_implement_retries_on_json_error(tmp_path):
             "autoswarm_workers.graphs.coding.check_permission",
             return_value=_perm_allow(),
         ),
+        patch("autoswarm_workers.event_emitter.emit_event", new_callable=AsyncMock),
     ):
         result = implement(state)
 
@@ -94,7 +95,7 @@ def test_implement_fails_after_max_retries(tmp_path):
     wt.mkdir()
     state = _make_state(worktree_path=str(wt))
 
-    async def mock_call_llm(router, messages, system_prompt, task_type):
+    async def mock_call_llm(router, messages, system_prompt="", task_type="coding", **kwargs):
         return "this is not json at all"
 
     with (
@@ -110,6 +111,7 @@ def test_implement_fails_after_max_retries(tmp_path):
             "autoswarm_workers.graphs.coding.check_permission",
             return_value=_perm_allow(),
         ),
+        patch("autoswarm_workers.event_emitter.emit_event", new_callable=AsyncMock),
     ):
         result = implement(state)
 

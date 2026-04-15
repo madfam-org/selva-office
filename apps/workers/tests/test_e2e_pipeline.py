@@ -98,7 +98,7 @@ async def test_coding_pipeline_mock_llm_succeeds(tmp_path):
 
     call_idx = {"n": 0}
 
-    async def mock_llm(router, messages, system_prompt, task_type):
+    async def mock_llm(router, messages, system_prompt="", task_type="coding", **kwargs):
         call_idx["n"] += 1
         if task_type == "planning":
             return valid_plan
