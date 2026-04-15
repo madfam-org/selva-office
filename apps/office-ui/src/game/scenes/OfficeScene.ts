@@ -1293,6 +1293,7 @@ export class OfficeScene extends Phaser.Scene {
           targetX: player.x,
           targetY: player.y,
           direction: player.direction,
+          textureKey: remoteTexture,
         });
 
         // Create companion sprite if player has one
@@ -1599,7 +1600,14 @@ export class OfficeScene extends Phaser.Scene {
   private updateLocalAvatarTexture(): void {
     if (!this.localAvatarConfig || !this.tactician) return;
     const textureKey = compositeAvatar(this, this.localAvatarConfig);
+    createAvatarAnimations(this, textureKey);
+    this.localTextureKey = textureKey;
     this.tactician.setTexture(textureKey);
+    // Play idle animation for current direction with new texture
+    const idleKey = `${textureKey}-idle-${this.lastDirection}`;
+    if (this.anims.exists(idleKey)) {
+      this.tactician.play(idleKey);
+    }
   }
 
   private showEmoteBubble(sessionId: string, emoteType: string): void {
