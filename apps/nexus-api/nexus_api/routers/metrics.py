@@ -235,3 +235,75 @@ async def get_metrics_dashboard(
         trends=trends,
         recent_errors=recent_errors,
     )
+
+
+# ── ROI Dashboard (Revenue Attribution) ──────────────────────────────
+
+
+class AgentROI(BaseModel):
+    agent_name: str
+    tasks_completed: int
+    compute_tokens_used: int
+    estimated_cost_usd: float
+    note: str = "Revenue attribution requires Phase 4 RevenueAttribution model"
+
+
+@router.get("/roi")
+async def get_roi_dashboard(
+    period: str = Query("30d", regex="^(1h|6h|24h|7d|30d)$"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """ROI dashboard: per-agent revenue vs cost.
+
+    Currently returns cost-side data from ComputeTokenLedger.
+    Revenue attribution (Phase 4 RevenueAttribution model) will be
+    added when the model and webhook wiring are complete.
+    """
+    delta = PERIOD_MAP.get(period, timedelta(days=30))
+    since = datetime.now(UTC) - delta
+
+    from ..models import Agent
+
+    # Get per-agent task completion + token usage
+    agent_stats_q = (
+        select(
+            Agent.name,
+            func.count(SwarmTask.id).label("tasks"),
+            func.coalesce(func.sum(ComputeTokenLedger.amount), 0).label("tokens"),
+        )
+        .outerjoin(SwarmTask, SwarmTask.assigned_agent_ids.contains([Agent.id]))
+        .outerjoin(ComputeTokenLedger, ComputeTokenLedger.task_id == SwarmTask.id)
+        .where(SwarmTask.created_at >= since)
+        .group_by(Agent.name)
+    )
+
+    try:
+        result = await db.execute(agent_stats_q)
+        rows = result.all()
+    except Exception:
+        # Fallback: simple agent list with task counts
+        agents_result = await db.execute(select(Agent.name, Agent.tasks_completed))
+        rows = [(r[0], r[1] or 0, 0) for r in agents_result.all()]
+
+    agents = []
+    for row in rows:
+        name = row[0] if isinstance(row[0], str) else str(row[0])
+        tasks = int(row[1]) if len(row) > 1 else 0
+        tokens = int(row[2]) if len(row) > 2 else 0
+        # Rough cost estimate: $0.002 per token (blended LLM cost)
+        est_cost = tokens * 0.002
+
+        agents.append(AgentROI(
+            agent_name=name,
+            tasks_completed=tasks,
+            compute_tokens_used=tokens,
+            estimated_cost_usd=round(est_cost, 2),
+        ))
+
+    return {
+        "period": period,
+        "agents": [a.model_dump() for a in agents],
+        "total_tasks": sum(a.tasks_completed for a in agents),
+        "total_cost_usd": round(sum(a.estimated_cost_usd for a in agents), 2),
+        "revenue_attribution": "pending_phase_4",
+    }
