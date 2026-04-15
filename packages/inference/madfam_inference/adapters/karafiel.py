@@ -397,6 +397,56 @@ class KarafielAdapter:
                 status=f"error: {exc}",
             )
 
+    # -- Pedimento (customs document) -------------------------------------------
+
+    async def get_pedimento(self, numero: str) -> dict[str, Any]:
+        """Look up a customs pedimento document via Karafiel SAT module."""
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    f"{self._base_url}/api/v1/sat/pedimento/{numero}/",
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as exc:
+            logger.warning("Karafiel pedimento lookup failed: %s", exc)
+            return {"numero": numero, "status": f"error: {exc}"}
+
+    # -- SAT Obligations --------------------------------------------------------
+
+    async def get_sat_obligations(self, rfc: str) -> dict[str, Any]:
+        """Check RFC tax obligation status and alerts via Karafiel SAT module."""
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    f"{self._base_url}/api/v1/sat/obligations/{rfc}/",
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as exc:
+            logger.warning("Karafiel SAT obligations check failed: %s", exc)
+            return {"rfc": rfc, "status": f"error: {exc}"}
+
+    # -- SIEM Compliance --------------------------------------------------------
+
+    async def get_siem_status(self, rfc: str) -> dict[str, Any]:
+        """Check SIEM registration status via Karafiel compliance endpoint."""
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    f"{self._base_url}/api/v1/compliance/siem/{rfc}/",
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as exc:
+            logger.warning("Karafiel SIEM status check failed: %s", exc)
+            return {"rfc": rfc, "status": f"error: {exc}"}
+
+    # -- NOM-035 Compliance -----------------------------------------------------
+
     async def generate_nom035_report(
         self,
         org_id: str,

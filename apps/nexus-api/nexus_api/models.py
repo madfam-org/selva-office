@@ -518,3 +518,39 @@ class TenantConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
+
+
+# ---------------------------------------------------------------------------
+# Audit trail (migration 0017)
+# ---------------------------------------------------------------------------
+
+
+class AuditLog(Base):
+    """Immutable audit log for state-changing API actions.
+
+    Every POST, PUT, PATCH, DELETE request that reaches a 2xx response is
+    recorded with the authenticated user, resource path, and action details.
+    """
+
+    __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_org_created", "org_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    org_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    action: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # POST, PUT, PATCH, DELETE
+    resource_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )

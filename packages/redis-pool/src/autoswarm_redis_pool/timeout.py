@@ -16,6 +16,7 @@ DEFAULT_TIMEOUTS: dict[str, int] = {
     "crm": 120,
     "deployment": 300,
     "intelligence": 300,
+    "operations": 300,
     "puppeteer": 600,
     "meeting": 300,
     "sales": 300,

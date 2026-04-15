@@ -9,6 +9,14 @@ logger = logging.getLogger(__name__)
 
 _MAX_CONTEXT_LINES = 50
 
+MX_FORMATTING = (
+    "\n\nConvenciones de formato para Mexico:\n"
+    "- Fechas: DD/MM/AAAA (ejemplo: 15/04/2026)\n"
+    "- Numeros: coma para miles, punto para decimales (ejemplo: $1,234,567.89 MXN)\n"
+    "- Moneda: siempre incluya 'MXN' o '$' con el monto\n"
+    "- RFC: formato XAXX010101000 (persona moral 12 chars, persona fisica 13 chars)\n"
+)
+
 
 def _read_repo_context(repo_path: str | None) -> dict[str, str]:
     """Read lightweight repo context: top-level listing and key files.
@@ -203,6 +211,8 @@ def build_plan_prompt(
         sections.append(f"{conventions_label}:\n```\n{ctx['claude_md']}\n```")
 
     base = "\n\n".join(sections)
+    if locale == "es-MX":
+        base += MX_FORMATTING
     parts: list[str] = []
     if skill_ctx:
         parts.append(skill_ctx)
@@ -270,6 +280,8 @@ def build_implement_prompt(
     sections.append(style_note)
 
     base = "\n\n".join(sections)
+    if locale == "es-MX":
+        base += MX_FORMATTING
     parts_impl: list[str] = []
     if skill_ctx:
         parts_impl.append(skill_ctx)
@@ -312,6 +324,8 @@ def build_review_prompt(
         ]
 
     base = "\n".join(sections)
+    if locale == "es-MX":
+        base += MX_FORMATTING
     parts_rev: list[str] = []
     if skill_ctx:
         parts_rev.append(skill_ctx)

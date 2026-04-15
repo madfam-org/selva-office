@@ -41,6 +41,7 @@ from .graphs.crm import build_crm_graph
 from .graphs.deployment import build_deployment_graph
 from .graphs.intelligence import build_intelligence_graph
 from .graphs.meeting import build_meeting_graph
+from .graphs.operations import build_operations_graph
 from .graphs.project import build_project_graph
 from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.research import build_research_graph
@@ -64,6 +65,7 @@ GRAPH_BUILDERS = {
     "crm": build_crm_graph,
     "deployment": build_deployment_graph,
     "intelligence": build_intelligence_graph,
+    "operations": build_operations_graph,
     "puppeteer": build_puppeteer_graph,
     "meeting": build_meeting_graph,
     "project": build_project_graph,
@@ -365,6 +367,13 @@ async def process_task(task_data: dict) -> None:
         initial_state["exchange_rate"] = None
         initial_state["economic_indicators"] = None
         initial_state["briefing_text"] = None
+    elif graph_type == "operations":
+        payload = task_data.get("payload", {})
+        initial_state["org_id"] = payload.get("org_id", "")
+        initial_state["sku"] = payload.get("sku")
+        initial_state["pedimento_number"] = payload.get("pedimento_number")
+        initial_state["tracking_numbers"] = payload.get("tracking_numbers", [])
+        initial_state["inventory_status"] = None
     elif graph_type == "sales":
         payload = task_data.get("payload", {})
         initial_state["lead_id"] = payload.get("lead_id", "")

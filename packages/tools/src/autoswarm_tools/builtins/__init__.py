@@ -23,7 +23,11 @@ from .accounting import (
     PaymentSummaryTool,
 )
 from .artifact import ListArtifactsTool, RetrieveArtifactTool, SaveArtifactTool
-from .calendar_tools import CreateCalendarEventTool, ListCalendarEventsTool
+from .calendar_tools import (
+    CreateCalendarEventTool,
+    ListCalendarEventsTool,
+    MexicanBusinessCalendarTool,
+)
 from .code import BashExecTool, PythonExecTool
 from .communication import CreateReportTool, SendNotificationTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
@@ -32,6 +36,7 @@ from .deploy import DeployStatusTool, DeployTool
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
 from .email_tools import ReadEmailTool, SendEmailTool
 from .environment import EnvInfoTool, PackageInstallTool
+from .erp import CONTPAQiExportTool, GenericERPExportTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
@@ -40,6 +45,8 @@ from .intelligence import (
     DOFMonitorTool,
     ExchangeRateTool,
     InflationTool,
+    SATMonitorTool,
+    SIEMComplianceTool,
     TIIETool,
     UMATrackerTool,
 )
@@ -60,6 +67,7 @@ from .legal import (
     LawSearchTool,
     REPSECheckTool,
 )
+from .operations import CarrierTrackingTool, InventoryCheckTool, PedimentoLookupTool
 from .privacy import DataDeletionTool, PIIClassificationTool, PrivacyNoticeGeneratorTool
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
@@ -115,6 +123,7 @@ def get_builtin_tools() -> list[BaseTool]:
         # Calendar
         CreateCalendarEventTool(),
         ListCalendarEventsTool(),
+        MexicanBusinessCalendarTool(),
         # Database
         SQLQueryTool(),
         SQLWriteTool(),
@@ -178,4 +187,13 @@ def get_builtin_tools() -> list[BaseTool]:
         UMATrackerTool(),
         TIIETool(),
         InflationTool(),
+        SATMonitorTool(),
+        SIEMComplianceTool(),
+        # Operations
+        PedimentoLookupTool(),
+        CarrierTrackingTool(),
+        InventoryCheckTool(),
+        # ERP export
+        CONTPAQiExportTool(),
+        GenericERPExportTool(),
     ]
