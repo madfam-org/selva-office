@@ -72,34 +72,30 @@ DEPARTMENTS = [
 # ─── Agents ───────────────────────────────────────────────────────────────────
 
 AGENTS = [
-    # ═══ NODE 1: EXECUTIVE BRAIN TRUST ═══
+    # ═══ EXECUTIVE NODE (Chief of Staff) ═══
     {
         "name": "Oráculo",
         "role": "planner",
         "level": 10,
         "department_slug": "executive",
-        "skill_ids": ["strategic-planning", "research"],
+        "node_id": "executive",
+        "skill_ids": ["strategic-planning", "research", "product-catalog"],
     },
     {
         "name": "Centinela",
         "role": "planner",
         "level": 9,
         "department_slug": "executive",
-        "skill_ids": ["strategic-planning", "crm-outreach", "research", "doc-coauthoring"],
+        "node_id": "executive",
+        "skill_ids": ["strategic-planning", "crm-outreach", "research", "doc-coauthoring", "product-catalog"],
     },
-    {
-        "name": "Forjador",
-        "role": "planner",
-        "level": 10,
-        "department_slug": "executive",
-        "skill_ids": ["strategic-planning", "coding", "code-review", "research", "mcp-builder"],
-    },
-    # ═══ NODE 2: BUILD & RUN ENGINE ═══
+    # ═══ BUILD NODE ═══
     {
         "name": "Telar",
         "role": "planner",
         "level": 7,
         "department_slug": "build-engine",
+        "node_id": "build",
         "skill_ids": ["strategic-planning", "doc-coauthoring", "webapp-testing", "research"],
     },
     {
@@ -107,21 +103,16 @@ AGENTS = [
         "role": "coder",
         "level": 9,
         "department_slug": "build-engine",
+        "node_id": "build",
         "skill_ids": ["coding", "code-review", "research", "webapp-testing", "doc-coauthoring"],
     },
-    {
-        "name": "Vigía",
-        "role": "coder",
-        "level": 8,
-        "department_slug": "build-engine",
-        "skill_ids": ["coding", "webapp-testing", "mcp-builder", "research"],
-    },
-    # ═══ NODE 3: GROWTH & MARKET SYNDICATE ═══
+    # ═══ GROWTH NODE (The Catalyst) ═══
     {
         "name": "Heraldo",
         "role": "researcher",
         "level": 8,
         "department_slug": "growth",
+        "node_id": "growth",
         "skill_ids": ["research", "crm-outreach", "doc-coauthoring", "strategic-planning"],
     },
     {
@@ -129,21 +120,42 @@ AGENTS = [
         "role": "crm",
         "level": 8,
         "department_slug": "growth",
+        "node_id": "growth",
         "skill_ids": ["crm-outreach", "customer-support", "research", "doc-coauthoring"],
     },
-    # ═══ NODE 4: PHYSICAL-DIGITAL BRIDGE ═══
+    # ═══ ORCHESTRATION NODE (Biological Siphoning) ═══
+    {
+        "name": "Forjador",
+        "role": "planner",
+        "level": 10,
+        "department_slug": "executive",
+        "node_id": "orchestration",
+        "skill_ids": ["strategic-planning", "coding", "code-review", "research", "mcp-builder"],
+    },
+    {
+        "name": "Vigía",
+        "role": "coder",
+        "level": 8,
+        "department_slug": "build-engine",
+        "node_id": "orchestration",
+        "skill_ids": ["coding", "webapp-testing", "mcp-builder", "research"],
+    },
+    # ═══ LEDGER NODE ═══
     {
         "name": "Áureo",
         "role": "researcher",
         "level": 7,
         "department_slug": "operations",
-        "skill_ids": ["research", "doc-coauthoring", "strategic-planning"],
+        "node_id": "ledger",
+        "skill_ids": ["research", "doc-coauthoring", "strategic-planning", "product-catalog"],
     },
+    # ═══ PHYGITAL NODE (Yantra4D Engine) ═══
     {
         "name": "Espectro",
         "role": "coder",
         "level": 7,
         "department_slug": "operations",
+        "node_id": "phygital",
         "skill_ids": ["coding", "research", "mcp-builder"],
     },
 ]
