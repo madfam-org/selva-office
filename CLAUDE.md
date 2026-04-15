@@ -120,6 +120,24 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Solarpunk Visual Overhaul Phase 1 (v1.0.0)
+
+- **Solarpunk Palette**: Environment tokens overhauled to warm earth tones
+  (wood #8b7355, bamboo #c8b896, moss #4a9e6e). New "solarpunk" preset
+  with tech-garden, market-garden, zen-garden, library-garden department
+  biomes. Review station bright solar gold (#f6d55c) for contrast.
+- **4-Direction Walk Cycles**: 12-pose avatar system (4 dirs × 3 frames).
+  `AvatarCompositor` generates 384x32 spritesheets. FF6-style JRPG
+  1-2-1-3 walk pattern at 8fps. Directional hair variants for all 8 styles.
+  `createAvatarAnimations()` exported for per-texture animation registration.
+- **Solarpunk UI Tokens**: 17 Tailwind colors (wood, bamboo, moss, leaf,
+  solar, sky, earth, glass, bloom, glow, sand). CSS classes: solarpunk-panel,
+  solarpunk-btn, solarpunk-border, leaf-overlay. Theme color → #2a2218.
+- **Particle Overhaul**: 6 new particle textures (leaf 6x4, petal 4x4,
+  firefly 3x3, spore 3x3, sparkle 3x3, glint 2x2). Ambient dust replaced
+  with floating leaves + fireflies. Agent status: gold glint (working),
+  leaf burst (spawn). Green/gold spawn-in effect.
+
 ## Competitive Dominance Wave 4 (v0.9.0)
 
 - **Mobile UX Polish**: Haptic feedback (`navigator.vibrate(50)`) on
