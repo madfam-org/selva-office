@@ -418,34 +418,69 @@ def notify_customer(state: BillingState) -> BillingState:
     notification_detail = ""
 
     if customer_phone:
+        # Try WhatsApp Business template messaging (Meta Cloud API) first.
         try:
-            import os
+            from autoswarm_tools.builtins.whatsapp import WhatsAppTemplateTool
 
-            whatsapp_url = os.environ.get("WHATSAPP_API_URL")
-            if whatsapp_url:
-                import httpx
-
-                resp = _run_async(
-                    httpx.AsyncClient(timeout=10.0).post(
-                        f"{whatsapp_url}/send",
-                        json={
-                            "phone": customer_phone,
-                            "message": (
-                                f"Su factura CFDI {cfdi_uuid} ha sido generada "
-                                f"y timbrada exitosamente."
-                            ),
-                        },
-                    )
+            wa_tool = WhatsAppTemplateTool()
+            customer_name = state.get("workflow_variables", {}).get(
+                "customer_name", "Cliente"
+            )
+            total_amount = state.get("workflow_variables", {}).get(
+                "total", state.get("stamp_result", {}).get("total", "")
+            )
+            wa_result = _run_async(
+                wa_tool.execute(
+                    phone=customer_phone,
+                    template_name="factura_enviada",
+                    parameters=[
+                        customer_name,
+                        cfdi_uuid,
+                        str(total_amount),
+                        f"https://api.selva.town/api/v1/invoices/{cfdi_uuid}/status",
+                    ],
                 )
-                if resp.status_code < 400:
-                    notification_channel = "whatsapp"
-                    notification_detail = customer_phone
-                else:
-                    raise RuntimeError(f"WhatsApp API returned {resp.status_code}")
-            else:
-                raise RuntimeError("WHATSAPP_API_URL not set")
+            )
+            if wa_result.success:
+                notification_channel = "whatsapp_template"
+                notification_detail = customer_phone
         except Exception:
-            logger.debug("WhatsApp notification failed; trying email fallback")
+            logger.debug(
+                "WhatsApp template send failed, falling back", exc_info=True
+            )
+
+        # Legacy plain-text WhatsApp API fallback.
+        if notification_channel == "none":
+            try:
+                import os
+
+                whatsapp_url = os.environ.get("WHATSAPP_API_URL")
+                if whatsapp_url:
+                    import httpx
+
+                    resp = _run_async(
+                        httpx.AsyncClient(timeout=10.0).post(
+                            f"{whatsapp_url}/send",
+                            json={
+                                "phone": customer_phone,
+                                "message": (
+                                    f"Su factura CFDI {cfdi_uuid} ha sido generada "
+                                    f"y timbrada exitosamente."
+                                ),
+                            },
+                        )
+                    )
+                    if resp.status_code < 400:
+                        notification_channel = "whatsapp"
+                        notification_detail = customer_phone
+                    else:
+                        raise RuntimeError(
+                            f"WhatsApp API returned {resp.status_code}"
+                        )
+                else:
+                    raise RuntimeError("WHATSAPP_API_URL not set")
+            except Exception:
+                logger.debug("WhatsApp notification failed; trying email fallback")
 
     if notification_channel == "none" and customer_email:
         try:

@@ -39,6 +39,7 @@ from .karafiel import (
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
+from .whatsapp import WhatsAppTemplateTool
 
 
 def get_builtin_tools() -> list[BaseTool]:
@@ -125,4 +126,6 @@ def get_builtin_tools() -> list[BaseTool]:
         CFDIStampTool(),
         CFDIStatusTool(),
         BlacklistCheckTool(),
+        # WhatsApp Business API
+        WhatsAppTemplateTool(),
     ]

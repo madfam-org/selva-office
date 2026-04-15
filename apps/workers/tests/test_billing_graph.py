@@ -175,18 +175,20 @@ class TestCheckBlacklist:
         assert "not on the 69-B blacklist" in result["messages"][0].content
 
     def test_blacklist_blocks_listed_rfc(self) -> None:
+        import sys
+
         from autoswarm_workers.graphs.billing import check_blacklist
 
-        mock_adapter = MagicMock()
-        mock_adapter.check_blacklist.return_value = True
+        mock_adapter_instance = MagicMock()
+        mock_adapter_instance.check_blacklist.return_value = True
 
-        import sys
         mock_module = MagicMock()
-        mock_module.KarafielAdapter = MagicMock(return_value=mock_adapter)
+        mock_module.KarafielAdapter.return_value = mock_adapter_instance
 
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
+            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = check_blacklist({
                 "messages": [],
@@ -197,18 +199,20 @@ class TestCheckBlacklist:
         assert "69-B" in result["messages"][0].content
 
     def test_blacklist_clear_continues(self) -> None:
+        import sys
+
         from autoswarm_workers.graphs.billing import check_blacklist
 
-        mock_adapter = MagicMock()
-        mock_adapter.check_blacklist.return_value = False
+        mock_adapter_instance = MagicMock()
+        mock_adapter_instance.check_blacklist.return_value = False
 
-        import sys
         mock_module = MagicMock()
-        mock_module.KarafielAdapter = MagicMock(return_value=mock_adapter)
+        mock_module.KarafielAdapter.return_value = mock_adapter_instance
 
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
+            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = check_blacklist({
                 "messages": [],
@@ -240,21 +244,23 @@ class TestGenerateCfdi:
         assert "CFDI generated" in result["messages"][0].content
 
     def test_generate_cfdi_with_karafiel(self) -> None:
+        import sys
+
         from autoswarm_workers.graphs.billing import generate_cfdi
 
-        mock_adapter = MagicMock()
-        mock_adapter.generate_cfdi.return_value = {
+        mock_adapter_instance = MagicMock()
+        mock_adapter_instance.generate_cfdi.return_value = {
             "xml": "<cfdi>real-xml</cfdi>",
             "uuid": "real-uuid-1234",
         }
 
-        import sys
         mock_module = MagicMock()
-        mock_module.KarafielAdapter = MagicMock(return_value=mock_adapter)
+        mock_module.KarafielAdapter.return_value = mock_adapter_instance
 
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
+            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = generate_cfdi({
                 "messages": [],
@@ -307,21 +313,23 @@ class TestStampCfdi:
         assert result["status"] == "error"
 
     def test_stamp_cfdi_with_karafiel(self) -> None:
+        import sys
+
         from autoswarm_workers.graphs.billing import stamp_cfdi
 
-        mock_adapter = MagicMock()
-        mock_adapter.stamp_cfdi.return_value = {
+        mock_adapter_instance = MagicMock()
+        mock_adapter_instance.stamp_cfdi.return_value = {
             "folio_fiscal": "ABC-123-DEF",
             "fecha_timbrado": "2026-04-14T12:00:00",
         }
 
-        import sys
         mock_module = MagicMock()
-        mock_module.KarafielAdapter = MagicMock(return_value=mock_adapter)
+        mock_module.KarafielAdapter.return_value = mock_adapter_instance
 
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
+            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = stamp_cfdi({
                 "messages": [],
