@@ -71,6 +71,12 @@ from .billing_tools import CreateCheckoutLinkTool, GetRevenueMetricsTool
 from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
 from .marketing_tools import SendMarketingEmailTool
 from .operations import CarrierTrackingTool, InventoryCheckTool, PedimentoLookupTool
+from .phygital_tools import (
+    CreateWorkOrderTool,
+    GenerateParametricModelTool,
+    GenerateQuoteTool,
+    RunDFMAnalysisTool,
+)
 from .product_catalog import ProductCatalogTool
 from .privacy import DataDeletionTool, PIIClassificationTool, PrivacyNoticeGeneratorTool
 from .slack import SlackMessageTool
@@ -211,4 +217,9 @@ def get_builtin_tools() -> list[BaseTool]:
         CreateActivityTool(),
         # Marketing tools (Growth Node)
         SendMarketingEmailTool(),
+        # Phygital tools (Yantra4D Engine Node)
+        GenerateParametricModelTool(),
+        RunDFMAnalysisTool(),
+        GenerateQuoteTool(),
+        CreateWorkOrderTool(),
     ]
