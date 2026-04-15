@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { Inter, Press_Start_2P } from 'next/font/google';
 import { JanuaProvider } from '@janua/nextjs-sdk';
 import { PostHogProvider } from '@/components/PostHogProvider';
+import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import './globals.css';
 
 const inter = Inter({
@@ -29,7 +30,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${pressStart2P.variable}`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1e1b4b" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/assets/icons/icon-192.png" />
+      </head>
       <body className="min-h-screen font-sans">
+        <ServiceWorkerRegistrar />
         <Suspense>
           <PostHogProvider>
             <JanuaProvider
