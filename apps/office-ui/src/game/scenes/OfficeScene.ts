@@ -313,6 +313,119 @@ export class OfficeScene extends Phaser.Scene {
       fireflyEmitter.setDepth(1);
     }
 
+    // === Skylight light pools (warm golden pools on the floor) ===
+    if (ENABLE_PARTICLES) {
+      const SKYLIGHTS = [
+        { x: 12, y: 7 },   // Engineering center
+        { x: 37, y: 7 },   // Research center
+        { x: 12, y: 21 },  // CRM center
+        { x: 37, y: 21 },  // Support center
+        { x: 24, y: 14 },  // Central atrium
+      ];
+
+      for (const sky of SKYLIGHTS) {
+        // Light pool circle
+        const pool = this.add.circle(
+          sky.x * TILE_SIZE + TILE_SIZE / 2,
+          sky.y * TILE_SIZE + TILE_SIZE / 2,
+          TILE_SIZE * 3,  // 3-tile radius
+          0xf6d55c,       // Solar gold
+          0.06,
+        );
+        pool.setBlendMode(Phaser.BlendModes.ADD);
+        pool.setDepth(1);
+
+        // Gentle pulsing animation
+        this.tweens.add({
+          targets: pool,
+          alpha: { from: 0.04, to: 0.08 },
+          duration: 4000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+
+        // Solar sparkle particles in light pools
+        if (this.textures.exists('particle-glint')) {
+          this.add.particles(
+            sky.x * TILE_SIZE + TILE_SIZE / 2,
+            sky.y * TILE_SIZE + TILE_SIZE / 2,
+            'particle-glint',
+            {
+              speed: { min: 2, max: 8 },
+              alpha: { start: 0, end: 0, ease: 'Sine.easeInOut',
+                interpolation: [0, 0.6, 0] as unknown as string },
+              lifespan: 3000,
+              frequency: 4000,
+              emitZone: {
+                type: 'random',
+                source: new Phaser.Geom.Circle(0, 0, TILE_SIZE * 2),
+              } as Phaser.Types.GameObjects.Particles.ParticleEmitterRandomZoneConfig,
+              blendMode: 'ADD',
+            },
+          );
+        }
+      }
+    }
+
+    // === Zone-specific solarpunk particle effects ===
+    if (ENABLE_PARTICLES) {
+      // Engineering: subtle purple grow-light sparkles (emit from top of zone)
+      if (this.textures.exists('particle-spore')) {
+        this.add.particles(0, 0, 'particle-spore', {
+          emitZone: {
+            type: 'random',
+            source: new Phaser.Geom.Rectangle(
+              1 * TILE_SIZE, 2 * TILE_SIZE,
+              22 * TILE_SIZE, 2 * TILE_SIZE,
+            ),
+          } as Phaser.Types.GameObjects.Particles.ParticleEmitterRandomZoneConfig,
+          speedY: { min: 3, max: 10 },
+          alpha: { start: 0, end: 0,
+            interpolation: [0, 0.4, 0] as unknown as string },
+          lifespan: 5000,
+          frequency: 3000,
+          tint: 0xbb88ff,  // Purple tint for grow lights
+          blendMode: 'ADD',
+        });
+      }
+
+      // Support: zen water ripple sparkles
+      if (this.textures.exists('particle-sparkle')) {
+        this.add.particles(0, 0, 'particle-sparkle', {
+          emitZone: {
+            type: 'random',
+            source: new Phaser.Geom.Rectangle(
+              25 * TILE_SIZE, 16 * TILE_SIZE,
+              24 * TILE_SIZE, 12 * TILE_SIZE,
+            ),
+          } as Phaser.Types.GameObjects.Particles.ParticleEmitterRandomZoneConfig,
+          speed: { min: 1, max: 5 },
+          alpha: { start: 0, end: 0,
+            interpolation: [0, 0.3, 0] as unknown as string },
+          lifespan: 4000,
+          frequency: 5000,
+          tint: 0x87ceeb,  // Cool water blue
+          blendMode: 'ADD',
+        });
+      }
+
+      // Atrium: bioluminescent spores rising
+      if (this.textures.exists('particle-spore')) {
+        this.add.particles(0, 0, 'particle-spore', {
+          x: { min: 10 * TILE_SIZE, max: 18 * TILE_SIZE },
+          y: 15 * TILE_SIZE,
+          speedY: { min: -5, max: -15 },
+          speedX: { min: -3, max: 3 },
+          alpha: { start: 0, end: 0,
+            interpolation: [0, 0.5, 0.3, 0] as unknown as string },
+          lifespan: 6000,
+          frequency: 2000,
+          blendMode: 'ADD',
+        });
+      }
+    }
+
     // === Dust trail emitter (inactive, emitted on movement) ===
     if (ENABLE_PARTICLES && this.textures.exists('particle-dust')) {
       this.dustEmitter = this.add.particles(0, 0, 'particle-dust', {
@@ -887,6 +1000,15 @@ export class OfficeScene extends Phaser.Scene {
       research: 'zone-research',
     };
 
+    // Per-department ambient lighting (solarpunk tints)
+    const DEPT_LIGHTING: Record<string, { color: number; alpha: number }> = {
+      engineering: { color: 0x9b59b6, alpha: 0.06 },  // Subtle purple grow-light tint
+      research:    { color: 0x2d8a6e, alpha: 0.05 },  // Cool teal-green (library)
+      sales:       { color: 0xf6d55c, alpha: 0.04 },  // Warm golden cafe light
+      crm:         { color: 0xf6d55c, alpha: 0.04 },  // Warm golden cafe light
+      support:     { color: 0x4a9e6e, alpha: 0.05 },  // Zen green wash
+    };
+
     Object.entries(DEPARTMENT_LAYOUT).forEach(([slug, layout], index) => {
       const textureKey = zoneKeys[slug] ?? 'zone-engineering';
       const zone = this.add
@@ -904,6 +1026,20 @@ export class OfficeScene extends Phaser.Scene {
         repeat: -1,
         ease: 'Sine.easeInOut',
       });
+
+      // Solarpunk department ambient lighting overlay (ADD blend for glow)
+      const deptLight = DEPT_LIGHTING[slug];
+      if (deptLight) {
+        const zoneOvW = layout.w ?? 640;
+        const zoneOvH = layout.h ?? 320;
+        const lightOverlay = this.add.rectangle(
+          layout.x + zoneOvW / 2, layout.y + zoneOvH / 2,
+          zoneOvW, zoneOvH,
+          deptLight.color, deptLight.alpha,
+        );
+        lightOverlay.setBlendMode(Phaser.BlendModes.ADD);
+        lightOverlay.setDepth(1); // Above floor, below sprites
+      }
 
       // Department label (centered in zone)
       const zoneW = layout.w ?? 640;
@@ -1579,11 +1715,13 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private getHaloStyle(status: string): { color: number; alpha: number } {
+    // Solarpunk status colors
     switch (status) {
-      case 'working': return { color: 0x67e8f9, alpha: 0.25 };       // soft cyan glow
-      case 'waiting_approval': return { color: 0xfcd34d, alpha: 0.35 }; // warm gold
-      case 'error': return { color: 0xfb7185, alpha: 0.3 };           // soft rose
-      default: return { color: 0xc4b5a0, alpha: 0.15 };               // warm parchment (not cold slate)
+      case 'working': return { color: 0xf6d55c, alpha: 0.25 };         // Solar gold
+      case 'waiting_approval': return { color: 0xd4a43a, alpha: 0.35 }; // Deep amber
+      case 'paused': return { color: 0x8b7355, alpha: 0.15 };           // Wood tone
+      case 'error': return { color: 0xb91c1c, alpha: 0.3 };             // Deep red
+      default: return { color: 0x4a9e6e, alpha: 0.15 };                 // Soft moss green (idle)
     }
   }
 
