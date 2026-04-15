@@ -20,6 +20,9 @@ interface ReviewStationPos {
   y: number;
 }
 
+/** Idle sub-state for richer stationary animations */
+type IdleSubState = 'breathing' | 'looking' | 'stretching';
+
 interface AgentMovementState {
   /** Current behavior state */
   state: 'idle' | 'working' | 'waiting_approval' | 'error';
@@ -33,6 +36,24 @@ interface AgentMovementState {
   /** Home position (where the agent was spawned) */
   homeX: number;
   homeY: number;
+  /** Enhanced idle animation sub-state */
+  idleSubState: IdleSubState;
+  /** Accumulated time in current idle sub-state (ms) */
+  idleSubTimer: number;
+}
+
+/** Animation hints returned alongside position data for OfficeScene tweens */
+export interface AnimationHint {
+  /** Trigger a look-direction change (idle looking sub-state) */
+  lookDirection?: 'left' | 'right';
+  /** Trigger a stretch tween (idle stretching sub-state) */
+  stretch?: boolean;
+  /** Working head-bob phase (0-1 sine input) */
+  headBobPhase?: number;
+  /** Waiting-approval sway offset in px */
+  swayOffset?: number;
+  /** Error state: reduced alpha */
+  errorDim?: boolean;
 }
 
 import {
@@ -41,6 +62,9 @@ import {
   WAYPOINT_INTERVAL_MAX,
   ARRIVAL_THRESHOLD,
 } from './constants';
+
+/** Time between idle sub-state transitions (ms) */
+const IDLE_SUB_SWITCH_INTERVAL = 5000;
 
 export class AgentBehavior {
   private states: Map<string, AgentMovementState> = new Map();
@@ -73,12 +97,14 @@ export class AgentBehavior {
       atReviewStation: false,
       homeX: x,
       homeY: y,
+      idleSubState: 'breathing',
+      idleSubTimer: 0,
     });
   }
 
   /**
    * Update agent position based on behavior state.
-   * Returns the new position and direction for animation.
+   * Returns the new position, direction, and animation hints for OfficeScene.
    */
   update(
     agentId: string,
@@ -87,7 +113,7 @@ export class AgentBehavior {
     delta: number,
     zoneBounds: ZoneBounds | null,
     reviewStation: ReviewStationPos | null,
-  ): { x: number; y: number; moving: boolean; direction: string } | null {
+  ): { x: number; y: number; moving: boolean; direction: string; animHint?: AnimationHint } | null {
     const state = this.states.get(agentId);
     if (!state) return null;
 
@@ -95,11 +121,11 @@ export class AgentBehavior {
       case 'idle':
         return this.updateIdle(state, currentX, currentY, delta, zoneBounds);
       case 'working':
-        return { x: currentX, y: currentY, moving: false, direction: 'down' };
+        return this.updateWorking(state, currentX, currentY, delta);
       case 'waiting_approval':
         return this.updateWaitingApproval(state, currentX, currentY, delta, reviewStation);
       case 'error':
-        return { x: currentX, y: currentY, moving: false, direction: 'down' };
+        return { x: currentX, y: currentY, moving: false, direction: 'down', animHint: { errorDim: true } };
       default:
         return null;
     }
@@ -143,7 +169,7 @@ export class AgentBehavior {
     currentY: number,
     delta: number,
     zoneBounds: ZoneBounds | null,
-  ): { x: number; y: number; moving: boolean; direction: string } {
+  ): { x: number; y: number; moving: boolean; direction: string; animHint?: AnimationHint } {
     state.waypointTimer -= delta;
 
     if (state.waypointTimer <= 0) {
@@ -160,7 +186,69 @@ export class AgentBehavior {
       state.waypointTimer = WAYPOINT_INTERVAL_MIN + Math.random() * (WAYPOINT_INTERVAL_MAX - WAYPOINT_INTERVAL_MIN);
     }
 
-    return this.moveToward(state, currentX, currentY, delta, AGENT_SPEED);
+    const result = this.moveToward(state, currentX, currentY, delta, AGENT_SPEED);
+
+    // Enhanced idle sub-state animations (only when stationary)
+    if (!result.moving) {
+      const hint = this.updateIdleSubState(state, delta);
+      if (hint) {
+        return { ...result, animHint: hint };
+      }
+    } else {
+      // Reset idle sub-state timer when moving
+      state.idleSubTimer = 0;
+      state.idleSubState = 'breathing';
+    }
+
+    return result;
+  }
+
+  /**
+   * Cycle through idle sub-states (breathing, looking, stretching) and
+   * return animation hints for OfficeScene to apply visual tweens.
+   */
+  private updateIdleSubState(state: AgentMovementState, delta: number): AnimationHint | null {
+    state.idleSubTimer += delta;
+
+    if (state.idleSubTimer >= IDLE_SUB_SWITCH_INTERVAL) {
+      state.idleSubTimer = 0;
+      const states: IdleSubState[] = ['breathing', 'looking', 'stretching'];
+      state.idleSubState = states[Math.floor(Math.random() * states.length)];
+
+      switch (state.idleSubState) {
+        case 'looking': {
+          const dirs: Array<'left' | 'right'> = ['left', 'right'];
+          return { lookDirection: dirs[Math.floor(Math.random() * dirs.length)] };
+        }
+        case 'stretching':
+          return { stretch: true };
+        default:
+          return null;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Working state: stationary with a subtle head-bob hint.
+   */
+  private updateWorking(
+    state: AgentMovementState,
+    currentX: number,
+    currentY: number,
+    delta: number,
+  ): { x: number; y: number; moving: boolean; direction: string; animHint?: AnimationHint } {
+    state.idleSubTimer += delta;
+    // Emit a continuous sine phase for head-bob (OfficeScene converts to scaleX tween)
+    const phase = (state.idleSubTimer % 2000) / 2000;
+    return {
+      x: currentX,
+      y: currentY,
+      moving: false,
+      direction: 'down',
+      animHint: { headBobPhase: phase },
+    };
   }
 
   private updateWaitingApproval(
@@ -169,9 +257,19 @@ export class AgentBehavior {
     currentY: number,
     delta: number,
     reviewStation: ReviewStationPos | null,
-  ): { x: number; y: number; moving: boolean; direction: string } {
+  ): { x: number; y: number; moving: boolean; direction: string; animHint?: AnimationHint } {
     if (state.atReviewStation || !reviewStation) {
-      return { x: currentX, y: currentY, moving: false, direction: 'down' };
+      // Gentle side-to-side sway while waiting
+      state.idleSubTimer += delta;
+      const swayPhase = (state.idleSubTimer % 3000) / 3000;
+      const swayOffset = Math.sin(swayPhase * Math.PI * 2) * 1;
+      return {
+        x: currentX,
+        y: currentY,
+        moving: false,
+        direction: 'down',
+        animHint: { swayOffset },
+      };
     }
 
     state.targetX = reviewStation.x;

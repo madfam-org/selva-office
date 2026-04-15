@@ -9,6 +9,7 @@ import { TouchActionButtons } from '../TouchActionButtons';
 import { InteractableManager } from '../InteractableManager';
 import { ScriptBridge } from '../scripting/ScriptBridge';
 import { AgentBehavior } from '../AgentBehavior';
+import type { AnimationHint } from '../AgentBehavior';
 import { CompanionBehavior } from '../CompanionBehavior';
 import { Pathfinder } from '../Pathfinder';
 import {
@@ -484,6 +485,7 @@ export class OfficeScene extends Phaser.Scene {
     // Create animated furniture overlays (monitor flicker, plant sway)
     if (data.furnitureLayer) {
       this.createAnimatedProps(data.furnitureLayer);
+      this.setupTileAnimations(data.furnitureLayer);
     }
 
     // Load interactables from Tiled object layer (manager created after tactician)
@@ -736,6 +738,9 @@ export class OfficeScene extends Phaser.Scene {
           agentSprite.nameLabel.setPosition(result.x, result.y + 20);
           agentSprite.nameBackground.setPosition(result.x, result.y + 23);
           agentSprite.alertIcon.setPosition(result.x + 12, result.y - 20);
+          if (result.animHint) {
+            this.applyAnimationHint(agentSprite, result.animHint);
+          }
         }
       });
       return;
@@ -931,6 +936,11 @@ export class OfficeScene extends Phaser.Scene {
         agentSprite.nameLabel.setPosition(result.x, result.y + 20);
         agentSprite.nameBackground.setPosition(result.x, result.y + 23);
         agentSprite.alertIcon.setPosition(result.x + 12, result.y - 20);
+
+        // Apply enhanced animation hints from behavior system
+        if (result.animHint) {
+          this.applyAnimationHint(agentSprite, result.animHint);
+        }
       }
     });
 
@@ -1024,6 +1034,11 @@ export class OfficeScene extends Phaser.Scene {
       this.scriptBridge.destroy();
       this.scriptBridge = null;
     }
+    if (this.tileAnimTimer) {
+      this.tileAnimTimer.destroy();
+      this.tileAnimTimer = null;
+    }
+    this.animatedTileOverlays = [];
     if (this.virtualJoystick) {
       this.virtualJoystick.destroy();
       this.virtualJoystick = null;
@@ -1835,6 +1850,59 @@ export class OfficeScene extends Phaser.Scene {
       case 'paused': return { color: 0x8b7355, alpha: 0.15 };           // Wood tone
       case 'error': return { color: 0xb91c1c, alpha: 0.3 };             // Deep red
       default: return { color: 0x4a9e6e, alpha: 0.15 };                 // Soft moss green (idle)
+    }
+  }
+
+  /**
+   * Apply animation hints from the AgentBehavior system to agent sprites.
+   * Triggers one-shot tweens for look/stretch/sway and continuous effects
+   * for head-bob and error dimming.
+   */
+  private applyAnimationHint(agentSprite: AgentSprite, hint: AnimationHint): void {
+    const sprite = agentSprite.sprite;
+
+    // Idle looking: briefly face a direction then return
+    if (hint.lookDirection) {
+      const textureKey = `agent-${(agentSprite as any).agentRole || 'coder'}`;
+      const lookAnim = `${textureKey}-idle`;
+      if (this.anims.exists(lookAnim)) {
+        sprite.setFlipX(hint.lookDirection === 'left');
+        this.time.delayedCall(1500, () => {
+          sprite.setFlipX(false);
+        });
+      }
+    }
+
+    // Idle stretching: quick scaleY tween
+    if (hint.stretch) {
+      this.tweens.add({
+        targets: sprite,
+        scaleY: 1.06,
+        duration: 600,
+        yoyo: true,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // Working head-bob: subtle scaleX oscillation
+    if (hint.headBobPhase !== undefined) {
+      const bobScale = 1.0 + Math.sin(hint.headBobPhase * Math.PI * 2) * 0.015;
+      sprite.setScale(bobScale, sprite.scaleY);
+    }
+
+    // Waiting-approval sway: offset sprite X slightly
+    if (hint.swayOffset !== undefined) {
+      sprite.x += hint.swayOffset;
+    }
+
+    // Error dimming: reduce alpha and apply red tint
+    if (hint.errorDim) {
+      sprite.setAlpha(0.7);
+      sprite.setTint(0xffaaaa);
+    } else if (sprite.alpha < 1 && agentSprite.agentStatus !== 'error') {
+      // Restore when no longer in error state
+      sprite.setAlpha(1);
+      sprite.clearTint();
     }
   }
 

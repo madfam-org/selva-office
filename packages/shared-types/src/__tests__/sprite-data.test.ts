@@ -263,7 +263,7 @@ describe('tile templates', () => {
 
   it('each tile is a 32x32 grid', () => {
     for (const name of tileNames) {
-      const grid = (tileTemplates as Record<string, (string | null)[][]>)[name];
+      const grid = (tileTemplates as Record<string, unknown>)[name] as (string | null)[][];
       expect(grid).toHaveLength(32);
       for (const row of grid) {
         expect(row).toHaveLength(32);
