@@ -11,6 +11,10 @@ interface CompanionState {
   targetX: number;
   targetY: number;
   direction: string;
+  /** Accumulated idle time for bob animation (ms) */
+  idleTime: number;
+  /** Whether the companion is currently bobbing (owner stationary) */
+  isBobbing: boolean;
 }
 
 export class CompanionBehavior {
@@ -23,6 +27,8 @@ export class CompanionBehavior {
       targetX: ownerX,
       targetY: ownerY + FOLLOW_DISTANCE,
       direction: 'down',
+      idleTime: 0,
+      isBobbing: false,
     });
   }
 
@@ -31,7 +37,7 @@ export class CompanionBehavior {
     ownerX: number,
     ownerY: number,
     delta: number,
-  ): { x: number; y: number; direction: string; moving: boolean } | null {
+  ): { x: number; y: number; direction: string; moving: boolean; bobOffset: number } | null {
     const state = this.companions.get(sessionId);
     if (!state) return null;
 
@@ -54,10 +60,19 @@ export class CompanionBehavior {
       } else {
         state.direction = dy > 0 ? 'down' : 'up';
       }
-      return { x: state.x, y: state.y, direction: state.direction, moving: true };
+      // Reset idle bob when moving
+      state.idleTime = 0;
+      state.isBobbing = false;
+      return { x: state.x, y: state.y, direction: state.direction, moving: true, bobOffset: 0 };
     }
 
-    return { x: state.x, y: state.y, direction: state.direction, moving: false };
+    // Stationary: gentle bob animation
+    state.idleTime += delta;
+    state.isBobbing = true;
+    const bobPhase = (state.idleTime % 2000) / 2000;
+    const bobOffset = Math.sin(bobPhase * Math.PI * 2) * -1; // -1px to +1px vertical
+
+    return { x: state.x, y: state.y + bobOffset, direction: state.direction, moving: false, bobOffset };
   }
 
   removeCompanion(sessionId: string): void {

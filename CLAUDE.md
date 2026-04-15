@@ -120,6 +120,21 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Solarpunk Visual Overhaul Phase 3-4 (v1.2.0)
+
+- **Solarpunk Companions**: 5 companion sprites redrawn — cat with flower
+  collar, dog with leaf bandana, bio-robot with moss patches, plant dragon
+  with leaf wings, tropical parrot with solar feathers.
+- **Solarpunk Emotes**: 9 emotes redrawn — leaf wave, sun thumbsup, flower
+  heart, sunshine laugh, sprout think, leaf clap, solar fire, bioluminescent
+  sparkle, herbal tea cup.
+- **Animated Tiles**: 3 animated tile types (water shimmer, candle flame,
+  grow-light pulse) with 4-frame cycles at 200ms intervals. Tile animation
+  engine in OfficeScene with timer-based frame cycling.
+- **Agent Idle Animations**: 3 idle sub-states (breathing, look-around,
+  stretch) cycling every 5s. Working head-bob, waiting-approval sway,
+  error alpha reduction + red tint. Companion vertical bob when stationary.
+
 ## Solarpunk Visual Overhaul Phase 2 (v1.1.0)
 
 - **Living Office Map**: Complete map generator rewrite. 4 department

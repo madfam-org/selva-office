@@ -9,6 +9,7 @@ import { TouchActionButtons } from '../TouchActionButtons';
 import { InteractableManager } from '../InteractableManager';
 import { ScriptBridge } from '../scripting/ScriptBridge';
 import { AgentBehavior } from '../AgentBehavior';
+import type { AnimationHint } from '../AgentBehavior';
 import { CompanionBehavior } from '../CompanionBehavior';
 import { Pathfinder } from '../Pathfinder';
 import {
@@ -156,6 +157,16 @@ export class OfficeScene extends Phaser.Scene {
   private explorerPrevZoom: number = 1;
   private companionBehavior: CompanionBehavior = new CompanionBehavior();
   private companionSprites: Map<string, Phaser.GameObjects.Rectangle> = new Map();
+
+  // === Animated Tile System ===
+  private animatedTileOverlays: Array<{
+    graphics: Phaser.GameObjects.Rectangle[];
+    frames: Array<{ color: number; alpha: number }[]>;
+    frameDuration: number;
+    currentFrame: number;
+    elapsed: number;
+  }> = [];
+  private tileAnimTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor() {
     super({ key: 'OfficeScene' });
@@ -474,6 +485,7 @@ export class OfficeScene extends Phaser.Scene {
     // Create animated furniture overlays (monitor flicker, plant sway)
     if (data.furnitureLayer) {
       this.createAnimatedProps(data.furnitureLayer);
+      this.setupTileAnimations(data.furnitureLayer);
     }
 
     // Load interactables from Tiled object layer (manager created after tactician)
@@ -558,6 +570,109 @@ export class OfficeScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Set up animated tile overlays on the decoration/furniture layer.
+   * Scans for specific tile IDs and creates cycling color overlays
+   * that simulate water shimmer, candle flicker, and grow-light pulses.
+   */
+  private setupTileAnimations(furnitureLayer: Phaser.Tilemaps.TilemapLayer): void {
+    // Animated tile definitions: map furniture tile IDs to overlay behavior.
+    // Each entry creates a small colored rectangle overlay that cycles alpha/color.
+    const WATER_COOLER_ID = 39; // coffee_machine doubles as water feature
+    const CANDLE_ID = 35;       // plant_small position (candle in some maps)
+    const GROW_LIGHT_ID = 41;   // server_rack position (grow light in some maps)
+
+    const animDefs: Array<{
+      tileId: number;
+      colors: number[];
+      alphas: number[];
+      duration: number;
+      offsetY: number;
+      width: number;
+      height: number;
+    }> = [
+      {
+        tileId: WATER_COOLER_ID,
+        colors: [0x67e8f9, 0xa8dadc, 0x67e8f9, 0xa8dadc],
+        alphas: [0.1, 0.18, 0.14, 0.08],
+        duration: 250,
+        offsetY: 2,
+        width: 10,
+        height: 6,
+      },
+      {
+        tileId: CANDLE_ID,
+        colors: [0xf6d55c, 0xf59e0b, 0xf6d55c, 0xd4a43a],
+        alphas: [0.2, 0.3, 0.25, 0.15],
+        duration: 200,
+        offsetY: -8,
+        width: 6,
+        height: 6,
+      },
+      {
+        tileId: GROW_LIGHT_ID,
+        colors: [0x9b59b6, 0xbb88ff, 0xd4b0ff, 0xbb88ff],
+        alphas: [0.1, 0.2, 0.3, 0.2],
+        duration: 400,
+        offsetY: -6,
+        width: 10,
+        height: 4,
+      },
+    ];
+
+    furnitureLayer.forEachTile((tile) => {
+      if (!tile || tile.index <= 0) return;
+
+      for (const def of animDefs) {
+        if (tile.index !== def.tileId) continue;
+
+        const worldX = tile.pixelX + 16;
+        const worldY = tile.pixelY + 16 + def.offsetY;
+
+        // Create a single rectangle overlay that we'll tween through color/alpha
+        const overlay = this.add.rectangle(
+          worldX, worldY, def.width, def.height,
+          def.colors[0], def.alphas[0],
+        ).setDepth(3);
+
+        // Store frames as color+alpha pairs for cycling
+        const frames = def.colors.map((color, i) => ({
+          color,
+          alpha: def.alphas[i],
+        }));
+
+        this.animatedTileOverlays.push({
+          graphics: [overlay],
+          frames: [frames],
+          frameDuration: def.duration,
+          currentFrame: 0,
+          elapsed: 0,
+        });
+      }
+    });
+
+    // Single timer drives all animated tile overlays
+    if (this.animatedTileOverlays.length > 0) {
+      this.tileAnimTimer = this.time.addEvent({
+        delay: 50, // tick at 20Hz, frame switching handled by elapsed time
+        callback: () => {
+          for (const anim of this.animatedTileOverlays) {
+            anim.elapsed += 50;
+            if (anim.elapsed >= anim.frameDuration) {
+              anim.elapsed = 0;
+              anim.currentFrame = (anim.currentFrame + 1) % anim.frames[0].length;
+              for (let i = 0; i < anim.graphics.length; i++) {
+                const frame = anim.frames[i][anim.currentFrame];
+                anim.graphics[i].setFillStyle(frame.color, frame.alpha);
+              }
+            }
+          }
+        },
+        loop: true,
+      });
+    }
+  }
+
   /** Tilemap reference for deferred interactable loading */
   private _pendingTilemap: Phaser.Tilemaps.Tilemap | null = null;
 
@@ -623,6 +738,9 @@ export class OfficeScene extends Phaser.Scene {
           agentSprite.nameLabel.setPosition(result.x, result.y + 20);
           agentSprite.nameBackground.setPosition(result.x, result.y + 23);
           agentSprite.alertIcon.setPosition(result.x + 12, result.y - 20);
+          if (result.animHint) {
+            this.applyAnimationHint(agentSprite, result.animHint);
+          }
         }
       });
       return;
@@ -818,6 +936,11 @@ export class OfficeScene extends Phaser.Scene {
         agentSprite.nameLabel.setPosition(result.x, result.y + 20);
         agentSprite.nameBackground.setPosition(result.x, result.y + 23);
         agentSprite.alertIcon.setPosition(result.x + 12, result.y - 20);
+
+        // Apply enhanced animation hints from behavior system
+        if (result.animHint) {
+          this.applyAnimationHint(agentSprite, result.animHint);
+        }
       }
     });
 
@@ -911,6 +1034,11 @@ export class OfficeScene extends Phaser.Scene {
       this.scriptBridge.destroy();
       this.scriptBridge = null;
     }
+    if (this.tileAnimTimer) {
+      this.tileAnimTimer.destroy();
+      this.tileAnimTimer = null;
+    }
+    this.animatedTileOverlays = [];
     if (this.virtualJoystick) {
       this.virtualJoystick.destroy();
       this.virtualJoystick = null;
@@ -1722,6 +1850,59 @@ export class OfficeScene extends Phaser.Scene {
       case 'paused': return { color: 0x8b7355, alpha: 0.15 };           // Wood tone
       case 'error': return { color: 0xb91c1c, alpha: 0.3 };             // Deep red
       default: return { color: 0x4a9e6e, alpha: 0.15 };                 // Soft moss green (idle)
+    }
+  }
+
+  /**
+   * Apply animation hints from the AgentBehavior system to agent sprites.
+   * Triggers one-shot tweens for look/stretch/sway and continuous effects
+   * for head-bob and error dimming.
+   */
+  private applyAnimationHint(agentSprite: AgentSprite, hint: AnimationHint): void {
+    const sprite = agentSprite.sprite;
+
+    // Idle looking: briefly face a direction then return
+    if (hint.lookDirection) {
+      const textureKey = `agent-${(agentSprite as any).agentRole || 'coder'}`;
+      const lookAnim = `${textureKey}-idle`;
+      if (this.anims.exists(lookAnim)) {
+        sprite.setFlipX(hint.lookDirection === 'left');
+        this.time.delayedCall(1500, () => {
+          sprite.setFlipX(false);
+        });
+      }
+    }
+
+    // Idle stretching: quick scaleY tween
+    if (hint.stretch) {
+      this.tweens.add({
+        targets: sprite,
+        scaleY: 1.06,
+        duration: 600,
+        yoyo: true,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // Working head-bob: subtle scaleX oscillation
+    if (hint.headBobPhase !== undefined) {
+      const bobScale = 1.0 + Math.sin(hint.headBobPhase * Math.PI * 2) * 0.015;
+      sprite.setScale(bobScale, sprite.scaleY);
+    }
+
+    // Waiting-approval sway: offset sprite X slightly
+    if (hint.swayOffset !== undefined) {
+      sprite.x += hint.swayOffset;
+    }
+
+    // Error dimming: reduce alpha and apply red tint
+    if (hint.errorDim) {
+      sprite.setAlpha(0.7);
+      sprite.setTint(0xffaaaa);
+    } else if (sprite.alpha < 1 && agentSprite.agentStatus !== 'error') {
+      // Restore when no longer in error state
+      sprite.setAlpha(1);
+      sprite.clearTint();
     }
   }
 
