@@ -452,3 +452,59 @@ class Schedule(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Multi-tenant enterprise provisioning (migration 0015)
+# ---------------------------------------------------------------------------
+
+
+class TenantConfig(Base):
+    """Per-organization configuration for multi-tenant operations.
+
+    Stores business identity (RFC, razon social), localization preferences,
+    ecosystem integration references (Karafiel, Dhanam, Phyne), feature
+    flags, and resource limits.
+    """
+
+    __tablename__ = "tenant_configs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    org_id: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
+
+    # Business identity
+    rfc: Mapped[str | None] = mapped_column(String(13), nullable=True)
+    razon_social: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    regimen_fiscal: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+    # Localization
+    locale: Mapped[str] = mapped_column(String(10), nullable=False, default="es-MX")
+    timezone: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="America/Mexico_City"
+    )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="MXN")
+
+    # Ecosystem integration references
+    karafiel_org_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dhanam_space_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phyne_tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Feature flags
+    cfdi_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    intelligence_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+
+    # Resource limits
+    max_agents: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    max_daily_tasks: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )

@@ -45,6 +45,7 @@ from .routers import (
     skills,
     skills_hub,
     swarms,
+    tenants,
     trajectories,
     voice,
     workflows,
@@ -163,6 +164,7 @@ def create_app() -> FastAPI:
     app.include_router(events.router, prefix="/api/v1/events")
     app.include_router(metrics.router, prefix="/api/v1/metrics")
     app.include_router(admin.router, prefix="/api/v1/admin")
+    app.include_router(tenants.router, prefix="/api/v1/tenants")
     app.include_router(voice.router, prefix="/api/v1/voice")
     app.include_router(schedules.router, prefix="/api/v1")
     # Gap 2: Dangerous command approval

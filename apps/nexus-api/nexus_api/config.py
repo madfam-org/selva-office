@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     # -- Webhooks -------------------------------------------------------------
     autoswarm_webhook_secret: str = ""
 
+    # -- Karafiel (RFC / SAT validation) ----------------------------------------
+    karafiel_api_url: str = ""
+
     # -- Phyne-CRM ------------------------------------------------------------
     phyne_crm_url: str | None = None
 
