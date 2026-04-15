@@ -1,1 +1,1 @@
-"""CRM and external service adapters for the inference package."""
+"""CRM, compliance, and external service adapters for the inference package."""
