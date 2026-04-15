@@ -223,7 +223,6 @@ def main():
     args = parser.parse_args()
 
     # Override module-level config from CLI args
-    __builtins__  # just to avoid linter
     globals()["API_URL"] = args.api_url
     globals()["TOKEN"] = args.token
 

@@ -174,6 +174,7 @@ export const OpsFeed: FC<OpsFeedProps> = ({ open, onClose }) => {
             <input
               type="text"
               placeholder="Search events..."
+              aria-label="Search events"
               value={filters.searchQuery}
               onChange={(e) => setFilters({ searchQuery: e.target.value })}
               className="w-full bg-slate-800 px-2 py-1 font-mono text-[8px] text-slate-300 placeholder-slate-600 outline-none focus:ring-1 focus:ring-emerald-500"

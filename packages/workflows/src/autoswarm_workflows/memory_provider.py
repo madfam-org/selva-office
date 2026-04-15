@@ -51,7 +51,7 @@ class SQLiteMemoryProvider(MemoryProvider):
 
     def __init__(self) -> None:
         try:
-            from autoswarm_skills import get_skill_registry  # noqa: not used
+            from autoswarm_skills import get_skill_registry  # noqa: F401
             from autoswarm_workflows.memory import EdgeMemoryDB  # type: ignore
             self._db = EdgeMemoryDB()
         except ImportError:
