@@ -37,6 +37,7 @@ from .routers import (
     gateway,
     health,
     intelligence,
+    invoices,
     maps,
     marketplace,
     metrics,
@@ -157,6 +158,7 @@ def create_app() -> FastAPI:
     app.include_router(maps.router, prefix="/api/v1/maps")
     app.include_router(calendar.router, prefix="/api/v1/calendar")
     app.include_router(intelligence.router, prefix="/api/v1/intelligence")
+    app.include_router(invoices.router, prefix="/api/v1/invoices")
     app.include_router(chat.router, prefix="/api/v1/chat")
     app.include_router(events.router, prefix="/api/v1/events")
     app.include_router(metrics.router, prefix="/api/v1/metrics")
