@@ -23,6 +23,8 @@ interface ProximityVideoOptions {
   playerStatus?: string;
 }
 
+export type ScreenShareQuality = 'auto' | '720p' | '1080p';
+
 export interface ProximityVideoState {
   peers: ProximityPeer[];
   localStream: MediaStream | null;
@@ -30,6 +32,8 @@ export interface ProximityVideoState {
   videoEnabled: boolean;
   screenSharing: boolean;
   noiseSuppression: boolean;
+  screenShareQuality: ScreenShareQuality;
+  setScreenShareQuality: (quality: ScreenShareQuality) => void;
   toggleAudio: () => void;
   toggleVideo: () => void;
   toggleScreenShare: () => void;
@@ -80,9 +84,11 @@ export function useProximityVideo({
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
   const [noiseSuppression, setNoiseSuppression] = useState(false);
+  const [screenShareQuality, setScreenShareQuality] = useState<ScreenShareQuality>('auto');
 
   const connectionsRef = useRef<Map<string, PeerConnection>>(new Map());
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenAudioCtxRef = useRef<AudioContext | null>(null);
   const noiseFilterRef = useRef<{ outputStream: MediaStream; context: AudioContext; destroy: () => void } | null>(null);
   const rawAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const errorTrackerRef = useRef<Map<string, { count: number; lastError: number; backoffUntil: number }>>(new Map());
@@ -298,6 +304,10 @@ export function useProximityVideo({
       errorTrackerRef.current.clear();
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
+      if (screenAudioCtxRef.current) {
+        screenAudioCtxRef.current.close().catch(() => {});
+        screenAudioCtxRef.current = null;
+      }
       if (noiseFilterRef.current) {
         noiseFilterRef.current.destroy();
         noiseFilterRef.current = null;
@@ -333,20 +343,52 @@ export function useProximityVideo({
     }
   }, []);
 
+  const stopScreenAudioCtx = useCallback(() => {
+    if (screenAudioCtxRef.current) {
+      screenAudioCtxRef.current.close().catch(() => {});
+      screenAudioCtxRef.current = null;
+    }
+  }, []);
+
+  const restoreMicAudioTrack = useCallback(() => {
+    const micTrack = localStreamRef.current?.getAudioTracks()[0];
+    if (micTrack) {
+      connectionsRef.current.forEach((conn) => {
+        const sender = (conn.peer as unknown as { _pc?: RTCPeerConnection })._pc
+          ?.getSenders?.()
+          ?.find((s: RTCRtpSender) => s.track?.kind === 'audio');
+        if (sender) {
+          sender.replaceTrack(micTrack).catch(() => {});
+        }
+      });
+    }
+  }, []);
+
   const toggleScreenShare = useCallback(async () => {
     if (screenSharing) {
-      // Stop screen share -- restore camera track
+      // Stop screen share -- restore camera track and mic audio
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
+      stopScreenAudioCtx();
       setScreenSharing(false);
       restoreCameraTrack();
+      restoreMicAudioTrack();
       return;
     }
 
     try {
+      // Build video constraints based on quality preset
+      // 'cursor' is a valid getDisplayMedia constraint but not in MediaTrackConstraints typedef
+      let videoConstraints: Record<string, unknown> = { cursor: 'always' };
+      if (screenShareQuality === '720p') {
+        videoConstraints = { cursor: 'always', width: { ideal: 1280 }, height: { ideal: 720 } };
+      } else if (screenShareQuality === '1080p') {
+        videoConstraints = { cursor: 'always', width: { ideal: 1920 }, height: { ideal: 1080 } };
+      }
+
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
+        video: videoConstraints as MediaTrackConstraints,
+        audio: true,
       });
       screenStreamRef.current = screenStream;
       setScreenSharing(true);
@@ -355,9 +397,12 @@ export function useProximityVideo({
 
       // Auto-stop when user ends share via browser UI
       screenTrack.onended = () => {
+        screenStreamRef.current?.getTracks().forEach((t) => t.stop());
         screenStreamRef.current = null;
+        stopScreenAudioCtx();
         setScreenSharing(false);
         restoreCameraTrack();
+        restoreMicAudioTrack();
       };
 
       // Replace video track on all existing peers
@@ -369,10 +414,47 @@ export function useProximityVideo({
           sender.replaceTrack(screenTrack).catch(() => {});
         }
       });
+
+      // Mix system audio with mic audio if the browser provided an audio track
+      const screenAudioTrack = screenStream.getAudioTracks()[0];
+      if (screenAudioTrack) {
+        const micTrack = localStreamRef.current?.getAudioTracks()[0];
+        if (micTrack) {
+          // Mix both audio sources into a single track via AudioContext
+          const ctx = new AudioContext();
+          screenAudioCtxRef.current = ctx;
+          const dest = ctx.createMediaStreamDestination();
+          const screenSource = ctx.createMediaStreamSource(new MediaStream([screenAudioTrack]));
+          const micSource = ctx.createMediaStreamSource(new MediaStream([micTrack]));
+          screenSource.connect(dest);
+          micSource.connect(dest);
+          const mixedTrack = dest.stream.getAudioTracks()[0];
+
+          // Replace audio track on all peers with the mixed track
+          connectionsRef.current.forEach((conn) => {
+            const sender = (conn.peer as unknown as { _pc?: RTCPeerConnection })._pc
+              ?.getSenders?.()
+              ?.find((s: RTCRtpSender) => s.track?.kind === 'audio');
+            if (sender) {
+              sender.replaceTrack(mixedTrack).catch(() => {});
+            }
+          });
+        } else {
+          // No mic -- send system audio only
+          connectionsRef.current.forEach((conn) => {
+            const sender = (conn.peer as unknown as { _pc?: RTCPeerConnection })._pc
+              ?.getSenders?.()
+              ?.find((s: RTCRtpSender) => s.track?.kind === 'audio');
+            if (sender) {
+              sender.replaceTrack(screenAudioTrack).catch(() => {});
+            }
+          });
+        }
+      }
     } catch (err) {
       logger.warn('[useProximityVideo] getDisplayMedia failed:', err);
     }
-  }, [screenSharing, restoreCameraTrack]);
+  }, [screenSharing, screenShareQuality, restoreCameraTrack, restoreMicAudioTrack, stopScreenAudioCtx]);
 
   const toggleNoiseSuppression = useCallback(async () => {
     const stream = localStreamRef.current;
@@ -428,6 +510,8 @@ export function useProximityVideo({
     videoEnabled,
     screenSharing,
     noiseSuppression,
+    screenShareQuality,
+    setScreenShareQuality,
     toggleAudio,
     toggleVideo,
     toggleScreenShare,
