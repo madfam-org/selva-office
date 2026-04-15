@@ -14,11 +14,11 @@ export function Footer() {
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-6 sm:flex-row">
         {/* Left: branding */}
         <div className="text-center sm:text-left">
-          <span className="pixel-text text-[8px] text-slate-400">
-            AutoSwarm Office
+          <span className="pixel-text text-[8px] text-emerald-400/60">
+            Selva
           </span>
           <p className="mt-1 text-xs text-slate-600">
-            by MADFAM &middot; {YEAR}
+            by Innovaciones MADFAM &middot; {YEAR}
           </p>
         </div>
 

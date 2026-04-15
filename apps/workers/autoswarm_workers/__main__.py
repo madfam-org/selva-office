@@ -43,6 +43,7 @@ from .graphs.meeting import build_meeting_graph
 from .graphs.project import build_project_graph
 from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.research import build_research_graph
+from .graphs.sales import build_sales_graph
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
 
@@ -64,6 +65,7 @@ GRAPH_BUILDERS = {
     "puppeteer": build_puppeteer_graph,
     "meeting": build_meeting_graph,
     "project": build_project_graph,
+    "sales": build_sales_graph,
     # "custom" is handled dynamically via WorkflowCompiler — see process_task()
 }
 
@@ -352,6 +354,15 @@ async def process_task(task_data: dict) -> None:
         initial_state["cfdi_xml"] = None
         initial_state["cfdi_uuid"] = None
         initial_state["stamp_result"] = None
+        initial_state["customer_phone"] = payload.get("customer_phone")
+        initial_state["customer_email"] = payload.get("customer_email")
+    elif graph_type == "sales":
+        payload = task_data.get("payload", {})
+        initial_state["lead_id"] = payload.get("lead_id", "")
+        initial_state["lead_data"] = None
+        initial_state["cotizacion"] = None
+        initial_state["pedido"] = None
+        initial_state["billing_task_id"] = None
         initial_state["customer_phone"] = payload.get("customer_phone")
         initial_state["customer_email"] = payload.get("customer_email")
 

@@ -1,54 +1,61 @@
 const STEPS = [
   {
     number: '1',
-    title: 'Dispatch',
+    title: 'Walk In',
     description:
-      'Describe what you need. Agents auto-select the best team member and begin work.',
+      'Open selva.town. You land in a solarpunk pixel-art office. Your 10 agents are already at their desks, waiting for instructions.',
+    color: 'emerald',
   },
   {
     number: '2',
-    title: 'Collaborate',
+    title: 'Dispatch',
     description:
-      'Watch agents plan, implement, review, and iterate in the virtual office.',
+      'Describe what you need in plain language. Selva picks the best agent, selects the right workflow graph, and starts executing.',
+    color: 'amber',
   },
   {
     number: '3',
-    title: 'Approve',
+    title: 'Watch & Approve',
     description:
-      'Review results, approve deployments, and watch your org grow autonomously.',
+      'See your agents move between departments, write code, create PRs, send emails. Approve each action as it comes. Full transparency.',
+    color: 'cyan',
+  },
+  {
+    number: '4',
+    title: 'Ship',
+    description:
+      'Code gets pushed, PRs get merged, invoices get filed, emails get sent. Your AI workforce delivered \u2014 and you approved every step.',
+    color: 'purple',
   },
 ];
 
 export function HowItWorks() {
+  const COLORS: Record<string, string> = {
+    emerald: 'bg-emerald-600/20 text-emerald-400',
+    amber: 'bg-amber-600/20 text-amber-400',
+    cyan: 'bg-cyan-600/20 text-cyan-400',
+    purple: 'bg-purple-600/20 text-purple-400',
+  };
+
   return (
-    <section className="mx-auto max-w-4xl px-4 py-24">
-      <h2 className="pixel-text mb-14 text-center text-lg text-indigo-400">
-        How It Works
+    <section className="mx-auto max-w-5xl px-4 py-24">
+      <h2 className="pixel-text mb-4 text-center text-lg text-emerald-400">
+        How Selva Works
       </h2>
+      <p className="mx-auto mb-14 max-w-lg text-center text-sm text-slate-500">
+        From idea to shipped in four steps. You stay in control the entire time.
+      </p>
 
-      <div className="flex flex-col items-center gap-10 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-        {STEPS.map((step, i) => (
-          <div key={step.number} className="flex flex-1 flex-col items-center text-center">
-            {/* Number badge */}
-            <div className="pixel-border-accent mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600/20">
-              <span className="pixel-text text-sm text-indigo-400">{step.number}</span>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {STEPS.map((step) => (
+          <div key={step.number} className="flex flex-col items-center text-center">
+            <div className={`pixel-border-accent mb-5 flex h-14 w-14 items-center justify-center rounded-full ${COLORS[step.color]}`}>
+              <span className="pixel-text text-sm">{step.number}</span>
             </div>
-
             <h3 className="pixel-text mb-3 text-xs text-white">{step.title}</h3>
-
             <p className="max-w-xs text-sm leading-relaxed text-slate-400">
               {step.description}
             </p>
-
-            {/* Arrow connector (desktop only) */}
-            {i < STEPS.length - 1 && (
-              <span
-                className="mt-6 hidden text-2xl text-slate-600 sm:block"
-                aria-hidden="true"
-              >
-                &rarr;
-              </span>
-            )}
           </div>
         ))}
       </div>
