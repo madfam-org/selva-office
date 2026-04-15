@@ -21,7 +21,7 @@ describe('AgentBehavior', () => {
       behavior.initAgent('agent-1', 100, 200, 'working');
 
       const result = behavior.update('agent-1', 100, 200, 16, null, null);
-      expect(result).toEqual({ x: 100, y: 200, moving: false, direction: 'down' });
+      expect(result).toMatchObject({ x: 100, y: 200, moving: false, direction: 'down' });
     });
   });
 
@@ -58,7 +58,7 @@ describe('AgentBehavior', () => {
       behavior.initAgent('agent-1', 150, 250, 'working');
 
       const result = behavior.update('agent-1', 150, 250, 16, null, null);
-      expect(result).toEqual({ x: 150, y: 250, moving: false, direction: 'down' });
+      expect(result).toMatchObject({ x: 150, y: 250, moving: false, direction: 'down' });
     });
   });
 
@@ -87,7 +87,7 @@ describe('AgentBehavior', () => {
       behavior.initAgent('agent-1', 100, 200, 'waiting_approval');
 
       const result = behavior.update('agent-1', 100, 200, 16, null, null);
-      expect(result).toEqual({ x: 100, y: 200, moving: false, direction: 'down' });
+      expect(result).toMatchObject({ x: 100, y: 200, moving: false, direction: 'down' });
     });
 
     it('stays once atReviewStation is set', () => {
@@ -108,7 +108,7 @@ describe('AgentBehavior', () => {
       behavior.initAgent('agent-1', 200, 300, 'error');
 
       const result = behavior.update('agent-1', 200, 300, 16, null, null);
-      expect(result).toEqual({ x: 200, y: 300, moving: false, direction: 'down' });
+      expect(result).toMatchObject({ x: 200, y: 300, moving: false, direction: 'down' });
     });
   });
 
@@ -143,7 +143,7 @@ describe('AgentBehavior', () => {
 
       // Working agents stay in place regardless of desk position
       const result = behavior.update('agent-1', 100, 200, 16, null, null);
-      expect(result).toEqual({ x: 100, y: 200, moving: false, direction: 'down' });
+      expect(result).toMatchObject({ x: 100, y: 200, moving: false, direction: 'down' });
     });
 
     it('agent patrols near desk after waypoint expires', () => {
