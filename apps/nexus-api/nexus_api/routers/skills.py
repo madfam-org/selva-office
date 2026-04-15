@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -116,3 +118,28 @@ async def get_skill_reference(skill_name: str, ref_path: str) -> dict:
             detail=f"Reference '{ref_path}' not found in skill '{skill_name}'"
         )
     return {"skill": skill_name, "ref_path": ref_path, "content": content}
+
+
+# ---------------------------------------------------------------------------
+# Refiner metrics endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/refiner/metrics")
+async def refiner_metrics(
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return accumulated metrics from the most recent SkillRefiner run.
+
+    Useful for monitoring the health of the skill self-improvement loop.
+    """
+    from autoswarm_skills.refiner import SkillRefiner
+
+    refiner = SkillRefiner()
+    metrics = refiner.get_metrics()
+    return {
+        "skills_checked": metrics.skills_checked,
+        "skills_refined": metrics.skills_refined,
+        "skills_failed": metrics.skills_failed,
+        "total_iterations": metrics.total_iterations,
+        "avg_refinement_ms": metrics.avg_refinement_ms,
+    }

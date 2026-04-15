@@ -8,6 +8,8 @@ Resolution order per skill:
 1. Load the .py file and attempt to call SKILL_ENTRYPOINT() in a subprocess sandbox.
 2. If execution fails OR last_validated is > SKILL_REFINE_INTERVAL_DAYS old:
    → Send the broken skill + failure traceback to selva_inference.
+   → Validate the refined output in the sandbox. If it fails, retry with error
+     context up to max_iterations times.
    → Overwrite the .py file with the refined output.
    → Update SKILL_METADATA["last_validated"].
 3. If execution passes and metadata is fresh → skip.
@@ -18,10 +20,31 @@ import logging
 import os
 import subprocess
 import sys
+import time
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RefinerMetrics:
+    """Accumulated metrics from a refine_all() run."""
+
+    skills_checked: int = 0
+    skills_refined: int = 0
+    skills_failed: int = 0
+    total_iterations: int = 0
+    avg_refinement_ms: float = 0.0
+    _refinement_durations: list[float] = field(default_factory=list, repr=False)
+
+    def record_refinement(self, duration_ms: float) -> None:
+        """Record a single refinement duration and update the running average."""
+        self._refinement_durations.append(duration_ms)
+        self.avg_refinement_ms = (
+            sum(self._refinement_durations) / len(self._refinement_durations)
+        )
 
 REFINE_PROMPT = """\
 You are an expert Python engineer. A Playbook Skill script has either failed execution \
@@ -56,11 +79,14 @@ class SkillRefiner:
         self,
         skills_dir: str | None = None,
         refine_interval_days: int = 7,
+        max_iterations: int = 3,
     ) -> None:
         self.skills_dir = Path(
             skills_dir or os.environ.get("AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills")
         )
         self.refine_interval_days = refine_interval_days
+        self.max_iterations = max(1, max_iterations)
+        self._metrics: RefinerMetrics = RefinerMetrics()
 
     # ------------------------------------------------------------------
     # Public API
@@ -69,8 +95,9 @@ class SkillRefiner:
     def refine_all(self) -> dict[str, str]:
         """
         Iterate every .py skill file and refine if needed.
-        Returns a summary dict: {skill_name: "skipped"|"refined"|"error"}.
+        Returns a summary dict: {skill_name: "skipped"|"refined"|"failed"|"error"}.
         """
+        self._metrics = RefinerMetrics()
         results: dict[str, str] = {}
         if not self.skills_dir.exists():
             logger.warning("Skills dir %s does not exist — nothing to refine.", self.skills_dir)
@@ -79,13 +106,24 @@ class SkillRefiner:
         for path in sorted(self.skills_dir.glob("*.py")):
             if path.name.startswith("__"):
                 continue
+            self._metrics.skills_checked += 1
             try:
-                results[path.stem] = self._maybe_refine(path)
+                result = self._maybe_refine(path)
+                results[path.stem] = result
+                if result == "refined":
+                    self._metrics.skills_refined += 1
+                elif result == "failed":
+                    self._metrics.skills_failed += 1
             except Exception as exc:
                 logger.error("Unexpected error refining %s: %s", path.name, exc)
                 results[path.stem] = "error"
+                self._metrics.skills_failed += 1
 
         return results
+
+    def get_metrics(self) -> RefinerMetrics:
+        """Return accumulated metrics from the most recent refine_all() run."""
+        return self._metrics
 
     def refine_one(self, skill_name: str) -> str:
         """Force refinement of a single skill by name (without .py extension)."""
@@ -149,44 +187,104 @@ class SkillRefiner:
         except Exception:
             return True
 
+    def _call_llm(self, original_code: str, failure_details: str) -> str:
+        """Call the LLM to produce refined skill code. Raises on LLM unavailability."""
+        import asyncio
+
+        from selva_inference import get_default_router  # type: ignore[attr-defined]
+        from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+
+        request = InferenceRequest(
+            messages=[
+                {
+                    "role": "user",
+                    "content": REFINE_PROMPT.format(
+                        original_code=original_code,
+                        failure_details=failure_details,
+                    ),
+                }
+            ],
+            system_prompt=(
+                "You are a world-class Python engineer. Output only clean Python code."
+            ),
+            policy=RoutingPolicy(
+                sensitivity=Sensitivity.CONFIDENTIAL,
+                task_type="code_generation",
+                temperature=0.15,
+                max_tokens=2048,
+            ),
+        )
+        router = get_default_router()
+        response = asyncio.run(router.complete(request))
+        return response.content
+
     def _llm_refine(self, path: Path, original_code: str, failure_details: str) -> str:
-        """Invoke selva_inference to rewrite the skill; fallback to stamping last_validated."""
-        try:
-            import asyncio
+        """Invoke selva_inference to rewrite the skill with iterative validation.
 
-            from selva_inference import get_default_router  # type: ignore[attr-defined]
-            from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+        After each LLM call, the refined code is sandbox-executed. If sandbox
+        validation fails, the LLM is re-invoked with the new error context. This
+        repeats up to ``max_iterations`` times. If all iterations fail, the skill
+        is marked as ``"failed"`` and the original code is preserved.
 
-            request = InferenceRequest(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": REFINE_PROMPT.format(
-                            original_code=original_code,
-                            failure_details=failure_details,
-                        ),
-                    }
-                ],
-                system_prompt=(
-                    "You are a world-class Python engineer. Output only clean Python code."
-                ),
-                policy=RoutingPolicy(
-                    sensitivity=Sensitivity.CONFIDENTIAL,
-                    task_type="code_generation",
-                    temperature=0.15,
-                    max_tokens=2048,
-                ),
+        Falls back to stamping last_validated when the LLM is unavailable.
+        """
+        start_ms = time.monotonic() * 1000
+        current_failure = failure_details
+
+        for iteration in range(1, self.max_iterations + 1):
+            self._metrics.total_iterations += 1
+
+            try:
+                refined_code = self._call_llm(original_code, current_failure)
+            except Exception as exc:
+                logger.warning(
+                    "LLM refinement unavailable (%s); stamping last_validated.", exc
+                )
+                # Fallback: update the last_validated timestamp so we don't hammer the LLM
+                refined_code = original_code.replace(
+                    '"last_validated":',
+                    f'"last_validated": "{datetime.now(tz=UTC).isoformat()}", "_prev":',
+                )
+                path.write_text(refined_code)
+                duration_ms = time.monotonic() * 1000 - start_ms
+                self._metrics.record_refinement(duration_ms)
+                logger.info("Skill %s refined (fallback) and written to %s.", path.stem, path)
+                return "refined"
+
+            # Write candidate to disk and validate in sandbox
+            path.write_text(refined_code)
+            sandbox_stderr, passed = self._sandbox_execute(path)
+
+            if passed:
+                duration_ms = time.monotonic() * 1000 - start_ms
+                self._metrics.record_refinement(duration_ms)
+                logger.info(
+                    "Skill %s refined successfully on iteration %d and written to %s.",
+                    path.stem,
+                    iteration,
+                    path,
+                )
+                return "refined"
+
+            logger.warning(
+                "Skill %s sandbox validation failed on iteration %d/%d: %s",
+                path.stem,
+                iteration,
+                self.max_iterations,
+                sandbox_stderr[:200],
             )
-            router = get_default_router()
-            response = asyncio.run(router.complete(request))
-            refined_code = response.content
-        except Exception as exc:
-            logger.warning("LLM refinement unavailable (%s); stamping last_validated.", exc)
-            # Fallback: just update the last_validated timestamp so we don't hammer the LLM
-            refined_code = original_code.replace(
-                '"last_validated":', f'"last_validated": "{datetime.now(tz=UTC).isoformat()}", "_prev":'
+            current_failure = (
+                f"Previous refinement attempt (iteration {iteration}) failed.\n"
+                f"Error: {sandbox_stderr}"
             )
 
-        path.write_text(refined_code)
-        logger.info("Skill %s refined and written to %s.", path.stem, path)
-        return "refined"
+        # All iterations exhausted — restore original code and mark as failed
+        path.write_text(original_code)
+        duration_ms = time.monotonic() * 1000 - start_ms
+        self._metrics.record_refinement(duration_ms)
+        logger.warning(
+            "Skill %s failed refinement after %d iterations. Original code restored.",
+            path.stem,
+            self.max_iterations,
+        )
+        return "failed"
