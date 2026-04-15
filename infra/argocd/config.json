@@ -1,16 +1,9 @@
 {
-  "project": "autoswarm-office",
-  "repoURL": "https://github.com/madfam-org/autoswarm-office",
-  "targetRevision": "main",
-  "path": "infra/k8s/production",
-  "destination": {
-    "server": "https://kubernetes.default.svc",
-    "namespace": "autoswarm"
-  },
-  "syncPolicy": {
-    "automated": {
-      "prune": true,
-      "selfHeal": true
-    }
-  }
+  "name": "autoswarm",
+  "repoURL": "https://github.com/madfam-org/autoswarm-office.git",
+  "branch": "main",
+  "manifestPath": "infra/k8s/production",
+  "namespace": "autoswarm",
+  "partOf": "autoswarm-office",
+  "ignoreExtraneous": true
 }
