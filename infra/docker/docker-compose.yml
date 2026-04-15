@@ -19,7 +19,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
   coturn:
     image: coturn/coturn:latest
@@ -30,7 +30,7 @@ services:
     volumes:
       - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
   redis:
     image: redis:7-alpine
@@ -52,7 +52,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
   nexus-api:
     build:
@@ -72,7 +72,7 @@ services:
       NEXUS_API_PORT: "4300"
       ENVIRONMENT: development
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
   office-ui:
     build:
@@ -87,7 +87,7 @@ services:
       NEXT_PUBLIC_API_URL: http://nexus-api:4300
       NEXT_PUBLIC_COLYSEUS_URL: ws://colyseus:4303
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
   colyseus:
     build:
@@ -100,7 +100,7 @@ services:
       COLYSEUS_PORT: "4303"
       REDIS_URL: redis://redis:6379/1  # DB 1: colyseus (room state, proximity, signaling)
     networks:
-      - madfam-shared-network
+      - selva-shared-network
 
 volumes:
   pgdata:
@@ -109,5 +109,5 @@ volumes:
     driver: local
 
 networks:
-  madfam-shared-network:
+  selva-shared-network:
     external: false

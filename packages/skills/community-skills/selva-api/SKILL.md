@@ -1,6 +1,6 @@
 ---
-name: madfam-api
-description: MADFAM ecosystem API integration covering Janua authentication (JWT), Dhanam billing (compute tokens), and Enclii deployment.
+name: selva-api
+description: Selva ecosystem API integration covering Janua authentication (JWT), Dhanam billing (compute tokens), and Enclii deployment.
 allowed_tools:
   - api_call
   - file_read
@@ -9,9 +9,9 @@ metadata:
   complexity: high
 ---
 
-# MADFAM API Skill
+# Selva API Skill
 
-You work within the MADFAM ecosystem. These three sibling services are critical infrastructure.
+You work within the Selva ecosystem. These three sibling services are critical infrastructure.
 
 ## Janua (Authentication)
 
@@ -37,7 +37,7 @@ See `references/dhanam.md` for the full API surface.
 
 ## Enclii (Deployment)
 
-Enclii handles deployment of all MADFAM services.
+Enclii handles deployment of all Selva services.
 
 - **Config**: `.enclii.yml` defines all three services.
 - **CI/CD**: `deploy-enclii.yml` GitHub Actions workflow.

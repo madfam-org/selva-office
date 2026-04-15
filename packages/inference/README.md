@@ -1,29 +1,29 @@
-# madfam-inference
+# selva-inference
 
 Sensitivity-aware LLM inference routing with multi-provider support. Part of the
-[MADFAM](https://github.com/madfam-org/autoswarm-office) ecosystem.
+[Selva](https://github.com/madfam-org/autoswarm-office) ecosystem.
 
 ## Installation
 
 ```bash
-pip install madfam-inference            # core (httpx + pydantic)
-pip install madfam-inference[openai]    # + OpenAI provider
-pip install madfam-inference[anthropic] # + Anthropic provider
-pip install madfam-inference[yaml]      # + org config YAML loading
-pip install madfam-inference[all]       # everything
+pip install selva-inference            # core (httpx + pydantic)
+pip install selva-inference[openai]    # + OpenAI provider
+pip install selva-inference[anthropic] # + Anthropic provider
+pip install selva-inference[yaml]      # + org config YAML loading
+pip install selva-inference[all]       # everything
 ```
 
 Within the monorepo (uv workspace):
 
 ```bash
-uv add madfam-inference
+uv add selva-inference
 ```
 
 ## Quick Start
 
 ```python
-from madfam_inference import ModelRouter, InferenceRequest, RoutingPolicy, Sensitivity
-from madfam_inference.providers.openai import OpenAIProvider
+from selva_inference import ModelRouter, InferenceRequest, RoutingPolicy, Sensitivity
+from selva_inference.providers.openai import OpenAIProvider
 
 router = ModelRouter(providers={
     "openai": OpenAIProvider(api_key="sk-..."),
@@ -98,7 +98,7 @@ Use `MediaContent` for image inputs. The router automatically filters to
 vision-capable providers:
 
 ```python
-from madfam_inference import InferenceRequest, MediaContent, ContentType
+from selva_inference import InferenceRequest, MediaContent, ContentType
 
 request = InferenceRequest(
     messages=[{
@@ -115,17 +115,17 @@ request = InferenceRequest(
 
 | Export | Module | Description |
 |--------|--------|-------------|
-| `ModelRouter` | `madfam_inference` | Request routing engine |
-| `InferenceProvider` | `madfam_inference` | Provider ABC |
-| `InferenceRequest` | `madfam_inference` | Request model |
-| `InferenceResponse` | `madfam_inference` | Response model |
-| `RoutingPolicy` | `madfam_inference` | Routing parameters |
-| `Sensitivity` | `madfam_inference` | Data sensitivity enum |
-| `ContentType` | `madfam_inference` | Media content type enum |
-| `MediaContent` | `madfam_inference` | Multimodal content block |
-| `OrgConfig` | `madfam_inference` | Organization config model |
-| `TaskType` | `madfam_inference` | LLM task category enum |
-| `load_org_config` | `madfam_inference` | Config loader (cached) |
+| `ModelRouter` | `selva_inference` | Request routing engine |
+| `InferenceProvider` | `selva_inference` | Provider ABC |
+| `InferenceRequest` | `selva_inference` | Request model |
+| `InferenceResponse` | `selva_inference` | Response model |
+| `RoutingPolicy` | `selva_inference` | Routing parameters |
+| `Sensitivity` | `selva_inference` | Data sensitivity enum |
+| `ContentType` | `selva_inference` | Media content type enum |
+| `MediaContent` | `selva_inference` | Multimodal content block |
+| `OrgConfig` | `selva_inference` | Organization config model |
+| `TaskType` | `selva_inference` | LLM task category enum |
+| `load_org_config` | `selva_inference` | Config loader (cached) |
 
 ## License
 

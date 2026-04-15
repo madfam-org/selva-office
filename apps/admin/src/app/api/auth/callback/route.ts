@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger';
 const JANUA_BASE_URL =
   process.env.NEXT_PUBLIC_JANUA_BASE_URL ||
   process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ||
-  'https://auth.madfam.io';
+  'https://auth.selva.town';
 
 const CLIENT_ID =
   process.env.JANUA_CLIENT_ID ||

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from madfam_inference.router import ModelRouter
-from madfam_inference.types import (
+from selva_inference.router import ModelRouter
+from selva_inference.types import (
     InferenceRequest,
     InferenceResponse,
     RoutingPolicy,
@@ -65,7 +65,7 @@ async def test_retries_on_transient_failure() -> None:
     provider = _make_provider("anthropic", fail_count=1)
     router = ModelRouter(providers={"anthropic": provider})
 
-    with patch("madfam_inference.router.asyncio.sleep", new_callable=AsyncMock):
+    with patch("selva_inference.router.asyncio.sleep", new_callable=AsyncMock):
         result = await router.complete(_make_request())
 
     assert result.content == "ok"
@@ -92,7 +92,7 @@ async def test_retry_sleeps_between_attempts() -> None:
     router = ModelRouter(providers={"anthropic": provider})
 
     sleep_mock = AsyncMock()
-    with patch("madfam_inference.router.asyncio.sleep", sleep_mock):
+    with patch("selva_inference.router.asyncio.sleep", sleep_mock):
         await router.complete(_make_request())
 
     sleep_mock.assert_awaited_once_with(1.0)
@@ -110,7 +110,7 @@ async def test_falls_through_to_fallback() -> None:
     fallback = _make_provider("openai")
     router = ModelRouter(providers={"anthropic": primary, "openai": fallback})
 
-    with patch("madfam_inference.router.asyncio.sleep", new_callable=AsyncMock):
+    with patch("selva_inference.router.asyncio.sleep", new_callable=AsyncMock):
         result = await router.complete(_make_request())
 
     assert result.content == "ok"
@@ -131,7 +131,7 @@ async def test_fallback_skips_failed_providers() -> None:
         },
     )
 
-    with patch("madfam_inference.router.asyncio.sleep", new_callable=AsyncMock):
+    with patch("selva_inference.router.asyncio.sleep", new_callable=AsyncMock):
         result = await router.complete(_make_request())
 
     assert result.content == "ok"
@@ -145,7 +145,7 @@ async def test_no_fallback_for_restricted_sensitivity() -> None:
     cloud = _make_provider("openai")
     router = ModelRouter(providers={"ollama": local, "openai": cloud})
 
-    with patch("madfam_inference.router.asyncio.sleep", new_callable=AsyncMock):
+    with patch("selva_inference.router.asyncio.sleep", new_callable=AsyncMock):
         with pytest.raises(RuntimeError, match="All providers failed"):
             await router.complete(_make_request(sensitivity=Sensitivity.RESTRICTED))
 
@@ -162,7 +162,7 @@ async def test_raises_when_all_fail() -> None:
     fallback = _make_provider("openai", fail=True)
     router = ModelRouter(providers={"anthropic": primary, "openai": fallback})
 
-    with patch("madfam_inference.router.asyncio.sleep", new_callable=AsyncMock):
+    with patch("selva_inference.router.asyncio.sleep", new_callable=AsyncMock):
         with pytest.raises(RuntimeError, match="All providers failed"):
             await router.complete(_make_request())
 
@@ -173,6 +173,6 @@ async def test_error_message_contains_last_error() -> None:
     primary = _make_provider("anthropic", fail=True)
     router = ModelRouter(providers={"anthropic": primary})
 
-    with patch("madfam_inference.router.asyncio.sleep", new_callable=AsyncMock):
+    with patch("selva_inference.router.asyncio.sleep", new_callable=AsyncMock):
         with pytest.raises(RuntimeError, match="anthropic failed"):
             await router.complete(_make_request())

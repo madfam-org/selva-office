@@ -1,7 +1,7 @@
 # Dhanam Billing API
 
 ## Overview
-Dhanam manages billing, subscriptions, and compute token budgets for the MADFAM ecosystem.
+Dhanam manages billing, subscriptions, and compute token budgets for the Selva ecosystem.
 
 ## Compute Tokens
 - Each operation has a token cost (see `ComputeTokenManager.COST_TABLE`).

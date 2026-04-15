@@ -47,7 +47,7 @@ spec:
           name: autoswarm-secrets
           key: redis-url
     - name: JANUA_ISSUER_URL
-      value: https://auth.madfam.io
+      value: https://auth.selva.town
     - name: JANUA_CLIENT_ID
       value: autoswarm-office
     - name: JANUA_CLIENT_SECRET
@@ -56,7 +56,7 @@ spec:
           name: autoswarm-secrets
           key: janua-client-secret
   domains:
-    - domain: agents-api.madfam.io
+    - domain: agents-api.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -127,9 +127,9 @@ spec:
     dockerfile: infra/docker/Dockerfile.office-ui
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://agents-api.madfam.io
-      NEXT_PUBLIC_JANUA_URL: https://auth.madfam.io
-      NEXT_PUBLIC_COLYSEUS_URL: wss://agents-ws.madfam.io
+      NEXT_PUBLIC_API_URL: https://agents-api.selva.town
+      NEXT_PUBLIC_JANUA_URL: https://auth.selva.town
+      NEXT_PUBLIC_COLYSEUS_URL: wss://agents-ws.selva.town
     source:
       git:
         repository: https://github.com/madfam-org/autoswarm-office
@@ -158,7 +158,7 @@ spec:
     - name: NEXT_PUBLIC_DHANAM_URL
       value: https://app.dhan.am
   domains:
-    - domain: agents.madfam.io
+    - domain: agents.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -199,7 +199,7 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: agents-ws.madfam.io
+    - domain: agents-ws.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -216,8 +216,8 @@ spec:
     dockerfile: infra/docker/Dockerfile.admin
     context: .
     args:
-      NEXT_PUBLIC_API_URL: https://agents-api.madfam.io
-      NEXT_PUBLIC_JANUA_URL: https://auth.madfam.io
+      NEXT_PUBLIC_API_URL: https://agents-api.selva.town
+      NEXT_PUBLIC_JANUA_URL: https://auth.selva.town
     source:
       git:
         repository: https://github.com/madfam-org/autoswarm-office
@@ -247,7 +247,7 @@ spec:
       initialDelaySeconds: 10
       periodSeconds: 30
   domains:
-    - domain: agents-admin.madfam.io
+    - domain: agents-admin.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true
@@ -288,7 +288,7 @@ spec:
       initialDelaySeconds: 15
       periodSeconds: 10
   domains:
-    - domain: agents-gw.madfam.io
+    - domain: agents-gw.selva.town
       tls: true
       tlsIssuer: cloudflare
       primary: true

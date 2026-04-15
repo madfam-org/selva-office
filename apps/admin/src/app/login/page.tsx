@@ -169,7 +169,7 @@ function LoginForm() {
         <p className="mt-6 text-center text-xs text-gray-500">
           By signing in, you agree to the{' '}
           <a
-            href="https://madfam.io/terms"
+            href="https://selva.town/terms"
             target="_blank"
             rel="noopener noreferrer"
             className="text-gray-400 underline hover:text-gray-300"
@@ -178,7 +178,7 @@ function LoginForm() {
           </a>{' '}
           and{' '}
           <a
-            href="https://madfam.io/privacy"
+            href="https://selva.town/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="text-gray-400 underline hover:text-gray-300"

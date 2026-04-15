@@ -55,8 +55,8 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
-- `packages/inference/madfam_inference/org_config.py` -- Org-level config (task types, model assignments)
-- `packages/inference/madfam_inference/router.py` -- LLM model routing logic
+- `packages/inference/selva_inference/org_config.py` -- Org-level config (task types, model assignments)
+- `packages/inference/selva_inference/router.py` -- LLM model routing logic
 - `apps/nexus-api/nexus_api/routers/intelligence.py` -- Intelligence config API
 - `apps/nexus-api/nexus_api/routers/chat.py` -- Chat history persistence API
 - `apps/nexus-api/nexus_api/routers/admin.py` -- Admin controls (kick, room config)
@@ -294,7 +294,7 @@ make build            # Build all packages
 make docker-dev       # Start Postgres + Redis
 make db-migrate       # Run Alembic migrations
 make db-seed          # Seed default departments and agents (13 generic)
-python scripts/seed-madfam-org.py  # Seed MADFAM org: 4 nodes, 10 named agents
+python scripts/seed-selva-org.py  # Seed Selva org: 4 nodes, 10 named agents
 make smoke-test       # Verify all services are healthy
 make generate-assets  # Regenerate pixel-art sprite PNGs
 make generate-variants # Generate palette-themed sprite/tile variants
@@ -319,7 +319,7 @@ uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```
 
-## MADFAM Ecosystem
+## Selva Ecosystem
 
 - **Janua** handles all authentication. Never implement custom auth. Use the
   `get_current_user` dependency in FastAPI and the Next.js middleware for session
@@ -468,7 +468,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 #### Multimodal Inference (5.3)
 - **Types**: `ContentType` enum (TEXT/IMAGE_URL/IMAGE_BASE64), `MediaContent` model
-  in `packages/inference/madfam_inference/types.py`. `InferenceRequest.messages`
+  in `packages/inference/selva_inference/types.py`. `InferenceRequest.messages`
   accepts `list[dict[str, Any]]` for multimodal content blocks. `has_media()` helper.
 - **Provider vision**: `InferenceProvider.supports_vision` property (default False).
   OpenAI, Anthropic, Ollama, Generic providers all support vision with
@@ -630,7 +630,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - View mode toggle: `viewMode: 'game' | 'simple'` in `page.tsx`, persisted to
   localStorage. Toggle button in HUD.
 
-### MADFAM Intelligence Architecture
+### Selva Intelligence Architecture
 
 - **Org config** (`~/.autoswarm/org-config.yaml`): Secure, per-org configuration
   outside the repo. Defines providers, task-type model assignments, priority
@@ -652,7 +652,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Agent roster (default)**: 13 agents across 4 departments (Engineering×6, Research×3,
   CRM×2, Support×2) with cross-functional skills. Seed script is idempotent
   (skips existing agents by name).
-- **MADFAM Production Roster** (`scripts/seed-madfam-org.py`): 10 named agents across 4 nodes:
+- **Selva Production Roster** (`scripts/seed-selva-org.py`): 10 named agents across 4 nodes:
   - **Executive Brain Trust**: Oráculo (Strategic Advisor, L10), Centinela (Chief of Staff, L9), Forjador (CTO, L10)
   - **Build & Run Engine**: Telar (Product Owner, L7), Códice (Lead Dev, L9), Vigía (SRE, L8)
   - **Growth & Market Syndicate**: Heraldo (Growth Director, L8), Nexo (CRM Lead, L8)

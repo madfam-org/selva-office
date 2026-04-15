@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from madfam_inference.base import InferenceProvider
-from madfam_inference.org_config import ModelAssignment, OrgConfig, TaskType
-from madfam_inference.router import CHEAPEST_PRIORITY, CLOUD_PRIORITY, ModelRouter
-from madfam_inference.types import (
+from selva_inference.base import InferenceProvider
+from selva_inference.org_config import ModelAssignment, OrgConfig, TaskType
+from selva_inference.router import CHEAPEST_PRIORITY, CLOUD_PRIORITY, ModelRouter
+from selva_inference.types import (
     InferenceRequest,
     InferenceResponse,
     RoutingPolicy,

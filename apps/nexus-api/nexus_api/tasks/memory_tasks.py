@@ -1,7 +1,7 @@
 """
 Memory Compactor Celery task — Gap 2: Memory LLM Summarization.
 
-Periodically reads old FTS5 transcript rows, invokes madfam_inference to
+Periodically reads old FTS5 transcript rows, invokes selva_inference to
 produce a compressed structured summary, and replaces the verbose rows with
 the distilled version — mirroring Hermes Agent's memory compression loop.
 """
@@ -86,13 +86,13 @@ async def compact_memory(retention_days: int = 30) -> dict:
         return {"compacted": 0, "run_ids": []}
 
     try:
-        from madfam_inference import get_default_router  # type: ignore[attr-defined]
-        from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+        from selva_inference import get_default_router  # type: ignore[attr-defined]
+        from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
         router = get_default_router()
         llm_available = True
     except Exception:
         llm_available = False
-        logger.warning("MemoryCompactor: madfam_inference unavailable — using extractive summary.")
+        logger.warning("MemoryCompactor: selva_inference unavailable — using extractive summary.")
 
     compacted = []
     for run_id in old_runs:

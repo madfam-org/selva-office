@@ -109,8 +109,8 @@ class ContextCompressor:
         )
 
         try:
-            from madfam_inference import get_default_router  # type: ignore
-            from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+            from selva_inference import get_default_router  # type: ignore
+            from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
 
             request = InferenceRequest(
                 messages=[{"role": "user", "content": summarization_prompt}],

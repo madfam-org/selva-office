@@ -84,12 +84,12 @@ autoswarm-office/
 - [Architecture Overview](docs/ARCHITECTURE.md)
 - [Development Guide](docs/DEVELOPMENT.md)
 - [Human-in-the-Loop Flow](docs/HITL_FLOW.md)
-- [MADFAM Integration Guide](docs/INTEGRATION.md)
+- [Selva Integration Guide](docs/INTEGRATION.md)
 - [Autonomous Cleanroom Protocol (ACP)](docs/AUTONOMOUS_CLEANROOM_PROTOCOL.md)
 
-## MADFAM Ecosystem
+## Selva Ecosystem
 
-AutoSwarm Office is part of the MADFAM platform and integrates with:
+AutoSwarm Office is part of the Selva platform and integrates with:
 
 - **Janua** -- OpenID Connect authentication (ports 4100-4104)
 - **Dhanam** -- Billing, subscriptions, and compute token budgets

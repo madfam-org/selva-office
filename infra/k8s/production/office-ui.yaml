@@ -69,11 +69,11 @@ spec:
                 - ALL
           env:
             - name: NEXT_PUBLIC_API_URL
-              value: https://agents-api.madfam.io
+              value: https://agents-api.selva.town
             - name: NEXT_PUBLIC_COLYSEUS_URL
-              value: wss://agents-ws.madfam.io
+              value: wss://agents-ws.selva.town
             - name: NEXT_PUBLIC_JANUA_ISSUER_URL
-              value: https://auth.madfam.io
+              value: https://auth.selva.town
             - name: NEXT_PUBLIC_JANUA_CLIENT_ID
               value: autoswarm-office
             - name: NEXT_PUBLIC_DEMO_ENABLED

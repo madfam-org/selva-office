@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from madfam_inference.org_config import ModelAssignment, OrgConfig, ProviderConfig, TaskType
+from selva_inference.org_config import ModelAssignment, OrgConfig, ProviderConfig, TaskType
 
 
 class TestIntelligenceConfigEndpoint:

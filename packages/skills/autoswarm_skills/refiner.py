@@ -7,7 +7,7 @@ sessions and invoking the LLM to rewrite degraded or outdated skill logic.
 Resolution order per skill:
 1. Load the .py file and attempt to call SKILL_ENTRYPOINT() in a subprocess sandbox.
 2. If execution fails OR last_validated is > SKILL_REFINE_INTERVAL_DAYS old:
-   → Send the broken skill + failure traceback to madfam_inference.
+   → Send the broken skill + failure traceback to selva_inference.
    → Overwrite the .py file with the refined output.
    → Update SKILL_METADATA["last_validated"].
 3. If execution passes and metadata is fresh → skip.
@@ -52,7 +52,7 @@ conforms to the AutoSwarm agentskills/v1 interface.
 class SkillRefiner:
     """
     Iterates over the skills registry, health-checks each skill, and uses the
-    madfam_inference LLM router to rewrite any that are broken or stale.
+    selva_inference LLM router to rewrite any that are broken or stale.
     """
 
     def __init__(
@@ -153,10 +153,10 @@ class SkillRefiner:
             return True
 
     def _llm_refine(self, path: Path, original_code: str, failure_details: str) -> str:
-        """Invoke madfam_inference to rewrite the skill; fallback to stamping last_validated."""
+        """Invoke selva_inference to rewrite the skill; fallback to stamping last_validated."""
         try:
-            from madfam_inference import get_default_router  # type: ignore[attr-defined]
-            from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+            from selva_inference import get_default_router  # type: ignore[attr-defined]
+            from selva_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
 
             import asyncio
 

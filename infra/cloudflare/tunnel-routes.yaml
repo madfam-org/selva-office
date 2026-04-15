@@ -2,12 +2,12 @@ tunnel: autoswarm-office
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
-  - hostname: agents-api.madfam.io
+  - hostname: agents-api.selva.town
     service: http://nexus-api.autoswarm.svc.cluster.local:80
-  - hostname: agents.madfam.io
+  - hostname: agents.selva.town
     service: http://office-ui.autoswarm.svc.cluster.local:80
-  - hostname: agents-ws.madfam.io
+  - hostname: agents-ws.selva.town
     service: http://colyseus.autoswarm.svc.cluster.local:80
-  - hostname: agents-admin.madfam.io
+  - hostname: agents-admin.selva.town
     service: http://admin.autoswarm.svc.cluster.local:80
   - service: http_status:404

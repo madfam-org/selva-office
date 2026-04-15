@@ -157,9 +157,9 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
           build-args: |
-            NEXT_PUBLIC_API_URL=https://agents-api.madfam.io
-            NEXT_PUBLIC_COLYSEUS_URL=wss://agents-ws.madfam.io
-            NEXT_PUBLIC_JANUA_ISSUER_URL=${{ secrets.JANUA_ISSUER_URL || 'https://auth.madfam.io' }}
+            NEXT_PUBLIC_API_URL=https://agents-api.selva.town
+            NEXT_PUBLIC_COLYSEUS_URL=wss://agents-ws.selva.town
+            NEXT_PUBLIC_JANUA_ISSUER_URL=${{ secrets.JANUA_ISSUER_URL || 'https://auth.selva.town' }}
             NEXT_PUBLIC_JANUA_CLIENT_ID=${{ secrets.JANUA_CLIENT_ID || 'autoswarm-office' }}
             NEXT_PUBLIC_DEMO_ENABLED=true
             NEXT_PUBLIC_GUEST_ACCESS_ENABLED=true

@@ -126,7 +126,7 @@ PATCH task status to "completed" or "failed" with result
 
 ## Port Assignments
 
-All ports are scoped to avoid conflicts with sibling MADFAM services
+All ports are scoped to avoid conflicts with sibling Selva services
 (Janua uses 4100-4104, Enclii uses 4200-4204).
 
 | Port | Service | Protocol |
