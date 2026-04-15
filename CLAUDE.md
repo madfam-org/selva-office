@@ -120,6 +120,21 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Solarpunk Visual Overhaul Phase 2 (v1.1.0)
+
+- **Living Office Map**: Complete map generator rewrite. 4 department
+  biomes (Tech Greenhouse, Library Garden, Market Garden, Zen Garden)
+  radiating from a central atrium garden. Glass corridors with vertical
+  water channel divide. Blueprint gazebo. 4 review stations, 2 dispatch
+  stations, 3 spawn points. 9 TMJ layers, zero empty floor tiles.
+- **Atmospheric Lighting**: Department ambient tints via ADD-blended
+  overlays (purple grow-light, teal library, golden cafe, zen green).
+  5 skylight golden light pools with pulsing alpha + solar sparkle
+  particles. Zone-specific: purple spore drift (engineering), cool blue
+  water ripples (support), rising bioluminescent spores (atrium).
+- **Solarpunk Agent Halos**: idle=moss green, working=solar gold,
+  paused=wood tone, error=deep red.
+
 ## Solarpunk Visual Overhaul Phase 1 (v1.0.0)
 
 - **Solarpunk Palette**: Environment tokens overhauled to warm earth tones
