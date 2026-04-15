@@ -35,6 +35,7 @@ from .routers import (
     chat,
     checkpoints,
     command_approvals,
+    crm_webhooks,
     departments,
     events,
     gateway,
@@ -44,6 +45,7 @@ from .routers import (
     maps,
     marketplace,
     metrics,
+    playbooks,
     schedules,
     skills,
     skills_hub,
@@ -180,6 +182,9 @@ def create_app() -> FastAPI:
     # Next-tier: Session checkpoint/rollback
     app.include_router(checkpoints.router, prefix="/api/v1")
     app.include_router(skills_hub.router, prefix="/api/v1")         # Track D1: agentskills.io hub
+    # Autonomous operations (Swarm Manifesto)
+    app.include_router(playbooks.router, prefix="/api/v1")
+    app.include_router(crm_webhooks.router, prefix="/api/v1")
 
     # -- A2A Protocol (agent-to-agent discovery and task exchange) -------------
     try:
