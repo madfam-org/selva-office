@@ -5,18 +5,21 @@
 
 ---
 
-## Current Status: v1.2.1 — Production Ready ✅
+## Current Status: v2.0.0 — Enterprise Mexican Market MVP ✅
 
 | Metric | Value |
 |--------|-------|
-| API routes | 133 |
-| Built-in tools | 54 |
+| API routes | 139 |
+| Built-in tools | 74 |
+| Workflow graphs | 12 (coding, research, crm, deployment, puppeteer, meeting, project, billing, accounting, sales, intelligence, custom) |
+| Ecosystem adapters | 6 (Karafiel, Dhanam, PhyneCRM, Tezca, Crawler, A2A) |
+| Skills (en + es-MX) | 17 |
+| Alembic migrations | 16 (0000–0015) |
 | TS tests | 817+ passing |
+| Enterprise tests | 308+ |
 | Python lint | 0 errors |
-| Graph types | 8 node types + custom YAML |
 | Messaging gateways | 18 channels |
 | Solarpunk visual phases | 4/4 complete |
-| A2A protocol | 4 endpoints |
 | PWA installable | Yes |
 
 ---
@@ -75,12 +78,13 @@ auth exports, skills package fix, Colyseus state sync, brand correction
 
 **Goal**: Any Mexican business can self-provision a Selva org and start running autonomous operations.
 
-- `[ ]` **Tenant provisioning API**: Self-service org creation with RFC (Registro Federal de Contribuyentes) validation
-- `[ ]` **Department templates for Mexican businesses**: Auto-create Dirección General, Administración, Contabilidad, Ventas, Operaciones, RH, Legal
-- `[ ]` **Per-tenant compute budgets**: Wire Dhanam (`dhanam/`) billing per org with token metering
-- `[ ]` **Tenant data isolation audit**: Verify RLS on all 15 tables, Redis key prefixing, Colyseus room isolation
-- `[ ]` **Enterprise SSO**: SAML/OIDC via Janua (`janua/`) for Azure AD, Google Workspace, custom LDAP
-- `[ ]` **White-label capability**: Per-tenant branding (logo, colors, custom domain) on shared infrastructure
+- `[x]` **Tenant provisioning API** (Sprint 7): `POST /api/v1/tenants/`, TenantConfig model, migration 0015, RFC validation via Karafiel
+- `[x]` **Department templates** (Sprint 7): Auto-create 6 Mexican departments (Dirección General, Administración, Contabilidad, Ventas, Operaciones, Legal)
+- `[x]` **Daily task limits** (Sprint 7): Per-tenant enforcement (429) in swarms dispatch
+- `[ ]` **Per-tenant compute budgets**: Wire Dhanam subscription tier → quota enforcement
+- `[ ]` **Tenant data isolation audit**: Verify RLS on all 16 tables, Redis key prefixing, Colyseus room isolation
+- `[ ]` **Enterprise SSO**: SAML/OIDC via Janua per-tenant connections
+- `[ ]` **White-label capability**: Per-tenant branding (logo, colors, custom domain)
 
 **MADFAM Ecosystem Integration**:
 | Repo | Role | Integration |
@@ -95,13 +99,15 @@ auth exports, skills package fix, Colyseus state sync, brand correction
 **Goal**: Agents autonomously handle SAT obligations, labor law compliance, and data privacy.
 
 #### SAT / CFDI 4.0 (Electronic Invoicing)
-- `[ ]` **`CFDITool`**: Generate CFDI 4.0 XML, stamp via PAC (Finkok / SW SmarterWeb), generate PDF representation
-- `[ ]` **`facturación` graph type**: CRM data → RFC validation → XML sealing (CSD) → PAC stamping → PDF → email delivery
-- `[ ]` **Constancia de Situación Fiscal** lookup via SAT web services
-- `[ ]` **RFC validation tool**: 4-char (persona moral) / 13-char (persona física) with check digit algorithm
-- `[ ]` **Complemento de Pagos**: Payment complement for partial payments (common in Mexican B2B)
+- `[x]` **CFDI tools via Karafiel** (Sprint 1): CFDIGenerate, CFDIStamp, CFDIStatus, BlacklistCheck — all delegating to Karafiel's DRF API
+- `[x]` **Billing graph** (Sprint 1): 6-node workflow (fetch → validate RFCs → blacklist → generate → stamp → notify) with conditional edges
+- `[x]` **RFC validation** (Sprint 1): RFCValidationTool via KarafielAdapter + regex format check in tenants router
+- `[x]` **WhatsApp invoice delivery** (Sprint 2): factura_enviada template via Meta Business API
+- `[x]` **Invoices API**: POST /generate + GET /{uuid}/status
+- `[ ]` **Constancia de Situación Fiscal** lookup via Karafiel SAT portal agent
+- `[ ]` **Complemento de Pagos**: Partial payment CFDI complement via Karafiel
 
-**Integration**: `factlas/` (if CFDI service exists), or new `packages/sat/` within autoswarm-office
+**Integration**: All compliance via `karafiel/` (SAT, CFDI, fiscal modules)
 
 #### Labor Law (Ley Federal del Trabajo)
 - `[ ]` **Nómina calculation engine**: ISR retention tables (SAT annual update), IMSS cuotas, INFONAVIT, fondo de ahorro
@@ -121,17 +127,19 @@ auth exports, skills package fix, Colyseus state sync, brand correction
 
 **Goal**: Pre-built graph templates that agents execute end-to-end for each department.
 
-#### Contabilidad (Accounting)
-- `[ ]` Monthly close: bank reconciliation → pólizas → balance general
-- `[ ]` Declaraciones mensuales: ISR provisional, IVA, DIOT preparation
-- `[ ]` Integration: CONTPAQi / Aspel / Alegra adapters or direct SAT API
-- `[ ]` **MADFAM integration**: `dhanam/` ledger for compute cost allocation per department
+#### Contabilidad (Accounting) ✅ Sprint 4
+- `[x]` **Accounting graph**: 5-node monthly close (fetch → reconcile → compute taxes → prepare declaration → HITL review)
+- `[x]` **DhanamAdapter**: list_transactions, get_bank_statements (Belvo), get_payment_summary (Stripe MX/Conekta/OXXO/SPEI), get_pos_transactions, economic indicators (exchange rate, TIIE, inflation, UMA)
+- `[x]` **Tax tools**: ISRCalculator, IVACalculator, BankReconciliation, DeclarationPrep, PaymentSummary — all via Karafiel/Dhanam
+- `[x]` **Tax compliance skill**: SKILL.md + SKILL.es-MX.md
+- `[ ]` CONTPAQi / Aspel adapter for ERP export
 
-#### Ventas (Sales)
-- `[ ]` Lead → Cotización → Pedido → Factura → Cobranza automated chain
-- `[ ]` WhatsApp Business API integration (transactional messages — dominant Mexican B2B channel)
-- `[ ]` Pipeline dashboard with Mexican sales cycle awareness (seguimiento culture)
-- `[ ]` **MADFAM integration**: `phyne-crm/` for contact data, pipeline, activity tracking
+#### Ventas (Sales) ✅ Sprint 5
+- `[x]` **Sales graph**: 7-node pipeline (qualify → cotización → approval → send → pedido → billing → cobranza)
+- `[x]` **WhatsApp Business templates** (Sprint 2): factura_enviada, recordatorio_pago, confirmacion_pedido, cotizacion_lista
+- `[x]` **PhyneCRM integration**: lead scoring, pipeline management, activity logging
+- `[x]` **Sales pipeline skill**: SKILL.md + SKILL.es-MX.md
+- `[ ]` Pipeline analytics dashboard in office UI
 
 #### Recursos Humanos (HR)
 - `[ ]` Onboarding workflow: IMSS alta, contract generation, NDA, handbook delivery
@@ -139,11 +147,12 @@ auth exports, skills package fix, Colyseus state sync, brand correction
 - `[ ]` Performance review cycle with 360° feedback
 - `[ ]` Training tracking for STPS compliance
 
-#### Legal
-- `[ ]` Contract generation: Mexican civil/mercantile law templates
+#### Legal ✅ Sprint 5
+- `[x]` **Legal tools**: ContractGenerate (→Karafiel CLM), REPSECheck (→Karafiel), LawSearch (→Tezca), ComplianceCheck (→Tezca)
+- `[x]` **TezcaAdapter**: search_laws, get_article, check_compliance
+- `[x]` **Legal compliance skill**: SKILL.md + SKILL.es-MX.md
 - `[ ]` Poder notarial tracking and renewal alerts
-- `[ ]` REPSE compliance: registration and periodic reporting for specialized services
-- `[ ]` **MADFAM integration**: `legal-ops/` for contract lifecycle management, `tezca/` for legal intelligence
+- `[ ]` **MADFAM integration**: `legal-ops/` for contract lifecycle management
 
 #### Operaciones (Operations)
 - `[ ]` Supply chain: pedimento document automation for customs
@@ -156,24 +165,24 @@ auth exports, skills package fix, Colyseus state sync, brand correction
 **Goal**: Agents proactively monitor regulatory, economic, and market changes.
 
 - `[ ]` **SAT monitor agent**: RFC status, tax obligation alerts, constancia updates
-- `[ ]` **DOF agent**: Daily scan of Diario Oficial de la Federación for regulatory changes
-- `[ ]` **INEGI data integration**: GDP, inflation, employment, industry-specific indicators
-- `[ ]` **Economic indicators via Dhanam**: Real-time USD/MXN, TIIE rates, monetary policy alerts (Dhanam proxies Banxico SIE internally)
-- `[ ]` **UMA/UMI tracker**: Current values for labor and tax calculations (updated annually by INEGI)
-- `[ ]` **SIEM compliance**: Annual Sistema de Información Empresarial Mexicano registration automation
+- `[x]` **DOF agent** (Sprint 6): DOFMonitorTool via CrawlerAdapter → madfam-crawler
+- `[ ]` **INEGI data integration**: GDP, employment, industry-specific indicators
+- `[x]` **Economic indicators via Dhanam** (Sprint 6): ExchangeRate (USD/MXN), TIIE, Inflation, UMA — all via DhanamAdapter
+- `[x]` **UMA/UMI tracker** (Sprint 6): UMATrackerTool via DhanamAdapter
+- `[x]` **Intelligence graph** (Sprint 6): 4-node daily briefing (scan DOF → economic data → LLM briefing → notify team)
+- `[x]` **Market intelligence skill**: SKILL.md + SKILL.es-MX.md
+- `[ ]` **SIEM compliance**: Annual registration automation
 - `[ ]` **Profeco monitor**: Consumer protection regulation changes
-- `[ ]` **MADFAM integration**: `social-sentiment-monitor/` for brand monitoring, `madfam-crawler/` for web intelligence, `fortuna/` for market problem intelligence
+- `[ ]` **MADFAM integration**: `social-sentiment-monitor/` for brand monitoring, `fortuna/` for market problem intelligence
 
 ### Phase E5: Localization & Cultural Adaptation
 
 **Goal**: Every agent interaction feels native to Mexican business culture.
 
-- `[ ]` **Full Spanish (MX) language support**: All 10 skill definitions, system prompts, UI strings, error messages in Mexican Spanish
-- `[ ]` **Mexican business calendar**: Art. 74 LFT holidays, puentes, Semana Santa, Buen Fin, CFDI deadlines (17th monthly for ISR)
-- `[ ]` **Timezone handling**: CST/CDT default (`America/Mexico_City`), Sonora awareness (no DST), Quintana Roo (EST), border DST rules
-- `[ ]` **Currency**: MXN primary, USD secondary for export/border businesses, UDI for mortgage/financial calculations
+- `[x]` **Full Spanish (MX) language support** (Sprint 3): 15 SKILL.es-MX.md files, locale-aware system prompts (plan/implement/review), graph prompt variants (project, crm, billing, coding, research), SkillRegistry locale parameter
+- `[x]` **Timezone/currency/locale** (Sprint 7): TenantConfig with defaults (America/Mexico_City, MXN, es-MX)
+- `[ ]` **Mexican business calendar**: Art. 74 LFT holidays, puentes, Semana Santa, Buen Fin, CFDI deadlines
 - `[ ]` **Number/date formatting**: DD/MM/YYYY, comma thousands, period decimal
-- `[ ]` **Formal business communication**: Uso de usted, carta poder format, acuse de recibo conventions
 - `[ ]` **MADFAM integration**: `madfam-site/` for Mexican-localized marketing pages
 
 ### Phase E6: Enterprise Architecture Scaling
@@ -197,8 +206,8 @@ MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 │
 ├── 🏢 Selva Office (autoswarm-office/) — THIS PRODUCT
 │   ├── selva.town — Virtual office + AI agent swarm
-│   ├── 54 built-in tools, 18 gateways, A2A protocol
-│   └── Solarpunk UI, PWA, LiveKit SFU
+│   ├── 74 built-in tools, 12 graphs, 6 adapters, 18 gateways, A2A protocol
+│   └── Solarpunk UI, PWA, LiveKit SFU, es-MX locale, multi-tenant
 │
 ├── 🔐 Janua (janua/) — Authentication & SSO
 │   ├── auth.madfam.io
