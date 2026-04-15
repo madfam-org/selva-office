@@ -168,6 +168,130 @@ def create_app() -> FastAPI:
     app.include_router(checkpoints.router, prefix="/api/v1")        # Next-tier: Session checkpoint/rollback
     app.include_router(skills_hub.router, prefix="/api/v1")         # Track D1: agentskills.io hub
 
+    # -- A2A Protocol (agent-to-agent discovery and task exchange) -------------
+    try:
+        from autoswarm_a2a import AgentSkill, create_a2a_router
+        from autoswarm_a2a.schema import TaskRequest as A2ATaskRequest
+        from autoswarm_a2a.schema import TaskResponse as A2ATaskResponse
+        from autoswarm_a2a.schema import TaskStatus as A2ATaskStatus
+
+        async def _dispatch_a2a_task(req: A2ATaskRequest) -> str:
+            """Bridge an inbound A2A task into the internal dispatch pipeline."""
+            from .database import async_session_factory
+            from .models import SwarmTask
+
+            async with async_session_factory() as db:
+                task = SwarmTask(
+                    description=req.description,
+                    graph_type=req.graph_type,
+                    payload=req.metadata,
+                    status="queued",
+                    org_id="a2a-external",
+                )
+                db.add(task)
+                await db.flush()
+                await db.refresh(task)
+                task_id = str(task.id)
+
+                # Enqueue to Redis
+                try:
+                    import json as _json
+
+                    pool = get_redis_pool(url=settings.redis_url)
+                    task_msg = _json.dumps({
+                        "task_id": task_id,
+                        "graph_type": task.graph_type,
+                        "description": task.description,
+                        "assigned_agent_ids": [],
+                        "required_skills": [],
+                        "payload": task.payload or {},
+                    })
+                    await pool.execute_with_retry(
+                        "xadd", "autoswarm:task-stream", {"data": task_msg}
+                    )
+                except Exception:
+                    task.status = "pending"
+                    await db.flush()
+
+                await db.commit()
+                return task_id
+
+        async def _get_a2a_task_status(task_id: str) -> A2ATaskResponse:
+            """Look up internal task status for an A2A caller."""
+            import uuid as _uuid
+
+            from sqlalchemy import select
+
+            from .database import async_session_factory
+            from .models import SwarmTask
+
+            try:
+                uid = _uuid.UUID(task_id)
+            except ValueError:
+                return A2ATaskResponse(
+                    task_id=task_id,
+                    status=A2ATaskStatus.FAILED,
+                    error="Invalid task ID",
+                )
+
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(SwarmTask).where(SwarmTask.id == uid)
+                )
+                task = result.scalar_one_or_none()
+
+            if task is None:
+                return A2ATaskResponse(
+                    task_id=task_id,
+                    status=A2ATaskStatus.FAILED,
+                    error="Task not found",
+                )
+
+            status_map = {
+                "queued": A2ATaskStatus.PENDING,
+                "pending": A2ATaskStatus.PENDING,
+                "running": A2ATaskStatus.RUNNING,
+                "completed": A2ATaskStatus.COMPLETED,
+                "failed": A2ATaskStatus.FAILED,
+                "cancelled": A2ATaskStatus.FAILED,
+            }
+            return A2ATaskResponse(
+                task_id=task_id,
+                status=status_map.get(task.status, A2ATaskStatus.PENDING),
+                result=task.payload if task.status == "completed" else None,
+                error=task.error_message if task.status == "failed" else None,
+            )
+
+        def _get_a2a_skills() -> list[AgentSkill]:
+            """Advertise registered skills in the AgentCard."""
+            try:
+                from autoswarm_skills import get_skill_registry
+
+                registry = get_skill_registry()
+                return [
+                    AgentSkill(
+                        id=s.name,
+                        name=s.name,
+                        description=s.description,
+                        tags=s.tags,
+                    )
+                    for s in registry.list_skills()
+                ]
+            except Exception:
+                return []
+
+        a2a_router = create_a2a_router(
+            agent_name="Selva Office",
+            base_url=settings.cors_origins[0] if settings.cors_origins else "",
+            get_skills=_get_a2a_skills,
+            dispatch_task=_dispatch_a2a_task,
+            get_task_status=_get_a2a_task_status,
+        )
+        app.include_router(a2a_router, prefix="/api/v1")
+        logger.info("A2A protocol router mounted at /api/v1/a2a")
+    except ImportError:
+        logger.debug("autoswarm-a2a not installed; A2A protocol disabled")
+
     return app
 
 

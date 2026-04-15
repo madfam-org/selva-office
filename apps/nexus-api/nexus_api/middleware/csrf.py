@@ -16,6 +16,7 @@ _EXEMPT_PREFIXES = (
     "/api/v1/events",
     "/api/v1/health/",
     "/api/v1/swarms/tasks/",
+    "/api/v1/a2a/",
 )
 
 _STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

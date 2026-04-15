@@ -14,14 +14,20 @@ from ..process_registry import (
     ListBackgroundProcessesTool,
     StartBackgroundProcessTool,
 )
+from .a2a_tool import CallExternalAgentTool
 from .artifact import ListArtifactsTool, RetrieveArtifactTool, SaveArtifactTool
+from .calendar_tools import CreateCalendarEventTool, ListCalendarEventsTool
 from .code import BashExecTool, PythonExecTool
 from .communication import CreateReportTool, SendNotificationTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
+from .database_tools import DatabaseSchemaTool, SQLQueryTool, SQLWriteTool
 from .deploy import DeployStatusTool, DeployTool
+from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
+from .email_tools import ReadEmailTool, SendEmailTool
 from .environment import EnvInfoTool, PackageInstallTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
+from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
@@ -58,6 +64,10 @@ def get_builtin_tools() -> list[BaseTool]:
         # Wave 4: enhanced web tools
         WebSearchToolV2(),
         WebExtractTool(),
+        # HTTP / GraphQL / Webhooks
+        HTTPRequestTool(),
+        GraphQLQueryTool(),
+        WebhookSendTool(),
         # Data
         JsonParseTool(),
         CsvReadTool(),
@@ -66,6 +76,21 @@ def get_builtin_tools() -> list[BaseTool]:
         SendNotificationTool(),
         CreateReportTool(),
         SlackMessageTool(),
+        # Email
+        SendEmailTool(),
+        ReadEmailTool(),
+        # Calendar
+        CreateCalendarEventTool(),
+        ListCalendarEventsTool(),
+        # Database
+        SQLQueryTool(),
+        SQLWriteTool(),
+        DatabaseSchemaTool(),
+        # Documents
+        GeneratePDFTool(),
+        ParsePDFTool(),
+        MarkdownToHTMLTool(),
+        GenerateChartTool(),
         # Environment
         EnvInfoTool(),
         PackageInstallTool(),
@@ -85,4 +110,6 @@ def get_builtin_tools() -> list[BaseTool]:
         # Wave 4: delegation + credentials
         DelegateTaskTool(),
         ReadCredentialFileTool(),
+        # A2A protocol
+        CallExternalAgentTool(),
     ]
