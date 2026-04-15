@@ -36,6 +36,13 @@ from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, F
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
+from .intelligence import (
+    DOFMonitorTool,
+    ExchangeRateTool,
+    InflationTool,
+    TIIETool,
+    UMATrackerTool,
+)
 from .karafiel import (
     BlacklistCheckTool,
     CFDIGenerateTool,
@@ -152,4 +159,10 @@ def get_builtin_tools() -> list[BaseTool]:
         BankReconciliationTool(),
         DeclarationPrepTool(),
         PaymentSummaryTool(),
+        # Market intelligence
+        DOFMonitorTool(),
+        ExchangeRateTool(),
+        UMATrackerTool(),
+        TIIETool(),
+        InflationTool(),
     ]
