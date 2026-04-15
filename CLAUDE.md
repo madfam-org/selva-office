@@ -120,6 +120,23 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
   `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
+## Competitive Dominance Wave 2 (v0.7.0)
+
+- **Voice Mode (STT)**: `SpeechToTextTool` in `builtins/stt.py` — OpenAI
+  Whisper API integration (multipart POST, auto content-type detection).
+  Voice API: `POST /api/v1/voice/transcribe` (audio upload → text),
+  `POST /api/v1/voice/dispatch` (text → SwarmTask). Meeting graph
+  `transcribe()` node tries STT tool first, falls back to LLM.
+  Tool count: 40 built-in tools.
+- **LiveKit SFU Scaling**: Hybrid P2P/SFU proximity video. When player
+  count exceeds `LIVEKIT_THRESHOLD` (default 5), server sends `mode: "sfu"`
+  in proximity messages and LiveKit credentials on join. Client auto-switches
+  from simple-peer to LiveKit Room with proximity-based track subscription.
+  `livekit.ts` handler generates `AccessToken` with `VideoGrant`.
+  `useProximityVideoLiveKit.ts` hook provides same interface as P2P hook.
+  Docker: `livekit/livekit-server` service on ports 7880-7882.
+  Config: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`.
+
 ## Competitive Dominance Wave 1 (v0.6.0)
 
 - **Screen Sharing Polish**: Quality presets (`auto`/`720p`/`1080p`) via

@@ -111,9 +111,9 @@ While horizontal parity is achieved, deep vertical integration for professional 
 - `[x]` Iterative skill refinement — refine→validate→retry loop + metrics API
 - `[x]` PWA installable — manifest, service worker, icons, apple-mobile-web-app
 
-### Wave 2: Strategic (Planned)
-- `[ ]` **Voice mode (STT)**: Whisper API integration, push-to-talk UI, voice-to-task dispatch
-- `[ ]` **LiveKit SFU**: Replace simple-peer (6 peer cap) with LiveKit for 50+ simultaneous streams
+### Wave 2: Strategic (v0.7.0) ✅
+- `[x]` Voice mode (STT): SpeechToTextTool + /api/v1/voice/transcribe + meeting graph integration
+- `[x]` LiveKit SFU: hybrid P2P/SFU with auto-threshold switching + livekit-server Docker service
 
 ### Wave 3: Ecosystem (Planned)
 - `[ ]` **Tool expansion to 60+**: Email, database, HTTP, document, analytics tool categories
