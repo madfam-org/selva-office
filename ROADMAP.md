@@ -115,9 +115,9 @@ While horizontal parity is achieved, deep vertical integration for professional 
 - `[x]` Voice mode (STT): SpeechToTextTool + /api/v1/voice/transcribe + meeting graph integration
 - `[x]` LiveKit SFU: hybrid P2P/SFU with auto-threshold switching + livekit-server Docker service
 
-### Wave 3: Ecosystem (Planned)
-- `[ ]` **Tool expansion to 60+**: Email, database, HTTP, document, analytics tool categories
-- `[ ]` **A2A protocol**: Agent-to-Agent interop (AgentCard, task send/subscribe, discovery)
+### Wave 3: Ecosystem (v0.8.0) ✅
+- `[x]` Tool expansion (40→54): email, calendar, database, HTTP, document tools + SSRF/SQL security
+- `[x]` A2A protocol: AgentCard discovery, task send/subscribe/SSE, A2AClient, CallExternalAgentTool
 
 ### Wave 4: Polish (Planned)
 - `[ ]` **Mobile UX**: Haptic feedback, compact touch layout, bottom tab bar
