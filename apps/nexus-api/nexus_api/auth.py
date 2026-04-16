@@ -132,6 +132,19 @@ async def get_current_user(
             detail="Invalid token for production environment",
         )
 
+    # Worker/gateway service token (shared secret, not a JWT)
+    if (
+        settings.worker_api_token
+        and settings.worker_api_token != "dev-bypass"
+        and credentials.credentials == settings.worker_api_token
+    ):
+        return {
+            "sub": "service:worker",
+            "roles": ["service", "worker"],
+            "org_id": "madfam-default",
+            "email": "worker@autoswarm.internal",
+        }
+
     payload = await verify_jwt(credentials.credentials, settings)
 
     # Set the verified org_id in the context variable for RLS middleware

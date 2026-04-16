@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     # -- Phyne-CRM ------------------------------------------------------------
     phyne_crm_url: str | None = None
 
+    # -- Worker-to-API auth ---------------------------------------------------
+    worker_api_token: str = "dev-bypass"  # Shared secret for worker/gateway → API calls
+
     # -- Colyseus -------------------------------------------------------------
     colyseus_secret: str = "change-me-in-production"
 
