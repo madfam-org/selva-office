@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import base64
-import json
 import logging
 from contextvars import ContextVar
 
@@ -16,21 +14,15 @@ logger = logging.getLogger(__name__)
 org_id_var: ContextVar[str] = ContextVar("org_id", default="default")
 
 class TenantRLSMiddleware(BaseHTTPMiddleware):
-    """Extracts org_id from JWT payload to set up context for PostgreSQL RLS."""
+    """Extracts org_id from JWT payload to set up context for PostgreSQL RLS.
+
+    The org_id is set by the auth dependency (get_current_user) after proper
+    JWT verification. This middleware only initialises the context variable
+    with a safe default.
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         org_id = "default"
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            try:
-                # Fast unverified decode of JWT payload (verification happens in auth dependencies)
-                payload_part = token.split(".")[1]
-                payload_part += "=" * ((4 - len(payload_part) % 4) % 4)
-                claims = json.loads(base64.b64decode(payload_part))
-                org_id = claims.get("org_id", "default")
-            except Exception as e:
-                logger.debug("JWT org_id extraction failed (using default): %s", e)
 
         token_ctx = org_id_var.set(org_id)
         try:

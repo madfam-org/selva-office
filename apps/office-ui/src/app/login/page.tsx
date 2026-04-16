@@ -23,7 +23,20 @@ function LoginForm() {
     router.push(redirect);
   }, [redirect, router]);
 
-  const handleJanuaLogin = useCallback(() => {
+  const handleJanuaLogin = useCallback(async () => {
+    // Generate PKCE code_verifier and code_challenge
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    const codeVerifier = btoa(String.fromCharCode(...array))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
+    const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+    // Store verifier in cookie for the callback route to use
+    document.cookie = `janua-pkce-verifier=${codeVerifier}; path=/; max-age=300; SameSite=Lax; Secure`;
+    document.cookie = `janua-oauth-state=${redirect}; path=/; max-age=300; SameSite=Lax; Secure`;
+
     const callbackUrl = `${window.location.origin}/api/auth/callback/janua`;
     const params = new URLSearchParams({
       client_id: JANUA_CLIENT_ID,
@@ -31,6 +44,8 @@ function LoginForm() {
       response_type: 'code',
       scope: 'openid profile email',
       state: redirect,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
     });
     window.location.href = `${JANUA_ISSUER_URL}/api/v1/oauth/authorize?${params.toString()}`;
   }, [redirect]);
@@ -56,13 +71,15 @@ function LoginForm() {
             >
               Sign in with Janua
             </button>
-            <button
-              type="button"
-              onClick={handleDevLogin}
-              className="mt-3 w-full rounded-lg border border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900"
-            >
-              Dev Login (bypass)
-            </button>
+            {process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true' && (
+              <button
+                type="button"
+                onClick={handleDevLogin}
+                className="mt-3 w-full rounded-lg border border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+              >
+                Dev Login (bypass)
+              </button>
+            )}
           </>
         ) : (
           <button

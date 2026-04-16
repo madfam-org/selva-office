@@ -49,7 +49,14 @@ export async function verifyToken(
       const parts = token.split(".");
       if (parts.length >= 2) {
         const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
-        if (payload.org_id === "demo-public" && Array.isArray(payload.roles) && payload.roles.includes("demo")) {
+
+        // If not a demo token, require a signature
+        const isDemo = payload.org_id === "demo-public" && Array.isArray(payload.roles) && payload.roles.includes("demo");
+        if (!isDemo && (!parts[2] || parts[2] === "")) {
+          throw new Error("Unsigned JWTs are not allowed for authenticated sessions");
+        }
+
+        if (isDemo) {
           return {
             sub: payload.sub ?? "demo-anon",
             orgId: "demo-public",
@@ -60,7 +67,11 @@ export async function verifyToken(
           };
         }
       }
-    } catch {
+    } catch (err) {
+      // Re-throw unsigned JWT rejection — must not be swallowed
+      if (err instanceof Error && err.message.includes("Unsigned JWTs")) {
+        throw err;
+      }
       // Not a demo token — fall through to normal verification
     }
   }

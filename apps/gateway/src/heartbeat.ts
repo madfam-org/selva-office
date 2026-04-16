@@ -321,7 +321,11 @@ export class HeartbeatService {
     if (process.env.AUTO_DISPATCH_ENABLED !== "true") return;
 
     const dispatchUrl = process.env.NEXUS_API_URL ?? this.nexusApiUrl.replace("ws", "http");
-    const token = process.env.WORKER_API_TOKEN ?? "dev-bypass";
+    const token = process.env.WORKER_API_TOKEN;
+    if (!token || token === "dev-bypass") {
+      this.logger.error("AUTO_DISPATCH_ENABLED but WORKER_API_TOKEN not set or is dev-bypass — skipping dispatch");
+      return;
+    }
 
     for (const wave of waves) {
       for (const event of wave.events) {

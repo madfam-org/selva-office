@@ -11,6 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
 from .config import Settings, get_settings
+from .middleware.security import org_id_var
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,17 @@ async def get_current_user(
             "email": "dev@autoswarm.local",
         }
 
+    # Reject hardcoded dev token in production
+    if settings.environment == "production" and credentials.credentials == "dev-bypass":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token for production environment",
+        )
+
     payload = await verify_jwt(credentials.credentials, settings)
+
+    # Set the verified org_id in the context variable for RLS middleware
+    org_id_var.set(payload.get("org_id", "default"))
 
     return {
         "sub": payload.get("sub"),
@@ -167,6 +178,18 @@ async def require_non_guest(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Guest users cannot perform this action",
+        )
+    return user
+
+
+async def require_non_demo(
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Block demo users from performing real actions."""
+    if "demo" in user.get("roles", []):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo users cannot perform this action",
         )
     return user
 
