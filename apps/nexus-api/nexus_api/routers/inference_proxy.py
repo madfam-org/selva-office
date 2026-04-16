@@ -41,7 +41,7 @@ class ChatCompletionRequest(BaseModel):
     model: str = "auto"
     messages: list[dict[str, Any]]
     temperature: float | None = None
-    max_tokens: int | None = None
+    max_tokens: int | None = Field(None, le=32768)
     stream: bool = False
     tools: list[dict] | None = None
     response_format: dict[str, Any] | None = None
@@ -159,10 +159,10 @@ async def _stream_chunks(model_router, request, completion_id: str):
         yield f"data: {json.dumps(final)}\n\n"
         yield "data: [DONE]\n\n"
     except Exception as exc:
-        logger.error("Streaming error: %s", exc)
+        logger.error("Streaming error: %s", exc, exc_info=True)
         error_chunk = {
             "error": {
-                "message": str(exc),
+                "message": "Streaming error occurred",
                 "type": "server_error",
                 "code": "internal_error",
             }
@@ -260,13 +260,14 @@ async def chat_completions(
     try:
         response = await model_router.complete(inference_request)
     except RuntimeError as exc:
+        logger.error("Inference proxy completion error: %s", exc)
         return JSONResponse(
             status_code=503,
             content={
                 "error": {
-                    "message": str(exc),
+                    "message": "Inference service unavailable",
                     "type": "server_error",
-                    "code": "no_available_provider",
+                    "code": "provider_error",
                 }
             },
         )
@@ -337,6 +338,11 @@ async def embeddings(
         )
 
     texts = body.input if isinstance(body.input, list) else [body.input]
+    if len(texts) > 256:
+        return JSONResponse(
+            status_code=400,
+            content={"error": {"message": "Maximum 256 inputs per request", "type": "invalid_request_error", "code": "too_many_inputs"}},
+        )
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -355,14 +361,14 @@ async def embeddings(
             resp.raise_for_status()
             return resp.json()
     except httpx.HTTPError as exc:
-        logger.error("Embedding request failed: %s", exc)
+        logger.error("Embedding request failed: %s", exc, exc_info=True)
         return JSONResponse(
             status_code=502,
             content={
                 "error": {
-                    "message": f"Upstream embedding error: {exc}",
+                    "message": "Embedding service unavailable",
                     "type": "server_error",
-                    "code": "embedding_failed",
+                    "code": "embedding_error",
                 }
             },
         )

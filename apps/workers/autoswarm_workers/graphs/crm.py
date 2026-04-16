@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import TypedDict
 
 from langchain_core.messages import AIMessage
@@ -317,9 +318,21 @@ def send(state: CRMState) -> CRMState:
         logger.debug("Phyne-CRM activity logging skipped (unavailable)")
 
     # Actually send the drafted email
+    _email_re = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     draft_content = state.get("draft_content", "")
     to_email = state.get("contact_email") or state.get("recipient", "")
-    if to_email and "@" in to_email and draft_content:
+
+    # Abort if LLM returned a placeholder (e.g. due to $0 credits)
+    if draft_content and "[LLM unavailable" in draft_content:
+        logger.warning("LLM returned placeholder — aborting email send")
+        return {
+            **state,
+            "messages": [*messages, AIMessage(content="Draft failed — LLM unavailable.")],
+            "status": "error",
+            "result": {"error": "llm_unavailable"},
+        }
+
+    if to_email and _email_re.match(to_email) and draft_content:
         try:
             from autoswarm_tools.builtins.marketing_tools import SendMarketingEmailTool
 
@@ -336,7 +349,8 @@ def send(state: CRMState) -> CRMState:
             )
             send_result["email_sent"] = email_result.success
             if email_result.success:
-                logger.info("Email sent to %s (id: %s)", to_email, send_result.get("email_id"))
+                masked = to_email[:3] + "***@" + to_email.split("@")[-1] if "@" in to_email else "***"
+                logger.info("Email sent to %s (id: %s)", masked, send_result.get("email_id"))
             else:
                 logger.warning("Email send failed: %s", email_result.error)
         except Exception as e:

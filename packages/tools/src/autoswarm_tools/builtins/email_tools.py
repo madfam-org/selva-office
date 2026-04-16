@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
 
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger("autoswarm.email")
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class SendEmailTool(BaseTool):
@@ -35,11 +38,6 @@ class SendEmailTool(BaseTool):
                     "type": "string",
                     "description": "HTML body content",
                 },
-                "from_address": {
-                    "type": "string",
-                    "description": "Sender address (defaults to EMAIL_FROM env var)",
-                    "default": "",
-                },
             },
             "required": ["to", "subject", "html"],
         }
@@ -50,9 +48,7 @@ class SendEmailTool(BaseTool):
         to = kwargs.get("to", "")
         subject = kwargs.get("subject", "")
         html = kwargs.get("html", "")
-        from_address = kwargs.get("from_address", "") or os.environ.get(
-            "EMAIL_FROM", "AutoSwarm <noreply@selva.town>"
-        )
+        from_address = os.environ.get("EMAIL_FROM", "AutoSwarm <noreply@selva.town>")
 
         api_key = os.environ.get("RESEND_API_KEY")
         if not api_key:
@@ -64,6 +60,8 @@ class SendEmailTool(BaseTool):
 
         if not to:
             return ToolResult(success=False, error="Recipient 'to' is required")
+        if not _EMAIL_RE.match(to):
+            return ToolResult(success=False, error=f"Invalid email format: {to[:20]}...")
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:

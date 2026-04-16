@@ -4,14 +4,39 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
-from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
+from urllib.parse import urlencode, urlparse, urlunparse, parse_qs, quote
 
 import httpx
 
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# HTML sanitisation — strip dangerous tags/attributes without external deps
+_UNSAFE_TAGS_RE = re.compile(
+    r"<\s*(script|iframe|object|embed|form|input|button|style|link|meta|base)"
+    r"[^>]*>.*?</\s*\1\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+_UNSAFE_VOID_TAGS_RE = re.compile(
+    r"<\s*(script|iframe|object|embed|input|link|meta|base)[^>]*/?\s*>",
+    re.IGNORECASE,
+)
+_UNSAFE_ATTRS_RE = re.compile(r"\s(on\w+)\s*=\s*\"[^\"]*\"", re.IGNORECASE)
+_UNSAFE_URLS_RE = re.compile(r'href\s*=\s*"(javascript:|data:)[^"]*"', re.IGNORECASE)
+
+
+def _sanitize_email_html(html: str) -> str:
+    """Strip unsafe HTML tags, event handlers, and dangerous URL schemes."""
+    html = _UNSAFE_TAGS_RE.sub("", html)
+    html = _UNSAFE_VOID_TAGS_RE.sub("", html)
+    html = _UNSAFE_ATTRS_RE.sub("", html)
+    html = _UNSAFE_URLS_RE.sub('href="#"', html)
+    return html
 
 
 def _inject_utm(url: str, campaign: str = "", source: str = "selva", medium: str = "email") -> str:
@@ -34,6 +59,7 @@ def _build_madfam_email_html(
     cta_url: str = "",
     cta_text: str = "Comienza ahora",
     product_name: str = "",
+    to_email: str = "",
 ) -> str:
     """Wrap email content in a MADFAM-branded HTML template.
 
@@ -79,8 +105,8 @@ def _build_madfam_email_html(
       {cta_block}
       <tr>
         <td style="padding:20px 24px;background-color:#f5f5f5;text-align:center;font-family:Arial,sans-serif">
-          <p style="font-size:12px;color:#888888;margin:0">By Innovaciones MADFAM · <a href="https://madfam.io" style="color:#888888">madfam.io</a></p>
-          <p style="font-size:11px;color:#aaaaaa;margin:8px 0 0"><a href="https://madfam.io/unsubscribe" style="color:#aaaaaa">Cancelar suscripción</a></p>
+          <p style="font-size:12px;color:#888888;margin:0">By Innovaciones MADFAM SAS de CV · Monterrey, N.L., Mexico · <a href="https://madfam.io" style="color:#888888">madfam.io</a></p>
+          <p style="font-size:11px;color:#aaaaaa;margin:8px 0 0"><a href="https://madfam.io/unsubscribe?email={quote(to_email, safe='@')}" style="color:#aaaaaa">Cancelar suscripción</a></p>
         </td>
       </tr>
     </table>
@@ -150,6 +176,11 @@ class SendMarketingEmailTool(BaseTool):
 
         if not to_email or not subject:
             return ToolResult(success=False, error="to_email and subject are required")
+        if not _EMAIL_RE.match(to_email):
+            return ToolResult(success=False, error=f"Invalid email format: {to_email[:20]}...")
+
+        # Sanitize HTML content before template injection
+        body_html = _sanitize_email_html(body_html)
 
         # Wrap in MADFAM branded template (unless raw HTML with full <html> tag)
         template = kwargs.get("template", "madfam")
@@ -157,7 +188,7 @@ class SendMarketingEmailTool(BaseTool):
         cta_text = kwargs.get("cta_text", "Comienza ahora")
         product_name = kwargs.get("product_name", "")
         if template == "madfam" and "<!DOCTYPE" not in body_html and "<html" not in body_html:
-            body_html = _build_madfam_email_html(body_html, cta_url, cta_text, product_name)
+            body_html = _build_madfam_email_html(body_html, cta_url, cta_text, product_name, to_email=to_email)
 
         # Inject UTM into any links in the HTML body
         # Simple approach: find href="..." and append UTM params
@@ -181,6 +212,10 @@ class SendMarketingEmailTool(BaseTool):
                 }
                 if reply_to:
                     payload["reply_to"] = reply_to
+                # CAN-SPAM / LFPDPPP: List-Unsubscribe header
+                payload["headers"] = {
+                    "List-Unsubscribe": f"<https://madfam.io/unsubscribe?email={quote(to_email, safe='@')}>",
+                }
 
                 resp = await client.post(
                     "https://api.resend.com/emails",

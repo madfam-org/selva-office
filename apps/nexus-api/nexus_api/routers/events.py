@@ -112,11 +112,11 @@ def _safe_uuid(value: str | None) -> uuid.UUID | None:
 async def create_event(
     body: CreateEventRequest,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    user: dict = Depends(get_current_user),  # noqa: B008
 ) -> dict[str, str]:
     """Create a new task event.
 
-    Called by workers internally -- no authentication required (same
-    pattern as POST /api/v1/approvals).
+    Requires Bearer token authentication (worker token or JWT).
     """
     event = TaskEvent(
         task_id=_safe_uuid(body.task_id),

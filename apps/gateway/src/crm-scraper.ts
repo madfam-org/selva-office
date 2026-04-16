@@ -112,9 +112,17 @@ export class CRMScraper {
     const input = status ? JSON.stringify({ status }) : undefined;
     const url = `${this.baseUrl}/api/trpc/leads.list${input ? `?input=${encodeURIComponent(input)}` : ""}`;
 
-    const response = await fetch(url, {
-      headers: this.headers(),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: this.headers(),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       this.logger.error({ statusCode: response.status }, "leads.list request failed");
@@ -134,9 +142,17 @@ export class CRMScraper {
   private async fetchActivities(): Promise<PhyneActivity[]> {
     const url = `${this.baseUrl}/api/trpc/activities.listForEntity?input=${encodeURIComponent(JSON.stringify({ type: "all", id: "" }))}`;
 
-    const response = await fetch(url, {
-      headers: this.headers(),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: this.headers(),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       this.logger.error(

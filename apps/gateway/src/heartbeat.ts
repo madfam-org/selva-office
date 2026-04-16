@@ -28,6 +28,12 @@ export class HeartbeatService {
 
   private _lastTickTime: string | null = null;
   private _totalTicks: number = 0;
+  private _tickRunning = false;
+
+  /** Dedup: recently dispatched lead/activity IDs → timestamp. 24h TTL. */
+  private readonly recentlyDispatched = new Map<string, number>();
+  private static readonly DEDUP_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  private static readonly MAX_DISPATCHES_PER_TICK = 10;
 
   constructor(
     nexusApiUrl: string,
@@ -91,25 +97,38 @@ export class HeartbeatService {
   }
 
   async tick(): Promise<void> {
-    const timestamp = new Date().toISOString();
-    this.logger.info({ timestamp }, "Tick started");
-
-    const crmEvents = await this.scrapeCRM();
-    const githubEvents = await this.scrapeGitHub();
-    const ticketEvents = await this.scrapeTickets();
-
-    const allEvents = [...crmEvents, ...githubEvents, ...ticketEvents];
-
-    const waves = this.compileEnemyWaves(allEvents);
-
-    if (waves.length > 0) {
-      await this.dispatch(waves);
-    } else {
-      this.logger.info("No events to dispatch this cycle");
+    // Concurrency guard — prevent overlapping ticks
+    if (this._tickRunning) {
+      this.logger.warn("Tick already running — skipping this invocation");
+      return;
     }
+    this._tickRunning = true;
 
-    this._lastTickTime = timestamp;
-    this._totalTicks += 1;
+    try {
+      const timestamp = new Date().toISOString();
+      this.logger.info({ timestamp }, "Tick started");
+
+      const crmEvents = await this.scrapeCRM();
+      const githubEvents = await this.scrapeGitHub();
+      // Reuse CRM events for tickets instead of double-scraping
+      const ticketEvents = crmEvents.filter((e) => e.type === "activity_overdue");
+      const dedupedCRM = crmEvents.filter((e) => e.type !== "activity_overdue");
+
+      const allEvents = [...dedupedCRM, ...githubEvents, ...ticketEvents];
+
+      const waves = this.compileEnemyWaves(allEvents);
+
+      if (waves.length > 0) {
+        await this.dispatch(waves);
+      } else {
+        this.logger.info("No events to dispatch this cycle");
+      }
+
+      this._lastTickTime = timestamp;
+      this._totalTicks += 1;
+    } finally {
+      this._tickRunning = false;
+    }
   }
 
   private async scrapeCRM(): Promise<ExternalEvent[]> {
@@ -236,22 +255,8 @@ export class HeartbeatService {
     return events;
   }
 
-  private async scrapeTickets(): Promise<ExternalEvent[]> {
-    if (!this.crmScraper) {
-      this.logger.info("PHYNE_CRM_URL not set; skipping ticket scrape");
-      return [];
-    }
-
-    try {
-      this.logger.info("Scraping support tickets via Phyne-CRM...");
-      const events = await this.crmScraper.scrape();
-      // Filter for task-type activities only (ticket-like items)
-      return events.filter((e) => e.type === "activity_overdue");
-    } catch (err) {
-      this.logger.error({ err }, "Ticket scrape failed");
-      return [];
-    }
-  }
+  // scrapeTickets() removed — ticket events are now extracted from the
+  // single scrapeCRM() call in tick() to avoid double-scraping PhyneCRM.
 
   private compileEnemyWaves(events: ExternalEvent[]): EnemyWaveEvent[] {
     if (events.length === 0) {
@@ -327,15 +332,41 @@ export class HeartbeatService {
       return;
     }
 
+    // Purge stale dedup entries (older than 24h)
+    const now = Date.now();
+    for (const [k, t] of this.recentlyDispatched) {
+      if (now - t > HeartbeatService.DEDUP_TTL_MS) this.recentlyDispatched.delete(k);
+    }
+
+    let dispatchCount = 0;
+
     for (const wave of waves) {
+      if (dispatchCount >= HeartbeatService.MAX_DISPATCHES_PER_TICK) break;
+
       for (const event of wave.events) {
+        if (dispatchCount >= HeartbeatService.MAX_DISPATCHES_PER_TICK) {
+          this.logger.warn(
+            { capped: true, max: HeartbeatService.MAX_DISPATCHES_PER_TICK },
+            "Dispatch cap reached for this tick"
+          );
+          break;
+        }
+
         const eventKey = `${event.source}:${event.type}`;
         const rule = HeartbeatService.AUTO_DISPATCH_RULES[eventKey];
         if (!rule) continue;
 
-        const contactName = event.payload.contact_name || event.payload.lead_id || "unknown";
+        // Dedup: skip if this lead/activity was already dispatched in the last 24h
+        const dedupId = String(event.payload?.lead_id || event.payload?.activity_id || "");
+        const dedupKey = `${eventKey}:${dedupId}`;
+        if (dedupId && this.recentlyDispatched.has(dedupKey)) {
+          this.logger.debug({ dedupKey }, "Skipping duplicate dispatch");
+          continue;
+        }
+
+        // PII-safe description: use opaque IDs, not contact names
         const score = event.payload.score || "?";
-        const description = `[auto] CRM hot lead outreach: ${contactName} (score: ${score})`;
+        const description = `[auto] ${eventKey}: lead:${dedupId} (score: ${score})`;
 
         try {
           const resp = await fetch(`${dispatchUrl}/api/v1/swarms/dispatch`, {
@@ -352,21 +383,28 @@ export class HeartbeatService {
                 auto_dispatched: true,
                 trigger_event: eventKey,
                 crm_action: "email",
+                // Explicit field pick — no ...event.payload spread
+                lead_id: event.payload?.lead_id,
+                contact_id: event.payload?.contact_id,
+                score: event.payload?.score,
+                stage: event.payload?.stage,
+                activity_id: event.payload?.activity_id,
                 playbook: {
                   name: "Lead Response",
                   trigger_event: eventKey,
                   allowed_actions: ["api_call", "email_send", "crm_update", "marketing_send"],
                   token_budget: 50,
-                  financial_cap_cents: 0,
-                  require_approval: false,
+                  financial_cap_cents: 5000, // $50/day cap
+                  require_approval: true,    // HITL required
                 },
-                ...event.payload,
               },
             }),
           });
 
           if (resp.ok) {
-            this.logger.info({ eventKey, graphType: rule.graphType }, "Auto-dispatched SwarmTask");
+            if (dedupId) this.recentlyDispatched.set(dedupKey, now);
+            dispatchCount++;
+            this.logger.info({ eventKey, graphType: rule.graphType, dispatchCount }, "Auto-dispatched SwarmTask");
           } else {
             this.logger.warn({ eventKey, status: resp.status }, "Auto-dispatch failed");
           }
