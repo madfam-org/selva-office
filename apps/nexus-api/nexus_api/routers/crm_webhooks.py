@@ -109,7 +109,7 @@ async def phyne_crm_webhook(request: Request):
         }
 
         # Use Redis to enqueue directly (same pattern as swarms.py)
-        from ..redis_pool import get_redis_pool
+        from autoswarm_redis_pool import get_redis_pool
         import uuid
 
         task_id = str(uuid.uuid4())
