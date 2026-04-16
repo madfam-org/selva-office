@@ -9,6 +9,8 @@ interface ChatPanelProps {
   messages: ChatMessage[];
   onSend: (content: string) => void;
   localSessionId: string;
+  forceCollapsed?: boolean;
+  onExpand?: () => void;
 }
 
 function formatTime(timestamp: number): string {
@@ -16,8 +18,9 @@ function formatTime(timestamp: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export function ChatPanel({ messages, onSend, localSessionId }: ChatPanelProps) {
+export function ChatPanel({ messages, onSend, localSessionId, forceCollapsed, onExpand }: ChatPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const isCollapsed = forceCollapsed || collapsed;
   const [inputValue, setInputValue] = useState('');
   const [chatFocused, setChatFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +48,7 @@ export function ChatPanel({ messages, onSend, localSessionId }: ChatPanelProps) 
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
         e.preventDefault();
         setCollapsed(false);
+        onExpand?.();
         setChatFocused(true);
         inputRef.current?.focus();
       }
@@ -72,10 +76,10 @@ export function ChatPanel({ messages, onSend, localSessionId }: ChatPanelProps) 
     }
   }, []);
 
-  if (collapsed) {
+  if (isCollapsed) {
     return (
       <button
-        onClick={() => setCollapsed(false)}
+        onClick={() => { setCollapsed(false); onExpand?.(); }}
         className="absolute bottom-4 left-4 z-hud rounded bg-slate-800/90 px-3 py-1 text-xs text-slate-300 retro-btn hover:bg-slate-700"
       >
         Chat [T]

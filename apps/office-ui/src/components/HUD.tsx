@@ -260,7 +260,7 @@ export const HUD: FC<HUDProps> = ({
         </button>
 
         {/* Connection indicators */}
-        <div className="retro-panel px-3 py-2 font-mono text-[8px]">
+        <div className="hidden sm:block retro-panel px-3 py-2 font-mono text-[8px]">
           <div className="flex items-center gap-2">
             <span
               className={`inline-block h-2 w-2 rounded-full ${
@@ -279,10 +279,12 @@ export const HUD: FC<HUDProps> = ({
           </div>
         </div>
 
-        {/* Minimap */}
-        <div className="retro-panel overflow-hidden" style={{ width: MINIMAP_W + 8, height: MINIMAP_H + 8, padding: 4 }}>
-          <Minimap departments={departments} playerPosition={playerPosition} />
-        </div>
+        {/* Minimap — only render when there are departments to show */}
+        {departments.length > 0 && (
+          <div className="hidden lg:block retro-panel overflow-hidden" style={{ width: MINIMAP_W + 8, height: MINIMAP_H + 8, padding: 4 }}>
+            <Minimap departments={departments} playerPosition={playerPosition} />
+          </div>
+        )}
       </div>
     </div>
   );

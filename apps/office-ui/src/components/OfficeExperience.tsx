@@ -271,6 +271,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
   const [calendarPanelOpen, setCalendarPanelOpen] = useState(false);
   const [meetingNotesPanelOpen, setMeetingNotesPanelOpen] = useState(false);
   const [opsFeedOpen, setOpsFeedOpen] = useState(false);
+  const [chatForceCollapsed, setChatForceCollapsed] = useState(false);
   const [metricsDashboardOpen, setMetricsDashboardOpen] = useState(false);
   const [activeApproval, setActiveApproval] = useState<ApprovalRequest | null>(
     null,
@@ -574,8 +575,17 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
           {!isDemo && (
             <div className="absolute top-4 left-4 z-hud flex gap-1">
               <button
-                onClick={() => { setOpsFeedOpen((prev) => !prev); setDashboardOpen(false); }}
-                className={`rounded px-2 py-1 font-mono text-[8px] retro-btn ${
+                onClick={() => {
+                  setOpsFeedOpen((prev) => {
+                    const next = !prev;
+                    if (next && typeof window !== 'undefined' && window.innerWidth < 768) {
+                      setChatForceCollapsed(true);
+                    }
+                    return next;
+                  });
+                  setDashboardOpen(false);
+                }}
+                className={`rounded px-3 py-2 font-mono text-xs min-h-[44px] md:px-2 md:py-1 md:text-[8px] md:min-h-0 retro-btn ${
                   opsFeedOpen ? 'bg-emerald-600 text-white' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
                 }`}
                 aria-label="Toggle ops feed"
@@ -584,7 +594,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
               </button>
               <button
                 onClick={() => { setMetricsDashboardOpen(true); }}
-                className="rounded bg-slate-800/90 px-2 py-1 font-mono text-[8px] text-slate-300 retro-btn hover:bg-slate-700"
+                className="rounded bg-slate-800/90 px-3 py-2 font-mono text-xs min-h-[44px] md:px-2 md:py-1 md:text-[8px] md:min-h-0 text-slate-300 retro-btn hover:bg-slate-700"
                 aria-label="Open metrics dashboard"
               >
                 Metrics
@@ -595,7 +605,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
           {!isDemo && (
             <OpsFeed
               open={opsFeedOpen}
-              onClose={() => setOpsFeedOpen(false)}
+              onClose={() => { setOpsFeedOpen(false); setChatForceCollapsed(false); }}
             />
           )}
 
@@ -621,6 +631,13 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
             messages={officeState?.chatMessages ?? []}
             onSend={sendChat}
             localSessionId={sessionId ?? ''}
+            forceCollapsed={chatForceCollapsed}
+            onExpand={() => {
+              setChatForceCollapsed(false);
+              if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                setOpsFeedOpen(false);
+              }
+            }}
           />
 
           <VideoOverlay peers={peers} localStream={localStream} screenSharing={screenSharing} />

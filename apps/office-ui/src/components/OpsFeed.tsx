@@ -116,7 +116,7 @@ export const OpsFeed: FC<OpsFeedProps> = ({ open, onClose }) => {
       />
 
       <aside
-        className="absolute left-0 top-0 z-hud h-full w-full max-w-80 transform transition-transform duration-300 sm:w-80 translate-x-0"
+        className="absolute left-0 top-0 z-hud h-[60vh] sm:h-full w-[85vw] sm:w-80 max-w-80 rounded-b-xl sm:rounded-none landscape:max-h-[70vh] transform transition-transform duration-300 translate-x-0"
         aria-label="Operations feed"
         role="complementary"
       >
