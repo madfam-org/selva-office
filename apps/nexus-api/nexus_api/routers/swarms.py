@@ -226,6 +226,7 @@ async def dispatch_task(
             )
 
     # -- Tenant limit enforcement -----------------------------------------------
+    tenant_config = None
     try:
         tc_result = await db.execute(
             select(TenantConfig).where(TenantConfig.org_id == tenant.org_id)
