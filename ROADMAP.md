@@ -61,14 +61,84 @@ auth exports, skills package fix, Colyseus state sync, brand correction
 - `[x]` Product domains: `api.selva.town`, `ws.selva.town`, `admin.selva.town`, `app.selva.town`
 - `[x]` MADFAM ecosystem preserved: `auth.madfam.io`, `crm.madfam.io`, `status.madfam.io`, `npm.madfam.io`
 - `[x]` Redirect config: `selvatown.com` → `selva.town` (301)
-- `[ ]` Provision DNS records for `selva.town` zone in Cloudflare
-- `[ ]` Configure Cloudflare Tunnel routes
-- `[ ]` Email routing: `*@selva.town` → `admin@madfam.io`
-- `[ ]` Build + push Docker images to `ghcr.io/madfam-org`
-- `[ ]` K8s secrets + configmap deployment
-- `[ ]` Run `alembic upgrade head` in production
-- `[ ]` Seed MADFAM org agents
+- `[x]` DNS records provisioned in Cloudflare (all zones)
+- `[x]` Cloudflare Tunnel routes configured
+- `[x]` Email routing: `*@selva.town` → `admin@madfam.io`
+- `[x]` Docker images built + pushed to `ghcr.io/madfam-org`
+- `[x]` K8s secrets (8 keys) + configmap (org-config) deployed
+- `[x]` Alembic migrations applied in production
+- `[x]` MADFAM org seeded (4 nodes, 10 named agents)
 - `[ ]` `selva.town/terms` and `selva.town/privacy` pages
+- `[ ]` Working unsubscribe endpoint at `madfam.io/unsubscribe`
+
+---
+
+## Factory-as-a-Product Protocol Roadmap
+
+> **Goal**: End-to-end phygital pipeline where a customer's digital design
+> becomes a quoted, manufactured, shipped, and invoiced physical product —
+> entirely orchestrated by Selva agents.
+
+### Phase F1: Autonomous Revenue Loop ✅ Code Complete (2026-04-16)
+
+The CRM-driven email loop is deployed and security-hardened. Waiting on
+Anthropic credits and Stripe live mode confirmation.
+
+```
+HeartbeatService (*/30 cron)
+  → CRM Scraper → Hot Lead Detection
+    → Auto-Dispatch (dedup, 10/tick cap, HITL gate)
+      → LLM Drafts Email (via inference proxy)
+        → Resend Sends (madfam.io verified, CAN-SPAM compliant)
+          → Dhanam Checkout CTA (Stripe MX, 6 products, 15 prices)
+            → Payment → Subscription Activation
+```
+
+Status: **Blocked on $20 Anthropic credits + Stripe live mode verification.**
+
+### Phase F2: Compliance Wedge (GTM Wave 1)
+
+Lead with Karafiel compliance for Mexican SMBs:
+- `[x]` CFDI 4.0 tools (generate, stamp, status, blacklist check)
+- `[x]` RFC validation
+- `[x]` Billing graph (6-node monthly close)
+- `[ ]` Karafiel public pricing page ($499 MXN/mo)
+- `[ ]` 10+ paying customers on Karafiel compliance
+- `[ ]` Referral flywheel active (PhyneCRM funnel → Dhanam rewards)
+
+### Phase F3: Fabrication Bundle (GTM Wave 2)
+
+Bundle Cotiza + Yantra4D + PravaraMES for digital fabrication shops:
+- `[x]` Cotiza↔Yantra4D bidirectional webhooks
+- `[x]` Cotiza↔PravaraMES HMAC-signed order webhooks
+- `[x]` PravaraMES↔Dhanam usage billing
+- `[ ]` **Phygital workflow graph** (`phygital.py`): design → quote → approve → manufacture → ship → invoice
+  - Yantra4D: customer uploads parametric design, Selva renders + generates BOM
+  - Cotiza: auto-quotes based on BOM + ForgeSight market pricing
+  - Customer approval (HITL gate in browser at app.selva.town)
+  - PravaraMES: creates work order, tracks production
+  - Dhanam: generates invoice, CFDI stamp via Karafiel
+  - Logistics: shipment tracking (Estafeta/FedEx MX integration — future)
+- `[ ]` End-to-end demo: parametric design → physical product delivered
+
+### Phase F4: Intelligence APIs (GTM Wave 3)
+
+Expose Fortuna + Tezca + Forgesight as paid APIs:
+- `[x]` Inference centralized through Selva proxy
+- `[x]` API key system via Janua + credit metering via Dhanam
+- `[ ]` Fortuna public API (problem intelligence, market sensing)
+- `[ ]` Tezca public API (legal search, 30K+ Mexican laws)
+- `[ ]` Forgesight public API (fabrication pricing intelligence)
+
+### Phase F5: Full Platform Launch (GTM Wave 4-5)
+
+Selva seats at $149-499/mo as the autonomous AI workforce:
+- `[ ]` Proven unit economics (LTV > CAC)
+- `[ ]` Multi-tenant self-provisioning
+- `[ ]` Per-tenant compute budgets wired to Dhanam subscriptions
+- `[ ]` White-label capability
+- `[ ]` 3D Voxel View (React Three Fiber + MagicaVoxel)
+- `[ ]` $500K MRR target at 24 months
 
 ---
 
