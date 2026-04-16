@@ -269,6 +269,8 @@ async def dispatch_task(
             "Tenant limit check failed; proceeding without enforcement",
             exc_info=True,
         )
+        # Rollback the failed transaction so subsequent queries work
+        await db.rollback()
 
     # -- Compute token budget enforcement (Dhanam subscription tier) ----------
     if tenant_config and tenant_config.dhanam_space_id:
