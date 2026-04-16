@@ -36,13 +36,21 @@ def _make_event(
 class TestCreateEvent:
     """Tests for POST /api/v1/events."""
 
-    async def test_create_event_returns_id(
+    async def test_create_event_requires_auth(
         self, client: httpx.AsyncClient
+    ) -> None:
+        """POST /events without auth is rejected."""
+        resp = await client.post("/api/v1/events/", json=_make_event())
+        assert resp.status_code in (401, 403)
+
+    async def test_create_event_returns_id(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Minimal event creation returns 201 with an id field."""
         resp = await client.post(
             "/api/v1/events/",
             json=_make_event(),
+            headers=auth_headers,
         )
         assert resp.status_code == 201
         body = resp.json()
@@ -51,7 +59,7 @@ class TestCreateEvent:
         uuid.UUID(body["id"])
 
     async def test_create_event_all_fields(
-        self, client: httpx.AsyncClient
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Event with every optional field populated returns 201."""
         task_id = str(uuid.uuid4())
@@ -72,37 +80,40 @@ class TestCreateEvent:
             request_id="req-abc-123",
             org_id="acme-corp",
         )
-        resp = await client.post("/api/v1/events/", json=payload)
+        resp = await client.post("/api/v1/events/", json=payload, headers=auth_headers)
         assert resp.status_code == 201
         assert "id" in resp.json()
 
     async def test_create_event_required_fields_only(
-        self, client: httpx.AsyncClient
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Only event_type and event_category are required."""
         resp = await client.post(
             "/api/v1/events/",
             json={"event_type": "task_start", "event_category": "lifecycle"},
+            headers=auth_headers,
         )
         assert resp.status_code == 201
 
     async def test_create_event_missing_event_type_422(
-        self, client: httpx.AsyncClient
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Missing required event_type triggers 422 validation error."""
         resp = await client.post(
             "/api/v1/events/",
             json={"event_category": "lifecycle"},
+            headers=auth_headers,
         )
         assert resp.status_code == 422
 
     async def test_create_event_missing_event_category_422(
-        self, client: httpx.AsyncClient
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Missing required event_category triggers 422 validation error."""
         resp = await client.post(
             "/api/v1/events/",
             json={"event_type": "node_start"},
+            headers=auth_headers,
         )
         assert resp.status_code == 422
 
@@ -113,6 +124,7 @@ class TestCreateEvent:
         resp = await client.post(
             "/api/v1/events/",
             json=_make_event(task_id="not-a-uuid"),
+            headers=auth_headers,
         )
         assert resp.status_code == 201
 
@@ -133,6 +145,7 @@ class TestCreateEvent:
         resp = await client.post(
             "/api/v1/events/",
             json={"event_type": "test_evt", "event_category": "test_cat"},
+            headers=auth_headers,
         )
         assert resp.status_code == 201
         event_id = resp.json()["id"]
@@ -175,6 +188,7 @@ class TestListEvents:
             await client.post(
                 "/api/v1/events/",
                 json=_make_event(event_type=f"evt_{i}"),
+                headers=auth_headers,
             )
 
         resp = await client.get("/api/v1/events/", headers=auth_headers)
@@ -186,8 +200,8 @@ class TestListEvents:
         self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Filtering by event_type narrows the result set."""
-        await client.post("/api/v1/events/", json=_make_event(event_type="llm_call"))
-        await client.post("/api/v1/events/", json=_make_event(event_type="node_end"))
+        await client.post("/api/v1/events/", json=_make_event(event_type="llm_call"), headers=auth_headers)
+        await client.post("/api/v1/events/", json=_make_event(event_type="node_end"), headers=auth_headers)
 
         resp = await client.get(
             "/api/v1/events/",
@@ -204,10 +218,12 @@ class TestListEvents:
     ) -> None:
         """Filtering by event_category narrows the result set."""
         await client.post(
-            "/api/v1/events/", json=_make_event(event_category="inference")
+            "/api/v1/events/", json=_make_event(event_category="inference"),
+            headers=auth_headers,
         )
         await client.post(
-            "/api/v1/events/", json=_make_event(event_category="lifecycle")
+            "/api/v1/events/", json=_make_event(event_category="lifecycle"),
+            headers=auth_headers,
         )
 
         resp = await client.get(
@@ -226,8 +242,8 @@ class TestListEvents:
         """Filtering by task_id returns only matching events."""
         task_a = str(uuid.uuid4())
         task_b = str(uuid.uuid4())
-        await client.post("/api/v1/events/", json=_make_event(task_id=task_a))
-        await client.post("/api/v1/events/", json=_make_event(task_id=task_b))
+        await client.post("/api/v1/events/", json=_make_event(task_id=task_a), headers=auth_headers)
+        await client.post("/api/v1/events/", json=_make_event(task_id=task_b), headers=auth_headers)
 
         resp = await client.get(
             "/api/v1/events/",
@@ -244,7 +260,7 @@ class TestListEvents:
     ) -> None:
         """The limit query parameter caps the number of results."""
         for _ in range(8):
-            await client.post("/api/v1/events/", json=_make_event())
+            await client.post("/api/v1/events/", json=_make_event(), headers=auth_headers)
 
         resp = await client.get(
             "/api/v1/events/",
@@ -262,6 +278,7 @@ class TestListEvents:
             await client.post(
                 "/api/v1/events/",
                 json=_make_event(event_type=f"evt_{i}"),
+                headers=auth_headers,
             )
 
         all_resp = await client.get("/api/v1/events/", headers=auth_headers)
@@ -325,12 +342,14 @@ class TestTaskTimeline:
             json=_make_event(
                 task_id=task_id, duration_ms=100, token_count=50
             ),
+            headers=auth_headers,
         )
         await client.post(
             "/api/v1/events/",
             json=_make_event(
                 task_id=task_id, duration_ms=200, token_count=75
             ),
+            headers=auth_headers,
         )
 
         resp = await client.get(

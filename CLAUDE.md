@@ -84,6 +84,46 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - `apps/office-ui/src/lib/constants.ts` -- Shared UI-layer constants (event keys, reconnect delays)
 - `apps/office-ui/src/lib/logger.ts` -- Dev-only logging wrapper (suppressed in production)
 
+## Autonomous Pipeline Security (v2.1.1)
+
+- **Dispatch Dedup**: `HeartbeatService` tracks recently dispatched `lead_id`
+  values in a `Map<string, number>` with 24h TTL. Same lead cannot be
+  dispatched twice within 24 hours.
+- **Dispatch Cap**: `MAX_DISPATCHES_PER_TICK = 10`. Prevents cost explosion
+  when CRM has many hot leads. Logs warning when cap is hit.
+- **Payload Sanitisation**: Auto-dispatch uses explicit field pick (lead_id,
+  contact_id, score, stage, activity_id) instead of `...event.payload` spread.
+  Closes playbook injection vector.
+- **HITL Re-enabled**: Auto-dispatched CRM tasks now set
+  `require_approval: true` (was `false`). Financial cap set to $50/day
+  (`financial_cap_cents: 5000`, was `0`).
+- **PII Scrubbed**: Task descriptions use `lead:<id>` not contact names.
+  Email addresses masked in logs (`aaa***@domain.com`).
+- **Tick Concurrency Guard**: `_tickRunning` flag prevents overlapping ticks.
+- **CRM Fetch Timeout**: 10s `AbortController` on all PhyneCRM HTTP calls.
+- **Single CRM Scrape**: `scrapeTickets()` removed — ticket events extracted
+  from the single `scrapeCRM()` call.
+- **Email Validation**: RFC-compliant regex (`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+  in `SendEmailTool`, `SendMarketingEmailTool`, and CRM graph `send()`.
+- **LLM Placeholder Abort**: CRM graph aborts email send when LLM returns
+  `"[LLM unavailable"` placeholder (e.g. due to $0 provider credits).
+- **HTML Sanitisation**: `_sanitize_email_html()` strips script, iframe,
+  object, embed, form, style tags, `on*` event handlers, and
+  `javascript:`/`data:` URLs from email body before template injection.
+- **CAN-SPAM Compliance**: Physical address ("Innovaciones MADFAM SAS de CV ·
+  Mexico") added to email footer. `List-Unsubscribe` header added to all
+  marketing email Resend API payloads.
+- **Sender Lockdown**: `from_address` parameter removed from `SendEmailTool`.
+  All emails use `EMAIL_FROM` env var — no agent-controlled sender forgery.
+- **Events Auth**: `POST /api/v1/events` now requires `Bearer` auth (was
+  unauthenticated). Workers already send `WORKER_API_TOKEN` in all event
+  emission calls.
+- **Proxy Error Sanitisation**: Inference proxy returns generic error messages
+  ("Inference service unavailable") instead of `str(exc)` which could leak
+  provider API keys, URLs, or internal configuration.
+- **Proxy Limits**: `max_tokens` capped at 32768. Embedding input capped at
+  256 items per request.
+
 ## Production Hardening (v0.3.0)
 
 - **Worker Concurrency**: `MAX_CONCURRENT_TASKS` env var (default 3). Semaphore-bounded
