@@ -83,6 +83,11 @@ spec:
                 secretKeyRef:
                   name: autoswarm-secrets
                   key: secret-key
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-secrets
+                  key: RESEND_API_KEY
           workingDir: /data
           volumeMounts:
             - name: tmp

@@ -293,7 +293,10 @@ export class HeartbeatService {
     "github:pr_opened": { graphType: "review", skills: ["code-review"], hitl: false },
     "github:ci_failed": { graphType: "coding", skills: ["coding", "webapp-testing"], hitl: true },
     "github:issue_opened": { graphType: "research", skills: ["research"], hitl: false },
-    "crm:high_intent_lead": { graphType: "crm", skills: ["crm-outreach"], hitl: true },
+    "crm:hot_lead": { graphType: "crm", skills: ["crm-outreach"], hitl: false },
+    "crm:high_intent_lead": { graphType: "crm", skills: ["crm-outreach"], hitl: false },
+    "crm:lead_followup": { graphType: "crm", skills: ["crm-outreach"], hitl: false },
+    "crm:activity_overdue": { graphType: "support", skills: ["customer-support"], hitl: false },
     "crm:support_ticket": { graphType: "support", skills: ["customer-support"], hitl: false },
     "crm:campaign_due": { graphType: "research", skills: ["research", "doc-coauthoring"], hitl: false },
   };

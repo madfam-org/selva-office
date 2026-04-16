@@ -68,6 +68,20 @@ spec:
           env:
             - name: ENVIRONMENT
               value: production
+            - name: AUTO_DISPATCH_ENABLED
+              value: "true"
+            - name: PHYNE_CRM_URL
+              value: "http://phyne-crm-web.phyne-crm.svc.cluster.local"
+            - name: PHYNE_CRM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-secrets
+                  key: PHYNE_CRM_TOKEN
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-secrets
+                  key: RESEND_API_KEY
           volumeMounts:
             - name: tmp
               mountPath: /tmp
