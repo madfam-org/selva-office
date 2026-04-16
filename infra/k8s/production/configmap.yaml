@@ -10,6 +10,7 @@ data:
   JANUA_CLIENT_ID: "autoswarm-office"
   DHANAM_API_URL: "https://app.dhan.am"
   ENVIRONMENT: "production"
+  NEXUS_API_URL: "http://nexus-api.autoswarm.svc.cluster.local"
   DEV_AUTH_BYPASS: "false"
   NEXT_PUBLIC_API_URL: "https://api.selva.town"
   NEXT_PUBLIC_JANUA_ISSUER_URL: "https://auth.madfam.io"
