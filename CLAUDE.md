@@ -838,6 +838,10 @@ The `packages/skills/` package implements the AgentSkills standard.
   - Model assignments: Opus 4 for planning, Sonnet 4 for coding/review/research, Haiku 4.5 for CRM/support
 - **New synergy rules**: "Quality Pipeline" (coding+webapp-testing, 1.3×).
   Total: 8 default rules.
+- **Fortuna contract**: Fortuna consumes Selva's `/v1/` proxy for all LLM
+  calls. It does NOT have direct provider credentials. Selva routes Fortuna's
+  requests through the ModelRouter like any other ecosystem service. Fortuna's
+  only LLM provider is `openai` (OpenAI-compatible, pointed at Selva proxy).
 - **Configurable embeddings**: `EmbeddingProvider` accepts optional
   `provider_name`, `model`, `base_url` for org-config-driven embedding
   providers (e.g. DeepInfra Nemotron). Falls back to OpenAI
