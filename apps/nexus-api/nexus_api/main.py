@@ -40,6 +40,7 @@ from .routers import (
     events,
     gateway,
     health,
+    inference_proxy,
     intelligence,
     invoices,
     maps,
@@ -185,6 +186,9 @@ def create_app() -> FastAPI:
     # Autonomous operations (Swarm Manifesto)
     app.include_router(playbooks.router, prefix="/api/v1")
     app.include_router(crm_webhooks.router, prefix="/api/v1")
+
+    # -- OpenAI-compatible inference proxy (ecosystem LLM gateway) -------------
+    app.include_router(inference_proxy.router, prefix="/v1")
 
     # -- A2A Protocol (agent-to-agent discovery and task exchange) -------------
     try:

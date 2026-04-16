@@ -122,17 +122,25 @@ spec:
               value: "https://api.cotiza.studio"
             - name: PRAVARA_MES_API_URL
               value: "https://mes-api.madfam.io"
+            - name: ORG_CONFIG_PATH
+              value: "/etc/autoswarm/org-config.yaml"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
             - name: autoswarm-memory
               mountPath: /data/autoswarm
+            - name: org-config
+              mountPath: /etc/autoswarm
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
         - name: autoswarm-memory
           persistentVolumeClaim:
             claimName: autoswarm-memory-pvc
+        - name: org-config
+          configMap:
+            name: autoswarm-org-config
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

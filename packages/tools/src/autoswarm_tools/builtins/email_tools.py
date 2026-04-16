@@ -81,6 +81,13 @@ class SendEmailTool(BaseTool):
             if resp.status_code in (200, 201):
                 message_id = resp.json().get("id", "unknown")
                 logger.info("Email sent to=%s id=%s", to, message_id)
+                try:
+                    from ..service_tracking import emit_service_usage
+                    emit_service_usage("resend", "transactional_email_sent", 1, {
+                        "to": to, "subject": subject, "message_id": message_id,
+                    })
+                except Exception:
+                    pass
                 return ToolResult(
                     output=f"Email sent to {to} (id={message_id})",
                     data={"message_id": message_id, "to": to, "subject": subject},

@@ -64,6 +64,21 @@ class AgentTemplate(BaseModel):
     skill_ids: list[str] = []
 
 
+class ServiceConfig(BaseModel):
+    """External service account details for the org."""
+
+    provider: str
+    service_type: str  # email, billing, llm, crm, auth, infrastructure, devops
+    api_key_env: str  # env var name (never plaintext)
+    plan: str = ""  # pro, free, enterprise, pay_as_you_go, self_hosted
+    plan_details: str = ""
+    payment_method: str = ""  # credit_card, invoice, none
+    capacity: dict[str, Any] = {}
+    consumption_tracking: bool = False
+    status: str = "active"  # active, setup, disabled, pending_key
+    notes: str = ""
+
+
 class OrgConfig(BaseModel):
     """Top-level org configuration loaded from YAML."""
 
@@ -72,6 +87,7 @@ class OrgConfig(BaseModel):
     cloud_priority: list[str] | None = None
     cheapest_priority: list[str] | None = None
     agents: list[AgentTemplate] = []
+    services: dict[str, ServiceConfig] = {}
     embedding_provider: str = "openai"
     embedding_model: str = "text-embedding-3-small"
 

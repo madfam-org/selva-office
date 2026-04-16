@@ -206,6 +206,14 @@ class SendMarketingEmailTool(BaseTool):
 
             email_id = data.get("id", "unknown")
             logger.info("Marketing email sent: to=%s subject=%s id=%s", to_email, subject, email_id)
+            try:
+                from ..service_tracking import emit_service_usage
+                emit_service_usage("resend", "marketing_email_sent", 1, {
+                    "to": to_email, "subject": subject, "email_id": email_id,
+                    "utm_campaign": utm_campaign,
+                })
+            except Exception:
+                pass
 
             return ToolResult(
                 success=True,

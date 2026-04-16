@@ -101,6 +101,45 @@ model_assignments:
 #   - openai
 #   - anthropic
 
+# ── External service accounts ─────────────────────────────────────────
+# Tracks subscriptions, capacity, and payment status for external
+# services the org depends on.  Agents can query this to know what
+# services are available and their limits.
+services:
+  # resend:
+  #   provider: resend
+  #   service_type: email
+  #   api_key_env: RESEND_API_KEY
+  #   plan: pro
+  #   plan_details: "Transactional Pro $20/mo (50K emails, 10 domains). Marketing Free (1K contacts)."
+  #   payment_method: credit_card
+  #   capacity:
+  #     emails_per_month: 50000
+  #     domains: 10
+  #     rate_limit_per_second: 10
+  #   consumption_tracking: true
+  #   status: active
+  #   notes: ""
+
+  # stripe:
+  #   provider: stripe
+  #   service_type: billing
+  #   api_key_env: STRIPE_SECRET_KEY
+  #   plan: standard
+  #   payment_method: linked
+  #   capacity:
+  #     products: 100
+  #   consumption_tracking: false
+  #   status: active
+
+# ── Org knowledge (injected into agent system prompts) ────────────────
+# Facts agents should know when relevant skills are activated.
+knowledge: []
+  # - topic: email_infrastructure
+  #   fact: "We use Resend for email. Transactional Pro ($20/mo, 50K/mo)."
+  # - topic: billing_infrastructure
+  #   fact: "Stripe for billing. Products and prices synced."
+
 # ── Embedding config ──────────────────────────────────────────────────
 embedding_provider: openai
 embedding_model: text-embedding-3-small

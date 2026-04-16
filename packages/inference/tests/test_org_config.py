@@ -9,6 +9,7 @@ from madfam_inference.org_config import (
     ModelAssignment,
     OrgConfig,
     ProviderConfig,
+    ServiceConfig,
     TaskType,
     _parse_yaml,
     load_org_config,
@@ -40,6 +41,7 @@ class TestOrgConfigDefaults:
         assert cfg.cloud_priority is None
         assert cfg.cheapest_priority is None
         assert cfg.agents == []
+        assert cfg.services == {}
         assert cfg.embedding_provider == "openai"
         assert cfg.embedding_model == "text-embedding-3-small"
 
@@ -166,6 +168,62 @@ class TestProviderConfig:
         with patch.dict("os.environ", {"SILICONFLOW_API_KEY": "sk-test-123"}):
             import os
             assert os.environ.get(pc.api_key_env) == "sk-test-123"
+
+
+class TestServiceConfig:
+    """ServiceConfig model validation."""
+
+    def test_defaults(self) -> None:
+        sc = ServiceConfig(provider="resend", service_type="email", api_key_env="RESEND_API_KEY")
+        assert sc.plan == ""
+        assert sc.status == "active"
+        assert sc.capacity == {}
+        assert sc.consumption_tracking is False
+
+    def test_full_config(self) -> None:
+        sc = ServiceConfig(
+            provider="resend",
+            service_type="email",
+            api_key_env="RESEND_API_KEY",
+            plan="pro",
+            plan_details="Transactional Pro $20/mo",
+            payment_method="credit_card",
+            capacity={"emails_per_month": 50000, "domains": 10},
+            consumption_tracking=True,
+            status="active",
+            notes="Full access key",
+        )
+        assert sc.capacity["emails_per_month"] == 50000
+        assert sc.consumption_tracking is True
+
+    def test_services_from_yaml(self, tmp_path: Path) -> None:
+        load_org_config.cache_clear()
+        config_file = tmp_path / "org.yaml"
+        config_file.write_text("""
+services:
+  resend:
+    provider: resend
+    service_type: email
+    api_key_env: RESEND_API_KEY
+    plan: pro
+    capacity:
+      emails_per_month: 50000
+    consumption_tracking: true
+    status: active
+  stripe:
+    provider: stripe
+    service_type: billing
+    api_key_env: STRIPE_SECRET_KEY
+    plan: standard
+    status: active
+""")
+        cfg = load_org_config(config_file)
+        assert "resend" in cfg.services
+        assert cfg.services["resend"].plan == "pro"
+        assert cfg.services["resend"].capacity["emails_per_month"] == 50000
+        assert "stripe" in cfg.services
+        assert cfg.services["stripe"].service_type == "billing"
+        load_org_config.cache_clear()
 
 
 class TestParseYaml:

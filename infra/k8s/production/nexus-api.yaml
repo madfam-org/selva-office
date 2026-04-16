@@ -93,17 +93,25 @@ spec:
                 secretKeyRef:
                   name: autoswarm-secrets
                   key: WORKER_API_TOKEN
+            - name: ORG_CONFIG_PATH
+              value: "/etc/autoswarm/org-config.yaml"
           workingDir: /data
           volumeMounts:
             - name: tmp
               mountPath: /tmp
             - name: data
               mountPath: /data
+            - name: org-config
+              mountPath: /etc/autoswarm
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
         - name: data
           emptyDir: {}
+        - name: org-config
+          configMap:
+            name: autoswarm-org-config
 ---
 apiVersion: v1
 kind: Service

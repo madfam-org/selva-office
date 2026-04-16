@@ -6,13 +6,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from madfam_inference import InferenceProvider, InferenceRequest, InferenceResponse, ModelRouter
-from madfam_inference.org_config import load_org_config
-from madfam_inference.providers.anthropic import AnthropicProvider
-from madfam_inference.providers.generic import GenericOpenAIProvider
-from madfam_inference.providers.ollama import OllamaProvider
-from madfam_inference.providers.openai import OpenAIProvider
-from madfam_inference.providers.openrouter import OpenRouterProvider
+from madfam_inference import InferenceRequest, InferenceResponse, ModelRouter
+from madfam_inference.factory import build_router_from_env
 from madfam_inference.types import RoutingPolicy, Sensitivity
 
 from .config import get_settings
@@ -20,110 +15,28 @@ from .config import get_settings
 logger = logging.getLogger(__name__)
 
 
-def _resolve_api_key(env_name: str) -> str | None:
-    """Resolve an API key from an environment variable name."""
-    import os
-
-    return os.environ.get(env_name)
-
-
 def build_model_router() -> ModelRouter:
     """Instantiate a ModelRouter with available providers from config.
 
-    Creates real ``InferenceProvider`` instances for each configured
-    API key and always includes Ollama as the local fallback.
-    Also registers providers defined in the org config.
+    Delegates to the shared ``build_router_from_env`` factory in the
+    inference package so that the worker and nexus-api proxy use
+    identical provider registration logic.
     """
     settings = get_settings()
-    try:
-        org_config = load_org_config(Path(settings.org_config_path).expanduser())
-    except (FileNotFoundError, OSError):
-        logger.warning(
-            "Org config not found at %s — using default provider routing",
-            settings.org_config_path,
-        )
-        from madfam_inference.org_config import OrgConfig
-        org_config = OrgConfig()
-    providers: dict[str, InferenceProvider] = {}
-
-    if settings.anthropic_api_key:
-        providers["anthropic"] = AnthropicProvider(api_key=settings.anthropic_api_key)
-    if settings.openai_api_key:
-        providers["openai"] = OpenAIProvider(api_key=settings.openai_api_key)
-    if settings.openrouter_api_key:
-        providers["openrouter"] = OpenRouterProvider(api_key=settings.openrouter_api_key)
-    if settings.together_api_key:
-        providers["together"] = GenericOpenAIProvider(
-            base_url="https://api.together.xyz/v1",
-            api_key=settings.together_api_key,
-            model="meta-llama/Llama-3.3-70B-Instruct",
-            provider_name="together",
-        )
-    if settings.fireworks_api_key:
-        providers["fireworks"] = GenericOpenAIProvider(
-            base_url="https://api.fireworks.ai/inference/v1",
-            api_key=settings.fireworks_api_key,
-            model="accounts/fireworks/models/llama-v3p1-70b-instruct",
-            provider_name="fireworks",
-        )
-    if settings.deepinfra_api_key:
-        providers["deepinfra"] = GenericOpenAIProvider(
-            base_url="https://api.deepinfra.com/v1/openai",
-            api_key=settings.deepinfra_api_key,
-            model="meta-llama/Llama-3.3-70B-Instruct",
-            provider_name="deepinfra",
-        )
-
-    # New hardcoded providers
-    if settings.siliconflow_api_key:
-        providers["siliconflow"] = GenericOpenAIProvider(
-            base_url="https://api.siliconflow.cn/v1",
-            api_key=settings.siliconflow_api_key,
-            model="THUDM/GLM-5",
-            provider_name="siliconflow",
-        )
-    if settings.moonshot_api_key:
-        providers["moonshot"] = GenericOpenAIProvider(
-            base_url="https://api.moonshot.cn/v1",
-            api_key=settings.moonshot_api_key,
-            model="kimi-k2.5",
-            provider_name="moonshot",
-        )
-
-    if settings.groq_api_key:
-        providers["groq"] = GenericOpenAIProvider(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=settings.groq_api_key,
-            model="llama-3.3-70b-versatile",
-            provider_name="groq",
-        )
-    if settings.mistral_api_key:
-        providers["mistral"] = GenericOpenAIProvider(
-            base_url="https://api.mistral.ai/v1",
-            api_key=settings.mistral_api_key,
-            model="mistral-large-latest",
-            provider_name="mistral",
-            vision=True,
-        )
-
-    # Register additional providers from org config (skip already registered).
-    for name, cfg in org_config.providers.items():
-        if name not in providers:
-            api_key = _resolve_api_key(cfg.api_key_env) or ""
-            if api_key:
-                providers[name] = GenericOpenAIProvider(
-                    base_url=cfg.base_url,
-                    api_key=api_key,
-                    model="default",
-                    provider_name=name,
-                    vision=cfg.vision,
-                    timeout=cfg.timeout,
-                )
-
-    # Always include ollama as local provider.
-    providers["ollama"] = OllamaProvider(base_url=settings.ollama_base_url)
-
-    return ModelRouter(providers=providers, org_config=org_config)
+    return build_router_from_env(
+        org_config_path=settings.org_config_path,
+        anthropic_api_key=settings.anthropic_api_key,
+        openai_api_key=settings.openai_api_key,
+        openrouter_api_key=settings.openrouter_api_key,
+        together_api_key=settings.together_api_key,
+        fireworks_api_key=settings.fireworks_api_key,
+        deepinfra_api_key=settings.deepinfra_api_key,
+        siliconflow_api_key=settings.siliconflow_api_key,
+        moonshot_api_key=settings.moonshot_api_key,
+        groq_api_key=settings.groq_api_key,
+        mistral_api_key=settings.mistral_api_key,
+        ollama_base_url=settings.ollama_base_url,
+    )
 
 
 def validate_providers() -> None:

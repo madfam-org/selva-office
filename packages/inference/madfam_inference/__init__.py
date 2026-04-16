@@ -1,5 +1,6 @@
 from .base import InferenceProvider
-from .org_config import OrgConfig, TaskType, load_org_config
+from .factory import build_router_from_env
+from .org_config import OrgConfig, ServiceConfig, TaskType, load_org_config
 from .router import ModelRouter
 from .types import (
     ContentType,
@@ -20,6 +21,8 @@ __all__ = [
     "OrgConfig",
     "RoutingPolicy",
     "Sensitivity",
+    "ServiceConfig",
     "TaskType",
+    "build_router_from_env",
     "load_org_config",
 ]

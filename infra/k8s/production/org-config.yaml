@@ -1,0 +1,226 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autoswarm-org-config
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: org-config
+    app.kubernetes.io/part-of: autoswarm-office
+data:
+  org-config.yaml: |
+    # ═══════════════════════════════════════════════════════════════════════
+    # MADFAM Production Org Config
+    # ═══════════════════════════════════════════════════════════════════════
+    # Deployed via ConfigMap → mounted at /etc/autoswarm/org-config.yaml.
+    # Providers are auto-registered from env vars (ANTHROPIC_API_KEY, etc.)
+    # — only add here if overriding base_url or timeout.
+    # ═══════════════════════════════════════════════════════════════════════
+
+    providers: {}
+
+    # ── Task-type model assignments ───────────────────────────────────────
+    model_assignments:
+      planning:
+        provider: anthropic
+        model: claude-opus-4-20250514
+        max_tokens: 8192
+        temperature: 0.6
+      coding:
+        provider: anthropic
+        model: claude-sonnet-4-20250514
+        max_tokens: 8192
+        temperature: 0.4
+      fast_coding:
+        provider: deepinfra
+        model: meta-llama/Llama-3.3-70B-Instruct
+        max_tokens: 4096
+        temperature: 0.3
+      review:
+        provider: anthropic
+        model: claude-sonnet-4-20250514
+        max_tokens: 4096
+        temperature: 0.5
+      research:
+        provider: anthropic
+        model: claude-sonnet-4-20250514
+        max_tokens: 8192
+        temperature: 0.7
+      crm:
+        provider: anthropic
+        model: claude-haiku-4-20250514
+        max_tokens: 4096
+        temperature: 0.7
+      support:
+        provider: anthropic
+        model: claude-haiku-4-20250514
+        max_tokens: 2048
+        temperature: 0.7
+      vision:
+        provider: anthropic
+        model: claude-sonnet-4-20250514
+        max_tokens: 4096
+        temperature: 0.5
+      embedding:
+        provider: openai
+        model: text-embedding-3-small
+        max_tokens: 512
+        temperature: 0.0
+
+    # ── Priority lists ────────────────────────────────────────────────────
+    cloud_priority:
+      - anthropic
+      - openai
+      - deepinfra
+      - groq
+      - together
+      - fireworks
+      - mistral
+      - moonshot
+      - siliconflow
+      - openrouter
+
+    cheapest_priority:
+      - deepinfra
+      - groq
+      - together
+      - siliconflow
+      - fireworks
+      - mistral
+      - moonshot
+      - openrouter
+      - openai
+      - anthropic
+
+    # ── External service accounts ─────────────────────────────────────────
+    services:
+      resend:
+        provider: resend
+        service_type: email
+        api_key_env: RESEND_API_KEY
+        plan: pro
+        plan_details: "Transactional Pro $20/mo (50K emails, 10 domains, no daily limit). Marketing Free (1K contacts)."
+        payment_method: credit_card
+        capacity:
+          emails_per_month: 50000
+          domains: 10
+          rate_limit_per_second: 10
+        consumption_tracking: true
+        status: active
+        notes: "Upgraded 2026-04-16. Full-access key: madfam-full-access. Domains: madfam.io (verified), selva.town, karafiel.mx, dhan.am, tezca.mx, forj.design, cotiza.studio, fortuna.tube, yantra4d.com. Account: innovacionesmadfam@proton.me."
+
+      anthropic:
+        provider: anthropic
+        service_type: llm
+        api_key_env: ANTHROPIC_API_KEY
+        plan: pay_as_you_go
+        plan_details: "Pay-per-token. Opus 4, Sonnet 4, Haiku 4 available."
+        payment_method: credit_card
+        capacity:
+          models:
+            - claude-opus-4-20250514
+            - claude-sonnet-4-20250514
+            - claude-haiku-4-20250514
+        consumption_tracking: true
+        status: active
+        notes: "Primary provider for planning, coding, review, vision tasks."
+
+      deepinfra:
+        provider: deepinfra
+        service_type: llm
+        api_key_env: DEEPINFRA_API_KEY
+        plan: pay_as_you_go
+        plan_details: "Pay-per-token. $0.23/$0.40 per 1M tokens (input/output) for Llama 3.3 70B."
+        payment_method: credit_card
+        capacity:
+          models:
+            - meta-llama/Llama-3.3-70B-Instruct
+            - BAAI/bge-base-en-v1.5
+        consumption_tracking: true
+        status: active
+        notes: "Cheapest in CHEAPEST_PRIORITY list. Target for fast_coding, CRM fallback, embedding."
+
+      stripe:
+        provider: stripe
+        service_type: billing
+        api_key_env: STRIPE_MX_SECRET_KEY
+        plan: standard
+        plan_details: "Stripe Mexico (MXN). 6 products, 15 MXN prices synced."
+        payment_method: linked_to_dhanam
+        capacity:
+          products: 6
+          prices: 15
+        consumption_tracking: false
+        status: active
+        notes: "Managed via Dhanam. Checkout allowlist: 9 ecosystem domains."
+
+      phynecrm:
+        provider: phynecrm
+        service_type: crm
+        api_key_env: PHYNE_CRM_FEDERATION_TOKEN
+        plan: self_hosted
+        plan_details: "Self-hosted PhyneCRM on K3s. Federation token auth."
+        payment_method: none
+        capacity:
+          contacts: unlimited
+          leads: unlimited
+          pipelines: 2
+        consumption_tracking: false
+        status: active
+        notes: "8 contacts, 8 leads, 2 pipelines seeded."
+
+      janua:
+        provider: janua
+        service_type: auth
+        api_key_env: JANUA_SECRET_KEY
+        plan: self_hosted
+        plan_details: "Self-hosted Janua SSO on K3s. OIDC + JWT."
+        payment_method: none
+        capacity:
+          oauth_clients: unlimited
+          users: unlimited
+        consumption_tracking: false
+        status: active
+        notes: "23 OAuth clients registered. Handles all ecosystem auth."
+
+      cloudflare:
+        provider: cloudflare
+        service_type: infrastructure
+        api_key_env: CLOUDFLARE_API_TOKEN
+        plan: free
+        plan_details: "Free plan. Tunnel-based ingress, DNS management."
+        payment_method: none
+        capacity:
+          domains: 16
+          tunnels: 2
+        consumption_tracking: false
+        status: active
+        notes: "All ecosystem domains managed via Cloudflare DNS + Tunnel."
+
+      enclii:
+        provider: enclii
+        service_type: devops
+        api_key_env: ENCLII_API_TOKEN
+        plan: self_hosted
+        plan_details: "Self-hosted Enclii DevOps on K3s. ArgoCD GitOps."
+        payment_method: none
+        capacity:
+          services: 50
+          namespaces: 22
+        consumption_tracking: false
+        status: active
+        notes: "3-node K3s cluster. All ecosystem services deployed via ArgoCD."
+
+    # ── Org knowledge (injected into agent system prompts) ────────────────
+    knowledge:
+      - topic: email_infrastructure
+        fact: "MADFAM uses Resend for email delivery. Transactional Pro plan ($20/mo, 50K emails/mo, 10 domains). Marketing is on the free tier (1K contacts). Credit card linked. Account: innovacionesmadfam@proton.me."
+      - topic: verified_domains
+        fact: "Verified sender domains: madfam.io, janua.dev. Pending: selva.town, karafiel.mx, dhan.am, tezca.mx, forj.design, cotiza.studio, fortuna.tube, yantra4d.com."
+      - topic: llm_providers
+        fact: "Primary LLM: Anthropic (planning, coding, review, vision). Economy LLM: DeepInfra (fast_coding, CRM fallback). All ecosystem inference centralized through Selva nexus-api /v1 proxy."
+      - topic: billing_infrastructure
+        fact: "Stripe Mexico (MXN) via Dhanam. 6 products, 15 prices. Checkout domains: selva.town, karafiel.mx, tezca.mx, fortuna.tube, forgesight.quest, avala.studio, cotiza.studio, forj.design, yantra4d.com."
+
+    # ── Embedding config ──────────────────────────────────────────────────
+    embedding_provider: openai
+    embedding_model: text-embedding-3-small

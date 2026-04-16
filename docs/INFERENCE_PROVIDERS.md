@@ -195,13 +195,13 @@ For providers that should always be available:
    my_provider_api_key: str | None = None
    ```
 
-2. Register the provider in `apps/workers/autoswarm_workers/inference.py`
-   inside `build_model_router()`:
+2. Register the provider in `packages/inference/madfam_inference/factory.py`
+   inside `build_router_from_env()`:
    ```python
-   if settings.my_provider_api_key:
+   if my_provider_api_key:
        providers["my-provider"] = GenericOpenAIProvider(
            base_url="https://api.my-provider.com/v1",
-           api_key=settings.my_provider_api_key,
+           api_key=my_provider_api_key,
            model="default-model",
            provider_name="my-provider",
        )
@@ -236,6 +236,55 @@ You can also check via the API:
 ```bash
 curl -H "Authorization: Bearer $TOKEN" http://localhost:4300/api/v1/intelligence/config
 ```
+
+## Inference Proxy (Ecosystem Gateway)
+
+Nexus-api exposes an **OpenAI-compatible proxy** at `/v1/` so ecosystem
+services can centralise all LLM calls through Selva's `ModelRouter`.
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/v1/chat/completions` | Chat completion (streaming + non-streaming) |
+| POST | `/v1/embeddings` | Text embeddings |
+
+### Authentication
+
+Bearer token via `WORKER_API_TOKEN`:
+```bash
+curl http://nexus-api:4300/v1/chat/completions \
+  -H "Authorization: Bearer $WORKER_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"auto","messages":[{"role":"user","content":"hello"}]}'
+```
+
+### Routing hints
+
+Services can pass optional headers to influence routing:
+
+| Header | Effect | Example |
+|--------|--------|---------|
+| `X-Task-Type` | Maps to `RoutingPolicy.task_type` (org-config model assignment) | `crm`, `coding`, `research` |
+| `X-Sensitivity` | Maps to `RoutingPolicy.sensitivity` | `public`, `internal` |
+
+When `model` is `"auto"`, the router picks the best provider via
+task-type or priority-list routing. Otherwise the `model` value is
+passed as `model_override` to the selected provider.
+
+### Connected services
+
+| Service | Config | Code changes |
+|---------|--------|-------------|
+| **PhyneCRM** | `OPENAI_BASE_URL=http://nexus-api.../v1` | None |
+| **Fortuna** | `OPENAI_BASE_URL=http://nexus-api.../v1` | None |
+| **Yantra4D** | `AI_BASE_URL=http://nexus-api.../v1`, `AI_PROVIDER=openai` | `ai_provider.py` passes `base_url` |
+
+### Implementation
+
+- Router: `apps/nexus-api/nexus_api/routers/inference_proxy.py`
+- Factory: `packages/inference/madfam_inference/factory.py` (`build_router_from_env`)
+- Both worker and proxy use the same factory to ensure identical routing
 
 ### Common API key format issues
 

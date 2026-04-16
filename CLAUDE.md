@@ -55,8 +55,10 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
-- `packages/inference/madfam_inference/org_config.py` -- Org-level config (task types, model assignments)
+- `packages/inference/madfam_inference/org_config.py` -- Org-level config (task types, model assignments, services)
 - `packages/inference/madfam_inference/router.py` -- LLM model routing logic
+- `packages/inference/madfam_inference/factory.py` -- Shared `build_router_from_env()` (worker + proxy)
+- `apps/nexus-api/nexus_api/routers/inference_proxy.py` -- OpenAI-compatible `/v1/` proxy (ecosystem gateway)
 - `apps/nexus-api/nexus_api/routers/intelligence.py` -- Intelligence config API
 - `apps/nexus-api/nexus_api/routers/chat.py` -- Chat history persistence API
 - `apps/nexus-api/nexus_api/routers/admin.py` -- Admin controls (kick, room config)
@@ -773,8 +775,18 @@ The `packages/skills/` package implements the AgentSkills standard.
   `request.policy.model_override` in `_build_body()`, falling back to
   `self._model` when not set.
 - **New providers**: SiliconFlow (`SILICONFLOW_API_KEY`, GLM-5) and Moonshot
-  (`MOONSHOT_API_KEY`, Kimi K2.5) registered in `build_model_router()`.
-  Org config can define additional providers dynamically.
+  (`MOONSHOT_API_KEY`, Kimi K2.5) registered via `build_router_from_env()` in
+  `packages/inference/madfam_inference/factory.py`. Org config can define
+  additional providers dynamically.
+- **Inference proxy**: OpenAI-compatible gateway at `/v1/chat/completions` and
+  `/v1/embeddings` (`routers/inference_proxy.py`). Ecosystem services (Fortuna,
+  Yantra4D, PhyneCRM) point their OpenAI SDK `base_url` here to centralise all
+  LLM calls through the `ModelRouter`. Auth: Bearer `WORKER_API_TOKEN`. Optional
+  routing headers: `X-Task-Type`, `X-Sensitivity`.
+- **Service registry**: `OrgConfig.services` tracks external accounts (Resend,
+  Anthropic, DeepInfra, Stripe, etc.) with plan, capacity, and payment status.
+  Production config: `infra/k8s/production/org-config.yaml` (ConfigMap mounted
+  at `/etc/autoswarm/org-config.yaml`).
 - **Agent roster (default)**: 13 agents across 4 departments (Engineering×6, Research×3,
   CRM×2, Support×2) with cross-functional skills. Seed script is idempotent
   (skips existing agents by name).

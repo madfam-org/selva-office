@@ -111,6 +111,22 @@ request = InferenceRequest(
 )
 ```
 
+## Router Factory
+
+`build_router_from_env()` creates a fully-configured `ModelRouter` from
+environment-provided API keys. Both the worker and the nexus-api inference
+proxy use this shared factory:
+
+```python
+from madfam_inference.factory import build_router_from_env
+
+router = build_router_from_env(
+    org_config_path="~/.autoswarm/org-config.yaml",
+    anthropic_api_key="sk-...",
+    deepinfra_api_key="di-...",
+)
+```
+
 ## Public API
 
 | Export | Module | Description |
@@ -124,7 +140,9 @@ request = InferenceRequest(
 | `ContentType` | `madfam_inference` | Media content type enum |
 | `MediaContent` | `madfam_inference` | Multimodal content block |
 | `OrgConfig` | `madfam_inference` | Organization config model |
+| `ServiceConfig` | `madfam_inference` | External service account model |
 | `TaskType` | `madfam_inference` | LLM task category enum |
+| `build_router_from_env` | `madfam_inference` | Shared router factory |
 | `load_org_config` | `madfam_inference` | Config loader (cached) |
 
 ## License

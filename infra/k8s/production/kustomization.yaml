@@ -5,6 +5,7 @@ namespace: autoswarm
 
 resources:
   - configmap.yaml
+  - org-config.yaml
   - service-account.yaml
   - nexus-api.yaml
   - office-ui.yaml
