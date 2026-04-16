@@ -69,6 +69,8 @@ from .legal import (
 )
 from .billing_tools import CreateCheckoutLinkTool, GetRevenueMetricsTool
 from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
+from .dns import get_dns_tools
+from .vault import get_vault_tools
 from .enclii_infra import (
     EncliiExecTool,
     EncliiHealthTool,
@@ -237,4 +239,8 @@ def get_builtin_tools() -> list[BaseTool]:
         EncliiLogsTool(),
         EncliiHealthTool(),
         EncliiSecretsTool(),
+        # DNS management tools (Porkbun — Orchestration Node)
+        *get_dns_tools(),
+        # Vault — secure secret storage (Orchestration Node — HITL gated)
+        *get_vault_tools(),
     ]
