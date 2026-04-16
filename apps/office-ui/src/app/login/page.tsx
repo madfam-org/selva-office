@@ -32,7 +32,7 @@ function LoginForm() {
       scope: 'openid profile email',
       state: redirect,
     });
-    window.location.href = `${JANUA_ISSUER_URL}/authorize?${params.toString()}`;
+    window.location.href = `${JANUA_ISSUER_URL}/api/v1/oauth/authorize?${params.toString()}`;
   }, [redirect]);
 
   const hasJanua = Boolean(JANUA_ISSUER_URL);

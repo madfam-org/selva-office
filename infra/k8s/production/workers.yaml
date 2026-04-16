@@ -90,6 +90,18 @@ spec:
                 secretKeyRef:
                   name: autoswarm-llm-secrets
                   key: WORKER_API_TOKEN
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-llm-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: DEEPINFRA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-llm-secrets
+                  key: DEEPINFRA_API_KEY
+                  optional: true
             - name: MEMORY_PERSIST_DIR
               value: /data/autoswarm/memory
             - name: BANDIT_PERSIST_PATH

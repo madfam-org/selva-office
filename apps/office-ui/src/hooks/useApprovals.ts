@@ -5,8 +5,13 @@ import type { ApprovalRequest, ApprovalResponse } from '@autoswarm/shared-types'
 import { apiFetch, isDemo } from '@/lib/api';
 import { MAX_RECONNECT_DELAY_MS } from '@/lib/constants';
 
-const WS_URL =
-  process.env.NEXT_PUBLIC_APPROVALS_WS_URL ?? 'ws://localhost:4300/api/v1/approvals/ws';
+function resolveWsUrl(): string {
+  if (process.env.NEXT_PUBLIC_APPROVALS_WS_URL) return process.env.NEXT_PUBLIC_APPROVALS_WS_URL;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) return apiUrl.replace(/^http/, 'ws') + '/api/v1/approvals/ws';
+  return 'ws://localhost:4300/api/v1/approvals/ws';
+}
+const WS_URL = resolveWsUrl();
 
 interface ApprovalsState {
   pendingApprovals: ApprovalRequest[];
