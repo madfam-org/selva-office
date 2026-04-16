@@ -93,6 +93,18 @@ spec:
                 secretKeyRef:
                   name: autoswarm-secrets
                   key: WORKER_API_TOKEN
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-llm-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: DEEPINFRA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-llm-secrets
+                  key: DEEPINFRA_API_KEY
+                  optional: true
             - name: ORG_CONFIG_PATH
               value: "/etc/autoswarm/org-config.yaml"
           workingDir: /data
