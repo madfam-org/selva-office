@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoswarm_redis_pool import get_redis_pool
 
-from ..auth import get_current_user, require_non_guest
+from ..auth import get_current_user, require_non_demo, require_non_guest
 from ..config import get_settings
 from ..database import get_db
 from ..models import Agent, ComputeTokenLedger, SwarmTask, TaskEvent, TenantConfig, Workflow
@@ -125,7 +125,7 @@ def _task_to_response(task: SwarmTask) -> SwarmTaskResponse:
     "/dispatch",
     response_model=SwarmTaskResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_non_guest), Depends(require_dispatch_rate_limit)],
+    dependencies=[Depends(require_non_guest), Depends(require_non_demo), Depends(require_dispatch_rate_limit)],
 )
 async def dispatch_task(
     body: DispatchRequest,
