@@ -571,9 +571,9 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
             onToggleViewMode={handleToggleViewMode}
           />
 
-          {/* Ops controls (left side) — hidden in demo */}
+          {/* Ops controls (left side, below HUD) — hidden in demo */}
           {!isDemo && (
-            <div className="absolute top-4 left-4 z-hud flex gap-1">
+            <div className="absolute top-20 sm:top-24 left-2 sm:left-4 z-hud flex gap-1">
               <button
                 onClick={() => {
                   setOpsFeedOpen((prev) => {
@@ -722,14 +722,14 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
 
           <button
             onClick={() => setAvatarEditorOpen(true)}
-            className="absolute top-4 right-4 z-hud rounded bg-slate-800/90 px-3 py-1 text-xs text-slate-300 retro-btn hover:bg-slate-700"
+            className="absolute top-4 right-4 z-hud hidden sm:block rounded bg-slate-800/90 px-3 py-1 text-xs text-slate-300 retro-btn hover:bg-slate-700"
             aria-label="Open avatar editor"
           >
             Avatar
           </button>
 
-          {/* Right-side controls — hide calendar in demo */}
-          <div className="absolute top-14 right-4 z-hud flex flex-col gap-1">
+          {/* Right-side controls — hide calendar in demo, hide most on mobile */}
+          <div className="absolute top-14 right-2 sm:right-4 z-hud hidden sm:flex flex-col gap-1">
             {!isDemo && (
               <div className="flex items-center gap-2">
                 <button

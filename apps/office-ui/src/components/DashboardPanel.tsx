@@ -159,7 +159,7 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
       {/* Toggle button */}
       <button
         onClick={onToggle}
-        className="pointer-events-auto absolute right-0 top-1/2 z-video -translate-y-1/2 retro-panel retro-btn px-1 py-4 sm:py-6 border border-r-0 border-slate-700/50 font-mono text-sm sm:text-[10px] text-slate-400 transition-all hover:text-white"
+        className="pointer-events-auto absolute right-0 top-1/2 z-video -translate-y-1/2 retro-panel retro-btn px-1.5 sm:px-2 py-6 sm:py-8 border border-r-0 border-slate-700/50 rounded-l-lg font-mono text-sm sm:text-[10px] text-slate-400 transition-all hover:text-white hover:bg-slate-700/50"
         aria-label={open ? 'Close dashboard panel' : 'Open dashboard panel'}
         aria-expanded={open}
       >
@@ -176,7 +176,7 @@ export const DashboardPanel: FC<DashboardPanelProps> = ({
 
       {/* Sliding panel */}
       <aside
-        className={`absolute right-0 top-0 z-hud h-full w-full max-w-80 landscape:max-h-[70vh] transform transition-transform duration-300 sm:w-80 ${
+        className={`absolute right-0 top-0 z-hud h-full w-full max-w-80 landscape:max-h-[70vh] transform transition-transform duration-300 sm:w-80 md:max-w-96 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
         aria-label="Dashboard panel"

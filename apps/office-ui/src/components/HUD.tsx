@@ -164,19 +164,19 @@ export const HUD: FC<HUDProps> = ({
 
   return (
     <div
-      className="pointer-events-none absolute left-0 right-0 top-0 z-hud flex items-start justify-between p-4"
+      className="pointer-events-none absolute left-0 right-0 top-0 z-hud flex items-start justify-between gap-1 p-2 sm:gap-2 sm:p-4"
       role="status"
       aria-label="Game HUD"
     >
       {/* Left: Compute Token Bar + User Identity */}
-      <div className="pointer-events-auto flex flex-col gap-2">
-        <div className="retro-panel px-4 py-3 font-mono">
-          <div className="mb-1 flex items-center gap-2">
+      <div className="pointer-events-auto flex flex-col gap-1 sm:gap-2 min-w-0">
+        <div className="retro-panel px-2 py-2 sm:px-4 sm:py-3 font-mono">
+          <div className="mb-1 hidden sm:flex items-center gap-2">
             <span className="pixel-text text-[8px] uppercase text-slate-400">
               Compute Tokens
             </span>
           </div>
-          <div className="mb-1 h-3 w-48 bg-slate-900 pixel-border">
+          <div className="mb-1 h-2 sm:h-3 w-24 sm:w-48 bg-slate-900 pixel-border">
             <div
               className={`h-full transition-all duration-300 ${tokenBarColor}`}
               style={{ width: `${tokenPercent}%` }}
@@ -187,20 +187,20 @@ export const HUD: FC<HUDProps> = ({
               aria-label="Compute token usage"
             />
           </div>
-          <div className="flex justify-between text-[9px] text-slate-500">
+          <div className="hidden sm:flex justify-between text-[9px] text-slate-500">
             <span>{computeTokens?.used.toLocaleString() ?? 0}</span>
             <span>{computeTokens?.limit.toLocaleString() ?? 10000}</span>
           </div>
         </div>
         {userName && (
-          <div className="retro-panel px-3 py-1.5 font-mono text-[8px] text-slate-400">
+          <div className="hidden sm:block retro-panel px-3 py-1.5 font-mono text-[8px] text-slate-400">
             <span className="text-indigo-400">{userName}</span>
           </div>
         )}
         {onToggleViewMode && (
           <button
             onClick={onToggleViewMode}
-            className="retro-panel retro-btn px-3 py-1.5 font-mono text-[8px] text-slate-300 transition-colors hover:text-white"
+            className="hidden sm:block retro-panel retro-btn px-3 py-1.5 font-mono text-[8px] text-slate-300 transition-colors hover:text-white"
             aria-label={viewMode === 'game' ? 'Switch to simple view' : 'Switch to game view'}
           >
             {viewMode === 'game' ? 'Simple View' : 'Game View'}
@@ -209,25 +209,28 @@ export const HUD: FC<HUDProps> = ({
       </div>
 
       {/* Center: Agent Count + Status Badges */}
-      <div className="pointer-events-auto flex flex-col items-center gap-2">
+      <div className="pointer-events-auto flex flex-col items-center gap-1 sm:gap-2">
         {followingPlayer && (
-          <div className="retro-panel px-3 py-1.5 font-mono text-[8px] text-emerald-400 animate-fade-in">
-            Following: {followingPlayer} <span className="text-slate-500">[ESC]</span>
+          <div className="retro-panel px-2 py-1 sm:px-3 sm:py-1.5 font-mono text-[7px] sm:text-[8px] text-emerald-400 animate-fade-in">
+            <span className="hidden sm:inline">Following: </span>{followingPlayer} <span className="text-slate-500">[ESC]</span>
           </div>
         )}
         {explorerMode && (
-          <div className="retro-panel px-3 py-1.5 font-mono text-[8px] text-indigo-400 animate-fade-in">
-            EXPLORER MODE <span className="text-slate-500">[Tab/ESC]</span>
+          <div className="retro-panel px-2 py-1 sm:px-3 sm:py-1.5 font-mono text-[7px] sm:text-[8px] text-indigo-400 animate-fade-in">
+            <span className="hidden sm:inline">EXPLORER MODE </span>
+            <span className="sm:hidden">EXPLORE </span>
+            <span className="text-slate-500">[Tab/ESC]</span>
           </div>
         )}
       </div>
 
       {/* Agent Count */}
-      <div className="pointer-events-auto retro-panel px-4 py-3 text-center font-mono">
-        <span className="pixel-text text-[8px] uppercase text-slate-400">
-          Active Agents
+      <div className="pointer-events-auto retro-panel px-2 py-2 sm:px-4 sm:py-3 text-center font-mono">
+        <span className="pixel-text text-[7px] sm:text-[8px] uppercase text-slate-400">
+          <span className="hidden sm:inline">Active Agents</span>
+          <span className="sm:hidden" aria-hidden="true">Agents</span>
         </span>
-        <p className="pixel-text mt-1 text-lg text-cyan-400">
+        <p className="pixel-text mt-0.5 sm:mt-1 text-sm sm:text-lg text-cyan-400">
           <span key={activeAgentCount} className="inline-block animate-pop-in">
             {activeAgentCount}
           </span>
@@ -235,16 +238,17 @@ export const HUD: FC<HUDProps> = ({
       </div>
 
       {/* Right: Pending Approvals + Connection Status */}
-      <div className="pointer-events-auto flex flex-col gap-2">
+      <div className="pointer-events-auto flex flex-col gap-1 sm:gap-2">
         <button
-          className="retro-panel relative px-4 py-3 font-mono cursor-pointer hover:bg-slate-700/50 transition-colors"
+          className="retro-panel relative px-2 py-2 sm:px-4 sm:py-3 font-mono cursor-pointer hover:bg-slate-700/50 transition-colors"
           onClick={onApprovalClick}
           aria-label={`Open approval queue (${pendingApprovalCount} pending)`}
         >
-          <span className="pixel-text text-[8px] uppercase text-slate-400">
-            Approvals
+          <span className="pixel-text text-[7px] sm:text-[8px] uppercase text-slate-400">
+            <span className="hidden xs:inline">Approvals</span>
+            <span className="xs:hidden" aria-hidden="true">Aprv</span>
           </span>
-          <p className="pixel-text mt-1 text-lg text-amber-400">
+          <p className="pixel-text mt-0.5 sm:mt-1 text-sm sm:text-lg text-amber-400">
             <span key={pendingApprovalCount} className="inline-block animate-pop-in">
               {pendingApprovalCount}
             </span>

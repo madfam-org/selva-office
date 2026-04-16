@@ -152,11 +152,12 @@ export default function PhaserGame({
     const { BootScene } = await import('./scenes/BootScene');
     const { OfficeScene } = await import('./scenes/OfficeScene');
 
+    const container = containerRef.current;
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.WEBGL,
-      parent: containerRef.current,
-      width: 1280,
-      height: 720,
+      parent: container,
+      width: container.clientWidth || window.innerWidth,
+      height: container.clientHeight || window.innerHeight,
       backgroundColor: '#0f172a',
       pixelArt: true,
       physics: {
@@ -168,7 +169,7 @@ export default function PhaserGame({
       },
       scene: [BootScene, OfficeScene],
       scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
       input: {

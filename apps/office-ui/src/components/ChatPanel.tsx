@@ -80,7 +80,7 @@ export function ChatPanel({ messages, onSend, localSessionId, forceCollapsed, on
     return (
       <button
         onClick={() => { setCollapsed(false); onExpand?.(); }}
-        className="absolute bottom-4 left-4 z-hud rounded bg-slate-800/90 px-3 py-1 text-xs text-slate-300 retro-btn hover:bg-slate-700"
+        className="absolute bottom-14 sm:bottom-4 left-2 sm:left-4 z-hud rounded bg-slate-800/90 px-3 py-1 text-xs text-slate-300 retro-btn hover:bg-slate-700"
       >
         Chat [T]
       </button>
@@ -88,7 +88,7 @@ export function ChatPanel({ messages, onSend, localSessionId, forceCollapsed, on
   }
 
   return (
-    <div className="absolute bottom-4 left-4 z-hud flex w-full max-w-80 flex-col rounded border border-slate-700 bg-slate-900/95 shadow-lg sm:w-80">
+    <div className="absolute bottom-14 sm:bottom-4 left-2 sm:left-4 z-hud flex w-full max-w-72 sm:max-w-80 flex-col rounded border border-slate-700 bg-slate-900/95 shadow-lg sm:w-80 max-h-[35vh] sm:max-h-[50vh]">
       <div className="flex items-center justify-between border-b border-slate-700 px-3 py-1">
         <span className="text-xs font-semibold text-slate-400">CHAT</span>
         <button
@@ -102,7 +102,7 @@ export function ChatPanel({ messages, onSend, localSessionId, forceCollapsed, on
 
       <div
         ref={listRef}
-        className="flex h-48 flex-col gap-0.5 overflow-y-auto px-3 py-2 text-xs"
+        className="flex h-32 sm:h-48 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-2 text-xs"
       >
         {messages.length === 0 && (
           <div className="flex h-full flex-col justify-center gap-2 opacity-40">
@@ -155,7 +155,7 @@ export function ChatPanel({ messages, onSend, localSessionId, forceCollapsed, on
           onFocus={() => setChatFocused(true)}
           onBlur={() => setChatFocused(false)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message... (T to focus, Esc to unfocus)"
+          placeholder="Type a message... (T / Esc)"
           maxLength={500}
           className="w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500"
         />
