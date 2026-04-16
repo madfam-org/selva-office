@@ -105,7 +105,7 @@ def _build_madfam_email_html(
       {cta_block}
       <tr>
         <td style="padding:20px 24px;background-color:#f5f5f5;text-align:center;font-family:Arial,sans-serif">
-          <p style="font-size:12px;color:#888888;margin:0">By Innovaciones MADFAM SAS de CV · Mexico · <a href="https://madfam.io" style="color:#888888">madfam.io</a></p>
+          <p style="font-size:12px;color:#888888;margin:0">By Innovaciones MADFAM S.A.S. de C.V. · Cuernavaca, Morelos, Mexico · <a href="https://madfam.io" style="color:#888888">madfam.io</a></p>
           <p style="font-size:11px;color:#aaaaaa;margin:8px 0 0"><a href="https://madfam.io/unsubscribe?email={quote(to_email, safe='@')}" style="color:#aaaaaa">Cancelar suscripción</a></p>
         </td>
       </tr>
