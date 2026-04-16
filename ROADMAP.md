@@ -291,14 +291,45 @@ MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 
 ---
 
+## Autonomous Revenue Loop (v2.1.0) — 2026-04-16 ✅ Code Complete
+
+### Infrastructure Deployed
+- `[x]` HeartbeatService cron (`*/30 * * * *`) with CRM scraper + auto-dispatch
+- `[x]` PlaybookGuard with conditional approval bypass + financial circuit breaker ($50/day)
+- `[x]` CRM graph: fetch_context → draft_communication → approval_gate → send (Resend + PhyneCRM log)
+- `[x]` Resend Pro transactional ($20/mo, 50K emails, 10 domains). madfam.io verified
+- `[x]` MADFAM branded HTML email template (table-based, Outlook/Gmail/Apple Mail compatible)
+- `[x]` Service consumption tracking (email sends → event stream)
+- `[x]` Email delivery skill definition (`packages/skills/skill-definitions/email-delivery/SKILL.md`)
+- `[x]` Security hardened: dev-bypass rejected in production, proper SSO via Janua PKCE
+- `[x]` Responsive UI: Phaser RESIZE mode, mobile HUD, chat compaction
+- `[x]` Player spawn fix: TMJ map spawn points (not hardcoded wall tile)
+
+### Inference Centralization
+- `[x]` OpenAI-compatible proxy at `/v1/chat/completions` + `/v1/embeddings` (`inference_proxy.py`)
+- `[x]` Shared `build_router_from_env()` factory (`packages/inference/madfam_inference/factory.py`)
+- `[x]` Org-config ConfigMap deployed to K8s, mounted at `/etc/autoswarm/org-config.yaml`
+- `[x]` ServiceConfig model for tracking external accounts (Resend, Anthropic, DeepInfra, Stripe, etc.)
+- `[x]` PhyneCRM, Fortuna, Yantra4D secrets patched for Selva inference routing
+- `[x]` 196 inference tests passing (org_config + router + factory + worker wiring)
+
+### Blocking First Revenue
+- `[ ]` **Anthropic API credits** — $0 balance blocks all LLM inference. Add $20 at console.anthropic.com
+- `[ ]` **Stripe live mode** — Verify `sk_live_` prefix (not `sk_test_`)
+- `[ ]` Resend domain verification (9 pending — DNS records added, click "Verify" in dashboard)
+- `[ ]` DeepInfra API key (optional — 13x cost reduction on volume tasks)
+- `[ ]` PhyneCRM webhook registration (CRM → Selva event flow)
+
+---
+
 ## Immediate Next Sprint (Priority Order)
 
-1. `[ ]` **CFDI 4.0 tool** — Highest value for Mexican market (every business needs electronic invoicing)
-2. `[ ]` **WhatsApp Business API gateway** — Dominant B2B channel in Mexico (95%+ business adoption)
-3. `[ ]` **Spanish (MX) agent prompts** — All 10 skill definitions + system prompts
-4. `[ ]` **RFC validation tool** — Simple but essential for every Mexican business workflow
-5. `[ ]` **Nómina calculation engine** — ISR tables + IMSS + INFONAVIT (complex, huge value)
-6. `[ ]` **Factlas integration** — Connect `factlas/` repo for CFDI stamping backend
+1. `[ ]` **Add Anthropic credits** — Unblocks entire autonomous loop + all ecosystem AI features
+2. `[ ]` **Verify Stripe live mode** — Confirm real payments can flow
+3. `[ ]` **Verify Resend domains** — Expand branded email across 9 ecosystem services
+4. `[ ]` **First autonomous sale** — HeartbeatService picks up lead → drafts email → sends → checkout CTA → payment
+5. `[ ]` **DeepInfra API key** — 13x cost reduction ($0.23 vs $3 per 1M tokens)
+6. `[ ]` **3D Voxel View** — React Three Fiber + MagicaVoxel (see `ROADMAP_3D_VOXEL.md`)
 
 ---
 
@@ -307,9 +338,9 @@ MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 - `[x]` Zero Python lint errors (ruff)
 - `[x]` Zero TypeScript type errors
 - `[x]` 817+ TS tests passing
-- `[x]` 252+ Python tests passing
+- `[x]` 252+ Python tests passing (196 inference alone)
 - `[x]` 7/7 build tasks successful
-- `[x]` 133 API routes loaded
+- `[x]` 139 API routes loaded
 - `[x]` Docker compose valid (8 services)
 - `[x]` All hardcoded localhost → env vars
 - `[x]` SSRF protection on all webhook handlers
@@ -317,5 +348,15 @@ MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 - `[x]` Brand architecture correct (MADFAM ecosystem / Selva product)
 - `[x]` PWA installable
 - `[x]` Solarpunk visual overhaul complete
+- `[x]` Org-config ConfigMap deployed to K8s
+- `[x]` Inference proxy live (`/v1/chat/completions` + `/v1/embeddings`)
+- `[x]` Ecosystem inference centralized (Fortuna, Yantra4D, PhyneCRM → Selva proxy)
+- `[x]` Service resource registry (8 external accounts tracked)
+- `[x]` Email delivery verified (Resend Pro, madfam.io domain)
+- `[x]` 6 autoswarm pods healthy (nexus-api, workers, gateway, colyseus, office-ui, admin)
+- `[x]` ArgoCD synced to latest commit
+- `[x]` Dev-bypass rejected in production auth
+- `[ ]` Anthropic API credit balance > $0
+- `[ ]` Stripe MX in live mode (sk_live_)
 - `[ ]` Gateway secrets injection (DingTalk, Feishu, etc.)
 - `[ ]` Docker socket sandboxing for worker pods
