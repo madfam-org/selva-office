@@ -25,6 +25,11 @@ class CRMState(BaseGraphState, TypedDict, total=False):
     draft_content: str | None
     recipient: str | None
     crm_action: str | None
+    contact_email: str
+    contact_name: str
+    product_interest: str
+    lead_score: int | None
+    playbook: dict | None
 
 
 # -- Node functions -----------------------------------------------------------
@@ -311,6 +316,33 @@ def send(state: CRMState) -> CRMState:
     except Exception:
         logger.debug("Phyne-CRM activity logging skipped (unavailable)")
 
+    # Actually send the drafted email
+    draft_content = state.get("draft_content", "")
+    to_email = state.get("contact_email") or state.get("recipient", "")
+    if to_email and "@" in to_email and draft_content:
+        try:
+            from autoswarm_tools.builtins.marketing_tools import SendMarketingEmailTool
+
+            tool = SendMarketingEmailTool()
+            subject = f"Oportunidad para {state.get('contact_name', 'usted')}"
+            email_result = _run_async(tool.execute(
+                to_email=to_email,
+                subject=subject,
+                body_html=draft_content,
+                utm_campaign="hot_lead_auto",
+            ))
+            send_result["email_id"] = (
+                email_result.data.get("email_id") if email_result.success else None
+            )
+            send_result["email_sent"] = email_result.success
+            if email_result.success:
+                logger.info("Email sent to %s (id: %s)", to_email, send_result.get("email_id"))
+            else:
+                logger.warning("Email send failed: %s", email_result.error)
+        except Exception as e:
+            logger.warning("Email send failed (non-fatal): %s", e)
+            send_result["email_sent"] = False
+
     send_message = AIMessage(
         content=f"CRM {crm_action} sent to {recipient} successfully.",
         additional_kwargs={"action_category": "email_send", "send_result": send_result},
@@ -327,12 +359,22 @@ def send(state: CRMState) -> CRMState:
 # -- Graph construction -------------------------------------------------------
 
 
+def _should_skip_approval(state: CRMState) -> str:
+    """Skip HITL approval when playbook allows autonomous execution."""
+    playbook = state.get("playbook")
+    if playbook and isinstance(playbook, dict) and not playbook.get("require_approval", True):
+        return "send"
+    return "approval_gate"
+
+
 def build_crm_graph() -> StateGraph:
     """Construct and compile the CRM workflow state graph.
 
     Flow::
 
-        fetch_context -> draft_communication -> approval_gate (interrupt) -> send -> END
+        fetch_context -> draft_communication -+-> approval_gate (interrupt) -> send -> END
+                                              |                                ^
+                                              +-- (playbook autonomous) -------+
     """
     graph = StateGraph(CRMState)
 
@@ -343,7 +385,10 @@ def build_crm_graph() -> StateGraph:
 
     graph.set_entry_point("fetch_context")
     graph.add_edge("fetch_context", "draft_communication")
-    graph.add_edge("draft_communication", "approval_gate")
+    graph.add_conditional_edges("draft_communication", _should_skip_approval, {
+        "send": "send",
+        "approval_gate": "approval_gate",
+    })
     graph.add_edge("approval_gate", "send")
     graph.add_edge("send", END)
 

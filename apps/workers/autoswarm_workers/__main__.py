@@ -317,8 +317,19 @@ async def process_task(task_data: dict) -> None:
         initial_state["sources"] = []
     elif graph_type == "crm":
         payload = task_data.get("payload", {})
-        initial_state["recipient"] = payload.get("recipient", "unknown@example.com")
+        initial_state["recipient"] = (
+            payload.get("contact_email") or payload.get("recipient", "unknown@example.com")
+        )
         initial_state["crm_action"] = payload.get("crm_action", "email")
+        # Pass contact context from dispatch payload
+        initial_state["contact_email"] = payload.get("contact_email", "")
+        initial_state["contact_name"] = payload.get("contact_name", "")
+        initial_state["product_interest"] = payload.get("product_interest", "")
+        initial_state["lead_score"] = payload.get("lead_score")
+        # Pass playbook data for conditional approval bypass
+        playbook = task_data.get("playbook") or payload.get("playbook")
+        if playbook:
+            initial_state["playbook"] = playbook
     elif graph_type == "deployment":
         payload = task_data.get("payload", {})
         initial_state["service"] = payload.get("service", "")

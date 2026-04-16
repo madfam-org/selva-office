@@ -29,6 +29,68 @@ def _inject_utm(url: str, campaign: str = "", source: str = "selva", medium: str
     return urlunparse(parsed._replace(query=new_query))
 
 
+def _build_madfam_email_html(
+    body_text: str,
+    cta_url: str = "",
+    cta_text: str = "Comienza ahora",
+    product_name: str = "",
+) -> str:
+    """Wrap email content in a MADFAM-branded HTML template.
+
+    Uses table-based layout for Outlook/Gmail/Apple Mail compatibility.
+    All styles are inline (no <style> block).
+    """
+    cta_block = ""
+    if cta_url:
+        cta_block = f'''
+        <tr>
+          <td style="padding:24px;text-align:center">
+            <a href="{cta_url}" style="display:inline-block;background-color:#f6d55c;color:#1a1a2e;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-family:Arial,sans-serif;font-size:16px">{cta_text}</a>
+          </td>
+        </tr>'''
+
+    product_line = f' — {product_name}' if product_name else ''
+
+    # Convert plain text paragraphs to HTML if not already HTML
+    if '<' not in body_text:
+        body_html = ''.join(f'<p style="margin:0 0 16px">{p.strip()}</p>' for p in body_text.split('\n\n') if p.strip())
+    else:
+        body_html = body_text
+
+    return f'''<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f0f0f5;font-family:Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f0f5">
+  <tr><td align="center" style="padding:24px 16px">
+    <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden">
+      <tr>
+        <td style="padding:28px 24px;background-color:#1a1a2e;text-align:center">
+          <h1 style="color:#f6d55c;font-family:Arial,sans-serif;font-size:22px;margin:0;letter-spacing:1px">MADFAM{product_line}</h1>
+          <p style="color:#a0a0b0;font-size:12px;margin:8px 0 0;font-family:Arial,sans-serif">Tecnología que potencia tu negocio</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:32px 24px;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#333333">
+          {body_html}
+        </td>
+      </tr>
+      {cta_block}
+      <tr>
+        <td style="padding:20px 24px;background-color:#f5f5f5;text-align:center;font-family:Arial,sans-serif">
+          <p style="font-size:12px;color:#888888;margin:0">By Innovaciones MADFAM · <a href="https://madfam.io" style="color:#888888">madfam.io</a></p>
+          <p style="font-size:11px;color:#aaaaaa;margin:8px 0 0"><a href="https://madfam.io/unsubscribe" style="color:#aaaaaa">Cancelar suscripción</a></p>
+        </td>
+      </tr>
+    </table>
+    <!--[if mso]></td></tr></table><![endif]-->
+  </td></tr>
+</table>
+</body>
+</html>'''
+
+
 class SendMarketingEmailTool(BaseTool):
     """Send a marketing email with UTM tracking via Resend.
 
@@ -88,6 +150,14 @@ class SendMarketingEmailTool(BaseTool):
 
         if not to_email or not subject:
             return ToolResult(success=False, error="to_email and subject are required")
+
+        # Wrap in MADFAM branded template (unless raw HTML with full <html> tag)
+        template = kwargs.get("template", "madfam")
+        cta_url = kwargs.get("cta_url", "")
+        cta_text = kwargs.get("cta_text", "Comienza ahora")
+        product_name = kwargs.get("product_name", "")
+        if template == "madfam" and "<!DOCTYPE" not in body_html and "<html" not in body_html:
+            body_html = _build_madfam_email_html(body_html, cta_url, cta_text, product_name)
 
         # Inject UTM into any links in the HTML body
         # Simple approach: find href="..." and append UTM params

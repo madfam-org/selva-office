@@ -333,7 +333,9 @@ export class HeartbeatService {
         const rule = HeartbeatService.AUTO_DISPATCH_RULES[eventKey];
         if (!rule) continue;
 
-        const description = `[auto] ${event.source}/${event.type}: ${JSON.stringify(event.payload).substring(0, 200)}`;
+        const contactName = event.payload.contact_name || event.payload.lead_id || "unknown";
+        const score = event.payload.score || "?";
+        const description = `[auto] CRM hot lead outreach: ${contactName} (score: ${score})`;
 
         try {
           const resp = await fetch(`${dispatchUrl}/api/v1/swarms/dispatch`, {
@@ -346,7 +348,20 @@ export class HeartbeatService {
               description,
               graph_type: rule.graphType,
               required_skills: rule.skills,
-              metadata: { auto_dispatched: true, source_event: eventKey, ...event.payload },
+              payload: {
+                auto_dispatched: true,
+                trigger_event: eventKey,
+                crm_action: "email",
+                playbook: {
+                  name: "Lead Response",
+                  trigger_event: eventKey,
+                  allowed_actions: ["api_call", "email_send", "crm_update", "marketing_send"],
+                  token_budget: 50,
+                  financial_cap_cents: 0,
+                  require_approval: false,
+                },
+                ...event.payload,
+              },
             }),
           });
 
