@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     template: '%s | Selva',
   },
   description: 'Your AI workforce, alive in a virtual office. 10 specialized agents building, researching, and deploying under your control.',
+  openGraph: {
+    siteName: 'Selva by MADFAM',
+  },
 };
 
 export default function RootLayout({
