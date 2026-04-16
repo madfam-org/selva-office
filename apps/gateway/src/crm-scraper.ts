@@ -121,8 +121,14 @@ export class CRMScraper {
       return [];
     }
 
-    const json = (await response.json()) as TRPCResponse<PhyneLead[]>;
-    return json.result?.data ?? [];
+    const json = (await response.json()) as TRPCResponse;
+    // tRPC with superjson: { result: { data: { json: { items: [...] } } } }
+    // tRPC without superjson: { result: { data: [...] } }
+    const data = json.result?.data;
+    const leads: PhyneLead[] = Array.isArray(data)
+      ? data
+      : (data as any)?.json?.items ?? (data as any)?.items ?? [];
+    return leads;
   }
 
   private async fetchActivities(): Promise<PhyneActivity[]> {
@@ -140,8 +146,12 @@ export class CRMScraper {
       return [];
     }
 
-    const json = (await response.json()) as TRPCResponse<PhyneActivity[]>;
-    return (json.result?.data ?? []).filter(
+    const json = (await response.json()) as TRPCResponse;
+    const data = json.result?.data;
+    const activities: PhyneActivity[] = Array.isArray(data)
+      ? data
+      : (data as any)?.json?.items ?? (data as any)?.items ?? [];
+    return activities.filter(
       (a) => a.status === "pending" || a.status === "overdue"
     );
   }
