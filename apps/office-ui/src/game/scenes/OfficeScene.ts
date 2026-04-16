@@ -142,6 +142,7 @@ export class OfficeScene extends Phaser.Scene {
   private lastSentX: number = 0;
   private lastSentY: number = 0;
   private collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+  private spawnPoints: Array<{ x: number; y: number; name: string }> = [];
   private worldWidth: number = 1600;
   private worldHeight: number = 896;
   private dustEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
@@ -456,6 +457,9 @@ export class OfficeScene extends Phaser.Scene {
     this.worldWidth = data.worldWidth;
     this.worldHeight = data.worldHeight;
     this.collisionLayer = data.collisionLayer;
+    if (data.spawnPoints?.length) {
+      this.spawnPoints = data.spawnPoints.map((sp) => ({ x: sp.x, y: sp.y, name: sp.name }));
+    }
 
     // Populate department layouts from Tiled data, falling back to hardcoded
     if (data.departments.length > 0) {
@@ -1199,9 +1203,25 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private createTactician(): void {
-    // Default spawn position (lobby center of 50x28 map)
-    const spawnX = 768;
-    const spawnY = 432;
+    // Use map-defined spawn point, or fall back to lobby center
+    let spawnX = 416; // default-spawn col 13
+    let spawnY = 480; // default-spawn row 15
+    if (this.spawnPoints.length > 0) {
+      const sp = this.spawnPoints[0]!;
+      spawnX = sp.x;
+      spawnY = sp.y;
+    }
+    // Validate spawn is walkable — nudge down if on a wall tile
+    if (this.collisionLayer) {
+      const tileSize = 32;
+      const tileX = Math.floor(spawnX / tileSize);
+      const tileY = Math.floor(spawnY / tileSize);
+      const tile = this.collisionLayer.getTileAt(tileX, tileY);
+      if (tile) {
+        // Blocked — try one tile down
+        spawnY += tileSize;
+      }
+    }
 
     // If avatar config exists, generate the multi-frame spritesheet and use it
     let initialTexture = 'tactician';
