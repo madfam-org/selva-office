@@ -1,0 +1,453 @@
+"""Onboarding API — voice-mode selection and consent ledger writes.
+
+The outbound voice mode controls how the Selva office represents itself
+when sending email, SMS, or other outbound communications on the user's
+behalf.  It must be explicitly chosen before any outbound send is
+allowed.  Selection is recorded in the append-only `consent_ledger`
+(UPDATE/DELETE revoked from the app role at the DB level — see migration
+0018).
+
+The three modes:
+
+- **user_direct** — outbound sends authored by agents go out *as the
+  user*, from the user's own mailbox/number, with no AI disclosure.
+  Legally the riskiest mode (see California BOT Act SB-1001 risk for
+  commercial/transactional contact with CA residents, and CASL sender-
+  identification obligations in Canada).  Requires explicit typed
+  confirmation of the heads-up clause.
+- **dyad_selva_plus_user** — outbound sends are jointly attributed
+  ("Selva on behalf of <user>"). Lowest legal risk, highest brand
+  clarity.
+- **agent_identified** — the agent sends from
+  `{agent-slug}@selva.town`, disclosing itself as a Selva agent acting
+  for the org.  Requires the SPF/DKIM/DMARC alignment to `selva.town`.
+
+The `clause_version` string is the versioned identifier for the legal
+copy the user agreed to.  Incrementing the version forces a re-consent
+cycle for existing users.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..auth import get_current_user, require_non_guest
+from ..database import get_db
+from ..models import ConsentLedger, TenantConfig
+from .events import emit_event_db
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["onboarding"], dependencies=[Depends(get_current_user)])
+
+
+# ---------------------------------------------------------------------------
+# Constants — voice-mode definitions and legal clauses
+# ---------------------------------------------------------------------------
+
+VOICE_MODES = ("user_direct", "dyad_selva_plus_user", "agent_identified")
+
+CLAUSE_VERSION = "voice-mode-v1.0"
+
+# Clause text the user must type VERBATIM to consent.  Kept short so the
+# ledger row is human-auditable and so the user is not tempted to
+# scroll-past.  Legal research basis:
+#   - Mexico LFPDPPP 2025 amendments: consent must be free, specific,
+#     informed, and demonstrable.
+#   - GDPR Art.7: clear affirmative action, distinguishable, withdrawable.
+#   - California BOT Act SB-1001: bot disclosure required for commercial
+#     contact with CA residents (user_direct mode places that duty on
+#     the user, not Selva).
+#   - CASL Canada: sender-identification must name both the sender and
+#     the person on whose behalf the message is sent.
+#   - CAN-SPAM: accurate From/Reply-To headers required.
+#   - LGPD Brazil: explicit consent with processing record.
+CONSENT_CLAUSES: dict[str, dict[str, str]] = {
+    "user_direct": {
+        "label": "Send as me, no AI disclosure",
+        "typed_phrase": "I authorize Selva to send messages as me without AI disclosure",
+        "heads_up": (
+            "Heads up: outbound sends under this mode go out from your "
+            "mailbox with no AI disclosure. In some jurisdictions "
+            "(notably California under SB-1001 for commercial contact, "
+            "and Canada under CASL for sender identification) this can "
+            "shift legal exposure to you. You are responsible for "
+            "compliance with the laws that apply to your recipients."
+        ),
+        "clause_body": (
+            "I, acting on behalf of my organization, authorize Selva to "
+            "generate and dispatch outbound communications (email, SMS, "
+            "and equivalent channels) from my personal sending identity "
+            "without any AI-generated or agent-origin disclosure in the "
+            "message body or headers. I confirm that I have reviewed "
+            "the jurisdictional heads-up, that my consent is free, "
+            "specific, and informed, and that I may withdraw this "
+            "consent at any time via the office settings. This consent "
+            "is recorded immutably for audit purposes."
+        ),
+    },
+    "dyad_selva_plus_user": {
+        "label": "Co-branded — Selva on behalf of me",
+        "typed_phrase": "I authorize Selva to send on my behalf with co-branded attribution",
+        "heads_up": (
+            "Outbound messages will carry co-branded attribution "
+            "(\"Selva on behalf of <you>\"). This is the default and "
+            "lowest-risk option for most jurisdictions."
+        ),
+        "clause_body": (
+            "I authorize Selva to generate and dispatch outbound "
+            "communications on behalf of my organization with dual "
+            "attribution naming both Selva (as the sending platform) "
+            "and myself (as the principal). I confirm my consent is "
+            "free, specific, and informed, and that I may withdraw it "
+            "at any time."
+        ),
+    },
+    "agent_identified": {
+        "label": "Selva agent — from the agent's own address",
+        "typed_phrase": "I authorize Selva agents to send from their own selva.town addresses",
+        "heads_up": (
+            "Messages will be sent from `<agent-slug>@selva.town` and "
+            "clearly identify the agent. Selva.town must be added to "
+            "your SPF/DKIM/DMARC records before sends can leave."
+        ),
+        "clause_body": (
+            "I authorize named Selva agents to dispatch outbound "
+            "communications from the selva.town domain, disclosing "
+            "themselves as autonomous agents acting for my "
+            "organization. I confirm my consent is free, specific, and "
+            "informed, and that I may withdraw it at any time."
+        ),
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Request / Response schemas
+# ---------------------------------------------------------------------------
+
+
+class OnboardingStatus(BaseModel):
+    """Whether the tenant has completed voice-mode onboarding."""
+
+    voice_mode: str | None
+    onboarding_complete: bool
+    clause_version: str
+
+
+class VoiceModeSelection(BaseModel):
+    """Payload for POST /voice-mode and PUT /settings/outbound-voice."""
+
+    mode: str = Field(..., description="One of the three legal voice modes.")
+    typed_confirmation: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Verbatim typed phrase matching the mode's clause.",
+    )
+
+    @field_validator("mode")
+    @classmethod
+    def _validate_mode(cls, v: str) -> str:
+        if v not in VOICE_MODES:
+            raise ValueError(f"mode must be one of {VOICE_MODES}")
+        return v
+
+
+class VoiceModePreview(BaseModel):
+    """Clause preview for a single mode (read-only)."""
+
+    mode: str
+    label: str
+    typed_phrase: str
+    heads_up: str
+    clause_body: str
+    clause_version: str
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_client_ip(request: Request) -> str:
+    """Return the client IP, respecting X-Forwarded-For."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    client = request.client
+    return client.host if client else "unknown"
+
+
+def _compute_signature(
+    *,
+    org_id: str,
+    user_sub: str,
+    mode: str,
+    clause_version: str,
+    typed_confirmation: str,
+    created_at: datetime,
+) -> str:
+    """SHA-256 integrity digest over the ledger row's identifying fields.
+
+    Not a cryptographic signature in the PKI sense — a tamper-evidence
+    hash. Any mutation of the row's fields will desync from this digest,
+    detectable by replaying the computation at audit time.
+    """
+    payload = "|".join(
+        [
+            org_id,
+            user_sub,
+            mode,
+            clause_version,
+            typed_confirmation,
+            created_at.isoformat(),
+        ]
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+async def _load_tenant(db: AsyncSession, org_id: str) -> TenantConfig:
+    result = await db.execute(
+        select(TenantConfig).where(TenantConfig.org_id == org_id)
+    )
+    config = result.scalar_one_or_none()
+    if config is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not configured for this organization",
+        )
+    return config
+
+
+async def _record_consent(
+    db: AsyncSession,
+    *,
+    request: Request,
+    org_id: str,
+    user: dict[str, Any],
+    body: VoiceModeSelection,
+    is_change: bool,
+) -> ConsentLedger:
+    """Validate typed confirmation, append consent row, update tenant."""
+    clause = CONSENT_CLAUSES[body.mode]
+    expected = clause["typed_phrase"]
+    submitted = body.typed_confirmation.strip()
+
+    if submitted.casefold() != expected.casefold():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Typed confirmation does not match the required phrase.",
+        )
+
+    user_sub = str(user.get("sub") or user.get("user_id") or "unknown")
+    user_email = str(user.get("email") or "")
+    if not user_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authenticated user must have a verified email to sign consent.",
+        )
+
+    created_at = datetime.now(UTC)
+    signer_ip = _get_client_ip(request)
+    user_agent = request.headers.get("user-agent")
+    signature = _compute_signature(
+        org_id=org_id,
+        user_sub=user_sub,
+        mode=body.mode,
+        clause_version=CLAUSE_VERSION,
+        typed_confirmation=submitted,
+        created_at=created_at,
+    )
+
+    entry = ConsentLedger(
+        org_id=org_id,
+        user_sub=user_sub,
+        user_email=user_email,
+        mode=body.mode,
+        clause_version=CLAUSE_VERSION,
+        typed_confirmation=submitted,
+        signer_ip=signer_ip,
+        signer_user_agent=user_agent,
+        signature_sha256=signature,
+        created_at=created_at,
+    )
+    db.add(entry)
+
+    tenant = await _load_tenant(db, org_id)
+    tenant.voice_mode = body.mode
+    tenant.updated_at = created_at
+
+    await db.flush()
+    await db.refresh(entry)
+
+    event_type = "voice_mode.changed" if is_change else "voice_mode.selected"
+    await emit_event_db(
+        db,
+        event_type=event_type,
+        event_category="onboarding",
+        org_id=org_id,
+        payload={
+            "mode": body.mode,
+            "clause_version": CLAUSE_VERSION,
+            "consent_ledger_id": str(entry.id),
+            "user_sub": user_sub,
+        },
+    )
+
+    logger.info(
+        "voice_mode %s org_id=%s user_sub=%s mode=%s clause=%s ledger_id=%s",
+        "changed" if is_change else "selected",
+        org_id,
+        user_sub,
+        body.mode,
+        CLAUSE_VERSION,
+        entry.id,
+    )
+    return entry
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/onboarding/status", response_model=OnboardingStatus)
+async def onboarding_status(
+    user: dict[str, Any] = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OnboardingStatus:
+    """Return whether the org has chosen a voice mode yet.
+
+    Used by the UI to decide between routing the user to `/onboarding`
+    or letting them into `/office`.
+    """
+    org_id = user.get("org_id", "default")
+    result = await db.execute(
+        select(TenantConfig).where(TenantConfig.org_id == org_id)
+    )
+    config = result.scalar_one_or_none()
+    voice_mode = config.voice_mode if config else None
+    return OnboardingStatus(
+        voice_mode=voice_mode,
+        onboarding_complete=voice_mode is not None,
+        clause_version=CLAUSE_VERSION,
+    )
+
+
+@router.get(
+    "/onboarding/voice-mode/preview/{mode}",
+    response_model=VoiceModePreview,
+)
+async def voice_mode_preview(mode: str) -> VoiceModePreview:
+    """Return the clause text + heads-up for a single mode (read-only)."""
+    if mode not in VOICE_MODES:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown voice mode: {mode}",
+        )
+    clause = CONSENT_CLAUSES[mode]
+    return VoiceModePreview(
+        mode=mode,
+        label=clause["label"],
+        typed_phrase=clause["typed_phrase"],
+        heads_up=clause["heads_up"],
+        clause_body=clause["clause_body"],
+        clause_version=CLAUSE_VERSION,
+    )
+
+
+@router.post(
+    "/onboarding/voice-mode",
+    response_model=OnboardingStatus,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_non_guest)],
+)
+async def select_voice_mode(
+    body: VoiceModeSelection,
+    request: Request,
+    user: dict[str, Any] = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OnboardingStatus:
+    """First-run voice-mode selection during onboarding.
+
+    Fails with 409 if the tenant has already chosen a mode — use
+    PUT /settings/outbound-voice to change it.
+    """
+    org_id = user.get("org_id", "default")
+    tenant = await _load_tenant(db, org_id)
+
+    if tenant.voice_mode is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Voice mode already selected. Use "
+                "PUT /api/v1/settings/outbound-voice to change it."
+            ),
+        )
+
+    await _record_consent(
+        db,
+        request=request,
+        org_id=org_id,
+        user=user,
+        body=body,
+        is_change=False,
+    )
+
+    return OnboardingStatus(
+        voice_mode=body.mode,
+        onboarding_complete=True,
+        clause_version=CLAUSE_VERSION,
+    )
+
+
+@router.put(
+    "/settings/outbound-voice",
+    response_model=OnboardingStatus,
+    dependencies=[Depends(require_non_guest)],
+)
+async def change_voice_mode(
+    body: VoiceModeSelection,
+    request: Request,
+    user: dict[str, Any] = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OnboardingStatus:
+    """Change the tenant's voice mode from the /office modal.
+
+    Appends a new `voice_mode.changed` row to the consent ledger (never
+    overwrites the previous selection — the ledger is append-only).
+    """
+    org_id = user.get("org_id", "default")
+    tenant = await _load_tenant(db, org_id)
+
+    if tenant.voice_mode == body.mode:
+        return OnboardingStatus(
+            voice_mode=tenant.voice_mode,
+            onboarding_complete=True,
+            clause_version=CLAUSE_VERSION,
+        )
+
+    await _record_consent(
+        db,
+        request=request,
+        org_id=org_id,
+        user=user,
+        body=body,
+        is_change=True,
+    )
+
+    return OnboardingStatus(
+        voice_mode=body.mode,
+        onboarding_complete=True,
+        clause_version=CLAUSE_VERSION,
+    )

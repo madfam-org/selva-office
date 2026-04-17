@@ -46,6 +46,7 @@ from .routers import (
     maps,
     marketplace,
     metrics,
+    onboarding,
     playbooks,
     schedules,
     skills,
@@ -175,6 +176,10 @@ def create_app() -> FastAPI:
     app.include_router(analytics.router, prefix="/api/v1/analytics")
     app.include_router(tenants.router, prefix="/api/v1/tenants")
     app.include_router(voice.router, prefix="/api/v1/voice")
+    # Outbound voice mode + consent ledger (migration 0018).
+    # Mounted at /api/v1 so both /onboarding/* and /settings/outbound-voice
+    # routes live on the canonical top-level paths.
+    app.include_router(onboarding.router, prefix="/api/v1")
     app.include_router(schedules.router, prefix="/api/v1")
     # Gap 2: Dangerous command approval
     app.include_router(command_approvals.router, prefix="/api/v1")

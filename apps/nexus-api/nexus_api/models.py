@@ -513,6 +513,11 @@ class TenantConfig(Base):
         String(7), nullable=True
     )  # hex e.g. #4a9e6e
 
+    # Outbound voice mode (migration 0018). NULL = onboarding incomplete;
+    # no outbound sends allowed until set. CHECK constraint in DB pins
+    # values to the 3 legal modes.
+    voice_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -553,4 +558,40 @@ class AuditLog(Base):
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
+    )
+
+
+# ---------------------------------------------------------------------------
+# Outbound voice-mode consent ledger (migration 0018)
+# ---------------------------------------------------------------------------
+
+
+class ConsentLedger(Base):
+    """Append-only record of voice-mode consent events.
+
+    UPDATE and DELETE are revoked from the app role at the DB level (see
+    migration 0018). Writes are the only legal operation — replay the log
+    to audit consent history.
+    """
+
+    __tablename__ = "consent_ledger"
+    __table_args__ = (
+        Index("ix_consent_ledger_org_created", "org_id", "created_at"),
+        Index("ix_consent_ledger_user", "user_sub"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_sub: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    clause_version: Mapped[str] = mapped_column(String(16), nullable=False)
+    typed_confirmation: Mapped[str] = mapped_column(Text, nullable=False)
+    signer_ip: Mapped[str] = mapped_column(String(45), nullable=False)
+    signer_user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
     )

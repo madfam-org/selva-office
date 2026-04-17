@@ -11,6 +11,9 @@ from urllib.parse import urlencode, urlparse, urlunparse, parse_qs, quote
 import httpx
 
 from ..base import BaseTool, ToolResult
+from ._email_signatures import build_identity
+from ._spf_check import check_alignment
+from .email_tools import _fetch_voice_mode
 
 logger = logging.getLogger(__name__)
 
@@ -154,33 +157,86 @@ class SendMarketingEmailTool(BaseTool):
                     "description": "Reply-to address",
                     "default": "",
                 },
+                "org_id": {"type": "string"},
+                "user_name": {"type": "string"},
+                "user_email": {"type": "string"},
+                "agent_slug": {"type": "string"},
+                "agent_display_name": {"type": "string"},
+                "org_name": {"type": "string"},
             },
-            "required": ["to_email", "subject", "body_html"],
+            "required": ["to_email", "subject", "body_html", "org_id", "user_email"],
         }
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        api_key = os.environ.get("RESEND_API_KEY")
-        from_addr = os.environ.get("EMAIL_FROM", "MADFAM <hola@madfam.io>")
+        to_email = kwargs.get("to_email", "")
+        subject = kwargs.get("subject", "")
+        body_html = kwargs.get("body_html", "")
+        utm_campaign = kwargs.get("utm_campaign", "agent_outreach")
+        reply_to = kwargs.get("reply_to", "")
+        org_id = kwargs.get("org_id", "")
+        user_name = kwargs.get("user_name", "")
+        user_email = kwargs.get("user_email", "")
+        agent_slug = kwargs.get("agent_slug")
+        agent_display_name = kwargs.get("agent_display_name")
+        org_name = kwargs.get("org_name", "")
 
+        if not to_email or not subject:
+            return ToolResult(success=False, error="to_email and subject are required")
+        if not _EMAIL_RE.match(to_email):
+            return ToolResult(success=False, error=f"Invalid email format: {to_email[:20]}...")
+        if not org_id:
+            return ToolResult(success=False, error="org_id is required for voice-mode gate")
+        if not user_email or not _EMAIL_RE.match(user_email):
+            return ToolResult(success=False, error="valid user_email required")
+
+        # -- Voice-mode gate -------------------------------------------------
+        voice_mode = await _fetch_voice_mode(org_id)
+        if voice_mode is None:
+            return ToolResult(
+                success=False,
+                error=(
+                    "Outbound voice mode not configured. Complete onboarding "
+                    "before sending marketing email."
+                ),
+            )
+        if voice_mode == "agent_identified":
+            alignment = check_alignment("selva.town")
+            if not alignment.aligned:
+                return ToolResult(
+                    success=False,
+                    error=(
+                        f"agent_identified send blocked: selva.town "
+                        f"alignment {alignment.status} — {alignment.reason}"
+                    ),
+                )
+        selva_from = os.environ.get("EMAIL_FROM_SELVA", "hola@selva.town")
+        try:
+            identity = build_identity(
+                voice_mode=voice_mode,
+                user_name=user_name,
+                user_email=user_email,
+                selva_from=selva_from,
+                agent_slug=agent_slug,
+                agent_display_name=agent_display_name,
+                org_name=org_name,
+            )
+        except ValueError as exc:
+            return ToolResult(success=False, error=str(exc))
+        from_addr = identity.from_address
+
+        api_key = os.environ.get("RESEND_API_KEY")
         if not api_key:
             return ToolResult(
                 success=False,
                 error="RESEND_API_KEY not configured. Cannot send marketing email.",
             )
 
-        to_email = kwargs.get("to_email", "")
-        subject = kwargs.get("subject", "")
-        body_html = kwargs.get("body_html", "")
-        utm_campaign = kwargs.get("utm_campaign", "agent_outreach")
-        reply_to = kwargs.get("reply_to", "")
-
-        if not to_email or not subject:
-            return ToolResult(success=False, error="to_email and subject are required")
-        if not _EMAIL_RE.match(to_email):
-            return ToolResult(success=False, error=f"Invalid email format: {to_email[:20]}...")
-
         # Sanitize HTML content before template injection
         body_html = _sanitize_email_html(body_html)
+        # Attach the voice-mode signature so the body reflects the chosen
+        # attribution (user_direct / dyad / agent_identified) before the
+        # MADFAM template wraps it.
+        body_html = f"{body_html}\n{identity.html_signature}"
 
         # Wrap in MADFAM branded template (unless raw HTML with full <html> tag)
         template = kwargs.get("template", "madfam")
