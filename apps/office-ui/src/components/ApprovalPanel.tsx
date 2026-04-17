@@ -7,7 +7,7 @@ import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 import { DiffViewer } from './DiffViewer';
-import { extractAffectedFiles } from '@/lib/diffPaths';
+import { extractAffectedFiles, splitDiffByFile } from '@/lib/diffPaths';
 
 const ACTION_TAGS: Record<ActionCategory, string> = {
   file_read: '[R]',
@@ -68,6 +68,7 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
   const [visible, setVisible] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({});
+  const [selectedFileIdx, setSelectedFileIdx] = useState<Record<string, number>>({});
   const trapRef = useFocusTrap<HTMLElement>(open);
   const { addToast } = useToast();
 
@@ -191,6 +192,11 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
               const isExpanded = expandedId === request.id;
               const feedback = feedbackMap[request.id] ?? '';
               const affectedFiles = extractAffectedFiles(request.diff);
+              const diffSections = isExpanded ? splitDiffByFile(request.diff) : [];
+              const activeFileIdx = Math.min(
+                selectedFileIdx[request.id] ?? 0,
+                Math.max(0, diffSections.length - 1),
+              );
               return (
                 <div
                   key={request.id}
@@ -275,7 +281,57 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
                         </p>
                       </div>
 
-                      {request.diff && (
+                      {request.diff && diffSections.length > 1 && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="font-mono text-[7px] uppercase text-slate-500">
+                            Jump to:
+                          </span>
+                          {diffSections.map((section, sIdx) => {
+                            const isActive = sIdx === activeFileIdx;
+                            const badgeClass =
+                              section.kind === 'added'
+                                ? 'bg-emerald-950/50 text-emerald-300'
+                                : section.kind === 'deleted'
+                                ? 'bg-red-950/50 text-red-300'
+                                : 'bg-indigo-950/50 text-indigo-300';
+                            const activeClass = isActive
+                              ? 'ring-1 ring-indigo-400'
+                              : 'opacity-60 hover:opacity-100';
+                            return (
+                              <button
+                                key={`${section.kind}:${section.path}:${sIdx}`}
+                                onClick={() =>
+                                  setSelectedFileIdx((prev) => ({
+                                    ...prev,
+                                    [request.id]: sIdx,
+                                  }))
+                                }
+                                className={`font-mono text-[7px] px-1 py-0.5 truncate max-w-[10rem] transition ${badgeClass} ${activeClass}`}
+                                title={`${section.kind}: ${section.path}`}
+                                aria-pressed={isActive}
+                              >
+                                {section.kind === 'added'
+                                  ? '+ '
+                                  : section.kind === 'deleted'
+                                  ? '- '
+                                  : '~ '}
+                                {section.path}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {request.diff && diffSections.length > 0 && (
+                        <div className="max-h-48 overflow-auto">
+                          <DiffViewer
+                            diff={diffSections[activeFileIdx]?.body ?? request.diff}
+                            ariaLabel={`Proposed diff for ${request.agentName}`}
+                          />
+                        </div>
+                      )}
+
+                      {request.diff && diffSections.length === 0 && (
                         <div className="max-h-48 overflow-auto">
                           <DiffViewer
                             diff={request.diff}

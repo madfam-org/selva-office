@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractAffectedFiles } from '../diffPaths';
+import { extractAffectedFiles, splitDiffByFile } from '../diffPaths';
 
 describe('extractAffectedFiles', () => {
   it('returns [] for empty / null / undefined diff', () => {
@@ -150,5 +150,123 @@ describe('extractAffectedFiles', () => {
     expect(extractAffectedFiles(diff)).toEqual([
       { path: 'src/hello.ts', kind: 'modified' },
     ]);
+  });
+});
+
+describe('splitDiffByFile', () => {
+  it('returns [] for empty / null / undefined diff', () => {
+    expect(splitDiffByFile('')).toEqual([]);
+    expect(splitDiffByFile(null)).toEqual([]);
+    expect(splitDiffByFile(undefined)).toEqual([]);
+  });
+
+  it('returns one section for a single-file diff, preserving the body', () => {
+    const diff = [
+      '--- a/src/hello.ts',
+      '+++ b/src/hello.ts',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+
+    const sections = splitDiffByFile(diff);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].path).toBe('src/hello.ts');
+    expect(sections[0].kind).toBe('modified');
+    expect(sections[0].body).toBe(diff);
+  });
+
+  it('splits a multi-file diff with one section per file', () => {
+    const diff = [
+      '--- a/src/one.ts',
+      '+++ b/src/one.ts',
+      '@@ -1 +1 @@',
+      '-a',
+      '+b',
+      '--- a/src/two.ts',
+      '+++ b/src/two.ts',
+      '@@ -2 +2 @@',
+      '-c',
+      '+d',
+    ].join('\n');
+
+    const sections = splitDiffByFile(diff);
+    expect(sections.map((s) => s.path)).toEqual(['src/one.ts', 'src/two.ts']);
+
+    expect(sections[0].body).toBe(
+      ['--- a/src/one.ts', '+++ b/src/one.ts', '@@ -1 +1 @@', '-a', '+b'].join(
+        '\n',
+      ),
+    );
+    expect(sections[1].body).toBe(
+      ['--- a/src/two.ts', '+++ b/src/two.ts', '@@ -2 +2 @@', '-c', '+d'].join(
+        '\n',
+      ),
+    );
+  });
+
+  it('each section body is independently renderable (starts with ---)', () => {
+    const diff = [
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+      '--- a/b.ts',
+      '+++ b/b.ts',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+    ].join('\n');
+
+    const sections = splitDiffByFile(diff);
+    for (const s of sections) {
+      expect(s.body.startsWith('---')).toBe(true);
+    }
+  });
+
+  it('classifies added / deleted / modified the same as extractAffectedFiles', () => {
+    const diff = [
+      '--- a/src/modified.ts',
+      '+++ b/src/modified.ts',
+      '@@ -1 +1 @@',
+      '-a',
+      '+b',
+      '--- /dev/null',
+      '+++ b/src/created.ts',
+      '@@ -0,0 +1 @@',
+      '+e',
+      '--- a/src/removed.ts',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-z',
+    ].join('\n');
+
+    const sections = splitDiffByFile(diff);
+    expect(sections.map((s) => [s.path, s.kind])).toEqual([
+      ['src/modified.ts', 'modified'],
+      ['src/created.ts', 'added'],
+      ['src/removed.ts', 'deleted'],
+    ]);
+  });
+
+  it('does NOT deduplicate — same file touched twice yields two sections', () => {
+    // Deliberate contrast with extractAffectedFiles: the splitter preserves
+    // the original diff shape so the UI can render both hunks.
+    const diff = [
+      '--- a/src/f.ts',
+      '+++ b/src/f.ts',
+      '@@ -1 +1 @@',
+      '-a',
+      '+b',
+      '--- a/src/f.ts',
+      '+++ b/src/f.ts',
+      '@@ -5 +5 @@',
+      '-c',
+      '+d',
+    ].join('\n');
+
+    const sections = splitDiffByFile(diff);
+    expect(sections).toHaveLength(2);
   });
 });
