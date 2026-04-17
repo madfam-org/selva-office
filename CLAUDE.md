@@ -87,6 +87,17 @@ Adopted contract:
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
+- `packages/permissions/selva_permissions/confidence.py` -- HITL Confidence Sprint 1: Bayesian bucket state + `apply_decision()` + tier seam (observe-only)
+- `packages/permissions/selva_permissions/context_signature.py` -- Per-action featurisers for bucket keys (email_send / deploy / llm_call / generic)
+- `packages/tools/src/selva_tools/builtins/pricing_intel.py` -- 4 catalog-audit tools (load / tier-gap / promo-stack / competitor-lookup); 26 pytest tests
+- `packages/tools/src/selva_tools/cli/pricing_intel_weekly.py` -- Weekly runner (markdown + JSON modes, `--fail-on-risk`); 13 pytest tests; K8s CronJob at `packages/skills/skill-definitions/pricing-intelligence/k8s-cronjob.yaml`
+- `packages/tools/src/selva_tools/_audit.py` -- Fire-and-forget secret-access event emitter; wires `POST /api/v1/events/` from Vault tools (store/retrieve/delete/rotate). Never includes the secret value in the payload. 6 pytest tests.
+- `packages/tools/src/selva_tools/builtins/vault.py` -- 5 Vault tools (store/retrieve/list/delete/rotate). All SECRET_MANAGEMENT-gated (ASK). Output-masked. Every op emits an audit event via `_audit.py`.
+- `apps/nexus-api/nexus_api/routers/probe.py` -- Revenue-loop probe endpoints (A.7): draft + email/send dry-runs + runs + latest-run. Powers selva.town/status.
+- `apps/nexus-api/nexus_api/routers/hitl_confidence.py` -- HITL decisions ledger + confidence dashboard (Sprint 1 observe-only)
+- `apps/office-ui/src/app/status/page.tsx` -- Public revenue-loop status page (server-rendered, 30s revalidate)
+- `apps/office-ui/src/app/catalog/page.tsx` -- Public offer catalog (fetches live from Dhanam /v1/billing/catalog)
+- `apps/office-ui/src/app/bundles/page.tsx` -- Public bundles page with live à-la-carte math
 - `packages/inference/madfam_inference/org_config.py` -- Org-level config (task types, model assignments, services)
 - `packages/inference/madfam_inference/router.py` -- LLM model routing logic
 - `packages/inference/madfam_inference/factory.py` -- Shared `build_router_from_env()` (worker + proxy)

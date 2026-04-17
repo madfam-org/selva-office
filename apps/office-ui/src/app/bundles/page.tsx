@@ -19,6 +19,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import {
+  type BundleLine,
+  type CatalogResponse,
+  type ResolvedLine,
+  computeSavings,
+  fmtUsd,
+  resolveLine,
+  sumMonthlyUsd,
+} from './helpers';
+
 export const revalidate = 300;
 
 export const metadata: Metadata = {
@@ -26,36 +36,6 @@ export const metadata: Metadata = {
   description:
     'Three curated MADFAM product bundles — Founder, Operator, Flywheel Suite — with live à-la-carte totals.',
 };
-
-// --- Dhanam billing-catalog types (mirror of the API shape) ------------------
-
-interface CatalogPrice {
-  monthly: number | null;
-  yearly: number | null;
-}
-interface CatalogTier {
-  tierSlug: string;
-  displayName: string | null;
-  prices: Record<string, CatalogPrice>;
-}
-interface CatalogProduct {
-  slug: string;
-  name: string;
-  tiers: CatalogTier[];
-}
-interface CatalogResponse {
-  products: CatalogProduct[];
-}
-
-// --- Bundle definitions ------------------------------------------------------
-
-interface BundleLine {
-  product_slug: string;
-  tier_slug: string;
-  // Friendly label to show when the tier resolver can't find the SKU
-  // in the live catalog (e.g., enterprise tiers with no public price).
-  fallback_label?: string;
-}
 
 interface Bundle {
   slug: string;
@@ -68,6 +48,10 @@ interface Bundle {
   cta_label: string;
   cta_href: string;
 }
+
+// `resolveLine`, `sumMonthlyUsd`, `fmtUsd`, `computeSavings` now live in
+// `./helpers` (imported at the top of this file). Extracted so vitest can
+// exercise the math without rendering the server component.
 
 const BUNDLES: Bundle[] = [
   {
@@ -143,39 +127,6 @@ async function fetchCatalog(): Promise<CatalogResponse | null> {
   } catch {
     return null;
   }
-}
-
-interface ResolvedLine {
-  product: CatalogProduct | undefined;
-  tier: CatalogTier | undefined;
-  monthly_usd: number | null;
-  tier_label: string;
-}
-
-function resolveLine(
-  line: BundleLine,
-  catalog: CatalogResponse | null,
-): ResolvedLine {
-  const product = catalog?.products.find((p) => p.slug === line.product_slug);
-  const tier = product?.tiers.find((t) => t.tierSlug === line.tier_slug);
-  const monthly_usd = tier?.prices?.USD?.monthly ?? null;
-  const tier_label =
-    tier?.displayName ??
-    line.fallback_label ??
-    `${line.product_slug} / ${line.tier_slug}`;
-  return { product, tier, monthly_usd, tier_label };
-}
-
-function sumMonthlyUsd(resolved: ResolvedLine[]): number {
-  return resolved.reduce((acc, r) => acc + (r.monthly_usd ?? 0), 0);
-}
-
-function fmtUsd(cents: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
 }
 
 // --- Rendering ---------------------------------------------------------------
