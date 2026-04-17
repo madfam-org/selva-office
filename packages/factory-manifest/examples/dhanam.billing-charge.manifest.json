@@ -1,0 +1,105 @@
+{
+  "manifest_version": "1.0",
+  "factory_id": "dhanam.billing-charge",
+  "display_name": {
+    "es": "Cobro MXN (Dhanam)",
+    "en": "MXN charge (Dhanam)"
+  },
+  "description": {
+    "es": "Cobra un monto en pesos mexicanos a un tenant vía Stripe MX, Conekta (SPEI/OXXO) o tarjeta. Entrega un evento de facturación y dispara el relay a PhyneCRM.",
+    "en": "Charges an MXN amount to a tenant via Stripe MX, Conekta (SPEI/OXXO), or card. Emits a billing event and fires the PhyneCRM attribution relay."
+  },
+  "owner": {
+    "product": "Dhanam",
+    "team": "billing",
+    "contact": "dhanam-oncall@madfam.io",
+    "slack_channel": "#dhanam-billing"
+  },
+  "version": "1.1.0",
+  "status": "beta",
+
+  "inputs": {
+    "type": "object",
+    "required": ["tenant_id", "amount_mxn_cents", "rail", "source_factory_id"],
+    "additionalProperties": false,
+    "properties": {
+      "tenant_id": {"type": "string", "format": "uuid"},
+      "amount_mxn_cents": {"type": "integer", "minimum": 1},
+      "rail": {"type": "string", "enum": ["stripe_mx_card", "stripe_mx_oxxo", "conekta_spei", "conekta_card"]},
+      "description": {"type": "string", "maxLength": 255},
+      "source_factory_id": {
+        "type": "string",
+        "description": "Which factory produced the deliverable being charged for — required for MXN attribution loop."
+      },
+      "source_correlation_id": {"type": "string"},
+      "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 128}
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "required": ["billing_event_id", "status", "receipt_url"],
+    "properties": {
+      "billing_event_id": {"type": "string"},
+      "status": {"type": "string", "enum": ["pending", "succeeded", "action_required"]},
+      "receipt_url": {"type": "string", "format": "uri"},
+      "cfdi_request_id": {"type": "string", "description": "ID of the async CFDI-issuance request if rfc_required."}
+    }
+  },
+  "failure_modes": [
+    {"code": "AMOUNT_BELOW_MIN", "retryable": false, "http_status": 400, "description": "MXN amount below provider minimum."},
+    {"code": "RAIL_UNAVAILABLE", "retryable": true, "http_status": 503, "description": "Upstream PSP timed out."},
+    {"code": "INSUFFICIENT_FUNDS", "retryable": false, "http_status": 402, "description": "Customer rejected / funds not available."},
+    {"code": "IDEMPOTENCY_CONFLICT", "retryable": false, "http_status": 409, "description": "Same idempotency_key produced a different charge."},
+    {"code": "FRAUD_HOLD", "retryable": false, "http_status": 423, "description": "Held by Stripe Radar / Conekta antifraud."}
+  ],
+
+  "endpoint": {
+    "protocol": "http",
+    "url": "https://api.dhan.am/v1/billing/charges",
+    "method": "POST",
+    "auth": "janua_jwt"
+  },
+
+  "price": {
+    "currency": "MXN",
+    "model": "free_internal",
+    "free_internal": {"metering_only": true}
+  },
+
+  "sla": {
+    "p95_latency_ms": 1500,
+    "p99_latency_ms": 4000,
+    "availability_target": 0.999,
+    "error_budget_window_days": 30
+  },
+
+  "idempotency": {
+    "key_field": "idempotency_key",
+    "ttl_seconds": 604800,
+    "behavior": "same_response"
+  },
+
+  "compliance": {
+    "cfdi_impact": "consumes_cfdi",
+    "rfc_required": false,
+    "pii_classes": ["email", "banking"],
+    "data_residency": "mx"
+  },
+
+  "dependencies": [
+    {"factory_id": "karafiel.cfdi-stamp", "criticality": "optional", "version_range": "^1.0.0"},
+    {"factory_id": "phyne.attribution-credit", "criticality": "required", "version_range": "^1.0.0"}
+  ],
+
+  "observability": {
+    "posthog_events": ["dhanam.charge.succeeded", "dhanam.charge.failed", "dhanam.mxn_ingress"],
+    "prometheus_metrics": ["dhanam_charge_duration_seconds", "dhanam_mxn_ingress_total"],
+    "sentry_dsn_key": "DHANAM_SENTRY_DSN"
+  },
+
+  "rate_limits": {
+    "per_minute": 120,
+    "per_day": 10000,
+    "burst": 20
+  }
+}

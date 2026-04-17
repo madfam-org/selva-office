@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: revenue-loop-probe
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: revenue-loop-probe
+    app.kubernetes.io/part-of: autoswarm-office
+spec:
+  # Every hour at :07 — offset so it doesn't collide with any on-the-hour
+  # pipeline scrapers (forgesight crawler, fortuna zeitgeist, etc.).
+  schedule: "7 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 180
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: revenue-loop-probe
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: probe
+              image: ghcr.io/madfam-org/revenue-loop-probe:latest
+              imagePullPolicy: Always
+              args:
+                - "--timeout-s=120"
+                - "--json-only"
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+              env:
+                # Ecosystem URLs (public — not secret):
+                - name: PHYNE_CRM_API_URL
+                  value: https://crm.madfam.io
+                - name: NEXUS_API_URL
+                  value: https://agents-api.madfam.io
+                - name: DHANAM_API_URL
+                  value: https://api.dhan.am
+                - name: DHANAM_STRIPE_WEBHOOK_URL
+                  value: https://api.dhan.am/v1/billing/webhooks/stripe
+                # Tuning:
+                - name: DHANAM_BILLING_POLL_TIMEOUT_S
+                  value: "30"
+                - name: PHYNE_ATTRIBUTION_POLL_TIMEOUT_S
+                  value: "20"
+                - name: PROBE_PAYMENT_AMOUNT_MXN_CENTS
+                  value: "4900"  # MX$49 — Karafiel Essentials-equivalent.
+              envFrom:
+                # Scoped probe tokens (one secret, four keys):
+                #   PHYNE_CRM_PROBE_TOKEN
+                #   NEXUS_PROBE_TOKEN
+                #   DHANAM_STRIPE_WEBHOOK_SECRET
+                #   DHANAM_PROBE_TOKEN
+                - secretRef:
+                    name: revenue-loop-probe-tokens
+          # Fail loudly: the job logs to stdout, and a Prometheus sidecar or
+          # Alertmanager scraping job exit codes will page on non-zero.

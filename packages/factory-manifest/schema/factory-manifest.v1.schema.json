@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://madfam.io/schemas/factory-manifest/v1.json",
+  "title": "MADFAM Factory Manifest v1",
+  "description": "Declarative contract that turns any MADFAM service (or a composition of services) into a catalogable, composable, MXN-priced SKU. Every service that wants to be callable by Selva or listed in the public catalog publishes one of these. Versioned — later manifests must not silently mutate this contract.",
+  "type": "object",
+  "required": ["manifest_version", "factory_id", "owner", "version", "inputs", "outputs", "price", "sla", "idempotency"],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Manifest schema version. Pinned — v2 will live at a different URL."
+    },
+    "factory_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+\\.[a-z0-9-]+$",
+      "description": "Stable dotted id. Convention: <product>.<factory>, e.g. 'karafiel.cfdi-stamp'."
+    },
+    "display_name": {
+      "type": "object",
+      "properties": {
+        "es": {"type": "string"},
+        "en": {"type": "string"}
+      },
+      "required": ["es"],
+      "additionalProperties": false
+    },
+    "description": {
+      "type": "object",
+      "properties": {
+        "es": {"type": "string"},
+        "en": {"type": "string"}
+      },
+      "required": ["es"],
+      "additionalProperties": false
+    },
+    "owner": {
+      "type": "object",
+      "required": ["product", "team", "contact"],
+      "additionalProperties": false,
+      "properties": {
+        "product": {"type": "string"},
+        "team": {"type": "string"},
+        "contact": {"type": "string", "format": "email"},
+        "slack_channel": {"type": "string"},
+        "oncall": {"type": "string"}
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver. Breaking changes to inputs/outputs MUST bump major."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["alpha", "beta", "general_availability", "deprecated"],
+      "default": "alpha"
+    },
+    "deprecation": {
+      "type": "object",
+      "description": "Required when status = deprecated.",
+      "properties": {
+        "sunset_date": {"type": "string", "format": "date"},
+        "replacement_factory_id": {"type": "string"},
+        "migration_guide_url": {"type": "string", "format": "uri"}
+      },
+      "required": ["sunset_date"]
+    },
+
+    "inputs": {
+      "type": "object",
+      "description": "JSON Schema (draft 2020-12) fragment describing the input payload. Put the input schema inline here — don't indirect to another file so the manifest is a single consumable artifact.",
+      "required": ["type"],
+      "additionalProperties": true
+    },
+    "outputs": {
+      "type": "object",
+      "description": "JSON Schema fragment describing the success-case output.",
+      "required": ["type"],
+      "additionalProperties": true
+    },
+    "failure_modes": {
+      "type": "array",
+      "description": "Enumerated failure codes the caller must be prepared for. Each has a stable code that Selva can route on.",
+      "items": {
+        "type": "object",
+        "required": ["code", "retryable", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {"type": "string", "pattern": "^[A-Z0-9_]+$"},
+          "retryable": {"type": "boolean"},
+          "description": {"type": "string"},
+          "http_status": {"type": "integer", "minimum": 400, "maximum": 599}
+        }
+      }
+    },
+
+    "endpoint": {
+      "type": "object",
+      "description": "How to actually invoke this factory.",
+      "required": ["protocol"],
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {"type": "string", "enum": ["http", "grpc", "a2a", "event_bus"]},
+        "url": {"type": "string", "format": "uri"},
+        "method": {"type": "string", "enum": ["POST", "PUT", "PATCH"]},
+        "auth": {
+          "type": "string",
+          "enum": ["janua_jwt", "api_key", "hmac", "mtls", "bearer"],
+          "description": "How the caller authenticates."
+        },
+        "event_type": {
+          "type": "string",
+          "description": "For protocol=event_bus, the topic/event name."
+        }
+      }
+    },
+
+    "price": {
+      "type": "object",
+      "description": "Denominated in MXN cents because peso ingress is the goal. Add other currency mirrors later if needed.",
+      "required": ["model", "currency"],
+      "additionalProperties": false,
+      "properties": {
+        "currency": {"type": "string", "enum": ["MXN"], "description": "Always MXN for v1 — see ADR-001."},
+        "model": {
+          "type": "string",
+          "enum": ["per_call", "per_unit", "subscription", "free_internal"]
+        },
+        "per_call_mxn_cents": {"type": "integer", "minimum": 0},
+        "per_unit": {
+          "type": "object",
+          "required": ["unit_name", "mxn_cents_per_unit"],
+          "properties": {
+            "unit_name": {"type": "string"},
+            "mxn_cents_per_unit": {"type": "integer", "minimum": 0}
+          }
+        },
+        "subscription": {
+          "type": "object",
+          "required": ["tier", "monthly_mxn_cents", "included_calls"],
+          "properties": {
+            "tier": {"type": "string"},
+            "monthly_mxn_cents": {"type": "integer", "minimum": 0},
+            "included_calls": {"type": "integer", "minimum": 0},
+            "overage_mxn_cents_per_call": {"type": "integer", "minimum": 0}
+          }
+        },
+        "free_internal": {
+          "type": "object",
+          "description": "Factory is callable by other MADFAM factories with no MXN charge. Internal usage still metered.",
+          "properties": {
+            "metering_only": {"type": "boolean", "default": true}
+          }
+        }
+      }
+    },
+
+    "sla": {
+      "type": "object",
+      "required": ["p95_latency_ms", "availability_target", "error_budget_window_days"],
+      "additionalProperties": false,
+      "properties": {
+        "p95_latency_ms": {"type": "integer", "minimum": 1},
+        "p99_latency_ms": {"type": "integer", "minimum": 1},
+        "availability_target": {"type": "number", "minimum": 0, "maximum": 1},
+        "error_budget_window_days": {"type": "integer", "minimum": 1, "maximum": 90},
+        "maintenance_windows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["cron", "duration_minutes", "timezone"],
+            "properties": {
+              "cron": {"type": "string"},
+              "duration_minutes": {"type": "integer", "minimum": 1},
+              "timezone": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+
+    "idempotency": {
+      "type": "object",
+      "required": ["key_field", "ttl_seconds"],
+      "additionalProperties": false,
+      "properties": {
+        "key_field": {"type": "string", "description": "Name of the input field the factory keys on for dedupe."},
+        "ttl_seconds": {"type": "integer", "minimum": 1, "description": "How long the factory remembers a key."},
+        "behavior": {
+          "type": "string",
+          "enum": ["same_response", "conflict_409"],
+          "default": "same_response"
+        }
+      }
+    },
+
+    "compliance": {
+      "type": "object",
+      "description": "Mexico-specific fields that matter for ecosystem composability.",
+      "additionalProperties": false,
+      "properties": {
+        "cfdi_impact": {
+          "type": "string",
+          "enum": ["none", "issues_cfdi", "consumes_cfdi", "amends_cfdi"],
+          "default": "none"
+        },
+        "rfc_required": {"type": "boolean", "default": false},
+        "pii_classes": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["email", "phone", "rfc", "curp", "address", "banking"]}
+        },
+        "data_residency": {"type": "string", "enum": ["mx", "us", "global"], "default": "mx"}
+      }
+    },
+
+    "dependencies": {
+      "type": "array",
+      "description": "Other factories this one calls. Enables Selva to plan execution order and compute blast radius.",
+      "items": {
+        "type": "object",
+        "required": ["factory_id", "criticality"],
+        "additionalProperties": false,
+        "properties": {
+          "factory_id": {"type": "string"},
+          "criticality": {"type": "string", "enum": ["required", "optional", "best_effort"]},
+          "version_range": {"type": "string", "description": "Semver range, e.g. '^1.2.0'."}
+        }
+      }
+    },
+
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "posthog_events": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Event names this factory emits to PostHog."
+        },
+        "prometheus_metrics": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "sentry_dsn_key": {"type": "string", "description": "Secret key name (not value) containing the Sentry DSN."}
+      }
+    },
+
+    "rate_limits": {
+      "type": "object",
+      "description": "Published per-caller rate limits. Complementary to price model.",
+      "additionalProperties": false,
+      "properties": {
+        "per_minute": {"type": "integer", "minimum": 1},
+        "per_day": {"type": "integer", "minimum": 1},
+        "burst": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

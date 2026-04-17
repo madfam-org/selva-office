@@ -6,8 +6,12 @@ This module provides high-quality text rendering that looks crisp and profession
 in GIFs, with outlines for readability and effects for visual impact.
 """
 
+import logging
+
 from PIL import Image, ImageDraw, ImageFont
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # Typography scale - proportional sizing system
@@ -48,7 +52,8 @@ def get_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     for font_path in font_paths:
         try:
             return ImageFont.truetype(font_path, size)
-        except:
+        except (OSError, IOError) as e:
+            logger.debug("Font path unavailable %s: %s", font_path, e)
             continue
 
     # Ultimate fallback

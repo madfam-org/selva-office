@@ -12,18 +12,26 @@ from .context_rules import (
 )
 from .engine import PermissionEngine
 from .matrix import DEFAULT_PERMISSION_MATRIX
+from .modes import PermissionMode, apply_mode, resolve_mode
 from .role_matrices import ROLE_PERMISSION_MATRICES
+from .types import ActionCategory, PermissionLevel, PermissionResult
 
 __all__ = [
+    "ActionCategory",
     "ActionClassifier",
     "ContextRule",
     "DEFAULT_CONTEXT_RULES",
     "DEFAULT_PERMISSION_MATRIX",
     "PermissionContext",
     "PermissionEngine",
-    "RiskScoreRule",
+    "PermissionLevel",
+    "PermissionMode",
+    "PermissionResult",
     "ROLE_PERMISSION_MATRICES",
+    "RiskScoreRule",
     "RoleMatrixRule",
     "TimeOfDayRule",
     "TrustLevelRule",
+    "apply_mode",
+    "resolve_mode",
 ]

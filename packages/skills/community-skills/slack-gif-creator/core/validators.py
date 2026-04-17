@@ -163,7 +163,8 @@ def validate_gif(gif_path: str | Path, is_emoji: bool = True) -> tuple[bool, dic
                 duration_ms = img.info.get('duration', 100)
                 total_duration = (duration_ms * frame_count) / 1000
                 fps = frame_count / total_duration if total_duration > 0 else 0
-            except:
+            except (KeyError, TypeError, ZeroDivisionError, AttributeError) as e:
+                print(f"Warning: Could not determine GIF duration/fps: {e}")
                 duration_ms = None
                 total_duration = None
                 fps = None

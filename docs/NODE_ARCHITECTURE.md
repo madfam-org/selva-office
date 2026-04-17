@@ -66,7 +66,7 @@ services, agents, tools, graphs, and external systems in the MADFAM ecosystem.
 
 | Component | Implementation |
 |-----------|---------------|
-| Agent | Aureo (L7, Finance Controller) |
+| Agent | Áureo (L7, Finance Controller) |
 | Department | Physical-Digital Bridge |
 | Service | Dhanam (billing engine) |
 | Key Tools | CreateCheckoutLinkTool, GetRevenueMetricsTool, ISRCalculatorTool, IVACalculatorTool |
@@ -122,7 +122,7 @@ services, agents, tools, graphs, and external systems in the MADFAM ecosystem.
 | Vigia | L8 | Orchestration | Build & Run Engine |
 | Heraldo | L8 | Growth | Growth & Market Syndicate |
 | Nexo | L8 | Growth | Growth & Market Syndicate |
-| Aureo | L7 | Ledger | Physical-Digital Bridge |
+| Áureo | L7 | Ledger | Physical-Digital Bridge |
 | Espectro | L7 | Phygital | Physical-Digital Bridge |
 
 ---

@@ -1,0 +1,123 @@
+{
+  "manifest_version": "1.0",
+  "factory_id": "karafiel.cfdi-stamp",
+  "display_name": {
+    "es": "Emisión de CFDI (Karafiel)",
+    "en": "CFDI issuance (Karafiel)"
+  },
+  "description": {
+    "es": "Emite un CFDI 4.0 válido ante el SAT a partir de los datos del emisor, receptor y conceptos. Entrega UUID, XML firmado y PDF.",
+    "en": "Issues a SAT-valid CFDI 4.0 from sender, recipient, and line items. Returns UUID, signed XML, and PDF."
+  },
+  "owner": {
+    "product": "Karafiel",
+    "team": "compliance",
+    "contact": "karafiel-oncall@madfam.io",
+    "slack_channel": "#karafiel-ops",
+    "oncall": "PagerDuty service: karafiel-compliance"
+  },
+  "version": "1.0.0",
+  "status": "beta",
+
+  "inputs": {
+    "type": "object",
+    "required": ["emisor_rfc", "receptor_rfc", "conceptos"],
+    "additionalProperties": false,
+    "properties": {
+      "emisor_rfc": {"type": "string", "pattern": "^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$"},
+      "receptor_rfc": {"type": "string", "pattern": "^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$"},
+      "receptor_nombre": {"type": "string", "minLength": 1, "maxLength": 254},
+      "uso_cfdi": {"type": "string", "enum": ["G01","G02","G03","I01","I02","I03","I04","I05","I06","I07","I08","D01","D02","D03","D04","D05","D06","D07","D08","D09","D10","P01","S01","CP01","CN01"]},
+      "metodo_pago": {"type": "string", "enum": ["PUE","PPD"]},
+      "forma_pago": {"type": "string"},
+      "moneda": {"type": "string", "enum": ["MXN","USD","EUR"], "default": "MXN"},
+      "conceptos": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["clave_prod_serv","descripcion","cantidad","valor_unitario"],
+          "properties": {
+            "clave_prod_serv": {"type": "string"},
+            "descripcion": {"type": "string"},
+            "cantidad": {"type": "number", "exclusiveMinimum": 0},
+            "valor_unitario": {"type": "number", "minimum": 0}
+          }
+        }
+      },
+      "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 128}
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "required": ["uuid", "xml_base64", "pdf_url", "sat_timestamp"],
+    "properties": {
+      "uuid": {"type": "string", "format": "uuid"},
+      "xml_base64": {"type": "string", "contentEncoding": "base64"},
+      "xml_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "pdf_url": {"type": "string", "format": "uri"},
+      "sat_timestamp": {"type": "string", "format": "date-time"},
+      "pac_provider": {"type": "string", "enum": ["facturama", "finkok"]}
+    }
+  },
+  "failure_modes": [
+    {"code": "RFC_INVALID", "retryable": false, "http_status": 400, "description": "Emisor or receptor RFC fails SAT format."},
+    {"code": "RFC_BLACKLISTED", "retryable": false, "http_status": 422, "description": "Receptor RFC is on the SAT 69-B blacklist."},
+    {"code": "PAC_UNAVAILABLE", "retryable": true, "http_status": 503, "description": "PAC provider timed out; client may retry."},
+    {"code": "IDEMPOTENCY_CONFLICT", "retryable": false, "http_status": 409, "description": "Same idempotency_key returned a different payload within TTL."},
+    {"code": "CERTIFICATE_EXPIRED", "retryable": false, "http_status": 422, "description": "CSD certificate is expired — re-upload required."}
+  ],
+
+  "endpoint": {
+    "protocol": "http",
+    "url": "https://api.karafiel.mx/v1/cfdi/stamp",
+    "method": "POST",
+    "auth": "api_key"
+  },
+
+  "price": {
+    "currency": "MXN",
+    "model": "per_call",
+    "per_call_mxn_cents": 450
+  },
+
+  "sla": {
+    "p95_latency_ms": 3500,
+    "p99_latency_ms": 8000,
+    "availability_target": 0.995,
+    "error_budget_window_days": 30,
+    "maintenance_windows": [
+      {"cron": "0 3 * * 0", "duration_minutes": 30, "timezone": "America/Mexico_City"}
+    ]
+  },
+
+  "idempotency": {
+    "key_field": "idempotency_key",
+    "ttl_seconds": 86400,
+    "behavior": "same_response"
+  },
+
+  "compliance": {
+    "cfdi_impact": "issues_cfdi",
+    "rfc_required": true,
+    "pii_classes": ["rfc", "address"],
+    "data_residency": "mx"
+  },
+
+  "dependencies": [
+    {"factory_id": "janua.token-exchange", "criticality": "required", "version_range": "^1.0.0"},
+    {"factory_id": "tezca.domain-classify", "criticality": "best_effort", "version_range": "^1.0.0"}
+  ],
+
+  "observability": {
+    "posthog_events": ["karafiel.cfdi.issued", "karafiel.cfdi.failed"],
+    "prometheus_metrics": ["karafiel_cfdi_issue_duration_seconds", "karafiel_cfdi_pac_retries_total"],
+    "sentry_dsn_key": "KARAFIEL_SENTRY_DSN"
+  },
+
+  "rate_limits": {
+    "per_minute": 60,
+    "per_day": 5000,
+    "burst": 10
+  }
+}

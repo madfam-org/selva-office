@@ -1,0 +1,143 @@
+# ═══════════════════════════════════════════════════════════════════════
+# MADFAM BRIDGE ORG CONFIG — Anthropic credentials paused
+# ═══════════════════════════════════════════════════════════════════════
+# Temporary variant that flips primary task-type assignments from Anthropic
+# to DeepInfra-hosted open-weight models. Use while the Anthropic account
+# is paused for funding. Flip back by re-applying the default
+# org-config.yaml (not this file).
+#
+# APPLY:
+#   enclii secrets set DEEPINFRA_API_KEY=<key> --service nexus-api --secret
+#   kubectl apply -f infra/k8s/production/org-config-bridge-deepinfra.yaml
+#   kubectl rollout restart deployment/nexus-api deployment/autoswarm-workers -n autoswarm
+#
+# FLIP BACK (once Anthropic is funded):
+#   kubectl apply -f infra/k8s/production/org-config.yaml
+#   kubectl rollout restart deployment/nexus-api deployment/autoswarm-workers -n autoswarm
+#
+# NOTES:
+#   - `fast_coding` is already DeepInfra in the default config — unchanged here.
+#   - `embedding` stays on OpenAI (cheap, good, not blocked by Anthropic outage).
+#   - `vision` moves to Llama-3.2-90B-Vision-Instruct.
+#   - Fallback order is reshuffled so DeepInfra is tried first if the assigned
+#     model fails too.
+#   - Quality is expected to be meaningfully lower than Claude Sonnet/Opus for
+#     planning and review. Treat any output requiring high precision as draft
+#     quality during bridge mode. HITL approval already gates email sends.
+#
+# Ref: memory/project_revenue_loop_ops_status.md, project_inference_centralization.md
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autoswarm-org-config
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/name: org-config
+    app.kubernetes.io/part-of: autoswarm-office
+    madfam.io/bridge-mode: "deepinfra-while-anthropic-paused"
+  annotations:
+    madfam.io/bridge-activated-at: "2026-04-17T00:00:00Z"
+    madfam.io/bridge-reason: "Anthropic account $0 — per session_wrapup_20260416. Revert once funded."
+data:
+  org-config.yaml: |
+    # BRIDGE MODE — Anthropic primaries replaced with DeepInfra.
+    providers: {}
+
+    # ── Task-type model assignments (bridge) ─────────────────────────────
+    model_assignments:
+      planning:
+        provider: deepinfra
+        model: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+        max_tokens: 8192
+        temperature: 0.6
+      coding:
+        provider: deepinfra
+        model: Qwen/Qwen2.5-Coder-32B-Instruct
+        max_tokens: 8192
+        temperature: 0.3
+      fast_coding:
+        provider: deepinfra
+        model: meta-llama/Llama-3.3-70B-Instruct
+        max_tokens: 4096
+        temperature: 0.3
+      review:
+        provider: deepinfra
+        model: Qwen/Qwen2.5-72B-Instruct
+        max_tokens: 4096
+        temperature: 0.5
+      research:
+        provider: deepinfra
+        model: meta-llama/Llama-3.3-70B-Instruct
+        max_tokens: 8192
+        temperature: 0.7
+      crm:
+        # Revenue loop. Cheap + fast; conservative temperature for brand tone.
+        provider: deepinfra
+        model: meta-llama/Llama-3.3-70B-Instruct
+        max_tokens: 2048
+        temperature: 0.6
+      support:
+        provider: deepinfra
+        model: meta-llama/Llama-3.1-8B-Instruct
+        max_tokens: 2048
+        temperature: 0.7
+      vision:
+        provider: deepinfra
+        model: meta-llama/Llama-3.2-90B-Vision-Instruct
+        max_tokens: 4096
+        temperature: 0.5
+      embedding:
+        # Unchanged: OpenAI small embeddings are cheap and unaffected by outage.
+        provider: openai
+        model: text-embedding-3-small
+        max_tokens: 512
+        temperature: 0.0
+
+    # ── Priority lists (bridge) ──────────────────────────────────────────
+    # DeepInfra first in both so fallbacks land on hosts we have credit with.
+    cloud_priority:
+      - deepinfra
+      - openai
+      - groq
+      - together
+      - fireworks
+      - mistral
+      - moonshot
+      - siliconflow
+      - openrouter
+      - anthropic
+
+    cheapest_priority:
+      - deepinfra
+      - groq
+      - together
+      - siliconflow
+      - fireworks
+      - mistral
+      - moonshot
+      - openrouter
+      - openai
+      - anthropic
+
+    # ── External service accounts (bridge markers) ───────────────────────
+    services:
+      anthropic:
+        provider: anthropic
+        service_type: llm
+        api_key_env: ANTHROPIC_API_KEY
+        plan: pending_funding
+        status: disabled
+        notes: "Account at $0 USD — bridge mode active. Do not route primary traffic here."
+      deepinfra:
+        provider: deepinfra
+        service_type: llm
+        api_key_env: DEEPINFRA_API_KEY
+        plan: pay_as_you_go
+        payment_method: credit_card
+        capacity:
+          credit_usd_snapshot_2026_04_17: 19.98
+        consumption_tracking: true
+        status: active
+        notes: "Primary LLM provider during Anthropic bridge. GitHub OAuth via innovacionesmadfam@proton.me."

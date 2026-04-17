@@ -68,3 +68,6 @@ apps/gateway/data/
 *.key
 *.p12
 *.pfx
+
+# Local pytest venvs created by packages/*/tests
+.venv-test/

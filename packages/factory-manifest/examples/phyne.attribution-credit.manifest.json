@@ -1,0 +1,103 @@
+{
+  "manifest_version": "1.0",
+  "factory_id": "phyne.attribution-credit",
+  "display_name": {
+    "es": "Atribución de ingreso al agente (PhyneCRM)",
+    "en": "Agent revenue attribution (PhyneCRM)"
+  },
+  "description": {
+    "es": "Acredita un ingreso MXN al agente que originó el lead. Cierra el flywheel: convierte un cargo Dhanam en un evento de atribución que alimenta la selección de agentes y el bandido de Thompson en AutoSwarm.",
+    "en": "Credits MXN revenue back to the agent that sourced the lead. Closes the flywheel: turns a Dhanam charge into an attribution event that feeds AutoSwarm's Thompson-sampling agent selection."
+  },
+  "owner": {
+    "product": "PhyneCRM",
+    "team": "growth",
+    "contact": "phyne-oncall@madfam.io",
+    "slack_channel": "#phyne-crm"
+  },
+  "version": "1.0.0",
+  "status": "alpha",
+
+  "inputs": {
+    "type": "object",
+    "required": ["lead_id", "source_agent_id", "billing_event_id", "amount_mxn_cents"],
+    "additionalProperties": false,
+    "properties": {
+      "lead_id": {"type": "string", "format": "uuid"},
+      "source_agent_id": {"type": "string"},
+      "billing_event_id": {
+        "type": "string",
+        "description": "Dhanam billing_event_id that produced the MXN ingress."
+      },
+      "amount_mxn_cents": {"type": "integer", "minimum": 1},
+      "journey": {
+        "type": "array",
+        "description": "Ordered list of factory_ids the lead passed through before conversion.",
+        "items": {"type": "string"}
+      },
+      "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 128}
+    }
+  },
+  "outputs": {
+    "type": "object",
+    "required": ["attribution_id", "credit_amount_mxn_cents", "agent_updated"],
+    "properties": {
+      "attribution_id": {"type": "string", "format": "uuid"},
+      "credit_amount_mxn_cents": {"type": "integer"},
+      "agent_updated": {"type": "boolean", "description": "True if agent stats + bandit reward were updated."}
+    }
+  },
+  "failure_modes": [
+    {"code": "LEAD_UNKNOWN", "retryable": false, "http_status": 404, "description": "lead_id not found — probable probe/test miswiring."},
+    {"code": "BILLING_EVENT_UNKNOWN", "retryable": true, "http_status": 404, "description": "Dhanam billing event not yet replicated — caller may retry briefly."},
+    {"code": "DOUBLE_ATTRIBUTION", "retryable": false, "http_status": 409, "description": "billing_event_id already credited."},
+    {"code": "AGENT_UNKNOWN", "retryable": false, "http_status": 422, "description": "source_agent_id does not exist in AutoSwarm roster."}
+  ],
+
+  "endpoint": {
+    "protocol": "event_bus",
+    "event_type": "phyne.lead.converted"
+  },
+
+  "price": {
+    "currency": "MXN",
+    "model": "free_internal",
+    "free_internal": {"metering_only": true}
+  },
+
+  "sla": {
+    "p95_latency_ms": 500,
+    "p99_latency_ms": 2000,
+    "availability_target": 0.99,
+    "error_budget_window_days": 30
+  },
+
+  "idempotency": {
+    "key_field": "billing_event_id",
+    "ttl_seconds": 2592000,
+    "behavior": "same_response"
+  },
+
+  "compliance": {
+    "cfdi_impact": "none",
+    "rfc_required": false,
+    "pii_classes": ["email"],
+    "data_residency": "mx"
+  },
+
+  "dependencies": [
+    {"factory_id": "dhanam.billing-charge", "criticality": "required", "version_range": "^1.1.0"}
+  ],
+
+  "observability": {
+    "posthog_events": ["phyne.attribution.credited"],
+    "prometheus_metrics": ["phyne_attribution_seconds", "phyne_attribution_mxn_cents_total"],
+    "sentry_dsn_key": "PHYNE_SENTRY_DSN"
+  },
+
+  "rate_limits": {
+    "per_minute": 300,
+    "per_day": 100000,
+    "burst": 50
+  }
+}

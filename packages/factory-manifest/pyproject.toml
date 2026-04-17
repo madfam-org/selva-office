@@ -1,0 +1,30 @@
+[project]
+name = "madfam-factory-manifest"
+version = "0.1.0"
+description = "JSON Schema (draft 2020-12) for MADFAM Factory Manifest v1 + validators. Ship one manifest per callable factory; register in CI."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Innovaciones MADFAM" }]
+
+dependencies = [
+    "jsonschema[format]>=4.23",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+madfam-validate-factory-manifest = "madfam_factory_manifest.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/madfam_factory_manifest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

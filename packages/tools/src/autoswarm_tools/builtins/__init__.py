@@ -72,6 +72,7 @@ from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
 from .dns import get_dns_tools
 from .npm_registry import get_npm_registry_tools
 from .vault import get_vault_tools
+from .enclii_cli import EncliiCliTool
 from .enclii_infra import (
     EncliiExecTool,
     EncliiHealthTool,
@@ -240,6 +241,8 @@ def get_builtin_tools() -> list[BaseTool]:
         EncliiLogsTool(),
         EncliiHealthTool(),
         EncliiSecretsTool(),
+        # Direct enclii CLI shell-out (for subcommands w/o Switchyard HTTP)
+        EncliiCliTool(),
         # DNS management tools (Porkbun — Orchestration Node)
         *get_dns_tools(),
         # NPM registry management (Verdaccio — token rotation + GitHub secrets)

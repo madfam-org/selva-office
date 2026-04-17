@@ -34,6 +34,38 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 | `/login` | Public | Dev bypass + Janua SSO |
 | `/guest` | Public | Invite-based guest join |
 
+## Selva SWE Parity (vs. claw-code)
+
+Selva's SWE surface — the agent that plans/implements/reviews/deploys —
+must match the capability surface of `ultraworkers/claw-code` without
+copying its (license-less) code. Full capability matrix and gap list:
+`docs/SELVA_SWE_PARITY.md`.
+
+Adopted contract:
+
+1. **No tool-prompt friction.** Agents never stall asking "may I use
+   this tool?". The permission matrix is authoritative; `ALLOW`
+   categories execute, `ASK` categories trigger HITL via LangGraph
+   `interrupt()`, `DENY` refuses immediately.
+2. **Permission modes** (on top of the fine-grained matrix):
+   `read-only` / `workspace-write` (default) / `danger-full-access`.
+   Implemented in `packages/permissions/autoswarm_permissions/modes.py`.
+   Dispatch reads the mode from task payload → `AUTOSWARM_PERMISSION_MODE`
+   env → default.
+3. **Ops binaries must be present + authenticated.** Worker images ship
+   with `enclii`, `git`, `gh`, `kubectl`. `autoswarm-doctor` is the
+   preflight that verifies this. Missing a required binary is a doctor
+   FAIL, not a runtime surprise.
+4. **`enclii` invocation** goes through either:
+   - `enclii_infra` tools — HTTP Switchyard API (preferred for
+     everything with an HTTP equivalent; defense in depth + audit);
+   - `enclii_cli` tool — direct shell-out with per-subcommand risk
+     classification (READONLY/MUTATING/DANGEROUS) for subcommands
+     without a Switchyard equivalent.
+5. **Doctor preflight.** Run `autoswarm-doctor` (from the `doctor`
+   package) before starting a long-running agent tick. Exit 1 blocks the
+   tick; WARN is advisory.
+
 ## Critical Paths
 
 - `apps/nexus-api/src/main.py` -- FastAPI application entry point
