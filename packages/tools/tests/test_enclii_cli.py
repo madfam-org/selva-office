@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from autoswarm_tools.builtins.enclii_cli import (
+from selva_tools.builtins.enclii_cli import (
     ENCLII_POLICY,
     FORBIDDEN_GLOBAL_FLAGS,
     EncliiCliTool,
@@ -82,7 +82,7 @@ async def test_execute_rejects_bad_args_type():
 
 async def test_execute_rejects_dangerous_without_override(monkeypatch):
     monkeypatch.setenv("ENCLII_API_TOKEN", "t")
-    with patch("autoswarm_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"):
+    with patch("selva_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"):
         tool = EncliiCliTool()
         result = await tool.execute(subcommand="destroy", args=[])
     assert not result.success
@@ -91,7 +91,7 @@ async def test_execute_rejects_dangerous_without_override(monkeypatch):
 
 async def test_execute_reports_missing_binary(monkeypatch):
     monkeypatch.setenv("ENCLII_API_TOKEN", "t")
-    with patch("autoswarm_tools.builtins.enclii_cli.shutil.which", return_value=None):
+    with patch("selva_tools.builtins.enclii_cli.shutil.which", return_value=None):
         tool = EncliiCliTool()
         result = await tool.execute(subcommand="ps", args=[])
     assert not result.success
@@ -100,7 +100,7 @@ async def test_execute_reports_missing_binary(monkeypatch):
 
 async def test_execute_reports_missing_token_for_mutating(monkeypatch):
     monkeypatch.delenv("ENCLII_API_TOKEN", raising=False)
-    with patch("autoswarm_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"):
+    with patch("selva_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"):
         tool = EncliiCliTool()
         result = await tool.execute(subcommand="deploy", args=["--env", "prod"])
     assert not result.success
@@ -118,7 +118,7 @@ async def test_execute_readonly_runs_without_token(monkeypatch):
     async def fake_exec(*args, **kwargs):
         return fake_proc
 
-    with patch("autoswarm_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"), \
+    with patch("selva_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"), \
          patch("asyncio.create_subprocess_exec", side_effect=fake_exec):
         tool = EncliiCliTool()
         result = await tool.execute(subcommand="version", args=[])
@@ -140,7 +140,7 @@ async def test_execute_mutating_surfaces_non_zero_rc(monkeypatch):
     async def fake_exec(*args, **kwargs):
         return fake_proc
 
-    with patch("autoswarm_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"), \
+    with patch("selva_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"), \
          patch("asyncio.create_subprocess_exec", side_effect=fake_exec):
         tool = EncliiCliTool()
         result = await tool.execute(subcommand="deploy", args=["--env", "prod"])
@@ -166,7 +166,7 @@ async def test_execute_timeout_kills_process(monkeypatch):
     async def fake_exec(*args, **kwargs):
         return fake_proc
 
-    with patch("autoswarm_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"), \
+    with patch("selva_tools.builtins.enclii_cli.shutil.which", return_value="/usr/local/bin/enclii"), \
          patch("asyncio.create_subprocess_exec", side_effect=fake_exec):
         tool = EncliiCliTool()
         # Pass very small override to keep the test fast — even without

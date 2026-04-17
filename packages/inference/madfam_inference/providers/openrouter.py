@@ -22,7 +22,7 @@ class OpenRouterProvider(OpenAIProvider):
         *,
         model: str = DEFAULT_MODEL,
         timeout: float = 120.0,
-        app_name: str = "AutoSwarm",
+        app_name: str = "Selva",
     ) -> None:
         super().__init__(
             api_key,

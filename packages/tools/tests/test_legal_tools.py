@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins.legal import (
+from selva_tools.builtins.legal import (
     ComplianceCheckTool,
     ContractGenerateTool,
     LawSearchTool,
@@ -55,7 +55,7 @@ class TestLegalToolsInRegistry:
     """Legal tools are registered in get_builtin_tools()."""
 
     def test_all_legal_tools_in_registry(self) -> None:
-        from autoswarm_tools.builtins import get_builtin_tools
+        from selva_tools.builtins import get_builtin_tools
 
         tools = get_builtin_tools()
         names = {t.name for t in tools}

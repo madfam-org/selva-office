@@ -1,4 +1,4 @@
-tunnel: autoswarm-office
+tunnel: selva
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:

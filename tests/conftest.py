@@ -1,10 +1,10 @@
-"""Root-level shared fixtures for the AutoSwarm Office test suite."""
+"""Root-level shared fixtures for the Selva test suite."""
 
 from __future__ import annotations
 
 import pytest
 
-from autoswarm_orchestrator.types import AgentRole
+from selva_orchestrator.types import AgentRole
 
 
 @pytest.fixture()

@@ -1,20 +1,20 @@
 # MADFAM Ecosystem Integration
 
-AutoSwarm Office integrates with three sibling MADFAM platform services:
+Selva integrates with three sibling MADFAM platform services:
 Janua (authentication), Dhanam (billing), and Enclii (deployment).
 
 ## Janua Auth Setup
 
-Janua is the MADFAM platform's OpenID Connect identity provider. AutoSwarm Office
+Janua is the MADFAM platform's OpenID Connect identity provider. Selva
 delegates all authentication to Janua -- never implement custom auth logic.
 
 ### OIDC Client Configuration
 
-Register an OIDC client in Janua for AutoSwarm Office:
+Register an OIDC client in Janua for Selva:
 
 | Setting | Value |
 |---------|-------|
-| Client ID | `autoswarm-office` |
+| Client ID | `selva` |
 | Grant Types | `authorization_code`, `refresh_token` |
 | Redirect URIs | `http://localhost:4301/api/auth/callback/janua` (dev) |
 | Post-Logout URIs | `http://localhost:4301` (dev) |
@@ -24,7 +24,7 @@ Register an OIDC client in Janua for AutoSwarm Office:
 
 ```bash
 JANUA_ISSUER_URL=https://auth.example.com
-JANUA_CLIENT_ID=autoswarm-office
+JANUA_CLIENT_ID=selva
 JANUA_CLIENT_SECRET=<from Janua admin console>
 NEXT_PUBLIC_JANUA_URL=https://auth.example.com
 ```
@@ -47,7 +47,7 @@ The Nexus API validates Janua-issued JWTs on every protected endpoint via the
 
 ### JWT Claims
 
-Janua tokens include these claims used by AutoSwarm:
+Janua tokens include these claims used by Selva:
 
 | Claim | Usage |
 |-------|-------|
@@ -61,7 +61,7 @@ For the full Janua API surface, read the `llms-full.txt` file in the Janua repos
 ## Dhanam Billing
 
 Dhanam is the MADFAM platform's billing and subscription management service.
-AutoSwarm uses Dhanam to enforce compute token budgets and tier-based feature gates.
+Selva uses Dhanam to enforce compute token budgets and tier-based feature gates.
 
 ### SDK Installation
 
@@ -122,15 +122,15 @@ The `.enclii.yml` at the project root defines three services:
 
 | Service | Dockerfile | Port | Domain |
 |---------|-----------|------|--------|
-| `autoswarm-nexus-api` | `infra/docker/Dockerfile.nexus-api` | 4300 | `api.selva.town` |
-| `autoswarm-office-ui` | `infra/docker/Dockerfile.office-ui` | 3000 | `selva.town` |
-| `autoswarm-colyseus` | `infra/docker/Dockerfile.colyseus` | 4303 | `ws.selva.town` |
+| `selva-nexus-api` | `infra/docker/Dockerfile.nexus-api` | 4300 | `api.selva.town` |
+| `selva-ui` | `infra/docker/Dockerfile.office-ui` | 3000 | `selva.town` |
+| `selva-colyseus` | `infra/docker/Dockerfile.colyseus` | 4303 | `ws.selva.town` |
 
 ### Deployment Pipeline
 
 1. CI passes on the `main` branch.
 2. The `deploy-enclii.yml` GitHub Actions workflow builds and pushes Docker images
-   to `ghcr.io/madfam-org/autoswarm-*`.
+   to `ghcr.io/madfam-org/selva-*`.
 3. The workflow POSTs a lifecycle callback to `https://api.enclii.dev/v1/callbacks/lifecycle-event`
    with the commit SHA and image tags.
 4. Enclii receives the callback and updates the ArgoCD Application manifests in the

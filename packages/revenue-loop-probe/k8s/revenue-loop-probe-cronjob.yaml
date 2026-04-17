@@ -5,7 +5,7 @@ metadata:
   namespace: autoswarm
   labels:
     app.kubernetes.io/name: revenue-loop-probe
-    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/part-of: selva
 spec:
   # Every hour at :07 — offset so it doesn't collide with any on-the-hour
   # pipeline scrapers (forgesight crawler, fortuna zeitgeist, etc.).

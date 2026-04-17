@@ -1,6 +1,6 @@
 # Architecture Overview
 
-AutoSwarm Office is a gamified multi-agent business orchestration platform built as a
+Selva is a gamified multi-agent business orchestration platform built as a
 polyglot monorepo with TypeScript frontend services and Python backend services.
 
 ## Component Diagram
@@ -50,7 +50,7 @@ polyglot monorepo with TypeScript frontend services and Python backend services.
 | **Workers** | LangGraph, Python | Execute agent tasks in isolated environments with HITL interrupts |
 | **Gateway** | OpenClaw (Node.js) | Persistent daemon for scheduled heartbeats and memory management |
 | **PostgreSQL** | PostgreSQL 16 | Persistent storage for agents, departments, tasks, approvals, ledger |
-| **Redis** | Redis 7 | Task stream (`autoswarm:task-stream`), pub/sub for real-time events, caching |
+| **Redis** | Redis 7 | Task stream (`selva:task-stream`), pub/sub for real-time events, caching |
 
 ## Data Flow
 
@@ -69,7 +69,7 @@ Colyseus Room (state sync to all connected clients)
 Nexus API (REST endpoint or WebSocket message)
     |
     v
-Redis Task Stream (XADD to autoswarm:task-stream)
+Redis Task Stream (XADD to selva:task-stream)
     |
     v
 Worker Process (XREADGROUP from stream)
@@ -142,7 +142,7 @@ All ports are scoped to avoid conflicts with sibling Selva services
 ## Monorepo Structure
 
 ```
-autoswarm-office/
+selva/
   apps/
     nexus-api/        Python -- FastAPI central API
     office-ui/        TypeScript -- Next.js + Phaser spatial UI

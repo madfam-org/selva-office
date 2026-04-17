@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_orchestrator.synergy import SynergyCalculator, SynergyRule
-from autoswarm_orchestrator.types import AgentRole
+from selva_orchestrator.synergy import SynergyCalculator, SynergyRule
+from selva_orchestrator.types import AgentRole
 
 
 @pytest.fixture()

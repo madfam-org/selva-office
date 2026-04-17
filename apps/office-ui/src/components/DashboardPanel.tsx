@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type FC } from 'react';
-import type { Department, Agent, TaskBoardItem, TaskTimeline } from '@autoswarm/shared-types';
+import type { Department, Agent, TaskBoardItem, TaskTimeline } from '@selva/shared-types';
 import { useTaskBoard } from '@/hooks/useTaskBoard';
 
 interface DashboardPanelProps {

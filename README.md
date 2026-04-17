@@ -1,4 +1,4 @@
-# AutoSwarm Office
+# Selva
 
 Gamified multi-agent business orchestration platform. Manage your digital enterprise
 as an Auto Chess-style RPG -- draft AI agents, assign them to departments, and approve
@@ -6,7 +6,7 @@ their actions from a 2D virtual office using a gamepad.
 
 ## Architecture
 
-AutoSwarm Office is a polyglot monorepo with TypeScript frontends and Python backends.
+Selva is a polyglot monorepo with TypeScript frontends and Python backends.
 
 ```
 Office UI (Next.js + Phaser) <---> Colyseus (real-time state sync)
@@ -36,16 +36,16 @@ make dev
 
 ### Python Packages (`packages/`)
 
-- `autoswarm-redis-pool`: Standardized Redis dependency for async pub/sub and distributed locking.
-- `autoswarm-permissions`: A strict Janua RBAC dependency injecting local Fastapi Role assertions globally.
-- `autoswarm-orchestrator`: Interacts closely with the Enclii platform lifecycle templates.
-- `autoswarm-workflows`: The gamified Langgraph architecture executing autonomous workflows.
-- `autoswarm-skills`: Procedural skills registry built from continuous learning loops.
+- `selva-redis-pool`: Standardized Redis dependency for async pub/sub and distributed locking.
+- `selva-permissions`: A strict Janua RBAC dependency injecting local Fastapi Role assertions globally.
+- `selva-orchestrator`: Interacts closely with the Enclii platform lifecycle templates.
+- `selva-workflows`: The gamified Langgraph architecture executing autonomous workflows.
+- `selva-skills`: Procedural skills registry built from continuous learning loops.
 
 ## Monorepo Structure
 
 ```
-autoswarm-office/
+selva/
   apps/
     nexus-api/         FastAPI -- central orchestration API
     office-ui/         Next.js + Phaser -- spatial office UI
@@ -59,7 +59,7 @@ autoswarm-office/
     orchestrator/      Swarm orchestration (Python)
     permissions/       HITL permission engine (Python)
     inference/         LLM provider routing (Python)
-    autoswarm-skills/  Procedural skills registry (Python)
+    selva-skills/  Procedural skills registry (Python)
   infra/
     docker/            Dockerfiles and Compose
     k8s/               Kubernetes manifests
@@ -89,7 +89,7 @@ autoswarm-office/
 
 ## MADFAM Ecosystem
 
-AutoSwarm Office is part of the MADFAM platform and integrates with:
+Selva is part of the MADFAM platform and integrates with:
 
 - **Janua** -- OpenID Connect authentication (ports 4100-4104)
 - **Dhanam** -- Billing, subscriptions, and compute token budgets

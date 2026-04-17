@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from autoswarm_workers.search.types import SearchResult
+from selva_workers.search.types import SearchResult
 
 
 class TestWebSearchProvider:
@@ -28,8 +28,8 @@ class TestWebSearchProvider:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_workers.search.web.httpx.AsyncClient", return_value=mock_client):
-            from autoswarm_workers.search.web import WebSearchProvider
+        with patch("selva_workers.search.web.httpx.AsyncClient", return_value=mock_client):
+            from selva_workers.search.web import WebSearchProvider
 
             provider = WebSearchProvider(api_key="test-key")
             results = await provider.search("test query")
@@ -40,7 +40,7 @@ class TestWebSearchProvider:
 
     @pytest.mark.asyncio
     async def test_returns_empty_when_no_api_key(self) -> None:
-        from autoswarm_workers.search.web import WebSearchProvider
+        from selva_workers.search.web import WebSearchProvider
 
         provider = WebSearchProvider(api_key="")
         results = await provider.search("test query")
@@ -53,8 +53,8 @@ class TestWebSearchProvider:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("autoswarm_workers.search.web.httpx.AsyncClient", return_value=mock_client):
-            from autoswarm_workers.search.web import WebSearchProvider
+        with patch("selva_workers.search.web.httpx.AsyncClient", return_value=mock_client):
+            from selva_workers.search.web import WebSearchProvider
 
             provider = WebSearchProvider(api_key="test-key")
             results = await provider.search("test query")
@@ -72,7 +72,7 @@ class TestWebSearchProvider:
         """search node uses dummy sources when no SEARCH_API_KEY."""
         from langchain_core.messages import AIMessage
 
-        from autoswarm_workers.graphs.research import search
+        from selva_workers.graphs.research import search
 
         with patch.dict("os.environ", {"SEARCH_API_KEY": ""}, clear=False):
             result = search({

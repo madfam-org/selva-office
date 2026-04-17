@@ -175,5 +175,5 @@ class TestDhanamWebhookTier:
 
         assert resp.status_code == 200
         mock_redis.set.assert_called_once_with(
-            "autoswarm:tier:acme-corp", "5000", ex=86400
+            "selva:tier:acme-corp", "5000", ex=86400
         )

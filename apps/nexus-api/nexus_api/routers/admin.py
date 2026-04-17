@@ -11,7 +11,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 from ..auth import get_current_user
 
@@ -65,7 +65,7 @@ async def list_connected_users(
     try:
         pool = get_redis_pool()
         client = await pool.client()
-        data = await client.hgetall("autoswarm:connected-players")
+        data = await client.hgetall("selva:connected-players")
         users: list[ConnectedUser] = []
         for session_id, raw in data.items():
             import json
@@ -101,7 +101,7 @@ async def kick_user(
         import json
 
         await client.publish(
-            "autoswarm:admin-actions",
+            "selva:admin-actions",
             json.dumps(
                 {"action": "kick", "session_id": body.session_id, "reason": body.reason}
             ),
@@ -128,7 +128,7 @@ async def update_room_config(
 
         config = body.model_dump(exclude_unset=True)
         await client.publish(
-            "autoswarm:admin-actions",
+            "selva:admin-actions",
             json.dumps({"action": "room_config", "config": config}),
         )
         return {"status": "config_published"}

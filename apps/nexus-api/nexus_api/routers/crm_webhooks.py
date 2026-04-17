@@ -109,7 +109,7 @@ async def phyne_crm_webhook(request: Request):
         }
 
         # Use Redis to enqueue directly (same pattern as swarms.py)
-        from autoswarm_redis_pool import get_redis_pool
+        from selva_redis_pool import get_redis_pool
         import uuid
 
         task_id = str(uuid.uuid4())
@@ -125,7 +125,7 @@ async def phyne_crm_webhook(request: Request):
         })
 
         pool = get_redis_pool(url=settings.redis_url)
-        await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
+        await pool.execute_with_retry("xadd", "selva:task-stream", {"data": task_msg})
 
         logger.info(
             "CRM auto-dispatch: task=%s event=%s playbook=%s",

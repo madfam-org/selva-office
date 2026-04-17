@@ -6,8 +6,8 @@ import os
 
 import pytest
 
-from autoswarm_workers.tools.bash_tool import BashResult, BashTool
-from autoswarm_workers.tools.git_tool import GitTool
+from selva_workers.tools.bash_tool import BashResult, BashTool
+from selva_workers.tools.git_tool import GitTool
 
 
 @pytest.mark.asyncio

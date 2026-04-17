@@ -40,10 +40,10 @@ END;
 
 class EdgeMemoryDB:
     """
-    SQLite-backed state persistence for the AutoSwarm conversational hive mind.
+    SQLite-backed state persistence for the Selva conversational hive mind.
     Utilizes WAL mode and FTS5 for sub-millisecond semantic transcript retrieval.
     """
-    def __init__(self, db_path: str = "autoswarm_state.db"):
+    def __init__(self, db_path: str = "selva_state.db"):
         self.db_path = db_path
         self._conn = sqlite3.connect(
             self.db_path,

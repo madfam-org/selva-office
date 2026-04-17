@@ -9,11 +9,11 @@
 # APPLY:
 #   enclii secrets set DEEPINFRA_API_KEY=<key> --service nexus-api --secret
 #   kubectl apply -f infra/k8s/production/org-config-bridge-deepinfra.yaml
-#   kubectl rollout restart deployment/nexus-api deployment/autoswarm-workers -n autoswarm
+#   kubectl rollout restart deployment/nexus-api deployment/selva-workers -n autoswarm
 #
 # FLIP BACK (once Anthropic is funded):
 #   kubectl apply -f infra/k8s/production/org-config.yaml
-#   kubectl rollout restart deployment/nexus-api deployment/autoswarm-workers -n autoswarm
+#   kubectl rollout restart deployment/nexus-api deployment/selva-workers -n autoswarm
 #
 # NOTES:
 #   - `fast_coding` is already DeepInfra in the default config — unchanged here.
@@ -31,11 +31,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: autoswarm-org-config
+  name: selva-org-config
   namespace: autoswarm
   labels:
     app.kubernetes.io/name: org-config
-    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/part-of: selva
     madfam.io/bridge-mode: "deepinfra-while-anthropic-paused"
   annotations:
     madfam.io/bridge-activated-at: "2026-04-17T00:00:00Z"

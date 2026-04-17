@@ -114,7 +114,7 @@ for p in ['examples/karafiel.cfdi-stamp.manifest.json',
      run: |
        pip install jsonschema
        python -c "import json; from jsonschema import Draft202012Validator; \
-         s = json.load(open('../autoswarm-office/packages/factory-manifest/schema/factory-manifest.v1.schema.json')); \
+         s = json.load(open('../selva/packages/factory-manifest/schema/factory-manifest.v1.schema.json')); \
          Draft202012Validator(s).validate(json.load(open('.factory-manifest.json')))"
    ```
 5. **Bump `version` on every breaking change.** Input/output changes that

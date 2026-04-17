@@ -1,4 +1,4 @@
-# CLAUDE.md -- AutoSwarm Office
+# CLAUDE.md -- Selva
 
 ## Quick Start (Local Dev)
 
@@ -7,7 +7,7 @@
 
 # 1. Clone and install
 git clone <repo-url>
-cd autoswarm-office
+cd selva
 make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all services
 
 # 2. Open the office
@@ -49,11 +49,11 @@ Adopted contract:
    `interrupt()`, `DENY` refuses immediately.
 2. **Permission modes** (on top of the fine-grained matrix):
    `read-only` / `workspace-write` (default) / `danger-full-access`.
-   Implemented in `packages/permissions/autoswarm_permissions/modes.py`.
-   Dispatch reads the mode from task payload → `AUTOSWARM_PERMISSION_MODE`
+   Implemented in `packages/permissions/selva_permissions/modes.py`.
+   Dispatch reads the mode from task payload → `SELVA_PERMISSION_MODE`
    env → default.
 3. **Ops binaries must be present + authenticated.** Worker images ship
-   with `enclii`, `git`, `gh`, `kubectl`. `autoswarm-doctor` is the
+   with `enclii`, `git`, `gh`, `kubectl`. `selva-doctor` is the
    preflight that verifies this. Missing a required binary is a doctor
    FAIL, not a runtime surprise.
 4. **`enclii` invocation** goes through either:
@@ -62,7 +62,7 @@ Adopted contract:
    - `enclii_cli` tool — direct shell-out with per-subcommand risk
      classification (READONLY/MUTATING/DANGEROUS) for subcommands
      without a Switchyard equivalent.
-5. **Doctor preflight.** Run `autoswarm-doctor` (from the `doctor`
+5. **Doctor preflight.** Run `selva-doctor` (from the `doctor`
    package) before starting a long-running agent tick. Exit 1 blocks the
    tick; WARN is advisory.
 
@@ -74,16 +74,16 @@ Adopted contract:
 - `apps/office-ui/src/app/demo/page.tsx` -- Demo page (public, sandbox mode)
 - `apps/office-ui/src/components/OfficeExperience.tsx` -- Shared office experience component
 - `apps/colyseus/src/demo/DemoSimulator.ts` -- Demo agent simulation engine
-- `apps/workers/autoswarm_workers/__main__.py` -- Worker process entry (task status lifecycle)
-- `apps/workers/autoswarm_workers/task_status.py` -- Fire-and-forget task PATCH to nexus-api
-- `apps/workers/autoswarm_workers/auth.py` -- Centralized worker-to-API auth headers
-- `apps/workers/autoswarm_workers/prompts.py` -- Repo-context-aware LLM system prompts
-- `apps/workers/autoswarm_workers/learning.py` -- Post-task learning (experience, reflexion, bandit, stats)
-- `apps/workers/autoswarm_workers/event_emitter.py` -- Fire-and-forget event POST + Redis PUBLISH
+- `apps/workers/selva_workers/__main__.py` -- Worker process entry (task status lifecycle)
+- `apps/workers/selva_workers/task_status.py` -- Fire-and-forget task PATCH to nexus-api
+- `apps/workers/selva_workers/auth.py` -- Centralized worker-to-API auth headers
+- `apps/workers/selva_workers/prompts.py` -- Repo-context-aware LLM system prompts
+- `apps/workers/selva_workers/learning.py` -- Post-task learning (experience, reflexion, bandit, stats)
+- `apps/workers/selva_workers/event_emitter.py` -- Fire-and-forget event POST + Redis PUBLISH
 - `apps/nexus-api/nexus_api/routers/events.py` -- Events REST API + WebSocket stream
 - `apps/nexus-api/nexus_api/routers/metrics.py` -- Ops metrics dashboard aggregation API
-- `apps/workers/autoswarm_workers/graphs/coding.py` -- Coding graph (plan/implement/test/review/push)
-- `apps/workers/autoswarm_workers/graphs/base.py` -- Shared graph state, permission checks
+- `apps/workers/selva_workers/graphs/coding.py` -- Coding graph (plan/implement/test/review/push)
+- `apps/workers/selva_workers/graphs/base.py` -- Shared graph state, permission checks
 - `packages/orchestrator/src/orchestrator.py` -- Swarm orchestration engine
 - `packages/permissions/src/matrix.py` -- HITL permission matrix
 - `packages/permissions/src/engine.py` -- Permission evaluation engine
@@ -95,21 +95,21 @@ Adopted contract:
 - `apps/nexus-api/nexus_api/routers/chat.py` -- Chat history persistence API
 - `apps/nexus-api/nexus_api/routers/admin.py` -- Admin controls (kick, room config)
 - `apps/colyseus/src/handlers/teleport.ts` -- Player teleport handler
-- `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
-- `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
-- `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (24 built-in tools)
-- `packages/memory/src/autoswarm_memory/store.py` -- Per-agent FAISS memory store
-- `packages/tools/src/autoswarm_tools/storage/local.py` -- Content-addressable artifact storage
-- `packages/tools/src/autoswarm_tools/builtins/artifact.py` -- Artifact management tools (save/retrieve/list)
-- `packages/workflows/src/autoswarm_workflows/nodes/batch.py` -- Batch processing node handler
-- `packages/tools/src/autoswarm_tools/builtins/image_analysis.py` -- Image analysis tool (multimodal)
+- `packages/workflows/src/selva_workflows/compiler.py` -- YAML-to-LangGraph compiler
+- `packages/workflows/src/selva_workflows/schema.py` -- Workflow definition models
+- `packages/tools/src/selva_tools/registry.py` -- Tool registry (24 built-in tools)
+- `packages/memory/src/selva_memory/store.py` -- Per-agent FAISS memory store
+- `packages/tools/src/selva_tools/storage/local.py` -- Content-addressable artifact storage
+- `packages/tools/src/selva_tools/builtins/artifact.py` -- Artifact management tools (save/retrieve/list)
+- `packages/workflows/src/selva_workflows/nodes/batch.py` -- Batch processing node handler
+- `packages/tools/src/selva_tools/builtins/image_analysis.py` -- Image analysis tool (multimodal)
 - `apps/nexus-api/nexus_api/routers/marketplace.py` -- Skill marketplace CRUD API
-- `packages/sdk/autoswarm_sdk/client.py` -- Python SDK async/sync clients
-- `packages/orchestrator/autoswarm_orchestrator/bandit.py` -- Thompson Sampling agent selection
-- `packages/orchestrator/autoswarm_orchestrator/puppeteer.py` -- RL orchestrator
-- `apps/workers/autoswarm_workers/graphs/puppeteer.py` -- Puppeteer graph (decompose/assign/execute/aggregate/feedback)
-- `apps/workers/autoswarm_workers/graphs/meeting.py` -- Meeting notes graph (transcribe/summarize/extract/save)
-- `packages/calendar/autoswarm_calendar/` -- Google/Microsoft calendar adapters
+- `packages/sdk/selva_sdk/client.py` -- Python SDK async/sync clients
+- `packages/orchestrator/selva_orchestrator/bandit.py` -- Thompson Sampling agent selection
+- `packages/orchestrator/selva_orchestrator/puppeteer.py` -- RL orchestrator
+- `apps/workers/selva_workers/graphs/puppeteer.py` -- Puppeteer graph (decompose/assign/execute/aggregate/feedback)
+- `apps/workers/selva_workers/graphs/meeting.py` -- Meeting notes graph (transcribe/summarize/extract/save)
+- `packages/calendar/selva_calendar/` -- Google/Microsoft calendar adapters
 - `apps/nexus-api/nexus_api/routers/maps.py` -- Map CRUD API
 - `apps/nexus-api/nexus_api/routers/calendar.py` -- Calendar connection API
 - `apps/office-ui/src/game/constants.ts` -- Centralized game-layer constants
@@ -182,7 +182,7 @@ Adopted contract:
   0012). Populated from JWT `sub` claim.
 - **Git Identity**: `GitTool.configure_identity()` sets repo-local `user.name` /
   `user.email` before every agent commit. Config: `GIT_AUTHOR_NAME` (default
-  `autoswarm-bot`), `GIT_AUTHOR_EMAIL` (default `bot@autoswarm.dev`).
+  `selva-bot`), `GIT_AUTHOR_EMAIL` (default `bot@selva.town`).
 - **Worker-to-API Auth**: Centralized via `auth.py:get_worker_auth_headers()`.
   Reads `WORKER_API_TOKEN` env var (default `dev-bypass`). Used by
   `task_status.py`, `event_emitter.py`, `interrupt_handler.py`, and
@@ -192,7 +192,7 @@ Adopted contract:
 - **PR Creation Compat**: `GitTool.create_pr()` resolves `OWNER/REPO` from git
   remote URL and uses `--repo` flag instead of `-C` (compat with older `gh` CLI).
 - **Worktree Branch Naming**: `plan()` creates worktree with branch
-  `autoswarm/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
+  `selva/task-{id}` (was `task-{id}`) to match `push_gate()` expectations.
 
 ## Enterprise Mexican Market (v2.0.0)
 
@@ -323,9 +323,9 @@ Adopted contract:
 ## Codebase Stability (v0.5.2)
 
 - **Skills Package Fix**: Resolved dual-path collision — `pyproject.toml`
-  `where=["src"]` was hiding the real `autoswarm_skills/` root package.
+  `where=["src"]` was hiding the real `selva_skills/` root package.
   Moved `hub.py`, `refiner.py`, `skill_md.py` from `src/` into root
-  package. Deleted conflicting `src/autoswarm_skills/registry.py`.
+  package. Deleted conflicting `src/selva_skills/registry.py`.
 - **Worker Settings**: Added missing `environment: str = "development"`
   field to worker `Settings` class. Validator `_validate_production_safety`
   was crashing with `AttributeError` on every instantiation.
@@ -372,7 +372,7 @@ Adopted contract:
   Fire-and-forget ops use `logger.debug`, correctness-affecting use `warning`.
 - **Settings Consolidation**: `analytics.py` and `gateway.py` now use
   centralized pydantic `Settings` instead of direct `os.environ.get()`.
-  Added `posthog_api_key`, `posthog_host`, `autoswarm_webhook_secret` to
+  Added `posthog_api_key`, `posthog_host`, `selva_webhook_secret` to
   nexus-api config.
 - **Frontend URL Config**: Landing page `APP_URL` reads
   `NEXT_PUBLIC_APP_URL` env var with production fallback.
@@ -442,8 +442,8 @@ Adopted contract:
 - **Performance-Aware Dispatch**: Skill-based agent matching in `swarms.py` weighted
   by `_compute_perf_weight()` (30% performance, 70% skill overlap). New agents
   default to 0.5 (neutral). `perf_weight = 0.5 * approval_rate + 0.5 * completion_rate`.
-- **Config**: `MEMORY_PERSIST_DIR` (default `/tmp/autoswarm-memory`),
-  `BANDIT_PERSIST_PATH` (default `/tmp/autoswarm-bandit.json`).
+- **Config**: `MEMORY_PERSIST_DIR` (default `/tmp/selva-memory`),
+  `BANDIT_PERSIST_PATH` (default `/tmp/selva-bandit.json`).
 - **CSRF**: `/api/v1/agents/` stats endpoint uses Bearer auth which bypasses CSRF.
 
 ## Autonomous Dev Readiness (v0.3.1)
@@ -457,7 +457,7 @@ Adopted contract:
   `auth.py:get_worker_auth_headers()` centralizes all worker-to-API auth.
   No hardcoded `"Bearer dev-bypass"` in source files.
 - **Org Config Bootstrap**: `make setup-org-config` copies
-  `data/org-config-template.yaml` to `~/.autoswarm/org-config.yaml`. Wired
+  `data/org-config-template.yaml` to `~/.selva/org-config.yaml`. Wired
   into `make dev-full`. Worker logs warning when org config missing.
 - **Enhanced System Prompts**: `prompts.py` provides `build_plan_prompt()`,
   `build_implement_prompt()`, `build_review_prompt()` with repo context
@@ -505,7 +505,7 @@ make db-backup        # Backup PostgreSQL database
 make db-restore       # Restore from backup (BACKUP_FILE=<path>)
 make db-verify-backup # Verify backup integrity (BACKUP_FILE=<path>)
 make worktree-cleanup # Remove stale git worktrees (STALE_HOURS=24)
-make setup-org-config # Bootstrap ~/.autoswarm/org-config.yaml from template
+make setup-org-config # Bootstrap ~/.selva/org-config.yaml from template
 
 pnpm dev              # TypeScript services only
 pnpm build            # Build TypeScript packages
@@ -572,7 +572,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - `SkillTier` enum: `CORE` | `COMMUNITY`. Set by the registry during discovery, not
   from YAML frontmatter.
 - Enable community skills via:
-  - Env var: `AUTOSWARM_COMMUNITY_SKILLS_ENABLED=true`
+  - Env var: `SELVA_COMMUNITY_SKILLS_ENABLED=true`
   - Runtime: `get_skill_registry().enable_community_skills()`
   - REST API: `POST /api/v1/skills/community/enable`
 - Core skills always take precedence on name collision with community skills.
@@ -645,9 +645,9 @@ The `packages/skills/` package implements the AgentSkills standard.
 ### Phase 5: Advanced Features
 
 #### Artifact Management (5.1)
-- **Storage**: `packages/tools/src/autoswarm_tools/storage/` — `ArtifactStorage` ABC +
+- **Storage**: `packages/tools/src/selva_tools/storage/` — `ArtifactStorage` ABC +
   `LocalFSStorage` (content-addressable SHA-256 dedup, layout `<hash[:2]>/<hash[2:4]>/<hash>`).
-  `ARTIFACT_STORAGE_PATH` env var or `/tmp/autoswarm-artifacts` default.
+  `ARTIFACT_STORAGE_PATH` env var or `/tmp/selva-artifacts` default.
 - **Tools**: `SaveArtifactTool`, `RetrieveArtifactTool`, `ListArtifactsTool` in
   `builtins/artifact.py`. Registered in `get_builtin_tools()`.
 - **REST API**: `apps/nexus-api/nexus_api/routers/artifacts.py` —
@@ -699,13 +699,13 @@ The `packages/skills/` package implements the AgentSkills standard.
   DashboardPanel header.
 
 ### Python SDK (`packages/sdk`)
-- **AutoSwarm** async client: `dispatch()`, `list_agents()`, `get_task()`,
+- **Selva** async client: `dispatch()`, `list_agents()`, `get_task()`,
   `wait_for_task()`. Uses `httpx.AsyncClient` with Bearer auth.
-- **AutoSwarmSync**: synchronous wrapper using `asyncio.run()`.
+- **SelvaSync**: synchronous wrapper using `asyncio.run()`.
 - **CLI**: `autoswarm dispatch "desc" --graph-type coding`, `autoswarm agents list`,
   `autoswarm tasks get <id>`, `autoswarm tasks wait <id>`. Click-based.
-  Reads `AUTOSWARM_API_URL` and `AUTOSWARM_TOKEN` env vars.
-- **Exceptions**: `AutoSwarmError`, `AuthenticationError`, `TaskTimeoutError`,
+  Reads `SELVA_API_URL` and `SELVA_TOKEN` env vars.
+- **Exceptions**: `SelvaError`, `AuthenticationError`, `TaskTimeoutError`,
   `NotFoundError` with `status_code` attribute.
 
 ### Workflow Templates (`data/workflow-templates/`)
@@ -832,7 +832,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 ### MADFAM Intelligence Architecture
 
-- **Org config** (`~/.autoswarm/org-config.yaml`): Secure, per-org configuration
+- **Org config** (`~/.selva/org-config.yaml`): Secure, per-org configuration
   outside the repo. Defines providers, task-type model assignments, priority
   lists, embedding config, and agent templates. Template at
   `data/org-config-template.yaml`. Loaded by `load_org_config()` (cached via
@@ -858,7 +858,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Service registry**: `OrgConfig.services` tracks external accounts (Resend,
   Anthropic, DeepInfra, Stripe, etc.) with plan, capacity, and payment status.
   Production config: `infra/k8s/production/org-config.yaml` (ConfigMap mounted
-  at `/etc/autoswarm/org-config.yaml`).
+  at `/etc/selva/org-config.yaml`).
 - **Agent roster (default)**: 13 agents across 4 departments (Engineering×6, Research×3,
   CRM×2, Support×2) with cross-functional skills. Seed script is idempotent
   (skips existing agents by name).
@@ -889,7 +889,7 @@ The `packages/skills/` package implements the AgentSkills standard.
   pub/sub. Timeouts and exceptions also PATCH `"failed"` with error details.
   All status updates are fire-and-forget (failures logged, never raised).
 - **Coding graph execution**: `plan()` creates a git worktree and sets
-  `branch_name: "autoswarm/task-{id}"`. `implement()` calls the LLM requesting
+  `branch_name: "selva/task-{id}"`. `implement()` calls the LLM requesting
   JSON `{"files": [...]}`, parses the response, and writes files to the worktree
   via `_write_files_to_worktree()` (with path traversal security checks). Falls
   back to a placeholder file when no LLM is configured. `push_gate()` calls
@@ -907,16 +907,16 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **PR creation after push**: `_create_pr_after_push()` in `coding.py` calls
   `GitTool.create_pr()` (which invokes `gh pr create`) after a successful push.
   Fire-and-forget — failures are logged, never raised.
-- **Deployment graph**: `apps/workers/autoswarm_workers/graphs/deployment.py`
+- **Deployment graph**: `apps/workers/selva_workers/graphs/deployment.py`
   implements `validate → deploy_gate (interrupt) → deploy → monitor → END`.
   Uses `DeployTool` and `DeployStatusTool` from `packages/tools`.
 - **Enclii webhook**: `POST /api/v1/gateway/enclii` receives deployment events
   from Enclii. Bearer token auth via `enclii_webhook_secret`. Maps
   `deploy_failed`/`deploy_rollback` → `coding`, `deploy_succeeded` → `research`.
   Creates SwarmTasks and enqueues to Redis.
-- **Task queue**: Redis Streams (`autoswarm:task-stream`) with consumer groups
-  (`autoswarm-workers`).
-  Dead letter queue at `autoswarm:task-dlq` after 3 retries. Workers auto-claim
+- **Task queue**: Redis Streams (`selva:task-stream`) with consumer groups
+  (`selva-workers`).
+  Dead letter queue at `selva:task-dlq` after 3 retries. Workers auto-claim
   stalled messages on startup via XAUTOCLAIM.
 - **Redis pool**: `packages/redis-pool/` provides a singleton `RedisPool` with circuit
   breaker and exponential backoff. All Python services use `get_redis_pool()` instead
@@ -981,7 +981,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 - **Playwright E2E**: `tests/e2e/` with login, dispatch, and approval specs.
   Run with `make test-e2e` (requires `npx playwright install chromium`).
 - Worker graph nodes (`plan`, `implement`, `review`) use `call_llm()` from
-  `autoswarm_workers.inference` with a `ModelRouter` that auto-discovers providers
+  `selva_workers.inference` with a `ModelRouter` that auto-discovers providers
   from env vars. Graphs fall back to static logic when no LLM is configured.
 - The permission matrix is evaluated by `packages/permissions/src/engine.py` before
   every tool invocation in the worker.
@@ -1412,7 +1412,7 @@ The `packages/skills/` package implements the AgentSkills standard.
 
 ### WFC Procedural Map Generation
 
-- **Package**: `packages/map-gen/` (`@autoswarm/map-gen`)
+- **Package**: `packages/map-gen/` (`@selva/map-gen`)
   - `src/wfc.ts` — core WFC with `WFCGrid.run()`, `observe()`, `collapse()`,
     `propagate()`, backtracking retries, seeded PRNG (`createRng()`).
   - `src/rules.ts` — adjacency rules for office meta-tiles (wall, corridor,
@@ -1456,9 +1456,9 @@ The `packages/skills/` package implements the AgentSkills standard.
   agent_id, event_type, event_category, node_id, graph_type, payload,
   duration_ms, provider, model, token_count, error_message, request_id,
   org_id, created_at. Migration `0011`.
-- **Event emitter** (`apps/workers/autoswarm_workers/event_emitter.py`):
+- **Event emitter** (`apps/workers/selva_workers/event_emitter.py`):
   `emit_event()` — fire-and-forget POST to `/api/v1/events` + Redis PUBLISH
-  to `autoswarm:events`. 2s HTTP timeout. Follows `task_status.py` pattern.
+  to `selva:events`. 2s HTTP timeout. Follows `task_status.py` pattern.
   `@instrumented_node` decorator wraps graph nodes to emit `node.entered`,
   `node.exited`, `node.error` events with `duration_ms` measurement.
 - **Worker instrumentation**: All 6 graph types (coding, research, CRM,

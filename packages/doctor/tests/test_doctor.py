@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from autoswarm_doctor import Check, CheckStatus, Doctor, DoctorReport
-from autoswarm_doctor.checks import (
+from selva_doctor import Check, CheckStatus, Doctor, DoctorReport
+from selva_doctor.checks import (
     check_binary,
     check_database,
     check_deepinfra_bridge,
@@ -64,14 +64,14 @@ async def test_env_vars_pass_when_everything_set(monkeypatch):
 
 
 async def test_binary_present(monkeypatch):
-    with patch("autoswarm_doctor.checks.shutil.which", return_value="/usr/local/bin/git"):
+    with patch("selva_doctor.checks.shutil.which", return_value="/usr/local/bin/git"):
         c = await check_binary("git", required=True)
     assert c.status is CheckStatus.PASS
     assert c.facts["path"] == "/usr/local/bin/git"
 
 
 async def test_binary_missing_required_fails():
-    with patch("autoswarm_doctor.checks.shutil.which", return_value=None):
+    with patch("selva_doctor.checks.shutil.which", return_value=None):
         c = await check_binary("enclii", required=True, purpose="deploy")
     assert c.status is CheckStatus.FAIL
     assert "not on PATH" in c.detail
@@ -79,7 +79,7 @@ async def test_binary_missing_required_fails():
 
 
 async def test_binary_missing_optional_warns():
-    with patch("autoswarm_doctor.checks.shutil.which", return_value=None):
+    with patch("selva_doctor.checks.shutil.which", return_value=None):
         c = await check_binary("gh", required=False)
     assert c.status is CheckStatus.WARN
 
@@ -167,6 +167,6 @@ async def test_report_ok_true_only_when_no_fail():
 
 
 async def test_git_identity_no_git_binary_is_skip(monkeypatch):
-    with patch("autoswarm_doctor.checks.shutil.which", return_value=None):
+    with patch("selva_doctor.checks.shutil.which", return_value=None):
         c = await check_git_identity()
     assert c.status is CheckStatus.SKIP

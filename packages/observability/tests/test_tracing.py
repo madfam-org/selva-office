@@ -6,7 +6,7 @@ import builtins
 import os
 from unittest.mock import MagicMock, patch
 
-from autoswarm_observability.tracing import init_tracing
+from selva_observability.tracing import init_tracing
 
 
 class TestInitTracing:

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Button } from '@autoswarm/ui';
+import { Button } from '@selva/ui';
 
 const NEXUS_API_URL =
   process.env.NEXT_PUBLIC_NEXUS_API_URL ?? 'http://localhost:4300';

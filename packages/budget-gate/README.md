@@ -25,7 +25,7 @@ In another package's `pyproject.toml`:
 
 ```toml
 dependencies = [
-    "madfam-budget-gate @ file:///workspaces/autoswarm-office/packages/budget-gate",
+    "madfam-budget-gate @ file:///workspaces/selva/packages/budget-gate",
     # or once published to the MADFAM internal npm/pypi:
     # "madfam-budget-gate>=0.1",
 ]
@@ -92,7 +92,7 @@ tracker.record_usage(
 
 - `tezca/experiments/meta-harness/` — already depends on the lifted modules;
   migrating to this package next.
-- `autoswarm-office/apps/workers/` — CRM drip composition. Wrap
+- `selva/apps/workers/` — CRM drip composition. Wrap
   `call_llm()` to record against a per-tick tracker.
 - `phyne-crm/apps/worker/` — outbound email drafting.
 - Any future Meta-Harness pilot (dhanam categorization, phyne first-touch,
@@ -112,5 +112,5 @@ env-config validation, tracker accumulation, and the sticky mid-run kill.
 
 ## Related runbooks
 
-- `autoswarm-office/docs/runbooks/BRIDGE_DEEPINFRA.md` — how to flip task
+- `selva/docs/runbooks/BRIDGE_DEEPINFRA.md` — how to flip task
   routing to DeepInfra while Anthropic is paused. Compatible with this gate.

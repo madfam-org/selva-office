@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage
 
-from autoswarm_workflows.edges import (
+from selva_workflows.edges import (
     END_SENTINEL,
     build_conditional_router,
     evaluate_condition,
     group_edges_by_source,
 )
-from autoswarm_workflows.schema import EdgeDefinition, TriggerCondition
+from selva_workflows.schema import EdgeDefinition, TriggerCondition
 
 
 class TestEvaluateCondition:

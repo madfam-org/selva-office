@@ -2,7 +2,7 @@
 Schedule model — Gap 3: Cron Scheduler Integration.
 
 Persists user-defined schedules in Postgres so Celery Beat can
-dynamically fire recurring AutoSwarm actions (ACP runs, skill refinement,
+dynamically fire recurring Selva actions (ACP runs, skill refinement,
 memory compaction, etc.) without any dashboard interaction.
 """
 from __future__ import annotations

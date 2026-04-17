@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models for the AutoSwarm Nexus database."""
+"""SQLAlchemy ORM models for the Selva Nexus database."""
 
 from __future__ import annotations
 

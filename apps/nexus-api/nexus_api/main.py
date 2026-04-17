@@ -1,4 +1,4 @@
-"""FastAPI application factory for the AutoSwarm Nexus API."""
+"""FastAPI application factory for the Selva Nexus API."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from autoswarm_observability import init_sentry, init_tracing
-from autoswarm_redis_pool import get_redis_pool
+from selva_observability import init_sentry, init_tracing
+from selva_redis_pool import get_redis_pool
 
 from .analytics import init_posthog
 from .analytics import shutdown as shutdown_posthog
@@ -104,9 +104,9 @@ def create_app() -> FastAPI:
     logger.info("Configuration validated for environment=%s", settings.environment)
 
     app = FastAPI(
-        title="AutoSwarm Nexus API",
+        title="Selva Nexus API",
         version="0.2.0",
-        description="Core orchestration API for the AutoSwarm Office platform",
+        description="Core orchestration API for the Selva platform",
         lifespan=lifespan,
         docs_url="/api/v1/docs",
         openapi_url="/api/v1/openapi.json",
@@ -192,10 +192,10 @@ def create_app() -> FastAPI:
 
     # -- A2A Protocol (agent-to-agent discovery and task exchange) -------------
     try:
-        from autoswarm_a2a import AgentSkill, create_a2a_router
-        from autoswarm_a2a.schema import TaskRequest as A2ATaskRequest
-        from autoswarm_a2a.schema import TaskResponse as A2ATaskResponse
-        from autoswarm_a2a.schema import TaskStatus as A2ATaskStatus
+        from selva_a2a import AgentSkill, create_a2a_router
+        from selva_a2a.schema import TaskRequest as A2ATaskRequest
+        from selva_a2a.schema import TaskResponse as A2ATaskResponse
+        from selva_a2a.schema import TaskStatus as A2ATaskStatus
 
         async def _dispatch_a2a_task(req: A2ATaskRequest) -> str:
             """Bridge an inbound A2A task into the internal dispatch pipeline."""
@@ -229,7 +229,7 @@ def create_app() -> FastAPI:
                         "payload": task.payload or {},
                     })
                     await pool.execute_with_retry(
-                        "xadd", "autoswarm:task-stream", {"data": task_msg}
+                        "xadd", "selva:task-stream", {"data": task_msg}
                     )
                 except Exception:
                     task.status = "pending"
@@ -287,7 +287,7 @@ def create_app() -> FastAPI:
         def _get_a2a_skills() -> list[AgentSkill]:
             """Advertise registered skills in the AgentCard."""
             try:
-                from autoswarm_skills import get_skill_registry
+                from selva_skills import get_skill_registry
 
                 registry = get_skill_registry()
                 return [
@@ -312,7 +312,7 @@ def create_app() -> FastAPI:
         app.include_router(a2a_router, prefix="/api/v1")
         logger.info("A2A protocol router mounted at /api/v1/a2a")
     except ImportError:
-        logger.debug("autoswarm-a2a not installed; A2A protocol disabled")
+        logger.debug("selva-a2a not installed; A2A protocol disabled")
 
     return app
 

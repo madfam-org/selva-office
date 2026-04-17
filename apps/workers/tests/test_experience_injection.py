@@ -38,12 +38,12 @@ class TestBuildExperienceContext:
         mock_mem.get_relevant_context.return_value = ""
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
-            patch("autoswarm_memory.get_memory_manager", return_value=mock_mem),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_memory.get_memory_manager", return_value=mock_mem),
         ):
-            from autoswarm_workers.prompts import build_experience_context
+            from selva_workers.prompts import build_experience_context
 
             ctx = await build_experience_context("agent-1", "coder", "Build API endpoint")
 
@@ -61,12 +61,12 @@ class TestBuildExperienceContext:
         mock_mem.get_relevant_context.return_value = ""
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
-            patch("autoswarm_memory.get_memory_manager", return_value=mock_mem),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_memory.get_memory_manager", return_value=mock_mem),
         ):
-            from autoswarm_workers.prompts import build_experience_context
+            from selva_workers.prompts import build_experience_context
 
             ctx = await build_experience_context("agent-1", "coder", "New unique task")
 
@@ -81,12 +81,12 @@ class TestBuildExperienceContext:
         mock_mem.get_relevant_context.return_value = ""
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
-            patch("autoswarm_memory.get_memory_manager", return_value=mock_mem),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_memory.get_memory_manager", return_value=mock_mem),
         ):
-            from autoswarm_workers.prompts import build_experience_context
+            from selva_workers.prompts import build_experience_context
 
             ctx = await build_experience_context("agent-1", "coder", "Process data in bulk")
 
@@ -104,12 +104,12 @@ class TestBuildExperienceContext:
         )
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
-            patch("autoswarm_memory.get_memory_manager", return_value=mock_mem),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_memory.get_memory_manager", return_value=mock_mem),
         ):
-            from autoswarm_workers.prompts import build_experience_context
+            from selva_workers.prompts import build_experience_context
 
             ctx = await build_experience_context("agent-1", "coder", "Refactor auth module")
 
@@ -119,10 +119,10 @@ class TestBuildExperienceContext:
     @pytest.mark.asyncio
     async def test_graceful_degradation_on_embedding_failure(self) -> None:
         with patch(
-            "autoswarm_memory.get_embedding_provider",
+            "selva_memory.get_embedding_provider",
             side_effect=RuntimeError("embed fail"),
         ):
-            from autoswarm_workers.prompts import build_experience_context
+            from selva_workers.prompts import build_experience_context
 
             ctx = await build_experience_context("agent-1", "coder", "Some task")
             assert ctx == ""
@@ -132,7 +132,7 @@ class TestPlanPromptWithExperience:
     """build_plan_prompt correctly integrates experience_ctx parameter."""
 
     def test_includes_experience_in_prompt(self) -> None:
-        from autoswarm_workers.prompts import build_plan_prompt
+        from selva_workers.prompts import build_plan_prompt
 
         prompt = build_plan_prompt(
             "Build login page",
@@ -144,7 +144,7 @@ class TestPlanPromptWithExperience:
         assert "implementation plan" in prompt.lower()
 
     def test_empty_experience_no_change(self) -> None:
-        from autoswarm_workers.prompts import build_plan_prompt
+        from selva_workers.prompts import build_plan_prompt
 
         prompt_without = build_plan_prompt("Build login page")
         prompt_with = build_plan_prompt("Build login page", experience_ctx="")
@@ -152,7 +152,7 @@ class TestPlanPromptWithExperience:
         assert prompt_without == prompt_with
 
     def test_skill_and_experience_both_included(self) -> None:
-        from autoswarm_workers.prompts import build_plan_prompt
+        from selva_workers.prompts import build_plan_prompt
 
         prompt = build_plan_prompt(
             "Build login page",
@@ -168,7 +168,7 @@ class TestImplementPromptWithExperience:
     """build_implement_prompt includes experience_ctx."""
 
     def test_includes_experience(self) -> None:
-        from autoswarm_workers.prompts import build_implement_prompt
+        from selva_workers.prompts import build_implement_prompt
 
         prompt = build_implement_prompt(
             step="Create API endpoint",

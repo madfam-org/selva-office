@@ -22,5 +22,5 @@ resources:
   - keda-trigger-auth.yaml
 
 commonLabels:
-  app.kubernetes.io/part-of: autoswarm-office
+  app.kubernetes.io/part-of: selva
   app.kubernetes.io/managed-by: kustomize

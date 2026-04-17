@@ -1,4 +1,4 @@
-# Operational Runbook -- AutoSwarm Office
+# Operational Runbook -- Selva
 
 **Audience**: On-call engineers, platform team, SREs
 **Last updated**: 2026-03-13
@@ -24,7 +24,7 @@
 
 ## Service Architecture
 
-AutoSwarm Office runs six application services backed by PostgreSQL and Redis.
+Selva runs six application services backed by PostgreSQL and Redis.
 
 ```
                     +-----------------+
@@ -80,7 +80,7 @@ AutoSwarm Office runs six application services backed by PostgreSQL and Redis.
 Tasks flow through the system as follows:
 
 1. User dispatches a task via the UI, GitHub webhook, or Enclii deployment webhook triggers one
-2. nexus-api creates a `SwarmTask` row in PostgreSQL (status: `queued`) and publishes to `autoswarm:task-stream` (Redis Streams)
+2. nexus-api creates a `SwarmTask` row in PostgreSQL (status: `queued`) and publishes to `selva:task-stream` (Redis Streams)
 3. A worker reads from the consumer group, PATCHes the task to `running`, and executes the LangGraph agent graph
 4. For coding tasks: `plan()` creates a git worktree, `implement()` writes files (after permission check), `test()` runs pytest, `review()` self-reviews changes
 5. If a tool invocation requires approval, `interrupt()` pauses execution and creates an `ApprovalRequest`
@@ -281,16 +281,16 @@ Extends `/ready` with Colyseus connectivity and Redis pool metrics:
 
 ```bash
 # Total messages in the stream (including delivered but unacknowledged)
-redis-cli XLEN autoswarm:task-stream
+redis-cli XLEN selva:task-stream
 
 # Pending messages by consumer group (unacknowledged)
-redis-cli XPENDING autoswarm:task-stream autoswarm-workers
+redis-cli XPENDING selva:task-stream selva-workers
 
 # Detailed pending per consumer (shows idle time)
-redis-cli XPENDING autoswarm:task-stream autoswarm-workers - + 10
+redis-cli XPENDING selva:task-stream selva-workers - + 10
 
 # Dead letter queue depth
-redis-cli XLEN autoswarm:task-dlq
+redis-cli XLEN selva:task-dlq
 ```
 
 **API endpoint** (aggregated view):
@@ -307,7 +307,7 @@ Example response:
   "dlq_depth": 0,
   "consumer_groups": [
     {
-      "name": "autoswarm-workers",
+      "name": "selva-workers",
       "consumers": 2,
       "pending": 3,
       "last_delivered_id": "1710300000000-0"
@@ -337,7 +337,7 @@ kubectl scale deployment/workers --replicas=5 -n autoswarm
 kubectl get pods -l app.kubernetes.io/name=workers -n autoswarm
 
 # Monitor queue draining
-watch -n 5 'redis-cli XLEN autoswarm:task-stream'
+watch -n 5 'redis-cli XLEN selva:task-stream'
 ```
 
 The workers HPA (`infra/k8s/production/hpa.yaml`) scales from 1 to 5 replicas at 70% CPU. If the queue is deep but CPU is low (I/O-bound tasks waiting on LLM providers), manual scaling is necessary.
@@ -366,11 +366,11 @@ If messages are stuck (e.g., all workers crashed simultaneously and none have re
 
 ```bash
 # View stalled messages (idle > 60 seconds)
-redis-cli XPENDING autoswarm:task-stream autoswarm-workers - + 10
+redis-cli XPENDING selva:task-stream selva-workers - + 10
 
 # Manually claim stalled messages for a specific consumer
 # 60000 = minimum idle time in milliseconds (60s)
-redis-cli XAUTOCLAIM autoswarm:task-stream autoswarm-workers <consumer-name> 60000 0-0
+redis-cli XAUTOCLAIM selva:task-stream selva-workers <consumer-name> 60000 0-0
 ```
 
 Replace `<consumer-name>` with the name of a running worker consumer (typically the pod hostname).
@@ -379,7 +379,7 @@ Replace `<consumer-name>` with the name of a running worker consumer (typically 
 
 ```bash
 # List all consumers in the group
-redis-cli XINFO CONSUMERS autoswarm:task-stream autoswarm-workers
+redis-cli XINFO CONSUMERS selva:task-stream selva-workers
 ```
 
 This returns each consumer's name, pending count, and idle time. Consumers with very high idle times and pending messages are likely dead.
@@ -390,10 +390,10 @@ Remove a dead consumer that will not restart:
 
 ```bash
 # First, claim its pending messages to another consumer
-redis-cli XAUTOCLAIM autoswarm:task-stream autoswarm-workers <alive-consumer> 0 0-0
+redis-cli XAUTOCLAIM selva:task-stream selva-workers <alive-consumer> 0 0-0
 
 # Then delete the dead consumer
-redis-cli XGROUP DELCONSUMER autoswarm:task-stream autoswarm-workers <dead-consumer>
+redis-cli XGROUP DELCONSUMER selva:task-stream selva-workers <dead-consumer>
 ```
 
 ### DLQ Inspection
@@ -402,10 +402,10 @@ Messages that fail repeatedly are moved to the dead letter queue:
 
 ```bash
 # View DLQ entries
-redis-cli XRANGE autoswarm:task-dlq - + COUNT 10
+redis-cli XRANGE selva:task-dlq - + COUNT 10
 
 # View a specific DLQ entry's fields
-redis-cli XRANGE autoswarm:task-dlq <message-id> <message-id>
+redis-cli XRANGE selva:task-dlq <message-id> <message-id>
 ```
 
 To reprocess a DLQ entry, extract the task payload and re-dispatch via the API:
@@ -421,10 +421,10 @@ To clear the DLQ after investigation:
 
 ```bash
 # Remove specific entries
-redis-cli XDEL autoswarm:task-dlq <message-id>
+redis-cli XDEL selva:task-dlq <message-id>
 
 # Trim the entire DLQ (use with caution)
-redis-cli XTRIM autoswarm:task-dlq MAXLEN 0
+redis-cli XTRIM selva:task-dlq MAXLEN 0
 ```
 
 ---
@@ -499,10 +499,10 @@ kubectl rollout restart deployment/workers -n autoswarm
 make db-backup
 
 # Restore from a backup
-make db-restore BACKUP_FILE=./backups/autoswarm_20260313_020000.dump
+make db-restore BACKUP_FILE=./backups/selva_20260313_020000.dump
 
 # Verify a backup's integrity
-make db-verify-backup BACKUP_FILE=./backups/autoswarm_20260313_020000.dump
+make db-verify-backup BACKUP_FILE=./backups/selva_20260313_020000.dump
 ```
 
 Automated backups run daily at 02:00 UTC via a Kubernetes CronJob
@@ -654,7 +654,7 @@ kubectl scale deployment/workers --replicas=5 -n autoswarm
 kubectl scale deployment/office-ui --replicas=3 -n autoswarm
 
 # Verify
-kubectl get pods -n autoswarm -l app.kubernetes.io/part-of=autoswarm-office
+kubectl get pods -n autoswarm -l app.kubernetes.io/part-of=selva
 ```
 
 ### Colyseus Scaling
@@ -686,7 +686,7 @@ least 1 colyseus pod remains available during rolling updates.
 2. If `queue_connected: false`, workers lost Redis connection. Restart workers.
 3. If workers are healthy but slow, check LLM provider latency and availability.
 4. Scale workers: `kubectl scale deployment/workers --replicas=5 -n autoswarm`
-5. Monitor queue drain: `watch -n 5 'redis-cli XLEN autoswarm:task-stream'`
+5. Monitor queue drain: `watch -n 5 'redis-cli XLEN selva:task-stream'`
 6. Scale back down after the backlog clears.
 
 ### Redis Circuit Breaker Open
@@ -714,7 +714,7 @@ least 1 colyseus pod remains available during rolling updates.
 **Alert**: Worker health shows `current_task` with no change for > 10 minutes
 
 1. Check LLM provider health (the provider URL is in worker environment variables).
-2. Inspect the DLQ for repeated failures: `redis-cli XRANGE autoswarm:task-dlq - + COUNT 5`
+2. Inspect the DLQ for repeated failures: `redis-cli XRANGE selva:task-dlq - + COUNT 5`
 3. Check worker logs: `kubectl logs deploy/workers -n autoswarm --tail=200`
 4. If the worker is truly stuck, restart it:
    `kubectl rollout restart deployment/workers -n autoswarm`
@@ -771,44 +771,44 @@ redis-cli SLOWLOG GET 10
 
 ```bash
 # Stream length (total messages)
-redis-cli XLEN autoswarm:task-stream
+redis-cli XLEN selva:task-stream
 
 # Stream info (first/last entry, groups)
-redis-cli XINFO STREAM autoswarm:task-stream
+redis-cli XINFO STREAM selva:task-stream
 
 # Consumer group info
-redis-cli XINFO GROUPS autoswarm:task-stream
+redis-cli XINFO GROUPS selva:task-stream
 
 # Per-consumer details (name, pending, idle time)
-redis-cli XINFO CONSUMERS autoswarm:task-stream autoswarm-workers
+redis-cli XINFO CONSUMERS selva:task-stream selva-workers
 
 # Read the 5 most recent messages
-redis-cli XREVRANGE autoswarm:task-stream + - COUNT 5
+redis-cli XREVRANGE selva:task-stream + - COUNT 5
 
 # Read the 5 oldest messages
-redis-cli XRANGE autoswarm:task-stream - + COUNT 5
+redis-cli XRANGE selva:task-stream - + COUNT 5
 
 # Pending entry list summary
-redis-cli XPENDING autoswarm:task-stream autoswarm-workers
+redis-cli XPENDING selva:task-stream selva-workers
 
 # Detailed pending (with consumer name and idle time)
-redis-cli XPENDING autoswarm:task-stream autoswarm-workers - + 10
+redis-cli XPENDING selva:task-stream selva-workers - + 10
 ```
 
 ### Dead Letter Queue
 
 ```bash
 # DLQ depth
-redis-cli XLEN autoswarm:task-dlq
+redis-cli XLEN selva:task-dlq
 
 # View DLQ entries
-redis-cli XRANGE autoswarm:task-dlq - + COUNT 10
+redis-cli XRANGE selva:task-dlq - + COUNT 10
 
 # Delete a specific DLQ entry after investigation
-redis-cli XDEL autoswarm:task-dlq <message-id>
+redis-cli XDEL selva:task-dlq <message-id>
 
 # Clear entire DLQ (use with caution)
-redis-cli XTRIM autoswarm:task-dlq MAXLEN 0
+redis-cli XTRIM selva:task-dlq MAXLEN 0
 ```
 
 ### Pub/Sub Debugging
@@ -818,10 +818,10 @@ redis-cli XTRIM autoswarm:task-dlq MAXLEN 0
 redis-cli PUBSUB CHANNELS
 
 # Subscribe to a channel for debugging (blocks terminal)
-redis-cli SUBSCRIBE autoswarm:approvals
+redis-cli SUBSCRIBE selva:approvals
 
 # Count subscribers on a channel
-redis-cli PUBSUB NUMSUB autoswarm:approvals
+redis-cli PUBSUB NUMSUB selva:approvals
 ```
 
 ### Rate Limiting Keys
@@ -858,7 +858,7 @@ redis-cli -n 1 FLUSHDB
 
 ### How Consumer Group Sharing Works
 
-All worker instances share the Redis Streams consumer group `autoswarm-workers`.
+All worker instances share the Redis Streams consumer group `selva-workers`.
 Each worker registers as a unique consumer (hostname + PID). Redis guarantees
 that each stream message is delivered to exactly one consumer within the group,
 providing automatic work distribution.
@@ -882,15 +882,15 @@ MAX_CONCURRENT_TASKS=5  # Allow 5 concurrent tasks per worker
 kubectl scale deployment/workers --replicas=3 -n autoswarm
 
 # Local: run multiple processes
-MAX_CONCURRENT_TASKS=3 uv run python -m autoswarm_workers &
-MAX_CONCURRENT_TASKS=3 uv run python -m autoswarm_workers &
+MAX_CONCURRENT_TASKS=3 uv run python -m selva_workers &
+MAX_CONCURRENT_TASKS=3 uv run python -m selva_workers &
 ```
 
 ### Verifying Consumer Group Membership
 
 ```bash
 # List all consumers and their status
-redis-cli XINFO CONSUMERS autoswarm:task-stream autoswarm-workers
+redis-cli XINFO CONSUMERS selva:task-stream selva-workers
 ```
 
 Each consumer entry shows:
@@ -940,8 +940,8 @@ A non-zero `depth` indicates tasks that failed after 3 retries. Investigate the
 ## Appendix: Environment Variables
 
 Key environment variables referenced in this runbook. Secrets are stored in the
-`autoswarm-secrets` Kubernetes Secret. Non-secret configuration is in the
-`autoswarm-config` ConfigMap (`infra/k8s/production/configmap.yaml`).
+`selva-secrets` Kubernetes Secret. Non-secret configuration is in the
+`selva-config` ConfigMap (`infra/k8s/production/configmap.yaml`).
 
 | Variable | Service | Description |
 |----------|---------|-------------|
@@ -977,6 +977,6 @@ Key environment variables referenced in this runbook. Secrets are stored in the
 | `scripts/restore-postgres.sh` | Manual restore script |
 | `scripts/verify-backup.sh` | Backup integrity verification |
 | `apps/nexus-api/nexus_api/routers/health.py` | Health and readiness endpoints |
-| `apps/workers/autoswarm_workers/health.py` | Worker health server |
+| `apps/workers/selva_workers/health.py` | Worker health server |
 | `apps/gateway/src/index.ts` | Gateway health server |
 | `apps/colyseus/src/index.ts` | Colyseus health endpoint |

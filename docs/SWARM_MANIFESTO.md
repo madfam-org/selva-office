@@ -22,7 +22,7 @@ We do not build businesses; we engineer operational hyperobjects. The purpose of
 - **Bare Metal:** 3-node K3s cluster on Hetzner (foundry-cp, foundry-worker-01, foundry-builder-01)
 - **PaaS:** Enclii — sovereign deployment platform with ArgoCD GitOps
 - **Identity:** Janua — self-hosted OAuth2/OIDC, zero external auth dependencies
-- **Orchestration:** Selva (AutoSwarm Office) — agent swarm platform on sovereign infra
+- **Orchestration:** Selva (Selva) — agent swarm platform on sovereign infra
 
 ---
 
@@ -89,8 +89,8 @@ We extract capital from the digital economy to build the physical tools of local
 
 ## Technical Reference
 
-- **Playbook System:** `packages/permissions/autoswarm_permissions/playbook.py`
-- **Financial Circuit Breaker:** `packages/orchestrator/autoswarm_orchestrator/circuit_breaker.py`
+- **Playbook System:** `packages/permissions/selva_permissions/playbook.py`
+- **Financial Circuit Breaker:** `packages/orchestrator/selva_orchestrator/circuit_breaker.py`
 - **9-Node Architecture:** `docs/NODE_ARCHITECTURE.md`
 - **Agent Roster:** `scripts/seed-madfam-org.py`
-- **Phygital Graph:** `apps/workers/autoswarm_workers/graphs/phygital.py`
+- **Phygital Graph:** `apps/workers/selva_workers/graphs/phygital.py`

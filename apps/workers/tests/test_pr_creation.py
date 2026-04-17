@@ -12,7 +12,7 @@ class TestCreatePr:
 
     @pytest.mark.asyncio
     async def test_create_pr_calls_gh(self) -> None:
-        from autoswarm_workers.tools.git_tool import GitTool
+        from selva_workers.tools.git_tool import GitTool
 
         tool = GitTool()
         tool.bash = MagicMock()
@@ -38,7 +38,7 @@ class TestCreatePr:
 
     @pytest.mark.asyncio
     async def test_create_pr_escapes_quotes(self) -> None:
-        from autoswarm_workers.tools.git_tool import GitTool
+        from selva_workers.tools.git_tool import GitTool
 
         tool = GitTool()
         tool.bash = MagicMock()
@@ -58,7 +58,7 @@ class TestPrCreationAfterPush:
     """_create_pr_after_push is called in push_gate on successful push."""
 
     def test_pr_created_on_successful_push(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.configure_identity = AsyncMock(
@@ -77,13 +77,13 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
-        mock_settings.git_author_name = "autoswarm-bot"
-        mock_settings.git_author_email = "bot@autoswarm.dev"
+        mock_settings.git_author_name = "selva-bot"
+        mock_settings.git_author_email = "bot@selva.town"
 
         with (
-            patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
-            patch("autoswarm_workers.config.get_settings", return_value=mock_settings),
+            patch("selva_workers.graphs.coding.interrupt", return_value={"approved": True}),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.config.get_settings", return_value=mock_settings),
         ):
             result = push_gate({
                 "messages": [],
@@ -91,14 +91,14 @@ class TestPrCreationAfterPush:
                 "worktree_path": "/tmp/worktrees/task-t1",
                 "task_id": "t1",
                 "description": "Add feature X",
-                "branch_name": "autoswarm/task-t1",
+                "branch_name": "selva/task-t1",
             })
 
         assert result["status"] == "pushed"
         mock_git.create_pr.assert_called_once()
 
     def test_pr_not_created_on_push_failure(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.configure_identity = AsyncMock(
@@ -115,26 +115,26 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
-        mock_settings.git_author_name = "autoswarm-bot"
-        mock_settings.git_author_email = "bot@autoswarm.dev"
+        mock_settings.git_author_name = "selva-bot"
+        mock_settings.git_author_email = "bot@selva.town"
 
         with (
-            patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
-            patch("autoswarm_workers.config.get_settings", return_value=mock_settings),
+            patch("selva_workers.graphs.coding.interrupt", return_value={"approved": True}),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.config.get_settings", return_value=mock_settings),
         ):
             push_gate({
                 "messages": [],
                 "code_changes": [{"iteration": 1}],
                 "worktree_path": "/tmp/worktrees/task-t1",
                 "task_id": "t1",
-                "branch_name": "autoswarm/task-t1",
+                "branch_name": "selva/task-t1",
             })
 
         mock_git.create_pr.assert_not_called()
 
     def test_pr_failure_does_not_block_task(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.configure_identity = AsyncMock(
@@ -153,13 +153,13 @@ class TestPrCreationAfterPush:
 
         mock_settings = MagicMock()
         mock_settings.github_token = "ghp_test"
-        mock_settings.git_author_name = "autoswarm-bot"
-        mock_settings.git_author_email = "bot@autoswarm.dev"
+        mock_settings.git_author_name = "selva-bot"
+        mock_settings.git_author_email = "bot@selva.town"
 
         with (
-            patch("autoswarm_workers.graphs.coding.interrupt", return_value={"approved": True}),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
-            patch("autoswarm_workers.config.get_settings", return_value=mock_settings),
+            patch("selva_workers.graphs.coding.interrupt", return_value={"approved": True}),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.config.get_settings", return_value=mock_settings),
         ):
             result = push_gate({
                 "messages": [],
@@ -167,7 +167,7 @@ class TestPrCreationAfterPush:
                 "worktree_path": "/tmp/worktrees/task-t1",
                 "task_id": "t1",
                 "description": "Add feature X",
-                "branch_name": "autoswarm/task-t1",
+                "branch_name": "selva/task-t1",
             })
 
         # Task should still succeed even if PR creation fails

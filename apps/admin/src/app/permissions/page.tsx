@@ -5,8 +5,8 @@ import type {
   ActionCategory,
   PermissionLevel,
   PermissionMatrix,
-} from '@autoswarm/shared-types';
-import { Button } from '@autoswarm/ui';
+} from '@selva/shared-types';
+import { Button } from '@selva/ui';
 
 const NEXUS_API_URL =
   process.env.NEXT_PUBLIC_NEXUS_API_URL ?? 'http://localhost:4300';

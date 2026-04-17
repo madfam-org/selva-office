@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     """
 
     # -- Infrastructure -------------------------------------------------------
-    database_url: str = "postgresql+asyncpg://autoswarm:autoswarm@localhost:5432/autoswarm"
+    database_url: str = "postgresql+asyncpg://selva:autoswarm@localhost:5432/autoswarm"
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_recycle: int = 1800  # 30 minutes
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # -- Auth (Janua OIDC) ----------------------------------------------------
     janua_issuer_url: str = ""
-    janua_client_id: str = "autoswarm-office"
+    janua_client_id: str = "selva"
     janua_client_secret: str = ""
 
     # -- Billing (Dhanam) -----------------------------------------------------
@@ -58,11 +58,11 @@ class Settings(BaseSettings):
     github_token: str = ""
 
     # Continuous learning / skills registry
-    autoswarm_skills_dir: str = "/var/lib/autoswarm/skills"
+    selva_skills_dir: str = "/var/lib/selva/skills"
     skill_refine_interval_days: int = 7      # Refine skills older than N days
 
     # Memory compaction
-    autoswarm_state_db_path: str = "/var/lib/autoswarm/autoswarm_state.db"
+    selva_state_db_path: str = "/var/lib/selva/selva_state.db"
     memory_retention_days: int = 30          # Compact transcripts older than N days
 
     # -- AI Inference ---------------------------------------------------------
@@ -77,14 +77,14 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     mistral_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
-    org_config_path: str = "~/.autoswarm/org-config.yaml"
+    org_config_path: str = "~/.selva/org-config.yaml"
 
     # -- Analytics ------------------------------------------------------------
     posthog_api_key: str = ""
     posthog_host: str = ""
 
     # -- Webhooks -------------------------------------------------------------
-    autoswarm_webhook_secret: str = ""
+    selva_webhook_secret: str = ""
 
     # -- Karafiel (RFC / SAT validation) ----------------------------------------
     karafiel_api_url: str = ""

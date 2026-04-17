@@ -46,9 +46,9 @@ import { SimplifiedView } from '@/components/SimplifiedView';
 import { OpsFeed } from '@/components/OpsFeed';
 import { MetricsDashboard } from '@/components/MetricsDashboard';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { ApprovalModal } from '@autoswarm/ui';
+import { ApprovalModal } from '@selva/ui';
 import type { CoWebsiteEvent, PopupEvent } from '@/game/PhaserGame';
-import type { ApprovalRequest, AvatarConfig } from '@autoswarm/shared-types';
+import type { ApprovalRequest, AvatarConfig } from '@selva/shared-types';
 import { getSessionUser } from '@/lib/api';
 
 const WorkflowEditor = dynamic(
@@ -286,7 +286,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
   const [currentRoom, setCurrentRoom] = useState('office');
   const [companionType, setCompanionType] = useState(() => {
     if (typeof window !== 'undefined') {
-      try { return localStorage.getItem('autoswarm:companion-type') ?? ''; } catch { return ''; }
+      try { return localStorage.getItem('selva:companion-type') ?? ''; } catch { return ''; }
     }
     return '';
   });
@@ -297,7 +297,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
   const [spotlightViewDismissed, setSpotlightViewDismissed] = useState(false);
   const [viewMode, setViewMode] = useState<'game' | 'simple'>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('autoswarm:view-mode') as 'game' | 'simple') ?? 'game';
+      return (localStorage.getItem('selva:view-mode') as 'game' | 'simple') ?? 'game';
     }
     return 'game';
   });
@@ -305,7 +305,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
   const handleToggleViewMode = useCallback(() => {
     setViewMode((prev) => {
       const next = prev === 'game' ? 'simple' : 'game';
-      try { localStorage.setItem('autoswarm:view-mode', next); } catch { /* noop */ }
+      try { localStorage.setItem('selva:view-mode', next); } catch { /* noop */ }
       return next;
     });
   }, []);
@@ -716,7 +716,7 @@ export function OfficeExperience({ mode }: OfficeExperienceProps) {
             onCompanionChange={(type) => {
               setCompanionType(type);
               sendCompanion(type);
-              try { localStorage.setItem('autoswarm:companion-type', type); } catch { /* noop */ }
+              try { localStorage.setItem('selva:companion-type', type); } catch { /* noop */ }
             }}
           />
 

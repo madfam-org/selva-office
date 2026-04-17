@@ -1,4 +1,4 @@
-# AutoSwarm Office -- Full Reference
+# Selva -- Full Reference
 
 > Gamified multi-agent business orchestration platform
 > Part of the MADFAM ecosystem (Janua, Dhanam, Enclii)
@@ -6,7 +6,7 @@
 ## Project Structure
 
 ```
-autoswarm-office/
+selva/
   .github/workflows/        CI/CD pipelines
     ci.yml                   Main CI (lint, typecheck, test, build, security)
     deploy-enclii.yml        Docker build + push + Enclii lifecycle callback
@@ -337,8 +337,8 @@ Connect to `ws://localhost:4300/api/v1/approvals/ws?client_id=<uuid>`
 
 ## Redis Task Stream Format
 
-Tasks are enqueued via `XADD autoswarm:task-stream * data <json>` and consumed
-by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
+Tasks are enqueued via `XADD selva:task-stream * data <json>` and consumed
+by workers via `XREADGROUP` with consumer group `selva-workers`.
 
 ```json
 {
@@ -347,7 +347,7 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
     "description": "Integrate payment gateway",
     "assigned_agent_ids": ["<uuid>", "<uuid>"],
     "payload": {
-        "repo": "madfam-org/autoswarm-office",
+        "repo": "madfam-org/selva",
         "branch": "feat/payments"
     }
 }
@@ -362,7 +362,7 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
     "roles": ["admin"],
     "org_id": "org_xyz789",
     "iss": "https://auth.example.com",
-    "aud": "autoswarm-office",
+    "aud": "selva",
     "exp": 1741276800,
     "iat": 1741273200
 }
@@ -372,10 +372,10 @@ by workers via `XREADGROUP` with consumer group `autoswarm-workers`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| DATABASE_URL | postgresql://autoswarm:autoswarm@localhost:5432/autoswarm | PostgreSQL connection |
+| DATABASE_URL | postgresql://selva:autoswarm@localhost:5432/autoswarm | PostgreSQL connection |
 | REDIS_URL | redis://localhost:6379 | Redis connection |
 | JANUA_ISSUER_URL | (empty) | Janua OIDC issuer |
-| JANUA_CLIENT_ID | autoswarm-office | OIDC client ID |
+| JANUA_CLIENT_ID | selva | OIDC client ID |
 | JANUA_CLIENT_SECRET | (empty) | OIDC client secret |
 | NEXT_PUBLIC_JANUA_URL | (empty) | Client-side Janua URL |
 | DHANAM_API_URL | https://api.dhan.am | Dhanam billing API |

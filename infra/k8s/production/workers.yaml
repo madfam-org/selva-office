@@ -5,7 +5,7 @@ metadata:
   namespace: autoswarm
   labels:
     app.kubernetes.io/name: workers
-    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/part-of: selva
     app.kubernetes.io/component: worker
 spec:
   replicas: 1
@@ -16,10 +16,10 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: workers
-        app.kubernetes.io/part-of: autoswarm-office
+        app.kubernetes.io/part-of: selva
         app.kubernetes.io/component: worker
     spec:
-      serviceAccountName: autoswarm-sa
+      serviceAccountName: selva-sa
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: workers
-          image: ghcr.io/madfam-org/autoswarm-workers:latest
+          image: ghcr.io/madfam-org/selva-workers:latest
           resources:
             requests:
               cpu: 100m
@@ -53,59 +53,59 @@ spec:
                 - ALL
           envFrom:
             - configMapRef:
-                name: autoswarm-config
+                name: selva-config
           env:
             - name: ENVIRONMENT
               value: production
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-secrets
+                  name: selva-secrets
                   key: database-url
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-secrets
+                  name: selva-secrets
                   key: redis-url
             - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-secrets
+                  name: selva-secrets
                   key: secret-key
             - name: PHYNE_CRM_URL
               value: http://phyne-crm-web.phyne-crm.svc.cluster.local
             - name: RESEND_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-llm-secrets
+                  name: selva-llm-secrets
                   key: RESEND_API_KEY
                   optional: true
             - name: COLYSEUS_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-secrets
+                  name: selva-secrets
                   key: colyseus-secret
             - name: WORKER_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-llm-secrets
+                  name: selva-llm-secrets
                   key: WORKER_API_TOKEN
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-llm-secrets
+                  name: selva-llm-secrets
                   key: ANTHROPIC_API_KEY
                   optional: true
             - name: DEEPINFRA_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-llm-secrets
+                  name: selva-llm-secrets
                   key: DEEPINFRA_API_KEY
                   optional: true
             - name: MEMORY_PERSIST_DIR
-              value: /data/autoswarm/memory
+              value: /data/selva/memory
             - name: BANDIT_PERSIST_PATH
-              value: /data/autoswarm/bandit.json
+              value: /data/selva/bandit.json
             - name: DHANAM_API_URL
               value: "https://api.dhan.am"
             - name: ENCLII_API_URL
@@ -113,7 +113,7 @@ spec:
             - name: ENCLII_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: autoswarm-secrets
+                  name: selva-secrets
                   key: ENCLII_API_TOKEN
                   optional: true
             - name: YANTRA4D_API_URL
@@ -123,11 +123,11 @@ spec:
             - name: PRAVARA_MES_API_URL
               value: "https://mes-api.madfam.io"
             - name: ORG_CONFIG_PATH
-              value: "/etc/autoswarm/org-config.yaml"
+              value: "/etc/selva/org-config.yaml"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
-            - name: autoswarm-memory
+            - name: selva-memory
               mountPath: /data/autoswarm
             - name: org-config
               mountPath: /etc/autoswarm
@@ -135,17 +135,17 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
-        - name: autoswarm-memory
+        - name: selva-memory
           persistentVolumeClaim:
-            claimName: autoswarm-memory-pvc
+            claimName: selva-memory-pvc
         - name: org-config
           configMap:
-            name: autoswarm-org-config
+            name: selva-org-config
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: autoswarm-memory-pvc
+  name: selva-memory-pvc
   namespace: autoswarm
 spec:
   accessModes:

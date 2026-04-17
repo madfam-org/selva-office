@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 const JANUA_ISSUER = process.env.NEXT_PUBLIC_JANUA_ISSUER_URL || 'https://auth.madfam.io';
-const CLIENT_ID = process.env.NEXT_PUBLIC_JANUA_CLIENT_ID || 'autoswarm-office';
+const CLIENT_ID = process.env.NEXT_PUBLIC_JANUA_CLIENT_ID || 'selva';
 
 function getOrigin(request: Request): string {
   const h = new Headers(request.headers);

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from autoswarm_workflows.schema import (
+from selva_workflows.schema import (
     ContextPolicyConfig,
     ContextWindowPolicy,
     EdgeDefinition,

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to AutoSwarm Office will be documented in this file.
+All notable changes to Selva will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
@@ -48,7 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Removed
 
-- Legacy Redis LIST dual-write (`LPUSH autoswarm:tasks`). Workers consume
+- Legacy Redis LIST dual-write (`LPUSH selva:tasks`). Workers consume
   exclusively from Redis Streams. See `docs/MIGRATION_LEGACY_QUEUE.md`.
 - `legacy_queue_depth` field from `/api/v1/health/queue-stats`.
 

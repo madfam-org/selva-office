@@ -6,10 +6,10 @@ import uuid
 
 import pytest
 
-from autoswarm_orchestrator.bandit import ThompsonBandit
-from autoswarm_orchestrator.orchestrator import SwarmOrchestrator
-from autoswarm_orchestrator.puppeteer import PuppeteerOrchestrator
-from autoswarm_orchestrator.types import AgentConfig, AgentRole, AgentStatus
+from selva_orchestrator.bandit import ThompsonBandit
+from selva_orchestrator.orchestrator import SwarmOrchestrator
+from selva_orchestrator.puppeteer import PuppeteerOrchestrator
+from selva_orchestrator.types import AgentConfig, AgentRole, AgentStatus
 
 
 def _agent(

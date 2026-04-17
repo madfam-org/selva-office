@@ -122,7 +122,7 @@ async def get_current_user(
             "sub": "dev-user-00000000",
             "roles": ["admin", "tactician", "enterprise-cleanroom"],
             "org_id": "dev-org",
-            "email": "dev@autoswarm.local",
+            "email": "dev@selva.local",
         }
 
     # Reject hardcoded dev token in production
@@ -142,7 +142,7 @@ async def get_current_user(
             "sub": "service:worker",
             "roles": ["service", "worker"],
             "org_id": "madfam-default",
-            "email": "worker@autoswarm.internal",
+            "email": "worker@selva.internal",
         }
 
     payload = await verify_jwt(credentials.credentials, settings)

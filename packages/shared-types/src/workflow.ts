@@ -1,6 +1,6 @@
 /**
  * TypeScript equivalents of the Python workflow schema
- * (packages/workflows/src/autoswarm_workflows/schema.py).
+ * (packages/workflows/src/selva_workflows/schema.py).
  *
  * These types are used by the visual workflow editor and API layer.
  */

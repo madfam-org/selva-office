@@ -10,5 +10,5 @@ resources:
   - secret-hermes.yaml
 
 commonLabels:
-  app.kubernetes.io/part-of: autoswarm-office
+  app.kubernetes.io/part-of: selva
   app.kubernetes.io/managed-by: kustomize

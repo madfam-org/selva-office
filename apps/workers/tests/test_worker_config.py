@@ -6,7 +6,7 @@ import warnings
 
 import pytest
 
-from autoswarm_workers.config import Settings
+from selva_workers.config import Settings
 
 
 def _make_settings(**overrides: object) -> Settings:
@@ -117,8 +117,8 @@ class TestWorkerGitIdentitySettings:
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
             settings = _make_settings()
-        assert settings.git_author_name == "autoswarm-bot"
-        assert settings.git_author_email == "bot@autoswarm.dev"
+        assert settings.git_author_name == "selva-bot"
+        assert settings.git_author_email == "bot@selva.town"
 
     def test_custom_git_identity(self) -> None:
         settings = _make_settings(

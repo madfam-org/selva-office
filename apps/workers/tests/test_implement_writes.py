@@ -13,7 +13,7 @@ class TestWriteFilesToWorktree:
     """_write_files_to_worktree parses JSON and writes files safely."""
 
     def test_writes_valid_json_files(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         llm_output = json.dumps({
             "files": [
@@ -29,7 +29,7 @@ class TestWriteFilesToWorktree:
         assert (tmp_path / "README.md").read_text() == "# Project"
 
     def test_rejects_absolute_paths(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         llm_output = json.dumps({
             "files": [
@@ -40,11 +40,11 @@ class TestWriteFilesToWorktree:
         result = _write_files_to_worktree(str(tmp_path), llm_output, {})
 
         # Should fall back to placeholder since no valid files were written.
-        assert result == ["AUTOSWARM_PLACEHOLDER.md"]
+        assert result == ["SELVA_PLACEHOLDER.md"]
         assert not Path("/etc/passwd").exists() or Path("/etc/passwd").read_text() != "malicious"
 
     def test_rejects_directory_traversal(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         llm_output = json.dumps({
             "files": [
@@ -54,35 +54,35 @@ class TestWriteFilesToWorktree:
 
         result = _write_files_to_worktree(str(tmp_path), llm_output, {})
 
-        assert result == ["AUTOSWARM_PLACEHOLDER.md"]
+        assert result == ["SELVA_PLACEHOLDER.md"]
 
     def test_writes_placeholder_on_invalid_json(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         result = _write_files_to_worktree(str(tmp_path), "not valid json", {})
 
-        assert result == ["AUTOSWARM_PLACEHOLDER.md"]
-        assert (tmp_path / "AUTOSWARM_PLACEHOLDER.md").exists()
+        assert result == ["SELVA_PLACEHOLDER.md"]
+        assert (tmp_path / "SELVA_PLACEHOLDER.md").exists()
 
     def test_writes_placeholder_when_no_llm_output(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         result = _write_files_to_worktree(
             str(tmp_path), None, {"description": "Create hello world"},
         )
 
-        assert result == ["AUTOSWARM_PLACEHOLDER.md"]
-        content = (tmp_path / "AUTOSWARM_PLACEHOLDER.md").read_text()
+        assert result == ["SELVA_PLACEHOLDER.md"]
+        content = (tmp_path / "SELVA_PLACEHOLDER.md").read_text()
         assert "Create hello world" in content
 
     def test_returns_empty_when_no_worktree(self) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         result = _write_files_to_worktree(None, '{"files": []}', {})
         assert result == []
 
     def test_creates_nested_directories(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         llm_output = json.dumps({
             "files": [
@@ -96,7 +96,7 @@ class TestWriteFilesToWorktree:
         assert (tmp_path / "a" / "b" / "c" / "deep.py").read_text() == "deep"
 
     def test_skips_entries_with_empty_path(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import _write_files_to_worktree
+        from selva_workers.graphs.coding import _write_files_to_worktree
 
         llm_output = json.dumps({
             "files": [
@@ -114,7 +114,7 @@ class TestImplementWritesFiles:
     """implement() integration: LLM output → files on disk."""
 
     def test_implement_writes_files_from_llm(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import implement
+        from selva_workers.graphs.coding import implement
 
         llm_output = json.dumps({
             "files": [
@@ -123,10 +123,10 @@ class TestImplementWritesFiles:
         })
 
         with patch(
-            "autoswarm_workers.inference.call_llm",
+            "selva_workers.inference.call_llm",
             return_value=llm_output,
         ), patch(
-            "autoswarm_workers.inference.get_model_router",
+            "selva_workers.inference.get_model_router",
             return_value=MagicMock(),
         ):
             result = implement({
@@ -142,10 +142,10 @@ class TestImplementWritesFiles:
         assert result["code_changes"][-1]["files_modified"] == ["app.py"]
 
     def test_implement_falls_back_to_placeholder(self, tmp_path: Path) -> None:
-        from autoswarm_workers.graphs.coding import implement
+        from selva_workers.graphs.coding import implement
 
         with patch(
-            "autoswarm_workers.inference.get_model_router",
+            "selva_workers.inference.get_model_router",
             side_effect=RuntimeError("no providers"),
         ):
             result = implement({
@@ -158,22 +158,22 @@ class TestImplementWritesFiles:
                 "description": "Test task",
             })
 
-        assert (tmp_path / "AUTOSWARM_PLACEHOLDER.md").exists()
-        assert "AUTOSWARM_PLACEHOLDER.md" in result["code_changes"][-1]["files_modified"]
+        assert (tmp_path / "SELVA_PLACEHOLDER.md").exists()
+        assert "SELVA_PLACEHOLDER.md" in result["code_changes"][-1]["files_modified"]
 
     def test_implement_blocked_by_permission_deny(self) -> None:
-        from autoswarm_workers.graphs.coding import implement
+        from selva_workers.graphs.coding import implement
 
         mock_result = MagicMock()
         mock_result.level = MagicMock()
         mock_result.level.__eq__ = lambda self, other: str(other) == "deny" or other.value == "deny"
 
-        from autoswarm_permissions.types import PermissionLevel
+        from selva_permissions.types import PermissionLevel
 
         mock_result.level = PermissionLevel.DENY
 
         with patch(
-            "autoswarm_workers.graphs.coding.check_permission",
+            "selva_workers.graphs.coding.check_permission",
             return_value=mock_result,
         ):
             result = implement({

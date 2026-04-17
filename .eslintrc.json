@@ -1,4 +1,4 @@
 {
   "root": true,
-  "extends": ["@autoswarm/config/eslint/base"]
+  "extends": ["@selva/config/eslint/base"]
 }

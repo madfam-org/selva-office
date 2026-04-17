@@ -14,7 +14,7 @@ import pytest
 
 def _reset_circuit_state() -> None:
     """Clear module-level circuit breaker state between tests."""
-    from autoswarm_workers.http_retry import _circuit_state
+    from selva_workers.http_retry import _circuit_state
 
     _circuit_state.clear()
 
@@ -56,10 +56,10 @@ class TestFireAndForgetRequest:
         mock_client = _make_async_client(_mock_response(200))
 
         with patch(
-            "autoswarm_workers.http_retry.httpx.AsyncClient",
+            "selva_workers.http_retry.httpx.AsyncClient",
             return_value=mock_client,
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             result = await fire_and_forget_request(
                 "PATCH", "http://test:4300/api/v1/tasks/1", json={"status": "running"}
@@ -76,10 +76,10 @@ class TestFireAndForgetRequest:
         mock_client = _make_async_client(_mock_response(201))
 
         with patch(
-            "autoswarm_workers.http_retry.httpx.AsyncClient",
+            "selva_workers.http_retry.httpx.AsyncClient",
             return_value=mock_client,
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             result = await fire_and_forget_request("POST", "http://test:4300/api/v1/events")
 
@@ -90,10 +90,10 @@ class TestFireAndForgetRequest:
         mock_client = _make_async_client(_mock_response(400, "Bad request"))
 
         with patch(
-            "autoswarm_workers.http_retry.httpx.AsyncClient",
+            "selva_workers.http_retry.httpx.AsyncClient",
             return_value=mock_client,
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             result = await fire_and_forget_request("PATCH", "http://test:4300/api/v1/tasks/1")
 
@@ -116,12 +116,12 @@ class TestFireAndForgetRequest:
 
         with (
             patch(
-                "autoswarm_workers.http_retry.httpx.AsyncClient",
+                "selva_workers.http_retry.httpx.AsyncClient",
                 return_value=mock_client,
             ),
-            patch("autoswarm_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
+            patch("selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             result = await fire_and_forget_request(
                 "POST",
@@ -139,12 +139,12 @@ class TestFireAndForgetRequest:
 
         with (
             patch(
-                "autoswarm_workers.http_retry.httpx.AsyncClient",
+                "selva_workers.http_retry.httpx.AsyncClient",
                 return_value=mock_client,
             ),
-            patch("autoswarm_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
+            patch("selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             result = await fire_and_forget_request(
                 "PATCH",
@@ -161,12 +161,12 @@ class TestFireAndForgetRequest:
 
         with (
             patch(
-                "autoswarm_workers.http_retry.httpx.AsyncClient",
+                "selva_workers.http_retry.httpx.AsyncClient",
                 return_value=mock_client,
             ),
-            patch("autoswarm_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
+            patch("selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             # Should not raise.
             result = await fire_and_forget_request(
@@ -181,14 +181,14 @@ class TestFireAndForgetRequest:
 
         with (
             patch(
-                "autoswarm_workers.http_retry.httpx.AsyncClient",
+                "selva_workers.http_retry.httpx.AsyncClient",
                 return_value=mock_client,
             ),
             patch(
-                "autoswarm_workers.http_retry.asyncio.sleep", new_callable=AsyncMock
+                "selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock
             ) as mock_sleep,
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             await fire_and_forget_request(
                 "PATCH",
@@ -208,10 +208,10 @@ class TestFireAndForgetRequest:
         mock_client = _make_async_client(_mock_response(200))
 
         with patch(
-            "autoswarm_workers.http_retry.httpx.AsyncClient",
+            "selva_workers.http_retry.httpx.AsyncClient",
             return_value=mock_client,
         ) as mock_cls:
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             await fire_and_forget_request(
                 "POST", "http://test:4300/api/v1/events", timeout=2.0
@@ -224,10 +224,10 @@ class TestFireAndForgetRequest:
         mock_client = _make_async_client(_mock_response(200))
 
         with patch(
-            "autoswarm_workers.http_retry.httpx.AsyncClient",
+            "selva_workers.http_retry.httpx.AsyncClient",
             return_value=mock_client,
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             await fire_and_forget_request(
                 "POST",
@@ -251,13 +251,13 @@ class TestCircuitBreaker:
     """_CircuitBreaker tracks failures and opens after threshold."""
 
     def test_initially_closed(self) -> None:
-        from autoswarm_workers.http_retry import _CircuitBreaker
+        from selva_workers.http_retry import _CircuitBreaker
 
         cb = _CircuitBreaker(threshold=3)
         assert cb.is_open() is False
 
     def test_opens_after_threshold_failures(self) -> None:
-        from autoswarm_workers.http_retry import _CircuitBreaker
+        from selva_workers.http_retry import _CircuitBreaker
 
         cb = _CircuitBreaker(threshold=3, window=60.0, cooldown=10.0)
         cb.record_failure()
@@ -267,7 +267,7 @@ class TestCircuitBreaker:
         assert cb.is_open() is True
 
     def test_resets_on_success(self) -> None:
-        from autoswarm_workers.http_retry import _CircuitBreaker
+        from selva_workers.http_retry import _CircuitBreaker
 
         cb = _CircuitBreaker(threshold=3, window=60.0, cooldown=10.0)
         cb.record_failure()
@@ -279,7 +279,7 @@ class TestCircuitBreaker:
         assert cb.is_open() is False
 
     def test_closes_after_cooldown(self) -> None:
-        from autoswarm_workers.http_retry import _CircuitBreaker
+        from selva_workers.http_retry import _CircuitBreaker
 
         cb = _CircuitBreaker(threshold=2, window=60.0, cooldown=0.0)
         cb.record_failure()
@@ -290,7 +290,7 @@ class TestCircuitBreaker:
         assert cb.is_open() is False
 
     def test_purges_old_failures_outside_window(self) -> None:
-        from autoswarm_workers.http_retry import _CircuitBreaker
+        from selva_workers.http_retry import _CircuitBreaker
 
         cb = _CircuitBreaker(threshold=3, window=0.0, cooldown=10.0)
         # With window=0, all failures are "old" by the time we check.
@@ -308,7 +308,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_skips_request_when_circuit_open(self) -> None:
         """fire_and_forget_request returns False immediately when circuit is open."""
-        from autoswarm_workers.http_retry import _circuit_state, _CircuitBreaker
+        from selva_workers.http_retry import _circuit_state, _CircuitBreaker
 
         # Pre-populate an open circuit breaker for the target host.
         cb = _CircuitBreaker(threshold=1, cooldown=60.0)
@@ -316,9 +316,9 @@ class TestCircuitBreaker:
         _circuit_state["http://test:4300"] = cb
 
         with patch(
-            "autoswarm_workers.http_retry.httpx.AsyncClient",
+            "selva_workers.http_retry.httpx.AsyncClient",
         ) as mock_cls:
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             result = await fire_and_forget_request(
                 "PATCH", "http://test:4300/api/v1/tasks/1"
@@ -329,7 +329,7 @@ class TestCircuitBreaker:
         mock_cls.assert_not_called()
 
     def test_separate_circuits_per_host(self) -> None:
-        from autoswarm_workers.http_retry import _get_circuit_breaker
+        from selva_workers.http_retry import _get_circuit_breaker
 
         cb_a = _get_circuit_breaker("http://host-a:4300/api/v1/tasks")
         cb_b = _get_circuit_breaker("http://host-b:4300/api/v1/tasks")
@@ -352,18 +352,18 @@ class TestRetryCircuitIntegration:
     @pytest.mark.asyncio
     async def test_repeated_failures_open_circuit(self) -> None:
         """After enough failures across multiple calls, the circuit opens."""
-        from autoswarm_workers.http_retry import _get_circuit_breaker
+        from selva_workers.http_retry import _get_circuit_breaker
 
         mock_client = _make_async_client(exc=ConnectionError("refused"))
 
         with (
             patch(
-                "autoswarm_workers.http_retry.httpx.AsyncClient",
+                "selva_workers.http_retry.httpx.AsyncClient",
                 return_value=mock_client,
             ),
-            patch("autoswarm_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
+            patch("selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             # 3 retries per call = 3 failures recorded.
             await fire_and_forget_request(
@@ -379,7 +379,7 @@ class TestRetryCircuitIntegration:
 
     @pytest.mark.asyncio
     async def test_success_resets_circuit_after_failures(self) -> None:
-        from autoswarm_workers.http_retry import _get_circuit_breaker
+        from selva_workers.http_retry import _get_circuit_breaker
 
         responses = [
             ConnectionError("refused"),
@@ -393,12 +393,12 @@ class TestRetryCircuitIntegration:
 
         with (
             patch(
-                "autoswarm_workers.http_retry.httpx.AsyncClient",
+                "selva_workers.http_retry.httpx.AsyncClient",
                 return_value=mock_client,
             ),
-            patch("autoswarm_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
+            patch("selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock),
         ):
-            from autoswarm_workers.http_retry import fire_and_forget_request
+            from selva_workers.http_retry import fire_and_forget_request
 
             result = await fire_and_forget_request(
                 "POST", "http://test:4300/api/v1/events", max_retries=3

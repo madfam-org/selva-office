@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from autoswarm_orchestrator.circuit_breaker import (
+from selva_orchestrator.circuit_breaker import (
     DEFAULT_DAILY_LIMIT_CENTS,
     FinancialCircuitBreaker,
 )

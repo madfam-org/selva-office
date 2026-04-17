@@ -20,12 +20,12 @@ class TestMeterInferenceCall:
 
         with (
             patch(
-                "autoswarm_workers.metering.get_settings",
+                "selva_workers.metering.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
-            patch("autoswarm_workers.metering.httpx.AsyncClient", return_value=mock_client),
+            patch("selva_workers.metering.httpx.AsyncClient", return_value=mock_client),
         ):
-            from autoswarm_workers.metering import meter_inference_call
+            from selva_workers.metering import meter_inference_call
 
             await meter_inference_call(
                 usage={"input_tokens": 100, "output_tokens": 50},
@@ -47,8 +47,8 @@ class TestMeterInferenceCall:
 
     @pytest.mark.asyncio
     async def test_skips_when_zero_tokens(self) -> None:
-        with patch("autoswarm_workers.metering.httpx.AsyncClient") as mock_cls:
-            from autoswarm_workers.metering import meter_inference_call
+        with patch("selva_workers.metering.httpx.AsyncClient") as mock_cls:
+            from selva_workers.metering import meter_inference_call
 
             await meter_inference_call(
                 usage={"input_tokens": 0, "output_tokens": 0},
@@ -59,8 +59,8 @@ class TestMeterInferenceCall:
 
     @pytest.mark.asyncio
     async def test_skips_when_empty_usage(self) -> None:
-        with patch("autoswarm_workers.metering.httpx.AsyncClient") as mock_cls:
-            from autoswarm_workers.metering import meter_inference_call
+        with patch("selva_workers.metering.httpx.AsyncClient") as mock_cls:
+            from selva_workers.metering import meter_inference_call
 
             await meter_inference_call(
                 usage={},
@@ -78,12 +78,12 @@ class TestMeterInferenceCall:
 
         with (
             patch(
-                "autoswarm_workers.metering.get_settings",
+                "selva_workers.metering.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
-            patch("autoswarm_workers.metering.httpx.AsyncClient", return_value=mock_client),
+            patch("selva_workers.metering.httpx.AsyncClient", return_value=mock_client),
         ):
-            from autoswarm_workers.metering import meter_inference_call
+            from selva_workers.metering import meter_inference_call
 
             # Should not raise
             await meter_inference_call(
@@ -102,13 +102,13 @@ class TestMeterInferenceCall:
 
         with (
             patch(
-                "autoswarm_workers.metering.get_settings",
+                "selva_workers.metering.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
-            patch("autoswarm_workers.metering.httpx.AsyncClient", return_value=mock_client),
-            patch("autoswarm_workers.metering.logger") as mock_logger,
+            patch("selva_workers.metering.httpx.AsyncClient", return_value=mock_client),
+            patch("selva_workers.metering.logger") as mock_logger,
         ):
-            from autoswarm_workers.metering import meter_inference_call
+            from selva_workers.metering import meter_inference_call
 
             await meter_inference_call(
                 usage={"input_tokens": 10, "output_tokens": 5},
@@ -133,10 +133,10 @@ class TestCallLlmMetering:
         mock_router.complete = AsyncMock(return_value=mock_response)
 
         with patch(
-            "autoswarm_workers.metering.meter_inference_call",
+            "selva_workers.metering.meter_inference_call",
             new_callable=AsyncMock,
         ) as mock_meter:
-            from autoswarm_workers.inference import call_llm
+            from selva_workers.inference import call_llm
 
             result = await call_llm(
                 mock_router,
@@ -167,10 +167,10 @@ class TestCallLlmMetering:
         mock_router.complete = AsyncMock(return_value=mock_response)
 
         with patch(
-            "autoswarm_workers.metering.meter_inference_call",
+            "selva_workers.metering.meter_inference_call",
             new_callable=AsyncMock,
         ) as mock_meter:
-            from autoswarm_workers.inference import call_llm
+            from selva_workers.inference import call_llm
 
             result = await call_llm(mock_router, [{"role": "user", "content": "hi"}])
             assert result == "Hello"

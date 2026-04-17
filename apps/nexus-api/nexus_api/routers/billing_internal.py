@@ -84,7 +84,7 @@ async def check_budget(
 
         settings = get_settings()
         redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-        cached = await redis_client.get(f"autoswarm:tier:{org_id}")
+        cached = await redis_client.get(f"selva:tier:{org_id}")
         await redis_client.aclose()
         if cached:
             daily_limit = int(cached)

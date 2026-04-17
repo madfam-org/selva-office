@@ -1,4 +1,4 @@
-# Selva Office (AutoSwarm) — Product Roadmap
+# Selva Office (Selva) — Product Roadmap
 
 > **Selva** is the autonomous virtual office product by **Innovaciones MADFAM SAS de CV**.
 > It runs at `selva.town` and integrates with the full MADFAM ecosystem.
@@ -274,7 +274,7 @@ Selva seats at $149-499/mo as the autonomous AI workforce:
 ```
 MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 │
-├── 🏢 Selva Office (autoswarm-office/) — THIS PRODUCT
+├── 🏢 Selva Office (selva/) — THIS PRODUCT
 │   ├── selva.town — Virtual office + AI agent swarm
 │   ├── 74 built-in tools, 12 graphs, 6 adapters, 18 gateways, A2A protocol
 │   └── Solarpunk UI, PWA, LiveKit SFU, es-MX locale, multi-tenant
@@ -378,7 +378,7 @@ MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 ### Inference Centralization
 - `[x]` OpenAI-compatible proxy at `/v1/chat/completions` + `/v1/embeddings` (`inference_proxy.py`)
 - `[x]` Shared `build_router_from_env()` factory (`packages/inference/madfam_inference/factory.py`)
-- `[x]` Org-config ConfigMap deployed to K8s, mounted at `/etc/autoswarm/org-config.yaml`
+- `[x]` Org-config ConfigMap deployed to K8s, mounted at `/etc/selva/org-config.yaml`
 - `[x]` ServiceConfig model for tracking external accounts (Resend, Anthropic, DeepInfra, Stripe, etc.)
 - `[x]` PhyneCRM, Fortuna, Yantra4D secrets patched for Selva inference routing
 - `[x]` 196 inference tests passing (org_config + router + factory + worker wiring)

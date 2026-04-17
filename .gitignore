@@ -35,7 +35,7 @@ __pycache__/
 Thumbs.db
 
 # Runtime SQLite databases
-autoswarm_state.db
+selva_state.db
 
 # Coverage
 coverage/
@@ -54,7 +54,7 @@ data/*
 !data/org-config-template.yaml
 
 # Org config (secrets outside repo)
-.autoswarm/
+.selva/
 
 # Gateway runtime data
 apps/gateway/data/

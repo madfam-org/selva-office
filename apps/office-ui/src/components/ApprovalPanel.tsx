@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, type FC } from 'react';
-import type { ApprovalRequest, ActionCategory } from '@autoswarm/shared-types';
+import type { ApprovalRequest, ActionCategory } from '@selva/shared-types';
 import { gameEventBus } from '@/game/PhaserGame';
 import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';

@@ -3,7 +3,7 @@ version: "3.9"
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: autoswarm-postgres
+    container_name: selva-postgres
     ports:
       - "5432:5432"
     environment:
@@ -23,7 +23,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: autoswarm-redis
+    container_name: selva-redis
     ports:
       - "6379:6379"
     command: >
@@ -45,7 +45,7 @@ services:
 
   coturn:
     image: coturn/coturn:latest
-    container_name: autoswarm-coturn
+    container_name: selva-coturn
     ports:
       - "3478:3478"
       - "3478:3478/udp"
@@ -56,7 +56,7 @@ services:
 
   livekit:
     image: livekit/livekit-server:latest
-    container_name: autoswarm-livekit
+    container_name: selva-livekit
     ports:
       - "7880:7880"
       - "7881:7881"

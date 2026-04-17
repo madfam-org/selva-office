@@ -3,5 +3,5 @@ kind: Namespace
 metadata:
   name: autoswarm
   labels:
-    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/part-of: selva
     autoswarm.dev/project: autoswarm

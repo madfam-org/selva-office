@@ -52,7 +52,7 @@ async def transcribe_audio(
     Accepts common audio formats (webm, wav, mp3, ogg, flac, m4a).
     Returns the transcription text and requested language.
     """
-    from autoswarm_tools.builtins.stt import SpeechToTextTool
+    from selva_tools.builtins.stt import SpeechToTextTool
 
     audio_bytes = await file.read()
     if not audio_bytes:

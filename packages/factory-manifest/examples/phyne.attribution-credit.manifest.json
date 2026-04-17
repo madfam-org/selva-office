@@ -6,8 +6,8 @@
     "en": "Agent revenue attribution (PhyneCRM)"
   },
   "description": {
-    "es": "Acredita un ingreso MXN al agente que originó el lead. Cierra el flywheel: convierte un cargo Dhanam en un evento de atribución que alimenta la selección de agentes y el bandido de Thompson en AutoSwarm.",
-    "en": "Credits MXN revenue back to the agent that sourced the lead. Closes the flywheel: turns a Dhanam charge into an attribution event that feeds AutoSwarm's Thompson-sampling agent selection."
+    "es": "Acredita un ingreso MXN al agente que originó el lead. Cierra el flywheel: convierte un cargo Dhanam en un evento de atribución que alimenta la selección de agentes y el bandido de Thompson en Selva.",
+    "en": "Credits MXN revenue back to the agent that sourced the lead. Closes the flywheel: turns a Dhanam charge into an attribution event that feeds Selva's Thompson-sampling agent selection."
   },
   "owner": {
     "product": "PhyneCRM",
@@ -51,7 +51,7 @@
     {"code": "LEAD_UNKNOWN", "retryable": false, "http_status": 404, "description": "lead_id not found — probable probe/test miswiring."},
     {"code": "BILLING_EVENT_UNKNOWN", "retryable": true, "http_status": 404, "description": "Dhanam billing event not yet replicated — caller may retry briefly."},
     {"code": "DOUBLE_ATTRIBUTION", "retryable": false, "http_status": 409, "description": "billing_event_id already credited."},
-    {"code": "AGENT_UNKNOWN", "retryable": false, "http_status": 422, "description": "source_agent_id does not exist in AutoSwarm roster."}
+    {"code": "AGENT_UNKNOWN", "retryable": false, "http_status": 422, "description": "source_agent_id does not exist in Selva roster."}
   ],
 
   "endpoint": {

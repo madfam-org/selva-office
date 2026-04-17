@@ -1,4 +1,4 @@
-"""Tests for the AutoSwarm A2A protocol package."""
+"""Tests for the Selva A2A protocol package."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from autoswarm_a2a.client import A2AClient
-from autoswarm_a2a.schema import (
+from selva_a2a.client import A2AClient
+from selva_a2a.schema import (
     AgentCard,
     AgentSkill,
     TaskRequest,
     TaskResponse,
     TaskStatus,
 )
-from autoswarm_a2a.server import create_a2a_router
+from selva_a2a.server import create_a2a_router
 
 # -- Schema tests -------------------------------------------------------------
 
@@ -24,7 +24,7 @@ from autoswarm_a2a.server import create_a2a_router
 class TestAgentCard:
     def test_defaults(self):
         card = AgentCard()
-        assert card.name == "AutoSwarm Office"
+        assert card.name == "Selva"
         assert "tasks/send" in card.capabilities
         assert "tasks/get" in card.capabilities
         assert "tasks/sendSubscribe" in card.capabilities

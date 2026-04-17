@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_permissions.playbook import (
+from selva_permissions.playbook import (
     PlaybookDefinition,
     PlaybookExecutionState,
     PlaybookGuard,
 )
-from autoswarm_permissions.types import ActionCategory, PermissionLevel
+from selva_permissions.types import ActionCategory, PermissionLevel
 
 
 # ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ class TestPlaybookEngineIntegration:
         self, lead_response_playbook: PlaybookDefinition
     ) -> None:
         """When the matrix says ASK and the playbook allows, result is ALLOW."""
-        from autoswarm_permissions.engine import PermissionEngine
+        from selva_permissions.engine import PermissionEngine
 
         engine = PermissionEngine()
         state = PlaybookExecutionState(playbook=lead_response_playbook)
@@ -343,7 +343,7 @@ class TestPlaybookEngineIntegration:
         self, lead_response_playbook: PlaybookDefinition
     ) -> None:
         """When the matrix says DENY, playbook cannot relax it."""
-        from autoswarm_permissions.engine import PermissionEngine
+        from selva_permissions.engine import PermissionEngine
 
         engine = PermissionEngine(
             overrides={ActionCategory.EMAIL_SEND: PermissionLevel.DENY}
@@ -358,7 +358,7 @@ class TestPlaybookEngineIntegration:
         self, lead_response_playbook: PlaybookDefinition
     ) -> None:
         """When the matrix already says ALLOW, playbook is not consulted."""
-        from autoswarm_permissions.engine import PermissionEngine
+        from selva_permissions.engine import PermissionEngine
 
         engine = PermissionEngine()
         state = PlaybookExecutionState(playbook=lead_response_playbook)
@@ -374,7 +374,7 @@ class TestPlaybookEngineIntegration:
         self, lead_response_playbook: PlaybookDefinition
     ) -> None:
         """When playbook denies an action, engine ASK default persists."""
-        from autoswarm_permissions.engine import PermissionEngine
+        from selva_permissions.engine import PermissionEngine
 
         engine = PermissionEngine()
         state = PlaybookExecutionState(playbook=lead_response_playbook)

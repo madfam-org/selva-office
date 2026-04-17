@@ -10,7 +10,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_polling_jitter_varies_interval():
     """Verify that polling uses jitter (interval varies between calls)."""
-    from autoswarm_workers.interrupt_handler import InterruptHandler
+    from selva_workers.interrupt_handler import InterruptHandler
 
     handler = InterruptHandler(
         nexus_api_url="http://localhost:4300",

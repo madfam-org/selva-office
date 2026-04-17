@@ -9,7 +9,7 @@ import httpx
 from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 from ..config import get_settings
 from ..database import async_session_factory
@@ -149,21 +149,21 @@ async def queue_stats() -> dict[str, object]:
 
         # Stream length
         try:
-            stats["stream_length"] = await client.xlen("autoswarm:task-stream")
+            stats["stream_length"] = await client.xlen("selva:task-stream")
         except Exception:
             logger.debug("Failed to fetch stream length", exc_info=True)
             stats["stream_length"] = 0
 
         # DLQ depth
         try:
-            stats["dlq_depth"] = await client.xlen("autoswarm:task-dlq")
+            stats["dlq_depth"] = await client.xlen("selva:task-dlq")
         except Exception:
             logger.debug("Failed to fetch DLQ depth", exc_info=True)
             stats["dlq_depth"] = 0
 
         # Consumer group info
         try:
-            groups = await client.xinfo_groups("autoswarm:task-stream")
+            groups = await client.xinfo_groups("selva:task-stream")
             stats["consumer_groups"] = [
                 {
                     "name": g.get("name", ""),
@@ -195,14 +195,14 @@ async def dlq_stats() -> dict[str, object]:
         client = await pool.client()
 
         try:
-            result["depth"] = await client.xlen("autoswarm:task-dlq")
+            result["depth"] = await client.xlen("selva:task-dlq")
         except Exception:
             logger.debug("Failed to fetch DLQ depth", exc_info=True)
             result["depth"] = 0
 
         # Return the 10 most recent DLQ entries.
         try:
-            entries = await client.xrevrange("autoswarm:task-dlq", count=10)
+            entries = await client.xrevrange("selva:task-dlq", count=10)
             result["recent"] = [
                 {"id": eid, "data": data}
                 for eid, data in entries

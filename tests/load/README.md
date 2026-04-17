@@ -1,6 +1,6 @@
 # Load Tests
 
-k6 load testing scripts for the AutoSwarm Office platform.
+k6 load testing scripts for the Selva platform.
 
 ## Prerequisites
 

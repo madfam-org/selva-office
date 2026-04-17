@@ -1,4 +1,4 @@
-"""Tests for the AutoSwarm CLI."""
+"""Tests for the Selva CLI."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
-from autoswarm_sdk.cli import cli
-from autoswarm_sdk.exceptions import AutoSwarmError
-from autoswarm_sdk.models import AgentResponse, TaskResponse
+from selva_sdk.cli import cli
+from selva_sdk.exceptions import SelvaError
+from selva_sdk.models import AgentResponse, TaskResponse
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -58,7 +58,7 @@ def _mock_client() -> MagicMock:
 runner = CliRunner()
 
 
-@patch("autoswarm_sdk.cli._get_client")
+@patch("selva_sdk.cli._get_client")
 def test_dispatch_command(mock_get: MagicMock) -> None:
     mock_get.return_value = _mock_client()
     result = runner.invoke(cli, ["dispatch", "Fix login bug"])
@@ -68,7 +68,7 @@ def test_dispatch_command(mock_get: MagicMock) -> None:
     assert data["status"] == "queued"
 
 
-@patch("autoswarm_sdk.cli._get_client")
+@patch("selva_sdk.cli._get_client")
 def test_dispatch_with_options(mock_get: MagicMock) -> None:
     mock_get.return_value = _mock_client()
     result = runner.invoke(
@@ -88,7 +88,7 @@ def test_dispatch_with_options(mock_get: MagicMock) -> None:
     mock_get.return_value.dispatch.assert_called_once()
 
 
-@patch("autoswarm_sdk.cli._get_client")
+@patch("selva_sdk.cli._get_client")
 def test_agents_list_command(mock_get: MagicMock) -> None:
     mock_get.return_value = _mock_client()
     result = runner.invoke(cli, ["agents", "list"])
@@ -98,7 +98,7 @@ def test_agents_list_command(mock_get: MagicMock) -> None:
     assert data[0]["name"] == "Alice"
 
 
-@patch("autoswarm_sdk.cli._get_client")
+@patch("selva_sdk.cli._get_client")
 def test_tasks_get_command(mock_get: MagicMock) -> None:
     mock_get.return_value = _mock_client()
     result = runner.invoke(cli, ["tasks", "get", "aaaa-bbbb-cccc"])
@@ -107,7 +107,7 @@ def test_tasks_get_command(mock_get: MagicMock) -> None:
     assert data["description"] == "Fix login bug"
 
 
-@patch("autoswarm_sdk.cli._get_client")
+@patch("selva_sdk.cli._get_client")
 def test_tasks_wait_command(mock_get: MagicMock) -> None:
     mock_get.return_value = _mock_client()
     result = runner.invoke(cli, ["tasks", "wait", "aaaa-bbbb-cccc", "--timeout", "10"])
@@ -119,7 +119,7 @@ def test_tasks_wait_command(mock_get: MagicMock) -> None:
 def test_help_text() -> None:
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    assert "AutoSwarm CLI" in result.output
+    assert "Selva CLI" in result.output
 
 
 def test_dispatch_missing_description() -> None:
@@ -128,23 +128,23 @@ def test_dispatch_missing_description() -> None:
     assert "Missing argument" in result.output
 
 
-@patch("autoswarm_sdk.cli._get_client")
+@patch("selva_sdk.cli._get_client")
 def test_dispatch_error_display(mock_get: MagicMock) -> None:
     mock = _mock_client()
-    mock.dispatch.side_effect = AutoSwarmError("Budget exceeded", 402)
+    mock.dispatch.side_effect = SelvaError("Budget exceeded", 402)
     mock_get.return_value = mock
     result = runner.invoke(cli, ["dispatch", "Test"])
     assert result.exit_code == 1
     assert "Error: Budget exceeded" in result.output
 
 
-@patch("autoswarm_sdk.cli._get_client")
+@patch("selva_sdk.cli._get_client")
 def test_env_var_configuration(mock_get: MagicMock) -> None:
     """Verify env vars are read for client construction."""
     mock_get.return_value = _mock_client()
     result = runner.invoke(
         cli,
         ["agents", "list"],
-        env={"AUTOSWARM_API_URL": "http://custom:9999", "AUTOSWARM_TOKEN": "secret"},
+        env={"SELVA_API_URL": "http://custom:9999", "SELVA_TOKEN": "secret"},
     )
     assert result.exit_code == 0

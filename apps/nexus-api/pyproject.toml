@@ -1,7 +1,7 @@
 [project]
-name = "autoswarm-nexus-api"
+name = "selva-nexus-api"
 version = "0.1.0"
-description = "AutoSwarm Office core orchestration API"
+description = "Selva core orchestration API"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115.6",
@@ -15,15 +15,15 @@ dependencies = [
   "httpx>=0.28.1",
   "alembic>=1.14.0",
   "websockets>=14.1",
-  "autoswarm-orchestrator",
-  "autoswarm-permissions",
+  "selva-orchestrator",
+  "selva-permissions",
   "madfam-inference",
-  "autoswarm-skills",
-  "autoswarm-workflows",
-  "autoswarm-observability",
-  "autoswarm-redis-pool",
-  "autoswarm-calendar",
-  "autoswarm-a2a",
+  "selva-skills",
+  "selva-workflows",
+  "selva-observability",
+  "selva-redis-pool",
+  "selva-calendar",
+  "selva-a2a",
   "structlog>=24.0",
   "sentry-sdk[fastapi]>=2.19.0",
   "prometheus-fastapi-instrumentator>=7.0.0",

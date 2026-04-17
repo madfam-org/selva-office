@@ -15,9 +15,9 @@ import os
 
 def test_qa_oracle_validate_and_compile_skill(tmp_path, monkeypatch):
     """validate() should write a .py skill file to the skills directory."""
-    monkeypatch.setenv("AUTOSWARM_SKILLS_DIR", str(tmp_path))
+    monkeypatch.setenv("SELVA_SKILLS_DIR", str(tmp_path))
 
-    from autoswarm_workflows.acp_qa_oracle import ACPQAOracleNode
+    from selva_workflows.acp_qa_oracle import ACPQAOracleNode
 
     node = ACPQAOracleNode(
         source_code="def hello(): return 'world'",
@@ -35,9 +35,9 @@ def test_qa_oracle_validate_and_compile_skill(tmp_path, monkeypatch):
 
 def test_qa_oracle_stub_fallback(tmp_path, monkeypatch):
     """_compile_skill_stub writes a valid PlaybookSkill-compatible file."""
-    monkeypatch.setenv("AUTOSWARM_SKILLS_DIR", str(tmp_path))
+    monkeypatch.setenv("SELVA_SKILLS_DIR", str(tmp_path))
 
-    from autoswarm_workflows.acp_qa_oracle import ACPQAOracleNode
+    from selva_workflows.acp_qa_oracle import ACPQAOracleNode
 
     node = ACPQAOracleNode(source_code="x = 1", test_suite="assert x == 1")
     path = node._compile_skill_stub("stub-run-xyz")
@@ -56,7 +56,7 @@ def test_qa_oracle_stub_fallback(tmp_path, monkeypatch):
 
 def test_honcho_default_profile():
     """Without a memory store, the profiler returns the default profile."""
-    from autoswarm_workflows.honcho import HonchoProfiler
+    from selva_workflows.honcho import HonchoProfiler
 
     profiler = HonchoProfiler(memory_store=None)
     profile = profiler.get_profile("alice")
@@ -68,7 +68,7 @@ def test_honcho_default_profile():
 
 def test_honcho_update_profile_reflects_in_addendum():
     """Updating a preference should appear in the generated system addendum."""
-    from autoswarm_workflows.honcho import HonchoProfiler
+    from selva_workflows.honcho import HonchoProfiler
 
     profiler = HonchoProfiler(memory_store=None)
     profiler.update_profile("bob", "verbosity", "verbose")
@@ -79,7 +79,7 @@ def test_honcho_update_profile_reflects_in_addendum():
 
 
 def test_honcho_system_addendum_contains_all_fields():
-    from autoswarm_workflows.honcho import DEFAULT_PROFILE, HonchoProfiler
+    from selva_workflows.honcho import DEFAULT_PROFILE, HonchoProfiler
 
     profiler = HonchoProfiler(memory_store=None)
     addendum = profiler.get_system_addendum("carol")

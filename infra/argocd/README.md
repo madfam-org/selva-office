@@ -1,8 +1,8 @@
-# ArgoCD Integration for AutoSwarm Office
+# ArgoCD Integration for Selva
 
 ## Enclii App-of-Apps Pattern
 
-This directory contains the ArgoCD configuration for AutoSwarm Office.
+This directory contains the ArgoCD configuration for Selva.
 It is designed to integrate with the Enclii infrastructure repository's
 App-of-Apps pattern.
 
@@ -27,7 +27,7 @@ App-of-Apps pattern.
 1. Ensure the Enclii repo's root ApplicationSet is configured to scan
    for `config.json` files across project repositories.
 
-2. Verify that the ArgoCD project `autoswarm-office` exists in ArgoCD
+2. Verify that the ArgoCD project `selva` exists in ArgoCD
    or is created by Enclii's project provisioning.
 
 3. The ApplicationSet controller will pick up `config.json` and create

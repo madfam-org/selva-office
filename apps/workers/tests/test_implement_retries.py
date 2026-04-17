@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from autoswarm_workers.graphs.coding import _write_files_to_worktree, implement
+from selva_workers.graphs.coding import _write_files_to_worktree, implement
 
 
 def _make_state(worktree_path=None, iteration=0):
@@ -42,7 +42,7 @@ def _make_state(worktree_path=None, iteration=0):
 
 
 def _perm_allow():
-    from autoswarm_permissions.types import PermissionLevel
+    from selva_permissions.types import PermissionLevel
 
     perm_result = MagicMock()
     perm_result.level = PermissionLevel.ALLOW
@@ -69,18 +69,18 @@ def test_implement_retries_on_json_error(tmp_path):
 
     with (
         patch(
-            "autoswarm_workers.inference.get_model_router",
+            "selva_workers.inference.get_model_router",
             return_value=MagicMock(),
         ),
         patch(
-            "autoswarm_workers.inference.call_llm",
+            "selva_workers.inference.call_llm",
             side_effect=mock_call_llm,
         ),
         patch(
-            "autoswarm_workers.graphs.coding.check_permission",
+            "selva_workers.graphs.coding.check_permission",
             return_value=_perm_allow(),
         ),
-        patch("autoswarm_workers.event_emitter.emit_event", new_callable=AsyncMock),
+        patch("selva_workers.event_emitter.emit_event", new_callable=AsyncMock),
     ):
         result = implement(state)
 
@@ -100,18 +100,18 @@ def test_implement_fails_after_max_retries(tmp_path):
 
     with (
         patch(
-            "autoswarm_workers.inference.get_model_router",
+            "selva_workers.inference.get_model_router",
             return_value=MagicMock(),
         ),
         patch(
-            "autoswarm_workers.inference.call_llm",
+            "selva_workers.inference.call_llm",
             side_effect=mock_call_llm,
         ),
         patch(
-            "autoswarm_workers.graphs.coding.check_permission",
+            "selva_workers.graphs.coding.check_permission",
             return_value=_perm_allow(),
         ),
-        patch("autoswarm_workers.event_emitter.emit_event", new_callable=AsyncMock),
+        patch("selva_workers.event_emitter.emit_event", new_callable=AsyncMock),
     ):
         result = implement(state)
 
@@ -128,17 +128,17 @@ def test_implement_placeholder_only_without_llm(tmp_path):
     with (
         patch.dict(
             "sys.modules",
-            {"autoswarm_workers.inference": None},
+            {"selva_workers.inference": None},
         ),
         patch(
-            "autoswarm_workers.graphs.coding.check_permission",
+            "selva_workers.graphs.coding.check_permission",
             return_value=_perm_allow(),
         ),
     ):
         result = implement(state)
 
     assert result["status"] == "implementing"
-    assert (wt / "AUTOSWARM_PLACEHOLDER.md").exists()
+    assert (wt / "SELVA_PLACEHOLDER.md").exists()
 
 
 def test_write_files_no_placeholder_when_not_ok(tmp_path):
@@ -149,7 +149,7 @@ def test_write_files_no_placeholder_when_not_ok(tmp_path):
 
     result = _write_files_to_worktree(str(wt), None, state, placeholder_ok=False)
     assert result == []
-    assert not (wt / "AUTOSWARM_PLACEHOLDER.md").exists()
+    assert not (wt / "SELVA_PLACEHOLDER.md").exists()
 
 
 def test_write_files_placeholder_when_ok(tmp_path):
@@ -159,5 +159,5 @@ def test_write_files_placeholder_when_ok(tmp_path):
     state = _make_state(worktree_path=str(wt))
 
     result = _write_files_to_worktree(str(wt), None, state, placeholder_ok=True)
-    assert "AUTOSWARM_PLACEHOLDER.md" in result
-    assert (wt / "AUTOSWARM_PLACEHOLDER.md").exists()
+    assert "SELVA_PLACEHOLDER.md" in result
+    assert (wt / "SELVA_PLACEHOLDER.md").exists()

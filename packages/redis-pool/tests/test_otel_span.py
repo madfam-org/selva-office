@@ -5,7 +5,7 @@ from __future__ import annotations
 import builtins
 from unittest.mock import MagicMock, patch
 
-from autoswarm_redis_pool.pool import _redis_span
+from selva_redis_pool.pool import _redis_span
 
 
 class TestRedisSpan:

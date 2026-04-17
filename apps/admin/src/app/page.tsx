@@ -6,7 +6,7 @@ import type {
   Agent,
   ComputeTokenBucket,
   Department,
-} from '@autoswarm/shared-types';
+} from '@selva/shared-types';
 
 const NEXUS_API_URL =
   process.env.NEXT_PUBLIC_NEXUS_API_URL ?? 'http://localhost:4300';
@@ -91,7 +91,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <header className="mb-8">
         <h1 className="font-mono text-2xl font-bold uppercase tracking-widest text-indigo-400">
-          AutoSwarm Admin
+          Selva Admin
         </h1>
         <p className="mt-1 font-mono text-sm text-slate-500">
           System administration and configuration

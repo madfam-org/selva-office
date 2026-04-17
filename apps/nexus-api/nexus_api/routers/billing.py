@@ -110,7 +110,7 @@ async def compute_token_status(
 
         settings = get_settings()
         redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-        cached = await redis_client.get(f"autoswarm:tier:{tenant.org_id}")
+        cached = await redis_client.get(f"selva:tier:{tenant.org_id}")
         await redis_client.aclose()
         if cached:
             daily_limit = int(cached)
@@ -189,7 +189,7 @@ async def dhanam_webhook(request: Request) -> dict[str, str]:
                 settings.redis_url, decode_responses=True
             )
             await redis_client.set(
-                f"autoswarm:tier:{org_id}", str(daily_limit), ex=86400
+                f"selva:tier:{org_id}", str(daily_limit), ex=86400
             )
             await redis_client.aclose()
             logger.info(

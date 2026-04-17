@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,10 @@ async def notify_approval_decision(
 ) -> None:
     """Publish an approval decision to the Redis channel for the request.
 
-    Workers subscribe to ``autoswarm:approval:{request_id}`` to receive
+    Workers subscribe to ``selva:approval:{request_id}`` to receive
     push notifications instead of polling.
     """
-    channel = f"autoswarm:approval:{request_id}"
+    channel = f"selva:approval:{request_id}"
     message = json.dumps({
         "request_id": request_id,
         "result": decision,

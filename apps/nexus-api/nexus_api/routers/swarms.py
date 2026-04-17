@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 from ..auth import get_current_user, require_non_demo, require_non_guest
 from ..config import get_settings
@@ -172,7 +172,7 @@ async def dispatch_task(
     if not assigned_agent_ids and body.required_skills:
         # Auto-select agents by skill overlap
         try:
-            from autoswarm_skills import DEFAULT_ROLE_SKILLS
+            from selva_skills import DEFAULT_ROLE_SKILLS
 
             result = await db.execute(
                 select(Agent).where(Agent.status == "idle").order_by(Agent.created_at)
@@ -364,7 +364,7 @@ async def dispatch_task(
         except Exception:
             pass
         task_msg = json.dumps(task_msg_data)
-        await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
+        await pool.execute_with_retry("xadd", "selva:task-stream", {"data": task_msg})
     except Exception:
         # If Redis is unavailable the task is still persisted in the DB.
         # Workers can fall back to polling the database.

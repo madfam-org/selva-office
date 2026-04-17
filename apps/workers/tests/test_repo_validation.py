@@ -12,7 +12,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_non_writable_repo_path_fails_task() -> None:
     """When the repo path is not writable, the task should be failed immediately."""
-    from autoswarm_workers.__main__ import process_task
+    from selva_workers.__main__ import process_task
 
     task_data = {
         "task_id": "test-task-1",
@@ -24,16 +24,16 @@ async def test_non_writable_repo_path_fails_task() -> None:
 
     with (
         patch(
-            "autoswarm_workers.__main__._update_task_status",
+            "selva_workers.__main__._update_task_status",
             new_callable=AsyncMock,
         ) as mock_status,
         patch(
-            "autoswarm_workers.__main__._publish_agent_status",
+            "selva_workers.__main__._publish_agent_status",
             new_callable=AsyncMock,
         ),
-        patch("autoswarm_workers.__main__._emit_event", new_callable=AsyncMock),
+        patch("selva_workers.__main__._emit_event", new_callable=AsyncMock),
         patch(
-            "autoswarm_workers.__main__._fetch_agent_skills",
+            "selva_workers.__main__._fetch_agent_skills",
             new_callable=AsyncMock,
             return_value=[],
         ),
@@ -51,7 +51,7 @@ async def test_non_writable_repo_path_fails_task() -> None:
 @pytest.mark.asyncio
 async def test_missing_repo_path_created() -> None:
     """When repo path doesn't exist yet, it should be created."""
-    from autoswarm_workers.__main__ import process_task
+    from selva_workers.__main__ import process_task
 
     with tempfile.TemporaryDirectory() as tmpdir:
         new_path = Path(tmpdir) / "new-repos"
@@ -66,20 +66,20 @@ async def test_missing_repo_path_created() -> None:
         }
 
         with (
-            patch("autoswarm_workers.__main__._update_task_status", new_callable=AsyncMock),
-            patch("autoswarm_workers.__main__._publish_agent_status", new_callable=AsyncMock),
-            patch("autoswarm_workers.__main__._emit_event", new_callable=AsyncMock),
+            patch("selva_workers.__main__._update_task_status", new_callable=AsyncMock),
+            patch("selva_workers.__main__._publish_agent_status", new_callable=AsyncMock),
+            patch("selva_workers.__main__._emit_event", new_callable=AsyncMock),
             patch(
-                "autoswarm_workers.__main__._fetch_agent_skills",
+                "selva_workers.__main__._fetch_agent_skills",
                 new_callable=AsyncMock,
                 return_value=[],
             ),
             patch(
-                "autoswarm_workers.__main__.run_graph_with_interrupts",
+                "selva_workers.__main__.run_graph_with_interrupts",
                 new_callable=AsyncMock,
                 return_value={"status": "completed"},
             ),
-            patch("autoswarm_workers.__main__.InterruptHandler") as mock_handler_cls,
+            patch("selva_workers.__main__.InterruptHandler") as mock_handler_cls,
         ):
             mock_handler = AsyncMock()
             mock_handler_cls.return_value = mock_handler

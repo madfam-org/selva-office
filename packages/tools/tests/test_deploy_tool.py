@@ -11,7 +11,7 @@ class TestDeployTool:
     """DeployTool triggers Enclii deployments."""
 
     def test_schema_requires_service(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployTool
+        from selva_tools.builtins.deploy import DeployTool
 
         tool = DeployTool()
         schema = tool.parameters_schema()
@@ -21,7 +21,7 @@ class TestDeployTool:
 
     @pytest.mark.asyncio
     async def test_missing_env_vars_returns_error(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployTool
+        from selva_tools.builtins.deploy import DeployTool
 
         tool = DeployTool()
         with patch.dict("os.environ", {}, clear=True):
@@ -32,7 +32,7 @@ class TestDeployTool:
 
     @pytest.mark.asyncio
     async def test_successful_deploy(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployTool
+        from selva_tools.builtins.deploy import DeployTool
 
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -63,7 +63,7 @@ class TestDeployTool:
         assert result.data["deploy_id"] == "dep-123"
 
     def test_tool_name_and_description(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployTool
+        from selva_tools.builtins.deploy import DeployTool
 
         tool = DeployTool()
         assert tool.name == "deploy_trigger"
@@ -74,7 +74,7 @@ class TestDeployStatusTool:
     """DeployStatusTool checks Enclii deployment status."""
 
     def test_schema_requires_deploy_id(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployStatusTool
+        from selva_tools.builtins.deploy import DeployStatusTool
 
         tool = DeployStatusTool()
         schema = tool.parameters_schema()
@@ -82,7 +82,7 @@ class TestDeployStatusTool:
 
     @pytest.mark.asyncio
     async def test_missing_env_vars_returns_error(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployStatusTool
+        from selva_tools.builtins.deploy import DeployStatusTool
 
         tool = DeployStatusTool()
         with patch.dict("os.environ", {}, clear=True):
@@ -92,7 +92,7 @@ class TestDeployStatusTool:
 
     @pytest.mark.asyncio
     async def test_successful_status_check(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployStatusTool
+        from selva_tools.builtins.deploy import DeployStatusTool
 
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -121,7 +121,7 @@ class TestDeployStatusTool:
         assert result.data["status"] == "running"
 
     def test_tool_name(self) -> None:
-        from autoswarm_tools.builtins.deploy import DeployStatusTool
+        from selva_tools.builtins.deploy import DeployStatusTool
 
         tool = DeployStatusTool()
         assert tool.name == "deploy_status"
@@ -131,7 +131,7 @@ class TestDeployToolsInRegistry:
     """Deploy tools are registered in get_builtin_tools()."""
 
     def test_deploy_tools_in_registry(self) -> None:
-        from autoswarm_tools.builtins import get_builtin_tools
+        from selva_tools.builtins import get_builtin_tools
 
         tools = get_builtin_tools()
         names = {t.name for t in tools}

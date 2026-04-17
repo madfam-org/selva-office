@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from autoswarm_observability import configure_logging as _configure
+from selva_observability import configure_logging as _configure
 
 # Re-export for backwards compatibility. The shared package handles
 # LOG_LEVEL and LOG_FORMAT env vars, service_name processor, and

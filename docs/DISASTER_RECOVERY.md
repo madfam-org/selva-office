@@ -1,8 +1,8 @@
-# Disaster Recovery Plan -- AutoSwarm Office
+# Disaster Recovery Plan -- Selva
 
 ## Overview
 
-This document defines the disaster recovery (DR) procedures for the AutoSwarm
+This document defines the disaster recovery (DR) procedures for the Selva
 Office platform. It covers backup strategy, recovery procedures for common
 failure scenarios, and verification steps to confirm successful recovery.
 
@@ -68,7 +68,7 @@ counts, and drops the temporary database on exit.
 
 ```bash
 DATABASE_URL="postgresql://user:pass@localhost:5432/autoswarm" \
-  ./scripts/verify-backup.sh ./backups/autoswarm_20260313_020000.dump
+  ./scripts/verify-backup.sh ./backups/selva_20260313_020000.dump
 ```
 
 Expected output confirms these tables exist:
@@ -116,13 +116,13 @@ cannot create SwarmTasks. UI shows stale or no data.
 
    ```bash
    # List available backups (local)
-   ls -lt backups/autoswarm_*.dump | head -5
+   ls -lt backups/selva_*.dump | head -5
 
    # List available backups (S3)
-   aws s3 ls "s3://${S3_BUCKET}/autoswarm/daily/" --recursive | sort -r | head -5
+   aws s3 ls "s3://${S3_BUCKET}/selva/daily/" --recursive | sort -r | head -5
 
    # Download from S3 if needed
-   aws s3 cp "s3://${S3_BUCKET}/autoswarm/daily/autoswarm_YYYYMMDD_HHMMSS.dump" ./restore.dump
+   aws s3 cp "s3://${S3_BUCKET}/selva/daily/selva_YYYYMMDD_HHMMSS.dump" ./restore.dump
 
    # Restore
    DATABASE_URL="postgresql://user:pass@host:5432/autoswarm" \
@@ -187,7 +187,7 @@ in PostgreSQL.
    async def reenqueue():
        r = redis.from_url('redis://redis:6379')
        # Fetch tasks that were queued or in_progress
-       # Re-add to autoswarm:task-stream
+       # Re-add to selva:task-stream
        print('Re-enqueue via API or direct Redis XADD')
 
    asyncio.run(reenqueue())
@@ -211,7 +211,7 @@ in PostgreSQL.
 4. **Verify the queue**:
 
    ```bash
-   kubectl -n autoswarm exec -it deploy/redis -- redis-cli XLEN autoswarm:task-stream
+   kubectl -n autoswarm exec -it deploy/redis -- redis-cli XLEN selva:task-stream
    ```
 
 **Estimated Recovery Time**: 5-15 minutes.
@@ -233,10 +233,10 @@ in PostgreSQL.
    kubectl apply -k infra/k8s/production/
 
    # Or use ArgoCD if configured
-   argocd app sync autoswarm-office
+   argocd app sync selva
    ```
 
-2. **Verify secrets** are available. The `autoswarm-secrets` Secret must contain:
+2. **Verify secrets** are available. The `selva-secrets` Secret must contain:
    - `database-url` -- PostgreSQL connection string
    - `redis-url` -- Redis connection string
    - `janua-issuer-url` -- Janua authentication issuer
@@ -246,8 +246,8 @@ in PostgreSQL.
 
    ```bash
    # Download the latest backup
-   LATEST=$(aws s3 ls "s3://${S3_BUCKET}/autoswarm/daily/" | sort -r | head -1 | awk '{print $4}')
-   aws s3 cp "s3://${S3_BUCKET}/autoswarm/daily/${LATEST}" ./restore.dump
+   LATEST=$(aws s3 ls "s3://${S3_BUCKET}/selva/daily/" | sort -r | head -1 | awk '{print $4}')
+   aws s3 cp "s3://${S3_BUCKET}/selva/daily/${LATEST}" ./restore.dump
 
    # Wait for PostgreSQL to be ready
    kubectl -n autoswarm wait --for=condition=ready pod -l app=postgres --timeout=300s
@@ -353,7 +353,7 @@ After any recovery operation, confirm each item:
 - [ ] office-ui loads in browser
 - [ ] Colyseus accepts WebSocket connections
 - [ ] Redis is accessible and `PING` returns `PONG`
-- [ ] Workers are running and processing tasks from `autoswarm:task-stream`
+- [ ] Workers are running and processing tasks from `selva:task-stream`
 - [ ] Gateway heartbeat service is operational
 - [ ] Janua authentication flow works (login and token validation)
 - [ ] A test task can be dispatched and completed end-to-end

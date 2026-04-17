@@ -15,7 +15,7 @@ importers:
         specifier: ^9.6.0
         version: 9.14.0
     devDependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:packages/config
       '@commitlint/cli':
@@ -51,10 +51,10 @@ importers:
 
   apps/admin:
     dependencies:
-      '@autoswarm/shared-types':
+      '@selva/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
-      '@autoswarm/ui':
+      '@selva/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@janua/nextjs-sdk':
@@ -76,7 +76,7 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@testing-library/jest-dom':
@@ -115,7 +115,7 @@ importers:
 
   apps/colyseus:
     dependencies:
-      '@autoswarm/shared-types':
+      '@selva/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@colyseus/core':
@@ -143,7 +143,7 @@ importers:
         specifier: ^4.7.0
         version: 4.7.1
     devDependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/express':
@@ -164,10 +164,10 @@ importers:
 
   apps/gateway:
     dependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@autoswarm/shared-types':
+      '@selva/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@octokit/rest':
@@ -207,10 +207,10 @@ importers:
 
   apps/office-ui:
     dependencies:
-      '@autoswarm/shared-types':
+      '@selva/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
-      '@autoswarm/ui':
+      '@selva/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@janua/nextjs-sdk':
@@ -247,7 +247,7 @@ importers:
         specifier: ^9.11.1
         version: 9.11.1
     devDependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@testing-library/jest-dom':
@@ -310,7 +310,7 @@ importers:
 
   packages/map-gen:
     devDependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -322,7 +322,7 @@ importers:
 
   packages/shared-types:
     devDependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -347,10 +347,10 @@ importers:
         specifier: ^2.6.0
         version: 2.6.1
     devDependencies:
-      '@autoswarm/config':
+      '@selva/config':
         specifier: workspace:*
         version: link:../config
-      '@autoswarm/shared-types':
+      '@selva/shared-types':
         specifier: workspace:*
         version: link:../shared-types
       '@testing-library/jest-dom':

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_permissions import (
+from selva_permissions import (
     ActionCategory,
     PermissionLevel,
     PermissionMode,
     apply_mode,
     resolve_mode,
 )
-from autoswarm_permissions.matrix import DEFAULT_PERMISSION_MATRIX
+from selva_permissions.matrix import DEFAULT_PERMISSION_MATRIX
 
 
 # -- apply_mode -------------------------------------------------------------
@@ -77,17 +77,17 @@ def test_apply_mode_rejects_unknown_mode():
 
 
 def test_resolve_mode_prefers_explicit_argument(monkeypatch):
-    monkeypatch.setenv("AUTOSWARM_PERMISSION_MODE", "danger-full-access")
+    monkeypatch.setenv("SELVA_PERMISSION_MODE", "danger-full-access")
     assert resolve_mode("read-only") is PermissionMode.READ_ONLY
 
 
 def test_resolve_mode_falls_back_to_env(monkeypatch):
-    monkeypatch.setenv("AUTOSWARM_PERMISSION_MODE", "danger-full-access")
+    monkeypatch.setenv("SELVA_PERMISSION_MODE", "danger-full-access")
     assert resolve_mode(None) is PermissionMode.DANGER_FULL_ACCESS
 
 
 def test_resolve_mode_default_when_nothing_set(monkeypatch):
-    monkeypatch.delenv("AUTOSWARM_PERMISSION_MODE", raising=False)
+    monkeypatch.delenv("SELVA_PERMISSION_MODE", raising=False)
     assert resolve_mode(None) is PermissionMode.WORKSPACE_WRITE
 
 
@@ -96,12 +96,12 @@ def test_resolve_mode_accepts_enum_input():
 
 
 def test_resolve_mode_rejects_unknown_string(monkeypatch):
-    monkeypatch.delenv("AUTOSWARM_PERMISSION_MODE", raising=False)
+    monkeypatch.delenv("SELVA_PERMISSION_MODE", raising=False)
     with pytest.raises(ValueError, match="unknown permission mode"):
         resolve_mode("super-duper-mode")
 
 
 def test_resolve_mode_rejects_garbage_env(monkeypatch):
-    monkeypatch.setenv("AUTOSWARM_PERMISSION_MODE", "totally-bogus")
-    with pytest.raises(ValueError, match="AUTOSWARM_PERMISSION_MODE"):
+    monkeypatch.setenv("SELVA_PERMISSION_MODE", "totally-bogus")
+    with pytest.raises(ValueError, match="SELVA_PERMISSION_MODE"):
         resolve_mode(None)

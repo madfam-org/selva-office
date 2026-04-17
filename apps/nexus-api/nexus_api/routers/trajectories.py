@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from autoswarm_workflows.trajectory import TrajectoryExporter  # type: ignore
+from selva_workflows.trajectory import TrajectoryExporter  # type: ignore
 
 from ..auth import CurrentUser, require_roles
 

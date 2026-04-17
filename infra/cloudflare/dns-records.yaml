@@ -1,21 +1,21 @@
 records:
   - type: CNAME
     name: api.selva.town
-    content: autoswarm-office.cfargotunnel.com
+    content: selva.cfargotunnel.com
     proxied: true
   - type: CNAME
     name: selva.town
-    content: autoswarm-office.cfargotunnel.com
+    content: selva.cfargotunnel.com
     proxied: true
   - type: CNAME
     name: www.selva.town
-    content: autoswarm-office.cfargotunnel.com
+    content: selva.cfargotunnel.com
     proxied: true
   - type: CNAME
     name: ws.selva.town
-    content: autoswarm-office.cfargotunnel.com
+    content: selva.cfargotunnel.com
     proxied: true
   - type: CNAME
     name: admin.selva.town
-    content: autoswarm-office.cfargotunnel.com
+    content: selva.cfargotunnel.com
     proxied: true

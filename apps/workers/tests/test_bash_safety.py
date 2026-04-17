@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_workers.tools.bash_tool import BashTool
+from selva_workers.tools.bash_tool import BashTool
 
 
 @pytest.fixture
@@ -51,4 +51,4 @@ async def test_allows_rm_rf_relative_build(bash: BashTool) -> None:
 @pytest.mark.asyncio
 async def test_allows_rm_rf_relative_worktree(bash: BashTool) -> None:
     """Relative worktree paths should be allowed."""
-    assert bash._is_blocked("rm -rf _worktrees/autoswarm_task-1") is None
+    assert bash._is_blocked("rm -rf _worktrees/selva_task-1") is None

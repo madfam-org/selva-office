@@ -7,7 +7,7 @@ import type {
   ReviewStation,
   Player,
   ChatMessage,
-} from '@autoswarm/shared-types';
+} from '@selva/shared-types';
 import { MAX_RECONNECT_DELAY_MS } from '@/lib/constants';
 
 const COLYSEUS_URL = process.env.NEXT_PUBLIC_COLYSEUS_URL ?? 'ws://localhost:4303';

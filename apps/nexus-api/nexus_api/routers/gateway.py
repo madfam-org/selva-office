@@ -756,7 +756,7 @@ async def generic_webhook(
     """Generic HMAC-signed webhook. channel_id used for routing/logging."""
     body = await request.body()
     from ..config import get_settings as _get_settings
-    secret = _get_settings().autoswarm_webhook_secret
+    secret = _get_settings().selva_webhook_secret
     if secret and x_webhook_signature and not _verify_hmac(body, x_webhook_signature, secret):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
     try:

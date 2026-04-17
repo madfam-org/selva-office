@@ -5,7 +5,7 @@ metadata:
   namespace: autoswarm
   labels:
     app.kubernetes.io/name: office-ui
-    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/part-of: selva
     app.kubernetes.io/component: frontend
 spec:
   replicas: 1
@@ -16,10 +16,10 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: office-ui
-        app.kubernetes.io/part-of: autoswarm-office
+        app.kubernetes.io/part-of: selva
         app.kubernetes.io/component: frontend
     spec:
-      serviceAccountName: autoswarm-sa
+      serviceAccountName: selva-sa
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: office-ui
-          image: ghcr.io/madfam-org/autoswarm-office-ui:latest
+          image: ghcr.io/madfam-org/selva-ui:latest
           ports:
             - containerPort: 3000
               protocol: TCP
@@ -75,7 +75,7 @@ spec:
             - name: NEXT_PUBLIC_JANUA_ISSUER_URL
               value: https://auth.selva.town
             - name: NEXT_PUBLIC_JANUA_CLIENT_ID
-              value: autoswarm-office
+              value: selva
             - name: NEXT_PUBLIC_DEMO_ENABLED
               value: "true"
             - name: NEXT_PUBLIC_GUEST_ACCESS_ENABLED
@@ -98,7 +98,7 @@ metadata:
   namespace: autoswarm
   labels:
     app.kubernetes.io/name: office-ui
-    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/part-of: selva
 spec:
   type: ClusterIP
   selector:

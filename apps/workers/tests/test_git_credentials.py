@@ -12,7 +12,7 @@ class TestConfigureCredentials:
 
     @pytest.mark.asyncio
     async def test_sets_credential_helper(self) -> None:
-        from autoswarm_workers.tools.git_tool import GitTool
+        from selva_workers.tools.git_tool import GitTool
 
         tool = GitTool()
         tool.bash = MagicMock()
@@ -30,7 +30,7 @@ class TestConfigureCredentials:
 
     @pytest.mark.asyncio
     async def test_helper_targets_github(self) -> None:
-        from autoswarm_workers.tools.git_tool import GitTool
+        from selva_workers.tools.git_tool import GitTool
 
         tool = GitTool()
         tool.bash = MagicMock()
@@ -50,7 +50,7 @@ class TestPushWithToken:
 
     @pytest.mark.asyncio
     async def test_push_with_token_configures_credentials(self) -> None:
-        from autoswarm_workers.tools.git_tool import GitTool
+        from selva_workers.tools.git_tool import GitTool
 
         tool = GitTool()
         tool.bash = MagicMock()
@@ -67,7 +67,7 @@ class TestPushWithToken:
 
     @pytest.mark.asyncio
     async def test_push_without_token_skips_credentials(self) -> None:
-        from autoswarm_workers.tools.git_tool import GitTool
+        from selva_workers.tools.git_tool import GitTool
 
         tool = GitTool()
         tool.bash = MagicMock()
@@ -84,7 +84,7 @@ class TestPushWithToken:
 
     @pytest.mark.asyncio
     async def test_push_with_token_none_skips_credentials(self) -> None:
-        from autoswarm_workers.tools.git_tool import GitTool
+        from selva_workers.tools.git_tool import GitTool
 
         tool = GitTool()
         tool.bash = MagicMock()

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
-from autoswarm_tools.builtins import get_builtin_tools
-from autoswarm_tools.builtins.stt import SpeechToTextTool
+from selva_tools.builtins import get_builtin_tools
+from selva_tools.builtins.stt import SpeechToTextTool
 
 
 class TestSpeechToTextToolMetadata:

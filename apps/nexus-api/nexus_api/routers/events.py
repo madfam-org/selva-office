@@ -242,7 +242,7 @@ async def events_websocket(websocket: WebSocket) -> None:
     """Real-time event stream over WebSocket.
 
     On connect: sends last 50 events as ``event_batch``.
-    Then relays new events from the ``autoswarm:events`` Redis channel.
+    Then relays new events from the ``selva:events`` Redis channel.
     Same pattern as ``/api/v1/approvals/ws``.
     """
     client_id = websocket.query_params.get("client_id", str(uuid.uuid4()))

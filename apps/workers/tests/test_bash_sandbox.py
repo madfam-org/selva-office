@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_workers.tools.bash_tool import BashTool
+from selva_workers.tools.bash_tool import BashTool
 
 
 @pytest.mark.asyncio

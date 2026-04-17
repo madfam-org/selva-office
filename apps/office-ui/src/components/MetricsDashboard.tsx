@@ -2,7 +2,7 @@
 
 import { type FC } from 'react';
 import { useMetrics, type MetricsPeriod } from '@/hooks/useMetrics';
-import type { TrendPoint } from '@autoswarm/shared-types';
+import type { TrendPoint } from '@selva/shared-types';
 
 interface MetricsDashboardProps {
   open: boolean;

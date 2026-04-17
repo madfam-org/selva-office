@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, type FC } from 'react';
-import type { Department } from '@autoswarm/shared-types';
+import type { Department } from '@selva/shared-types';
 
 interface HUDProps {
   activeAgentCount: number;

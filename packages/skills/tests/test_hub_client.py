@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from autoswarm_skills.hub import SkillsHubClient
+from selva_skills.hub import SkillsHubClient
 
 
 @pytest.mark.asyncio

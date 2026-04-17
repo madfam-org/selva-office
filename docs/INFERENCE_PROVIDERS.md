@@ -1,6 +1,6 @@
 # Inference Providers
 
-Reference for LLM inference providers integrated into AutoSwarm, their pricing,
+Reference for LLM inference providers integrated into Selva, their pricing,
 model catalogs, and routing configuration.
 
 *Last updated: 2026-03-14*
@@ -74,7 +74,7 @@ routing when no assignment matches.
 Supported task types: `planning`, `coding`, `fast_coding`, `review`, `research`,
 `crm`, `support`, `vision`, `embedding`.
 
-Configure assignments in `~/.autoswarm/org-config.yaml` (template at
+Configure assignments in `~/.selva/org-config.yaml` (template at
 `data/org-config-template.yaml`).
 
 ### Cloud Priority (Internal sensitivity)
@@ -133,7 +133,7 @@ OPENROUTER_API_KEY=sk-or-...
 OLLAMA_BASE_URL=http://localhost:11434
 
 # Org config (task-type routing, custom providers)
-ORG_CONFIG_PATH=~/.autoswarm/org-config.yaml
+ORG_CONFIG_PATH=~/.selva/org-config.yaml
 ```
 
 Providers without API keys are silently skipped. The router selects from whatever
@@ -174,7 +174,7 @@ embedding config. Agent templates are excluded from the response.
 Any OpenAI-compatible endpoint can be added at runtime:
 
 ```yaml
-# ~/.autoswarm/org-config.yaml
+# ~/.selva/org-config.yaml
 providers:
   my-provider:
     base_url: https://api.my-provider.com/v1
@@ -190,7 +190,7 @@ automatically as a `GenericOpenAIProvider`.
 
 For providers that should always be available:
 
-1. Add the API key field to `apps/workers/autoswarm_workers/config.py`:
+1. Add the API key field to `apps/workers/selva_workers/config.py`:
    ```python
    my_provider_api_key: str | None = None
    ```

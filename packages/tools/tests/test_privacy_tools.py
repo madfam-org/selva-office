@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins.privacy import (
+from selva_tools.builtins.privacy import (
     DataDeletionTool,
     PIIClassificationTool,
     PrivacyNoticeGeneratorTool,
@@ -185,7 +185,7 @@ class TestPrivacyToolsRegistered:
     """Privacy tools are registered in get_builtin_tools()."""
 
     def test_all_registered_in_builtins(self) -> None:
-        from autoswarm_tools.builtins import get_builtin_tools
+        from selva_tools.builtins import get_builtin_tools
 
         tools = get_builtin_tools()
         names = {t.name for t in tools}

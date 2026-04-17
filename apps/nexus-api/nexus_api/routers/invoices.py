@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 from ..auth import get_current_user, require_non_guest
 from ..config import get_settings
@@ -127,7 +127,7 @@ async def generate_invoice(
             "request_id": request_id,
         }
         task_msg = json.dumps(task_msg_data)
-        await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
+        await pool.execute_with_retry("xadd", "selva:task-stream", {"data": task_msg})
     except Exception:
         task.status = "pending"
         await db.flush()

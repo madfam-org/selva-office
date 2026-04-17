@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 from ..approval_notifier import notify_approval_decision
 from ..auth import get_current_user, require_non_guest
@@ -413,7 +413,7 @@ async def _handle_wave(wave_data: dict[str, Any]) -> None:
             })
             try:
                 await pool.execute_with_retry(
-                    "xadd", "autoswarm:task-stream", {"data": task_msg}
+                    "xadd", "selva:task-stream", {"data": task_msg}
                 )
             except Exception:
                 _wave_logger.warning("Redis unavailable for wave task %s", task.id)

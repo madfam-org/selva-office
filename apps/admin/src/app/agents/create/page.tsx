@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { AgentRole, Department } from '@autoswarm/shared-types';
-import { Button } from '@autoswarm/ui';
+import type { AgentRole, Department } from '@selva/shared-types';
+import { Button } from '@selva/ui';
 
 const NEXUS_API_URL =
   process.env.NEXT_PUBLIC_NEXUS_API_URL ?? 'http://localhost:4300';

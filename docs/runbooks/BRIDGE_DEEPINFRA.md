@@ -18,13 +18,13 @@ row non-zero with `provider_error` spikes).
 
    ```bash
    enclii secrets set DEEPINFRA_API_KEY=<key> --service nexus-api --secret
-   enclii secrets set DEEPINFRA_API_KEY=<key> --service autoswarm-workers --secret
+   enclii secrets set DEEPINFRA_API_KEY=<key> --service selva-workers --secret
    ```
 
    If the CLI is unavailable, fall back to the kubectl form in
    `infra/k8s/production/deepinfra-secret.yaml.example`.
 
-2. Apply the bridge ConfigMap. **This overwrites the live `autoswarm-org-config`
+2. Apply the bridge ConfigMap. **This overwrites the live `selva-org-config`
    ConfigMap** — the default lives in `infra/k8s/production/org-config.yaml`
    and is what you re-apply to revert.
 
@@ -36,7 +36,7 @@ row non-zero with `provider_error` spikes).
 
    ```bash
    kubectl rollout restart deployment/nexus-api -n autoswarm
-   kubectl rollout restart deployment/autoswarm-workers -n autoswarm
+   kubectl rollout restart deployment/selva-workers -n autoswarm
    ```
 
 4. Verify the config took effect:
@@ -65,7 +65,7 @@ Once Anthropic is funded:
 ```bash
 kubectl apply -f infra/k8s/production/org-config.yaml
 kubectl rollout restart deployment/nexus-api -n autoswarm
-kubectl rollout restart deployment/autoswarm-workers -n autoswarm
+kubectl rollout restart deployment/selva-workers -n autoswarm
 ```
 
 Verify revert with the same `intelligence/config` GET — `crm` should return
@@ -129,7 +129,7 @@ If the bridge ConfigMap causes worse issues than the Anthropic outage
 
 ```bash
 kubectl rollout undo deployment/nexus-api -n autoswarm
-kubectl rollout undo deployment/autoswarm-workers -n autoswarm
+kubectl rollout undo deployment/selva-workers -n autoswarm
 kubectl apply -f infra/k8s/production/org-config.yaml
 ```
 

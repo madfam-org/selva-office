@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from autoswarm_skills.hub import SkillsHubClient
+from selva_skills.hub import SkillsHubClient
 
 from ..auth import get_current_user
 
@@ -59,7 +59,7 @@ async def install_skill(body: InstallRequest) -> dict:
     """Download and install a skill from agentskills.io."""
     import os
     target_dir = body.target_dir or os.environ.get(
-        "AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills",
+        "SELVA_SKILLS_DIR", "/var/lib/selva/skills",
     )
     client = SkillsHubClient()
     try:

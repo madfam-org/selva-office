@@ -6,14 +6,14 @@ from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import AIMessage
 
-from autoswarm_permissions.types import ActionCategory, PermissionLevel, PermissionResult
+from selva_permissions.types import ActionCategory, PermissionLevel, PermissionResult
 
 
 class TestCheckPermission:
     """check_permission() helper returns correct results."""
 
     def test_returns_allow_for_file_read(self) -> None:
-        from autoswarm_workers.graphs.base import check_permission
+        from selva_workers.graphs.base import check_permission
 
         result = check_permission({"agent_skill_ids": []}, "file_read")
 
@@ -21,7 +21,7 @@ class TestCheckPermission:
         assert result.level == PermissionLevel.ALLOW
 
     def test_returns_result_for_file_write(self) -> None:
-        from autoswarm_workers.graphs.base import check_permission
+        from selva_workers.graphs.base import check_permission
 
         result = check_permission({"agent_skill_ids": []}, "file_write")
 
@@ -29,21 +29,21 @@ class TestCheckPermission:
         assert result.action_category == ActionCategory.FILE_WRITE
 
     def test_falls_back_to_api_call_for_unknown_category(self) -> None:
-        from autoswarm_workers.graphs.base import check_permission
+        from selva_workers.graphs.base import check_permission
 
         result = check_permission({}, "nonexistent_category")
 
         assert result.action_category == ActionCategory.API_CALL
 
     def test_uses_skill_overrides_when_available(self) -> None:
-        from autoswarm_workers.graphs.base import check_permission
+        from selva_workers.graphs.base import check_permission
 
         # Mock skill registry to allow file_write
         mock_registry = MagicMock()
         mock_registry.get_allowed_tools.return_value = ["file_write"]
 
         with patch(
-            "autoswarm_skills.get_skill_registry",
+            "selva_skills.get_skill_registry",
             return_value=mock_registry,
         ):
             result = check_permission(
@@ -57,7 +57,7 @@ class TestImplementPermissionCheck:
     """implement() respects permission engine decisions."""
 
     def test_implement_blocked_when_permission_denied(self) -> None:
-        from autoswarm_workers.graphs.coding import implement
+        from selva_workers.graphs.coding import implement
 
         mock_result = PermissionResult(
             action_category=ActionCategory.FILE_WRITE,
@@ -67,7 +67,7 @@ class TestImplementPermissionCheck:
         )
 
         with patch(
-            "autoswarm_workers.graphs.coding.check_permission",
+            "selva_workers.graphs.coding.check_permission",
             return_value=mock_result,
         ):
             result = implement({
@@ -78,7 +78,7 @@ class TestImplementPermissionCheck:
         assert result["status"] == "blocked"
 
     def test_implement_proceeds_when_permission_allowed(self) -> None:
-        from autoswarm_workers.graphs.coding import implement
+        from selva_workers.graphs.coding import implement
 
         mock_result = PermissionResult(
             action_category=ActionCategory.FILE_WRITE,
@@ -88,7 +88,7 @@ class TestImplementPermissionCheck:
         )
 
         with patch(
-            "autoswarm_workers.graphs.coding.check_permission",
+            "selva_workers.graphs.coding.check_permission",
             return_value=mock_result,
         ):
             result = implement({
@@ -106,7 +106,7 @@ class TestCRMPermissionCheck:
     """send() in CRM graph respects permission engine."""
 
     def test_send_blocked_when_permission_denied(self) -> None:
-        from autoswarm_workers.graphs.crm import send
+        from selva_workers.graphs.crm import send
 
         mock_result = PermissionResult(
             action_category=ActionCategory.EMAIL_SEND,
@@ -116,7 +116,7 @@ class TestCRMPermissionCheck:
         )
 
         with patch(
-            "autoswarm_workers.graphs.base.check_permission",
+            "selva_workers.graphs.base.check_permission",
             return_value=mock_result,
         ):
             result = send({
@@ -129,7 +129,7 @@ class TestCRMPermissionCheck:
         assert result["status"] == "blocked"
 
     def test_send_proceeds_when_permission_allowed(self) -> None:
-        from autoswarm_workers.graphs.crm import send
+        from selva_workers.graphs.crm import send
 
         mock_result = PermissionResult(
             action_category=ActionCategory.EMAIL_SEND,
@@ -139,7 +139,7 @@ class TestCRMPermissionCheck:
         )
 
         with patch(
-            "autoswarm_workers.graphs.base.check_permission",
+            "selva_workers.graphs.base.check_permission",
             return_value=mock_result,
         ):
             result = send({

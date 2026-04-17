@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { TaskEvent, EventCategory } from '@autoswarm/shared-types';
+import type { TaskEvent, EventCategory } from '@selva/shared-types';
 import { apiFetch, isDemo } from '@/lib/api';
 import { MAX_RECONNECT_DELAY_MS } from '@/lib/constants';
 

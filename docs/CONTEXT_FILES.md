@@ -1,6 +1,6 @@
 # Project Context Files
 
-AutoSwarm supports project-level context files that are automatically injected into ACP system prompts. This allows teams to provide architecture documentation, coding conventions, and agent-specific instructions without modifying the platform.
+Selva supports project-level context files that are automatically injected into ACP system prompts. This allows teams to provide architecture documentation, coding conventions, and agent-specific instructions without modifying the platform.
 
 ---
 

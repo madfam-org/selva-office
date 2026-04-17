@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 try:
-    from autoswarm_skills import DEFAULT_ROLE_SKILLS
+    from selva_skills import DEFAULT_ROLE_SKILLS
 except ImportError:
     DEFAULT_ROLE_SKILLS: dict = {}
 

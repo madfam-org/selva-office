@@ -1,6 +1,6 @@
-# autoswarm-doctor
+# selva-doctor
 
-Preflight check for the Selva / AutoSwarm runtime.
+Preflight check for the Selva / Selva runtime.
 
 Answers one question: **is this environment ready to start autonomous work?**
 
@@ -12,8 +12,8 @@ implementation is ours. Part of closing GAP-15 in
 
 ```bash
 pip install -e packages/doctor
-autoswarm-doctor              # plain-text output, exit 0/1
-autoswarm-doctor --json       # JSON, still honours exit code
+selva-doctor              # plain-text output, exit 0/1
+selva-doctor --json       # JSON, still honours exit code
 ```
 
 Exit codes: `0` if no FAIL checks, `1` otherwise. WARN checks do not
@@ -40,7 +40,7 @@ parallel.
 ## Extending
 
 ```python
-from autoswarm_doctor import Check, CheckStatus, Doctor
+from selva_doctor import Check, CheckStatus, Doctor
 
 async def check_custom_thing():
     return Check("custom.thing", CheckStatus.PASS, "all good")

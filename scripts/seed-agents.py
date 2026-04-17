@@ -269,7 +269,7 @@ def write_json_files() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Seed AutoSwarm Office defaults")
+    parser = argparse.ArgumentParser(description="Seed Selva defaults")
     parser.add_argument(
         "--json-only",
         action="store_true",

@@ -18,8 +18,8 @@ kubectl apply -k infra/k8s/hermes/
 # Verify volumes are bound
 kubectl get pvc -n autoswarm
 # Expected:
-#   autoswarm-skills-pvc       Bound   2Gi  RWX
-#   autoswarm-edge-memory-pvc  Bound   5Gi  RWO
+#   selva-skills-pvc       Bound   2Gi  RWX
+#   selva-edge-memory-pvc  Bound   5Gi  RWO
 ```
 
 > [!WARNING]
@@ -34,23 +34,23 @@ Add these blocks to the **Nexus API Deployment** and **Celery worker Deployment*
 ```yaml
 # spec.template.spec.containers[*].volumeMounts
 volumeMounts:
-  - name: autoswarm-skills
-    mountPath: /var/lib/autoswarm/skills
-  - name: autoswarm-edge-memory   # Nexus API only — single writer (RWO)
+  - name: selva-skills
+    mountPath: /var/lib/selva/skills
+  - name: selva-edge-memory   # Nexus API only — single writer (RWO)
     mountPath: /var/lib/autoswarm
 
 # spec.template.spec.volumes
 volumes:
-  - name: autoswarm-skills
+  - name: selva-skills
     persistentVolumeClaim:
-      claimName: autoswarm-skills-pvc
-  - name: autoswarm-edge-memory
+      claimName: selva-skills-pvc
+  - name: selva-edge-memory
     persistentVolumeClaim:
-      claimName: autoswarm-edge-memory-pvc
+      claimName: selva-edge-memory-pvc
 ```
 
 > [!NOTE]
-> Mount `autoswarm-edge-memory-pvc` **only on the Nexus API pod**. SQLite WAL mode is single-writer. Celery workers only need the `autoswarm-skills-pvc` (RWX).
+> Mount `selva-edge-memory-pvc` **only on the Nexus API pod**. SQLite WAL mode is single-writer. Celery workers only need the `selva-skills-pvc` (RWX).
 
 ---
 
@@ -71,7 +71,7 @@ kubectl run alembic-migrate \
   -- alembic upgrade head
 
 # Verify:
-kubectl exec -n autoswarm deploy/autoswarm-nexus-api -- \
+kubectl exec -n autoswarm deploy/selva-nexus-api -- \
   python -c "from nexus_api.models.schedule import Schedule; print('Schedule table OK')"
 ```
 
@@ -83,7 +83,7 @@ The `secret-hermes.yaml` contains **placeholder** base64 values for all credenti
 
 ### Full Secret — Manual (dev/staging only)
 ```bash
-kubectl create secret generic autoswarm-hermes-secrets -n autoswarm \
+kubectl create secret generic selva-hermes-secrets -n autoswarm \
   --from-literal=TELEGRAM_BOT_TOKEN="<token from @BotFather>" \
   --from-literal=TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
   --from-literal=DISCORD_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
@@ -99,7 +99,7 @@ kubectl create secret generic autoswarm-hermes-secrets -n autoswarm \
 ```bash
 kubeseal --fetch-cert --controller-namespace=kube-system > pub-cert.pem
 
-kubectl create secret generic autoswarm-hermes-secrets -n autoswarm \
+kubectl create secret generic selva-hermes-secrets -n autoswarm \
   --from-literal=SLACK_SIGNING_SECRET="..." \
   --from-literal=TWILIO_AUTH_TOKEN="..." \
   ... \
@@ -112,9 +112,9 @@ kubectl apply -f infra/k8s/hermes/sealed-secret-hermes.yaml
 
 ### ConfigMap — Non-secret values
 ```bash
-kubectl create configmap autoswarm-hermes-config -n autoswarm \
-  --from-literal=AUTOSWARM_SKILLS_DIR=/var/lib/autoswarm/skills \
-  --from-literal=AUTOSWARM_STATE_DB_PATH=/var/lib/autoswarm/autoswarm_state.db \
+kubectl create configmap selva-hermes-config -n autoswarm \
+  --from-literal=SELVA_SKILLS_DIR=/var/lib/selva/skills \
+  --from-literal=SELVA_STATE_DB_PATH=/var/lib/selva/selva_state.db \
   --from-literal=GATEWAY_EMAIL_WHITELIST="ops@yourdomain.com,alerts@yourdomain.com" \
   --from-literal=MEMORY_RETENTION_DAYS=30 \
   --from-literal=SKILL_REFINE_INTERVAL_DAYS=7 \
@@ -125,9 +125,9 @@ Reference both from Deployments:
 ```yaml
 envFrom:
   - secretRef:
-      name: autoswarm-hermes-secrets
+      name: selva-hermes-secrets
   - configMapRef:
-      name: autoswarm-hermes-config
+      name: selva-hermes-config
 ```
 
 ---
@@ -156,8 +156,8 @@ app.conf.beat_schedule = {
 
 Restart the Celery Beat worker to pick up the new schedules:
 ```bash
-kubectl rollout restart deployment/autoswarm-celery-beat -n autoswarm
-kubectl rollout status deployment/autoswarm-celery-beat -n autoswarm
+kubectl rollout restart deployment/selva-celery-beat -n autoswarm
+kubectl rollout status deployment/selva-celery-beat -n autoswarm
 ```
 
 ---
@@ -254,9 +254,9 @@ Ensure the following env vars reach the **Celery worker** container (sourced fro
 
 | Variable | Source | Purpose |
 |---|---|---|
-| `TAVILY_API_KEY` | `autoswarm-hermes-secrets` | Tavily web-search MCP server |
-| `GITHUB_TOKEN` | `autoswarm-hermes-secrets` | GitHub MCP server |
-| `AUTOSWARM_SKILLS_DIR` | `autoswarm-hermes-config` | Override default skills PVC path |
+| `TAVILY_API_KEY` | `selva-hermes-secrets` | Tavily web-search MCP server |
+| `GITHUB_TOKEN` | `selva-hermes-secrets` | GitHub MCP server |
+| `SELVA_SKILLS_DIR` | `selva-hermes-config` | Override default skills PVC path |
 
 The `mcp_config.json` in `packages/workflows/` is baked into the container image. No runtime configuration needed beyond the env vars above.
 
@@ -268,11 +268,11 @@ Run these checks after completing all steps above:
 
 ```bash
 # 1. Skills volume writable from Celery worker
-kubectl exec -n autoswarm deploy/autoswarm-celery -it -- \
-  ls -la /var/lib/autoswarm/skills
+kubectl exec -n autoswarm deploy/selva-celery -it -- \
+  ls -la /var/lib/selva/skills
 
 # 2. Schedules table exists
-kubectl exec -n autoswarm deploy/autoswarm-nexus-api -it -- \
+kubectl exec -n autoswarm deploy/selva-nexus-api -it -- \
   python -c "from nexus_api.models.schedule import Schedule; print('OK')"
 
 # 3. Trigger an ACP run → confirm a skill file appears within 60s
@@ -282,18 +282,18 @@ curl -X POST https://api.autoswarm.yourdomain.com/api/v1/acp/initiate \
   -d '{"target_url": "https://example.com", "description": "ops smoke test"}'
 
 # 4. FTS5 edge memory is recording
-kubectl exec -n autoswarm deploy/autoswarm-nexus-api -it -- python -c "
+kubectl exec -n autoswarm deploy/selva-nexus-api -it -- python -c "
 from nexus_api.memory_store.db import memory_store
 hits = memory_store.fts_search('smoke test')
 print(f'FTS hits: {len(hits)}')
 "
 
 # 5. SkillRefiner beat task fire manually
-kubectl exec -n autoswarm deploy/autoswarm-celery -it -- \
+kubectl exec -n autoswarm deploy/selva-celery -it -- \
   celery -A nexus_api.celery_app call tasks.refine_skills
 
 # 6. MemoryCompactor fire manually
-kubectl exec -n autoswarm deploy/autoswarm-celery -it -- \
+kubectl exec -n autoswarm deploy/selva-celery -it -- \
   celery -A nexus_api.celery_app call tasks.compact_memory --kwargs '{"retention_days": 30}'
 
 # 7. Create a schedule via API
@@ -326,8 +326,8 @@ All variables are declared in `apps/nexus-api/nexus_api/config.py`.
 | `TWILIO_ACCOUNT_SID` | `""` | ✅ | If using SMS | From console.twilio.com |
 | `TAVILY_API_KEY` | `""` | ✅ | For MCP web search | From app.tavily.com |
 | `GITHUB_TOKEN` | `""` | ✅ | For MCP GitHub access | Fine-grained PAT, read:repo scope |
-| `AUTOSWARM_SKILLS_DIR` | `/var/lib/autoswarm/skills` | ConfigMap | ✅ | PVC mount path for skill scripts |
-| `AUTOSWARM_STATE_DB_PATH` | `/var/lib/autoswarm/autoswarm_state.db` | ConfigMap | ✅ | SQLite FTS5 edge memory location |
+| `SELVA_SKILLS_DIR` | `/var/lib/selva/skills` | ConfigMap | ✅ | PVC mount path for skill scripts |
+| `SELVA_STATE_DB_PATH` | `/var/lib/selva/selva_state.db` | ConfigMap | ✅ | SQLite FTS5 edge memory location |
 | `SKILL_REFINE_INTERVAL_DAYS` | `7` | ConfigMap | Optional | Days before a skill is considered stale |
 | `MEMORY_RETENTION_DAYS` | `30` | ConfigMap | Optional | Transcripts older than N days are compacted |
 
@@ -345,8 +345,8 @@ kubectl apply -k infra/k8s/hermes/
 # Verify volumes are bound
 kubectl get pvc -n autoswarm
 # Expected:
-#   autoswarm-skills-pvc       Bound   ...
-#   autoswarm-edge-memory-pvc  Bound   ...
+#   selva-skills-pvc       Bound   ...
+#   selva-edge-memory-pvc  Bound   ...
 ```
 
 > [!WARNING]
@@ -361,23 +361,23 @@ Add the following `volumeMounts` and `volumes` blocks to the **Nexus API** and *
 ```yaml
 # In spec.template.spec.containers[*]:
 volumeMounts:
-  - name: autoswarm-skills
-    mountPath: /var/lib/autoswarm/skills
-  - name: autoswarm-edge-memory
+  - name: selva-skills
+    mountPath: /var/lib/selva/skills
+  - name: selva-edge-memory
     mountPath: /var/lib/autoswarm         # SQLite db lives here
 
 # In spec.template.spec:
 volumes:
-  - name: autoswarm-skills
+  - name: selva-skills
     persistentVolumeClaim:
-      claimName: autoswarm-skills-pvc
-  - name: autoswarm-edge-memory
+      claimName: selva-skills-pvc
+  - name: selva-edge-memory
     persistentVolumeClaim:
-      claimName: autoswarm-edge-memory-pvc
+      claimName: selva-edge-memory-pvc
 ```
 
 > [!NOTE]
-> `autoswarm-edge-memory-pvc` is `ReadWriteOnce` — mount it **only on the Nexus API pod** (single writer). Celery workers only need `autoswarm-skills-pvc` (`ReadWriteMany`).
+> `selva-edge-memory-pvc` is `ReadWriteOnce` — mount it **only on the Nexus API pod** (single writer). Celery workers only need `selva-skills-pvc` (`ReadWriteMany`).
 
 ---
 
@@ -387,7 +387,7 @@ The `secret-hermes.yaml` file contains **placeholder** base64 values. Replace th
 
 ### Option A — Manual (dev/staging only)
 ```bash
-kubectl create secret generic autoswarm-hermes-secrets -n autoswarm \
+kubectl create secret generic selva-hermes-secrets -n autoswarm \
   --from-literal=TELEGRAM_BOT_TOKEN="<token from @BotFather>" \
   --from-literal=TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
   --from-literal=DISCORD_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
@@ -401,7 +401,7 @@ kubectl create secret generic autoswarm-hermes-secrets -n autoswarm \
 # Encrypt each literal into a SealedSecret
 kubeseal --fetch-cert --controller-namespace=kube-system > pub-cert.pem
 
-kubectl create secret generic autoswarm-hermes-secrets -n autoswarm \
+kubectl create secret generic selva-hermes-secrets -n autoswarm \
   --from-literal=TELEGRAM_BOT_TOKEN="..." \
   --dry-run=client -o yaml \
   | kubeseal --cert pub-cert.pem -o yaml > infra/k8s/hermes/sealed-secret-hermes.yaml
@@ -446,15 +446,15 @@ The Phase I Analyst bootstraps MCP servers using `packages/workflows/mcp_config.
 
 | Variable | Source | Purpose |
 |---|---|---|
-| `TAVILY_API_KEY` | `autoswarm-hermes-secrets` | Tavily web-search MCP server |
-| `GITHUB_TOKEN` | `autoswarm-hermes-secrets` | GitHub MCP server |
-| `AUTOSWARM_SKILLS_DIR` | ConfigMap or env | Override default skills PVC path |
+| `TAVILY_API_KEY` | `selva-hermes-secrets` | Tavily web-search MCP server |
+| `GITHUB_TOKEN` | `selva-hermes-secrets` | GitHub MCP server |
+| `SELVA_SKILLS_DIR` | ConfigMap or env | Override default skills PVC path |
 
 Reference these from the Deployment `envFrom`:
 ```yaml
 envFrom:
   - secretRef:
-      name: autoswarm-hermes-secrets
+      name: selva-hermes-secrets
 ```
 
 ---
@@ -463,8 +463,8 @@ envFrom:
 
 ```bash
 # 1. Check the skills volume is writable from the Celery worker
-kubectl exec -n autoswarm deploy/autoswarm-celery -it -- \
-  ls /var/lib/autoswarm/skills
+kubectl exec -n autoswarm deploy/selva-celery -it -- \
+  ls /var/lib/selva/skills
 
 # 2. Trigger a test ACP run and confirm a skill file appears
 curl -X POST https://api.autoswarm.yourdomain.com/api/v1/acp/initiate \
@@ -473,7 +473,7 @@ curl -X POST https://api.autoswarm.yourdomain.com/api/v1/acp/initiate \
   -d '{"target_url": "https://example.com", "description": "parity smoke test"}'
 
 # 3. Validate FTS5 edge memory is recording transcripts
-kubectl exec -n autoswarm deploy/autoswarm-nexus-api -it -- \
+kubectl exec -n autoswarm deploy/selva-nexus-api -it -- \
   python -c "
 from nexus_api.memory_store.db import memory_store
 results = memory_store.fts_search('smoke test')
@@ -499,5 +499,5 @@ All new variables are declared in `apps/nexus-api/nexus_api/config.py` and read 
 | `DISCORD_WEBHOOK_SECRET` | `""` | ✅ if using Discord | HMAC secret for Discord payload validation |
 | `TAVILY_API_KEY` | `""` | ✅ for MCP web search | From app.tavily.com |
 | `GITHUB_TOKEN` | `""` | ✅ for MCP GitHub access | Fine-grained PAT |
-| `AUTOSWARM_SKILLS_DIR` | `/var/lib/autoswarm/skills` | ✅ | PVC mount path for skill scripts |
-| `AUTOSWARM_STATE_DB_PATH` | `/var/lib/autoswarm/autoswarm_state.db` | ✅ | SQLite edge memory location |
+| `SELVA_SKILLS_DIR` | `/var/lib/selva/skills` | ✅ | PVC mount path for skill scripts |
+| `SELVA_STATE_DB_PATH` | `/var/lib/selva/selva_state.db` | ✅ | SQLite edge memory location |

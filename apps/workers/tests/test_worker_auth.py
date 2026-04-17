@@ -10,24 +10,24 @@ class TestGetWorkerAuthHeaders:
 
     def test_returns_bearer_header_from_settings(self) -> None:
         mock_settings = MagicMock(worker_api_token="my-secret-token")
-        with patch("autoswarm_workers.config.get_settings", return_value=mock_settings):
-            from autoswarm_workers.auth import get_worker_auth_headers
+        with patch("selva_workers.config.get_settings", return_value=mock_settings):
+            from selva_workers.auth import get_worker_auth_headers
 
             headers = get_worker_auth_headers()
             assert headers == {"Authorization": "Bearer my-secret-token"}
 
     def test_default_token_is_dev_bypass(self) -> None:
         mock_settings = MagicMock(worker_api_token="dev-bypass")
-        with patch("autoswarm_workers.config.get_settings", return_value=mock_settings):
-            from autoswarm_workers.auth import get_worker_auth_headers
+        with patch("selva_workers.config.get_settings", return_value=mock_settings):
+            from selva_workers.auth import get_worker_auth_headers
 
             headers = get_worker_auth_headers()
             assert headers == {"Authorization": "Bearer dev-bypass"}
 
     def test_returns_dict_type(self) -> None:
         mock_settings = MagicMock(worker_api_token="token")
-        with patch("autoswarm_workers.config.get_settings", return_value=mock_settings):
-            from autoswarm_workers.auth import get_worker_auth_headers
+        with patch("selva_workers.config.get_settings", return_value=mock_settings):
+            from selva_workers.auth import get_worker_auth_headers
 
             headers = get_worker_auth_headers()
             assert isinstance(headers, dict)
@@ -39,7 +39,7 @@ class TestWorkerApiTokenSetting:
 
     def test_default_value(self) -> None:
         with patch.dict("os.environ", {}, clear=False):
-            from autoswarm_workers.config import Settings
+            from selva_workers.config import Settings
 
             s = Settings(
                 redis_url="redis://localhost:6379",
@@ -49,7 +49,7 @@ class TestWorkerApiTokenSetting:
 
     def test_reads_from_env(self) -> None:
         with patch.dict("os.environ", {"WORKER_API_TOKEN": "prod-jwt-token"}, clear=False):
-            from autoswarm_workers.config import Settings
+            from selva_workers.config import Settings
 
             s = Settings(
                 redis_url="redis://localhost:6379",
@@ -64,7 +64,7 @@ class TestNoHardcodedDevBypass:
     def test_no_hardcoded_bearer_in_worker_source(self) -> None:
         from pathlib import Path
 
-        worker_src = Path(__file__).resolve().parent.parent / "autoswarm_workers"
+        worker_src = Path(__file__).resolve().parent.parent / "selva_workers"
         violations: list[str] = []
 
         for py_file in worker_src.rglob("*.py"):

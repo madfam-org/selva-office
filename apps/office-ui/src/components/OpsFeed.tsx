@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type FC } from 'react';
 import { useEventStream } from '@/hooks/useEventStream';
-import type { EventCategory, TaskEvent } from '@autoswarm/shared-types';
+import type { EventCategory, TaskEvent } from '@selva/shared-types';
 
 interface OpsFeedProps {
   open: boolean;
