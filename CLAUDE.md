@@ -84,6 +84,46 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - `apps/office-ui/src/lib/constants.ts` -- Shared UI-layer constants (event keys, reconnect delays)
 - `apps/office-ui/src/lib/logger.ts` -- Dev-only logging wrapper (suppressed in production)
 
+## Outbound Voice Mode + Consent Ledger (v2.2.0)
+
+- **Three legal modes**: `user_direct` (send as the user, no AI disclosure),
+  `dyad_selva_plus_user` (co-branded "Selva on behalf of <user>"), and
+  `agent_identified` (send from `<agent-slug>@selva.town`, explicit agent
+  disclosure). Stored on `tenant_configs.voice_mode` (nullable — NULL means
+  onboarding incomplete).
+- **Append-only consent ledger**: Migration 0018 creates `consent_ledger`
+  (id, org_id, user_sub, user_email, mode, clause_version, typed_confirmation,
+  signer_ip, signer_user_agent, signature_sha256, created_at). UPDATE and
+  DELETE are REVOKEd from the `autoswarm_app` role at the database level —
+  rows can only be appended. Replay `compute_signature()` in
+  `routers/onboarding.py` to verify a row at audit time.
+- **Onboarding API**: `GET /api/v1/onboarding/status`,
+  `GET /api/v1/onboarding/voice-mode/preview/{mode}`,
+  `POST /api/v1/onboarding/voice-mode` (first-run, 409 on second call),
+  `PUT /api/v1/settings/outbound-voice` (change, appends new ledger row).
+- **Tool enforcement**: `SendEmailTool` and `SendMarketingEmailTool`
+  fetch `voice_mode` via nexus-api `/api/v1/onboarding/status` before
+  every send and refuse when NULL. `agent_identified` sends additionally
+  verify SPF/DKIM/DMARC alignment on `selva.town` via
+  `_spf_check.check_alignment()` (10-min TTL cache). Per-mode From
+  header + HTML signature are built by `_email_signatures.build_identity()`.
+- **Legal basis**: Clauses versioned as `voice-mode-v1.0`. Research
+  informed by Mexico LFPDPPP 2025 amendments ("free/specific/informed"),
+  GDPR Art.7 (clear affirmative action, distinguishable, withdrawable),
+  CAN-SPAM (accurate From/Reply-To), California BOT Act SB-1001 (bot
+  disclosure risk on `user_direct` for CA residents), CASL Canada (sender
+  identification), LGPD Brazil (explicit consent + processing record).
+- **UI**: `/onboarding` full-page gate forces selection before `/office`
+  loads; `VoiceModeChangeModal` inside `/office` for later changes;
+  `user_direct` requires an extra acknowledgement checkbox citing SB-1001
+  and CASL. `useVoiceMode()` hook wraps both endpoints.
+- **Events**: `voice_mode.selected` and `voice_mode.changed` land in
+  `task_events` with `event_category = "onboarding"` and the ledger row
+  ID in payload.
+- **Env vars**: `EMAIL_FROM_SELVA` (default `noreply@selva.town`) controls
+  the co-branded address for dyad mode. `NEXUS_API_URL` (workers → API
+  lookup for voice-mode gate) and `WORKER_API_TOKEN` (existing) are reused.
+
 ## Autonomous Pipeline Security (v2.1.1)
 
 - **Dispatch Dedup**: `HeartbeatService` tracks recently dispatched `lead_id`

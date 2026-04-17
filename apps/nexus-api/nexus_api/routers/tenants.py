@@ -163,6 +163,8 @@ class TenantResponse(BaseModel):
     brand_name: str | None = None
     brand_logo_url: str | None = None
     brand_primary_color: str | None = None
+    # Outbound voice mode — NULL means onboarding incomplete
+    voice_mode: str | None = None
     created_at: str
     updated_at: str | None = None
 
@@ -206,6 +208,7 @@ def _to_response(config: TenantConfig) -> TenantResponse:
         brand_name=config.brand_name,
         brand_logo_url=config.brand_logo_url,
         brand_primary_color=config.brand_primary_color,
+        voice_mode=config.voice_mode,
         created_at=config.created_at.isoformat(),
         updated_at=config.updated_at.isoformat() if config.updated_at else None,
     )

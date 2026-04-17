@@ -18,7 +18,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nexus_api.models import ConsentLedger, TaskEvent, TenantConfig
-from nexus_api.routers.onboarding import CLAUSE_VERSION, CONSENT_CLAUSES
+from nexus_api.routers.onboarding import (
+    CLAUSE_VERSION,
+    CONSENT_CLAUSES,
+    compute_signature,
+    verify_signature,
+)
 
 _TENANTS_URL = "/api/v1/tenants"
 
@@ -182,3 +187,102 @@ async def test_voice_mode_selected_emits_event(
     payload = events[0].payload or {}
     assert payload.get("mode") == "user_direct"
     assert payload.get("clause_version") == CLAUSE_VERSION
+
+
+@pytest.mark.asyncio
+async def test_preview_rejects_unknown_mode(
+    client: httpx.AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    resp = await client.get(
+        "/api/v1/onboarding/voice-mode/preview/bogus-mode", headers=auth_headers
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_select_rejects_unknown_mode(
+    client: httpx.AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    await _bootstrap_tenant(client, auth_headers)
+    resp = await client.post(
+        "/api/v1/onboarding/voice-mode",
+        headers=auth_headers,
+        json={"mode": "not-a-real-mode", "typed_confirmation": "anything"},
+    )
+    # pydantic validation returns 422 for unknown mode values
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_select_fails_without_tenant_config(
+    client: httpx.AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    # No tenant created -- voice-mode selection must 404.
+    phrase = CONSENT_CLAUSES["dyad_selva_plus_user"]["typed_phrase"]
+    resp = await client.post(
+        "/api/v1/onboarding/voice-mode",
+        headers=auth_headers,
+        json={"mode": "dyad_selva_plus_user", "typed_confirmation": phrase},
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_tenant_response_exposes_voice_mode_after_selection(
+    client: httpx.AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    await _bootstrap_tenant(client, auth_headers)
+    phrase = CONSENT_CLAUSES["dyad_selva_plus_user"]["typed_phrase"]
+    await client.post(
+        "/api/v1/onboarding/voice-mode",
+        headers=auth_headers,
+        json={"mode": "dyad_selva_plus_user", "typed_confirmation": phrase},
+    )
+    resp = await client.get("/api/v1/tenants/me", headers=auth_headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["voice_mode"] == "dyad_selva_plus_user"
+
+
+@pytest.mark.asyncio
+async def test_verify_signature_detects_tampering(
+    client: httpx.AsyncClient,
+    auth_headers: dict[str, str],
+    db_session: AsyncSession,
+) -> None:
+    await _bootstrap_tenant(client, auth_headers)
+    phrase = CONSENT_CLAUSES["agent_identified"]["typed_phrase"]
+    resp = await client.post(
+        "/api/v1/onboarding/voice-mode",
+        headers=auth_headers,
+        json={"mode": "agent_identified", "typed_confirmation": phrase},
+    )
+    assert resp.status_code == 201
+
+    entry = (await db_session.execute(select(ConsentLedger))).scalar_one()
+
+    # Fresh row — signature verifies.
+    assert verify_signature(entry) is True
+
+    # Mutate `mode` in-memory and verify the digest no longer matches.
+    entry.mode = "user_direct"
+    assert verify_signature(entry) is False
+
+
+def test_compute_signature_is_deterministic() -> None:
+    from datetime import UTC, datetime
+
+    ts = datetime(2026, 4, 17, 12, 0, 0, tzinfo=UTC)
+    args = dict(
+        org_id="org-x",
+        user_sub="sub-x",
+        mode="user_direct",
+        clause_version=CLAUSE_VERSION,
+        typed_confirmation=CONSENT_CLAUSES["user_direct"]["typed_phrase"],
+        created_at=ts,
+    )
+    assert compute_signature(**args) == compute_signature(**args)
+    # Different field -> different digest.
+    assert compute_signature(**{**args, "mode": "agent_identified"}) != compute_signature(
+        **args
+    )

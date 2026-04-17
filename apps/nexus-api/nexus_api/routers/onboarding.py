@@ -188,7 +188,7 @@ def _get_client_ip(request: Request) -> str:
     return client.host if client else "unknown"
 
 
-def _compute_signature(
+def compute_signature(
     *,
     org_id: str,
     user_sub: str,
@@ -202,6 +202,9 @@ def _compute_signature(
     Not a cryptographic signature in the PKI sense — a tamper-evidence
     hash. Any mutation of the row's fields will desync from this digest,
     detectable by replaying the computation at audit time.
+
+    Exported (not underscore-prefixed) so auditors can import it to
+    re-verify ledger rows offline.
     """
     payload = "|".join(
         [
@@ -214,6 +217,36 @@ def _compute_signature(
         ]
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def verify_signature(entry: ConsentLedger) -> bool:
+    """Recompute the SHA-256 digest and compare to the stored value.
+
+    Returns True iff the stored digest matches a fresh computation over
+    the row's current fields. False means the row has been tampered
+    with (or the signing algorithm has moved to a new version).
+
+    Normalizes ``created_at`` the same way the ingest path does
+    (microseconds zeroed, UTC) so the round-trip through the DB does
+    not cause a false-negative.
+    """
+    created_at = entry.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+    created_at = created_at.replace(microsecond=0)
+    expected = compute_signature(
+        org_id=entry.org_id,
+        user_sub=entry.user_sub,
+        mode=entry.mode,
+        clause_version=entry.clause_version,
+        typed_confirmation=entry.typed_confirmation,
+        created_at=created_at,
+    )
+    return expected == entry.signature_sha256
+
+
+# Back-compat alias — keeps the internal call-site signature stable.
+_compute_signature = compute_signature
 
 
 async def _load_tenant(db: AsyncSession, org_id: str) -> TenantConfig:
@@ -257,10 +290,12 @@ async def _record_consent(
             detail="Authenticated user must have a verified email to sign consent.",
         )
 
-    created_at = datetime.now(UTC)
+    # Truncate to whole seconds so the signature survives DB round-trips
+    # (some backends drop sub-second precision on timestamp columns).
+    created_at = datetime.now(UTC).replace(microsecond=0)
     signer_ip = _get_client_ip(request)
     user_agent = request.headers.get("user-agent")
-    signature = _compute_signature(
+    signature = compute_signature(
         org_id=org_id,
         user_sub=user_sub,
         mode=body.mode,

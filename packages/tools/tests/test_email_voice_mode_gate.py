@@ -111,6 +111,64 @@ async def test_send_email_dyad_mode_sends_with_co_branded_from() -> None:
 
 
 @pytest.mark.asyncio
+async def test_send_email_agent_identified_passes_when_aligned() -> None:
+    tool = email_tools.SendEmailTool()
+    good_alignment = SpfResult(
+        domain="selva.town",
+        spf_ok=True,
+        dkim_ok=True,
+        dmarc_ok=True,
+        status="pass",
+        reason="aligned",
+    )
+    captured: dict = {}
+
+    class _MockResp:
+        status_code = 201
+
+        def json(self) -> dict:
+            return {"id": "msg-aid-123"}
+
+    class _MockClient:
+        async def __aenter__(self) -> "_MockClient":
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+        async def post(self, url: str, headers: dict, json: dict) -> _MockResp:
+            captured["payload"] = json
+            return _MockResp()
+
+    with (
+        patch.object(
+            email_tools,
+            "_fetch_voice_mode",
+            AsyncMock(return_value="agent_identified"),
+        ),
+        patch.object(email_tools, "check_alignment", return_value=good_alignment),
+        patch.object(email_tools.httpx, "AsyncClient", lambda timeout=10: _MockClient()),
+        patch.dict("os.environ", {"RESEND_API_KEY": "rk-test"}, clear=False),
+    ):
+        result = await tool.execute(
+            to="dest@example.com",
+            subject="Hi",
+            html="<p>x</p>",
+            org_id="org-1",
+            user_name="Ada",
+            user_email="ada@example.com",
+            agent_slug="nexo",
+            agent_display_name="Nexo",
+            org_name="MADFAM",
+        )
+    assert result.success is True, result.error
+    payload = captured["payload"]
+    assert "nexo@selva.town" in payload["from"]
+    # agent_identified does NOT inject Reply-To (no user mailbox).
+    assert "reply_to" not in payload
+
+
+@pytest.mark.asyncio
 async def test_marketing_email_refuses_without_voice_mode() -> None:
     tool = marketing_tools.SendMarketingEmailTool()
     with (
