@@ -3,9 +3,14 @@ Gap 2: Command Approvals REST router.
 
 Allows operators to view pending dangerous command approval requests and
 resolve them from the API, UI, or any connected gateway channel.
+
+Also emits HITL-confidence decisions (Sprint 1 — observe only): every
+approve/deny here becomes a row in ``hitl_decisions`` so the confidence
+dashboard can grow statistics without any change in enforcement.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import UTC, datetime
 
@@ -14,10 +19,18 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from selva_permissions import (
+    DecisionOutcome,
+    apply_decision,
+    compute_bucket_key,
+    compute_signature,
+)
+
 from ..auth import CurrentUser, require_roles
 from ..database import get_db
 from ..models import ApprovalStatus
 from ..models import CommandApprovalRequest as ApprovalRequest
+from .hitl_confidence import _load_bucket_state, _persist_decision_and_bucket
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/command-approvals", tags=["Command Approvals"])
@@ -92,9 +105,27 @@ async def _resolve(
     if req.status != ApprovalStatus.PENDING:
         raise HTTPException(status_code=409, detail=f"Request already {req.status}")
 
+    decided_at = datetime.now(tz=UTC)
     req.status = ApprovalStatus.APPROVED if approved else ApprovalStatus.DENIED
-    req.resolved_at = datetime.now(tz=UTC)
+    req.resolved_at = decided_at
     req.resolved_by = user.sub
+
+    # Record a HITL-confidence decision alongside the approval row. Best
+    # effort: if anything below fails, the approval itself still resolves.
+    # Sprint 1 is observe-only, so this write never feeds back into the
+    # command-gate itself. Run inside the same commit so the decision + the
+    # approval land atomically.
+    try:
+        await _record_confidence_decision(
+            db=db,
+            request=req,
+            approved=approved,
+            decided_at=decided_at,
+            approver_id=user.sub,
+        )
+    except Exception:
+        logger.exception("HITL confidence recording failed (observe-only, non-fatal)")
+
     await db.commit()
     await db.refresh(req)
 
@@ -104,6 +135,72 @@ async def _resolve(
 
     logger.info("Approval %s %s by %s", request_id, req.status, user.sub)
     return _to_schema(req)
+
+
+async def _record_confidence_decision(
+    *,
+    db: AsyncSession,
+    request: ApprovalRequest,
+    approved: bool,
+    decided_at: datetime,
+    approver_id: str,
+) -> None:
+    """Emit a HITL decision for this approval resolution.
+
+    The command approval path doesn't carry an agent_id or org_id today,
+    so we use the run_id as the agent slot and ``*`` as the org. Workers
+    that surface richer context (org, lead-stage, template) should POST
+    directly to ``/api/v1/hitl/decisions`` instead of going through this
+    router. This wiring exists so the dashboard starts showing data the
+    moment Sprint 1 lands, even for the thinnest approval pathway.
+    """
+    # Latency: approval latency from request creation to resolution.
+    latency_ms: int | None = None
+    if request.requested_at is not None:
+        requested = request.requested_at
+        if requested.tzinfo is None:
+            # Defensive: older rows may have naive timestamps.
+            from datetime import timezone
+
+            requested = requested.replace(tzinfo=timezone.utc)
+        latency_ms = int((decided_at - requested).total_seconds() * 1000)
+
+    action_category = "infrastructure_exec"  # command-approvals gate dangerous commands
+    ctx = {
+        "agent_role": "system",
+        "run_id": request.run_id,
+    }
+    signature = compute_signature(action_category, ctx)
+    bucket_key = compute_bucket_key(
+        agent_id=request.run_id,
+        action_category=action_category,
+        org_id="*",
+        context_signature=signature,
+    )
+    _, state = await _load_bucket_state(db, bucket_key)
+    outcome = (
+        DecisionOutcome.APPROVED_CLEAN if approved else DecisionOutcome.REJECTED
+    )
+    next_state = apply_decision(state, outcome)
+    payload_hash = hashlib.sha256(
+        (request.command or "").encode("utf-8")
+    ).hexdigest()
+    await _persist_decision_and_bucket(
+        db,
+        agent_id=request.run_id,
+        action_category=action_category,
+        org_id="*",
+        context_signature=signature,
+        bucket_key=bucket_key,
+        next_state=next_state,
+        outcome=outcome,
+        approver_id=approver_id,
+        latency_ms=latency_ms,
+        payload_hash=payload_hash,
+        diff_hash=None,
+        parent_decision_id=None,
+        notes=None,
+    )
 
 
 def _to_schema(r: ApprovalRequest) -> ApprovalRequestResponse:

@@ -554,3 +554,155 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
     )
+
+
+# ---------------------------------------------------------------------------
+# HITL Confidence (Sprint 1 — observe only)
+# ---------------------------------------------------------------------------
+#
+# The HITL confidence system tracks approve/modify/reject decisions per
+# (agent, action_category, org, context_signature) bucket so that — in
+# later sprints — policy can widen autonomy for buckets with sustained
+# high approval rates. Sprint 1 is observe-only: we record decisions and
+# roll them into `hitl_confidence` but never change the permission engine's
+# behaviour. See the design doc for the promotion ladder and thresholds.
+
+
+class HitlOutcome(enum.StrEnum):
+    """Terminal outcomes for a HITL decision.
+
+    Order matters for the Beta posterior update:
+        approved_clean      → α += 1.0  (full trust signal)
+        approved_modified   → α += 0.3, β += 0.7  (partial rejection)
+        rejected            → β += 1.0
+        timeout             → β += 0.5  (silence ≠ approval)
+        downstream_reverted → β += 2.0  (loud negative; demotes buckets)
+    """
+
+    APPROVED_CLEAN = "approved_clean"
+    APPROVED_MODIFIED = "approved_modified"
+    REJECTED = "rejected"
+    TIMEOUT = "timeout"
+    DOWNSTREAM_REVERTED = "downstream_reverted"
+
+
+class HitlConfidenceTier(enum.StrEnum):
+    """Promotion ladder. Sprint 1 only ever assigns ASK."""
+
+    ASK = "ask"
+    ASK_QUIET = "ask_quiet"
+    ALLOW_SHADOW = "allow_shadow"
+    ALLOW = "allow"
+
+
+class HitlDecision(Base):
+    """Append-only event log for every HITL decision.
+
+    Primary source of truth — `hitl_confidence` is derived from this
+    table and can always be rebuilt. Rows are never updated or deleted;
+    downstream signals (revert / complaint) appear as new rows that
+    reference the original via ``parent_decision_id``.
+    """
+
+    __tablename__ = "hitl_decisions"
+    __table_args__ = (
+        Index("ix_hitl_decisions_bucket_decided", "bucket_key", "decided_at"),
+        Index("ix_hitl_decisions_agent_cat", "agent_id", "action_category"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    # Pre-computed sha256 of agent_id:action_category:org_id:context_signature.
+    # Used as the join key to `hitl_confidence`.
+    bucket_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    action_category: Mapped[str] = mapped_column(String(50), nullable=False)
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    context_signature: Mapped[str] = mapped_column(String(64), nullable=False)
+    context_signature_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )
+
+    approver_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    outcome: Mapped[HitlOutcome] = mapped_column(Enum(HitlOutcome), nullable=False)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Hashes — never the raw payload, so the audit trail is PII-free even
+    # when rebuilt or replicated. Investigators follow the hash back to
+    # the primary request store if they need the text.
+    payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    diff_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Reference to the original decision when this row is a downstream
+    # signal (revert / complaint). Null for the primary approve/deny row.
+    parent_decision_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("hitl_decisions.id"), nullable=True
+    )
+
+    # Free-form annotation by the approver (optional). Capped at 500 chars.
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class HitlConfidence(Base):
+    """Rolling per-bucket confidence state.
+
+    Incrementally updated on every write to `hitl_decisions`. The Beta
+    distribution shape (α, β) is the canonical posterior; `confidence`
+    is the mean (α / (α+β)) cached for fast dashboard reads. Tier stays
+    ``ASK`` throughout Sprint 1 — promotion logic lands in Sprint 2.
+    """
+
+    __tablename__ = "hitl_confidence"
+    __table_args__ = (
+        Index("ix_hitl_confidence_agent_cat", "agent_id", "action_category"),
+    )
+
+    bucket_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    action_category: Mapped[str] = mapped_column(String(50), nullable=False)
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    context_signature: Mapped[str] = mapped_column(String(64), nullable=False)
+    context_signature_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )
+
+    n_observed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    n_approved_clean: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    n_approved_modified: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    n_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    n_timeout: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    n_reverted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Beta posterior — starts at (1.0, 1.0) for an uninformative prior.
+    beta_alpha: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    beta_beta: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    # Cached mean = alpha / (alpha + beta). Recomputed on every update.
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+
+    tier: Mapped[HitlConfidenceTier] = mapped_column(
+        Enum(HitlConfidenceTier),
+        nullable=False,
+        default=HitlConfidenceTier.ASK,
+    )
+    last_promoted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # When a revert/complaint fires we set `locked_until` and refuse to
+    # promote past the current tier until the lock clears. Sprint 1 never
+    # writes this field — kept on the model so Sprint 2 can use it.
+    locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_decision_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )

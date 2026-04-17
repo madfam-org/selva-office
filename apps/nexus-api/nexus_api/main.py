@@ -40,6 +40,7 @@ from .routers import (
     events,
     gateway,
     health,
+    hitl_confidence,
     inference_proxy,
     intelligence,
     invoices,
@@ -189,6 +190,8 @@ def create_app() -> FastAPI:
     app.include_router(crm_webhooks.router, prefix="/api/v1")
     # Revenue-loop probe (A.7) — draft/email-send dry runs + run persistence
     app.include_router(probe.router, prefix="/api/v1/probe")
+    # HITL Confidence (Sprint 1 observe-only) — decisions ledger + dashboard
+    app.include_router(hitl_confidence.router, prefix="/api/v1")
 
     # -- OpenAI-compatible inference proxy (ecosystem LLM gateway) -------------
     app.include_router(inference_proxy.router, prefix="/v1")
