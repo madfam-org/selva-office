@@ -26,6 +26,7 @@ from typing import Any
 
 import httpx
 
+from .._audit import emit_secret_access_event
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,9 @@ class VaultStoreTool(BaseTool):
 
             # NEVER log the actual value
             logger.info("Vault: stored secret %s in namespace %s", key, ns)
+            await emit_secret_access_event(
+                operation="write", key=key, namespace=ns, success=True
+            )
             return ToolResult(
                 success=True,
                 output=f"Stored secret {key} in {ns} (value: {masked})",
@@ -125,6 +129,10 @@ class VaultStoreTool(BaseTool):
             )
         except httpx.HTTPError as exc:
             logger.error("Vault store failed for %s: %s", key, exc)
+            await emit_secret_access_event(
+                operation="write", key=key, namespace=ns, success=False,
+                error_message=str(exc),
+            )
             return ToolResult(success=False, error=f"Vault store failed: {exc}")
 
 
@@ -176,6 +184,9 @@ class VaultRetrieveTool(BaseTool):
             masked = _mask(value)
 
             logger.info("Vault: retrieved secret %s from namespace %s", key, ns)
+            await emit_secret_access_event(
+                operation="read", key=key, namespace=ns, success=True
+            )
             return ToolResult(
                 success=True,
                 output=f"Retrieved secret {key} from {ns} (value: {masked})",
@@ -184,9 +195,21 @@ class VaultRetrieveTool(BaseTool):
             )
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
+                await emit_secret_access_event(
+                    operation="read", key=key, namespace=ns, success=False,
+                    error_message=f"404 not_found",
+                )
                 return ToolResult(success=False, error=f"Secret {key} not found in {ns}")
+            await emit_secret_access_event(
+                operation="read", key=key, namespace=ns, success=False,
+                error_message=str(exc),
+            )
             return ToolResult(success=False, error=f"Vault retrieve failed: {exc}")
         except httpx.HTTPError as exc:
+            await emit_secret_access_event(
+                operation="read", key=key, namespace=ns, success=False,
+                error_message=str(exc),
+            )
             return ToolResult(success=False, error=f"Vault retrieve failed: {exc}")
 
 
@@ -277,12 +300,19 @@ class VaultDeleteTool(BaseTool):
                 resp.raise_for_status()
 
             logger.info("Vault: deleted secret %s from namespace %s", key, ns)
+            await emit_secret_access_event(
+                operation="delete", key=key, namespace=ns, success=True
+            )
             return ToolResult(
                 success=True,
                 output=f"Deleted secret {key} from {ns}",
                 data={"key": key, "namespace": ns, "deleted": True},
             )
         except httpx.HTTPError as exc:
+            await emit_secret_access_event(
+                operation="delete", key=key, namespace=ns, success=False,
+                error_message=str(exc),
+            )
             return ToolResult(success=False, error=f"Vault delete failed: {exc}")
 
 
@@ -353,6 +383,9 @@ class VaultRotateTool(BaseTool):
             masked_old = _mask(old_value) if old_value else "(none)"
             masked_new = _mask(new_value)
             logger.info("Vault: rotated secret %s in namespace %s", key, ns)
+            await emit_secret_access_event(
+                operation="rotate", key=key, namespace=ns, success=True
+            )
 
             return ToolResult(
                 success=True,
@@ -365,6 +398,10 @@ class VaultRotateTool(BaseTool):
                 },
             )
         except httpx.HTTPError as exc:
+            await emit_secret_access_event(
+                operation="rotate", key=key, namespace=ns, success=False,
+                error_message=str(exc),
+            )
             return ToolResult(success=False, error=f"Vault rotate failed: {exc}")
 
 
