@@ -7,6 +7,7 @@ import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
 import { DiffViewer } from './DiffViewer';
+import { extractAffectedFiles } from '@/lib/diffPaths';
 
 const ACTION_TAGS: Record<ActionCategory, string> = {
   file_read: '[R]',
@@ -189,6 +190,7 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
             {sortedApprovals.map((request, idx) => {
               const isExpanded = expandedId === request.id;
               const feedback = feedbackMap[request.id] ?? '';
+              const affectedFiles = extractAffectedFiles(request.diff);
               return (
                 <div
                   key={request.id}
@@ -223,10 +225,44 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
                       </span>
                     </div>
                     {!isExpanded && (
-                      <p className="mt-1 font-mono text-[8px] text-slate-400 truncate">
-                        {request.reasoning.substring(0, 80)}
-                        {request.reasoning.length > 80 ? '...' : ''}
-                      </p>
+                      <>
+                        <p className="mt-1 font-mono text-[8px] text-slate-400 truncate">
+                          {request.reasoning.substring(0, 80)}
+                          {request.reasoning.length > 80 ? '...' : ''}
+                        </p>
+                        {affectedFiles.length > 0 && (
+                          <div className="mt-1 flex items-center gap-1 flex-wrap">
+                            <span className="font-mono text-[7px] uppercase text-slate-600">
+                              Files:
+                            </span>
+                            {affectedFiles.slice(0, 2).map((f) => (
+                              <span
+                                key={`${f.kind}:${f.path}`}
+                                className={`font-mono text-[7px] px-1 py-0.5 truncate max-w-[11rem] ${
+                                  f.kind === 'added'
+                                    ? 'bg-emerald-950/50 text-emerald-300'
+                                    : f.kind === 'deleted'
+                                    ? 'bg-red-950/50 text-red-300'
+                                    : 'bg-indigo-950/50 text-indigo-300'
+                                }`}
+                                title={`${f.kind}: ${f.path}`}
+                              >
+                                {f.kind === 'added'
+                                  ? '+ '
+                                  : f.kind === 'deleted'
+                                  ? '- '
+                                  : '~ '}
+                                {f.path}
+                              </span>
+                            ))}
+                            {affectedFiles.length > 2 && (
+                              <span className="font-mono text-[7px] text-slate-500">
+                                +{affectedFiles.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </button>
 
