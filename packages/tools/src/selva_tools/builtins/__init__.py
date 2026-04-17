@@ -89,6 +89,12 @@ from .phygital_tools import (
     GenerateQuoteTool,
     RunDFMAnalysisTool,
 )
+from .pricing_intel import (
+    CatalogLoadTool,
+    CatalogPromoStackTool,
+    CatalogTierGapTool,
+    CompetitorPriceLookupTool,
+)
 from .product_catalog import ProductCatalogTool
 from .privacy import DataDeletionTool, PIIClassificationTool, PrivacyNoticeGeneratorTool
 from .slack import SlackMessageTool
@@ -220,6 +226,11 @@ def get_builtin_tools() -> list[BaseTool]:
         GenericERPExportTool(),
         # Product catalog (MADFAM ecosystem)
         ProductCatalogTool(),
+        # Pricing intelligence — continuous catalog + promo audit
+        CatalogLoadTool(),
+        CatalogTierGapTool(),
+        CatalogPromoStackTool(),
+        CompetitorPriceLookupTool(),
         # Revenue tools (Ledger Node)
         CreateCheckoutLinkTool(),
         GetRevenueMetricsTool(),
