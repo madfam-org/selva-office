@@ -69,6 +69,62 @@ def validate_providers() -> None:
 _router: ModelRouter | None = None
 
 
+# Max chars for response / prompt snippets shipped inside the `payload`
+# of llm.response observability events. Chosen so a 280-char preview (the
+# limit OpsFeed's `extractLlmPreview` truncates at) stays whole while the
+# rest of the string is available via the per-task timeline endpoint.
+LLM_EVENT_TEXT_MAX_CHARS = 800
+
+
+def _build_llm_event_payload(
+    *,
+    messages: list[dict[str, Any]],
+    response_content: str,
+    sensitivity: Sensitivity,
+) -> dict[str, Any] | None:
+    """Assemble the `payload` field for an ``llm.response`` event.
+
+    Returns None for RESTRICTED workloads so prompt / response text
+    never reaches the event bus. For INTERNAL / PUBLIC, returns a
+    dict with ``response_text`` (capped) and ``prompt_snippet`` (the
+    last user-message content, capped). Extractor contract mirrors
+    ``office-ui/src/components/OpsFeed.tsx::extractLlmPreview``.
+    """
+    if sensitivity == Sensitivity.RESTRICTED:
+        return None
+
+    def _cap(text: str) -> str:
+        trimmed = (text or "").strip()
+        if len(trimmed) <= LLM_EVENT_TEXT_MAX_CHARS:
+            return trimmed
+        return trimmed[:LLM_EVENT_TEXT_MAX_CHARS] + "…"
+
+    payload: dict[str, Any] = {}
+    response_capped = _cap(response_content)
+    if response_capped:
+        payload["response_text"] = response_capped
+
+    # Use the last user-role message as the prompt snippet. Fall back to
+    # the last message of any role if there is no user message, so tests
+    # and single-message calls still get a preview.
+    last_user = next(
+        (m for m in reversed(messages) if m.get("role") == "user"),
+        messages[-1] if messages else None,
+    )
+    if last_user:
+        raw = last_user.get("content")
+        prompt_text = (
+            raw if isinstance(raw, str)
+            else str(raw) if raw is not None
+            else ""
+        )
+        prompt_capped = _cap(prompt_text)
+        if prompt_capped:
+            payload["prompt_snippet"] = prompt_capped
+
+    return payload or None
+
+
 def get_model_router() -> ModelRouter:
     """Return a lazily-initialised singleton ``ModelRouter``."""
     global _router  # noqa: PLW0603
@@ -117,10 +173,21 @@ async def call_llm(
             (response.usage.get("total_tokens") or 0) if response.usage else 0
         )
 
-        # Emit LLM event for observability
+        # Emit LLM event for observability.
+        #
+        # Include truncated response + last-message prompt snippets so the
+        # UI's OpsFeed (office-ui PR #23) can surface what the agent is
+        # actually saying, not just metadata. Skipped when sensitivity is
+        # RESTRICTED — those prompts / responses never hit the event bus.
         import contextlib
 
         from .config import get_settings as _get_llm_settings
+
+        llm_payload = _build_llm_event_payload(
+            messages=messages,
+            response_content=response.content,
+            sensitivity=sensitivity,
+        )
 
         with contextlib.suppress(Exception):
             await _emit_llm_event(
@@ -133,6 +200,7 @@ async def call_llm(
                 model=response.model,
                 token_count=_total_tokens,
                 duration_ms=_llm_elapsed,
+                payload=llm_payload,
             )
 
         # Meter the inference call to the billing ledger.
