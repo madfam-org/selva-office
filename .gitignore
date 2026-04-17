@@ -68,3 +68,9 @@ apps/gateway/data/
 *.key
 *.p12
 *.pfx
+
+# Python virtual envs used by test harnesses
+.venv-test/
+
+# Local dev selva state DB
+selva_state.db
