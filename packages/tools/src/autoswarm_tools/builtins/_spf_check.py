@@ -23,7 +23,7 @@ from dataclasses import dataclass
 logger = logging.getLogger("autoswarm.email.spf")
 
 _TTL_SECONDS = 600  # 10 minutes
-_CACHE: dict[str, tuple[float, "SpfResult"]] = {}
+_CACHE: dict[str, tuple[float, SpfResult]] = {}
 
 
 @dataclass(frozen=True)

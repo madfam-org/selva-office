@@ -11,7 +11,7 @@ These tests run without a real nexus-api by monkeypatching the
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -77,7 +77,7 @@ async def test_send_email_dyad_mode_sends_with_co_branded_from() -> None:
             return {"id": "msg-123"}
 
     class _MockClient:
-        async def __aenter__(self) -> "_MockClient":
+        async def __aenter__(self) -> _MockClient:
             return self
 
         async def __aexit__(self, *args: object) -> None:
@@ -130,7 +130,7 @@ async def test_send_email_agent_identified_passes_when_aligned() -> None:
             return {"id": "msg-aid-123"}
 
     class _MockClient:
-        async def __aenter__(self) -> "_MockClient":
+        async def __aenter__(self) -> _MockClient:
             return self
 
         async def __aexit__(self, *args: object) -> None:
