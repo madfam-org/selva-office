@@ -68,13 +68,6 @@ const UNPRICED_PRODUCTS: {
   reason: string;
 }[] = [
   {
-    slug: 'routecraft',
-    name: 'RouteCraft',
-    description: 'Event-based routing and trip planning for distributed teams.',
-    status: 'live',
-    reason: 'No pricing committed. Conekta webhook path is complete end-to-end.',
-  },
-  {
     slug: 'rondelio',
     name: 'Rondelio',
     description: 'Game Intelligence Cloud.',
