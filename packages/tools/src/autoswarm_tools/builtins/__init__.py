@@ -70,6 +70,7 @@ from .legal import (
 from .billing_tools import CreateCheckoutLinkTool, GetRevenueMetricsTool
 from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
 from .dns import get_dns_tools
+from .npm_registry import get_npm_registry_tools
 from .vault import get_vault_tools
 from .enclii_infra import (
     EncliiExecTool,
@@ -241,6 +242,8 @@ def get_builtin_tools() -> list[BaseTool]:
         EncliiSecretsTool(),
         # DNS management tools (Porkbun — Orchestration Node)
         *get_dns_tools(),
+        # NPM registry management (Verdaccio — token rotation + GitHub secrets)
+        *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)
         *get_vault_tools(),
     ]
