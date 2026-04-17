@@ -6,6 +6,7 @@ import { gameEventBus } from '@/game/PhaserGame';
 import { EVENT_CHAT_FOCUS } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useToast } from '@/hooks/useToast';
+import { DiffViewer } from './DiffViewer';
 
 const ACTION_TAGS: Record<ActionCategory, string> = {
   file_read: '[R]',
@@ -239,9 +240,12 @@ export const ApprovalPanel: FC<ApprovalPanelProps> = ({
                       </div>
 
                       {request.diff && (
-                        <pre className="max-h-48 overflow-auto bg-black p-3 font-mono text-[8px] text-slate-300">
-                          {request.diff}
-                        </pre>
+                        <div className="max-h-48 overflow-auto">
+                          <DiffViewer
+                            diff={request.diff}
+                            ariaLabel={`Proposed diff for ${request.agentName}`}
+                          />
+                        </div>
                       )}
 
                       <textarea
