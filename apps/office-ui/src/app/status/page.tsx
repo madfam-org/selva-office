@@ -205,9 +205,12 @@ export default async function StatusPage() {
             </Link>
             <span>/</span>
             <span className="text-slate-400">status</span>
-            <span className="ml-auto">
+            <span className="ml-auto flex gap-3">
               <Link href="/catalog" className="text-slate-500 hover:text-emerald-400">
                 catalog →
+              </Link>
+              <Link href="/bundles" className="text-slate-500 hover:text-emerald-400">
+                bundles →
               </Link>
             </span>
           </div>

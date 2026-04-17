@@ -337,7 +337,10 @@ export default async function CatalogPage() {
             </Link>
             <span>/</span>
             <span className="text-slate-400">catalog</span>
-            <span className="ml-auto">
+            <span className="ml-auto flex gap-3">
+              <Link href="/bundles" className="text-slate-500 hover:text-emerald-400">
+                bundles →
+              </Link>
               <Link href="/status" className="text-slate-500 hover:text-emerald-400">
                 status →
               </Link>
