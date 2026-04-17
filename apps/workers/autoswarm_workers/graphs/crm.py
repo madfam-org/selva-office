@@ -17,6 +17,38 @@ from .base import run_async as _run_async
 logger = logging.getLogger(__name__)
 
 
+# -- T3.2 attribution helper --------------------------------------------------
+
+
+def _emit_playbook_sent_safe(
+    *,
+    lead_id: str,
+    playbook: Any,
+    task_id: str,
+    to_email: str,
+    utm_campaign: str,
+) -> None:
+    """Fire `playbook.sent` to PostHog; never raise."""
+    if not lead_id:
+        return
+    try:
+        from ..attribution import domain_of, emit_playbook_sent
+
+        playbook_name = ""
+        if isinstance(playbook, dict):
+            playbook_name = str(playbook.get("name") or "")
+        emit_playbook_sent(
+            lead_id,
+            playbook_name=playbook_name or "crm_auto",
+            task_id=task_id,
+            channel="email",
+            recipient_domain=domain_of(to_email),
+            utm_campaign=utm_campaign,
+        )
+    except Exception:
+        logger.debug("emit_playbook_sent failed (non-fatal)", exc_info=True)
+
+
 # -- State --------------------------------------------------------------------
 
 
@@ -31,6 +63,12 @@ class CRMState(BaseGraphState, TypedDict, total=False):
     product_interest: str
     lead_score: int | None
     playbook: dict | None
+    # T3.2 — attribution chain. `lead_id` is an opaque string threaded
+    # from the inbound CRM webhook through to the email tool metadata so
+    # PostHog events keep a single anonymous distinct_id across the funnel.
+    lead_id: str
+    utm_source: str
+    utm_campaign: str
 
 
 # -- Node functions -----------------------------------------------------------
@@ -332,25 +370,53 @@ def send(state: CRMState) -> CRMState:
             "result": {"error": "llm_unavailable"},
         }
 
+    # T3.2 — thread lead_id through the email hop. Tool call metadata
+    # carries the attribution chain so downstream (Stripe / Dhanam) can
+    # read it back from the UTM cookie on the customer's browser.
+    lead_id = state.get("lead_id", "") or ""
+    utm_campaign = state.get("utm_campaign", "hot_lead_auto") or "hot_lead_auto"
+
     if to_email and _email_re.match(to_email) and draft_content:
         try:
             from autoswarm_tools.builtins.marketing_tools import SendMarketingEmailTool
 
             tool = SendMarketingEmailTool()
             subject = f"Oportunidad para {state.get('contact_name', 'usted')}"
+            # If we have a lead_id, append it to utm_campaign so the
+            # tracking pixel on the recipient's browser carries it
+            # through to Dhanam checkout. Dhanam reads `utm_campaign`
+            # from the cookie at checkout time.
+            effective_utm = (
+                f"{utm_campaign}__{lead_id}" if lead_id else utm_campaign
+            )
             email_result = _run_async(tool.execute(
                 to_email=to_email,
                 subject=subject,
                 body_html=draft_content,
-                utm_campaign="hot_lead_auto",
+                utm_campaign=effective_utm,
+                lead_id=lead_id,
             ))
             send_result["email_id"] = (
                 email_result.data.get("email_id") if email_result.success else None
             )
             send_result["email_sent"] = email_result.success
+            send_result["lead_id"] = lead_id
             if email_result.success:
                 masked = to_email[:3] + "***@" + to_email.split("@")[-1] if "@" in to_email else "***"
-                logger.info("Email sent to %s (id: %s)", masked, send_result.get("email_id"))
+                logger.info(
+                    "Email sent to %s (id: %s, lead_id: %s)",
+                    masked, send_result.get("email_id"), lead_id or "-",
+                )
+                # T3.2 — emit `playbook.sent` on successful send. Done
+                # here (not in the tool) so the tool stays reusable by
+                # non-attribution flows (e.g. direct agent outreach).
+                _emit_playbook_sent_safe(
+                    lead_id=lead_id,
+                    playbook=state.get("playbook"),
+                    task_id=state.get("task_id", ""),
+                    to_email=to_email,
+                    utm_campaign=effective_utm,
+                )
             else:
                 logger.warning("Email send failed: %s", email_result.error)
         except Exception as e:

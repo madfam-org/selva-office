@@ -326,6 +326,13 @@ async def process_task(task_data: dict) -> None:
         initial_state["contact_name"] = payload.get("contact_name", "")
         initial_state["product_interest"] = payload.get("product_interest", "")
         initial_state["lead_score"] = payload.get("lead_score")
+        # T3.2 attribution — thread the lead_id through to the graph so
+        # the send node can stamp it onto PostHog + UTM metadata.
+        initial_state["lead_id"] = (
+            task_data.get("lead_id") or payload.get("lead_id", "")
+        )
+        initial_state["utm_source"] = payload.get("utm_source", "selva")
+        initial_state["utm_campaign"] = payload.get("utm_campaign", "hot_lead_auto")
         # Pass playbook data for conditional approval bypass
         playbook = task_data.get("playbook") or payload.get("playbook")
         if playbook:
