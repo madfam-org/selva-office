@@ -205,6 +205,11 @@ export default async function StatusPage() {
             </Link>
             <span>/</span>
             <span className="text-slate-400">status</span>
+            <span className="ml-auto">
+              <Link href="/catalog" className="text-slate-500 hover:text-emerald-400">
+                catalog →
+              </Link>
+            </span>
           </div>
           <h1 className="pixel-text mb-3 text-lg text-emerald-400">
             Revenue-loop probe status
