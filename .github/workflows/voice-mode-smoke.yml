@@ -1,0 +1,46 @@
+name: Voice-mode smoke test
+
+# T2.2 from the MXN flywheel roadmap. Nightly guardrail against silent
+# regressions in the outbound voice-mode consent gate.
+
+on:
+  schedule:
+    # Every night at 03:00 UTC (~21:00 CDMX). After the bulk of daily
+    # deploys but before EU/US business hours.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Override NEXUS_API_URL (defaults to staging)"
+        required: false
+        type: string
+
+jobs:
+  smoke:
+    name: Voice-mode gate smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NEXUS_API_URL: ${{ inputs.api_url || vars.NEXUS_API_STAGING_URL || 'https://staging-api.selva.town' }}
+      SELVA_SMOKE_TOKEN: ${{ secrets.SELVA_SMOKE_TOKEN }}
+      EXPECTED_CLAUSE_VERSION: "voice-mode-v1.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run voice-mode smoke test
+        id: smoke
+        run: ./scripts/voice-mode-smoke-test.sh --json | tee smoke-result.json
+
+      - name: Surface failures
+        if: failure()
+        run: |
+          echo "::error::Voice-mode smoke test failed against $NEXUS_API_URL"
+          jq -r '.checks[] | select(.status=="fail") | "  ✗ \(.name) — \(.detail)"' smoke-result.json || cat smoke-result.json
+
+      - name: Upload result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-mode-smoke-${{ github.run_id }}
+          path: smoke-result.json
+          retention-days: 30
