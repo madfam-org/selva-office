@@ -1,8 +1,48 @@
 'use client';
 
-import { useEffect, useRef, type FC } from 'react';
+import { useEffect, useRef, useState, type FC } from 'react';
 import { useEventStream } from '@/hooks/useEventStream';
 import type { EventCategory, TaskEvent } from '@autoswarm/shared-types';
+
+/**
+ * Pull a human-readable snippet out of an LLM event's payload.
+ *
+ * The worker's `inference.py` emits `llm.response` / `llm.request`
+ * events whose payload may (or may not) carry the actual message
+ * text. Field name varies by emitter — check the common ones, fall
+ * back cleanly. Return null when there's nothing to show, so the
+ * EventCard can skip the block entirely.
+ *
+ * Capped at 280 chars to keep the OpsFeed scannable; the full
+ * payload is always available via the per-task timeline endpoint.
+ */
+const PREVIEW_MAX_CHARS = 280;
+export function extractLlmPreview(
+  payload: Record<string, unknown> | null,
+): { label: string; text: string } | null {
+  if (!payload) return null;
+  const candidates: Array<[string, string]> = [
+    ['response', 'response_text'],
+    ['response', 'content'],
+    ['response', 'text'],
+    ['response', 'output'],
+    ['prompt', 'prompt_snippet'],
+    ['prompt', 'prompt'],
+    ['prompt', 'input'],
+  ];
+  for (const [label, key] of candidates) {
+    const v = payload[key];
+    if (typeof v === 'string' && v.trim().length > 0) {
+      const trimmed = v.trim();
+      const text =
+        trimmed.length > PREVIEW_MAX_CHARS
+          ? `${trimmed.slice(0, PREVIEW_MAX_CHARS)}…`
+          : trimmed;
+      return { label, text };
+    }
+  }
+  return null;
+}
 
 interface OpsFeedProps {
   open: boolean;
@@ -51,8 +91,11 @@ function formatTime(iso: string): string {
 }
 
 const EventCard: FC<{ event: TaskEvent }> = ({ event }) => {
+  const [expanded, setExpanded] = useState(false);
   const borderColor = CATEGORY_COLORS[event.event_category as EventCategory] ?? 'border-l-slate-500';
   const isError = event.event_type.includes('error') || event.event_type.includes('failed') || event.event_type.includes('timeout');
+  const llmPreview =
+    event.event_category === 'llm' ? extractLlmPreview(event.payload) : null;
 
   return (
     <div
@@ -89,6 +132,25 @@ const EventCard: FC<{ event: TaskEvent }> = ({ event }) => {
         <p className="mt-0.5 truncate text-red-400 text-[7px]">
           {event.error_message}
         </p>
+      )}
+
+      {llmPreview && (
+        <div className="mt-1">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1 text-[7px] uppercase text-purple-400 hover:text-purple-300"
+            aria-expanded={expanded}
+            aria-label={`Toggle ${llmPreview.label} preview`}
+          >
+            <span>{expanded ? '▾' : '▸'}</span>
+            <span>{llmPreview.label}</span>
+          </button>
+          {expanded && (
+            <pre className="mt-0.5 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-black/60 p-1.5 text-[7px] text-purple-200">
+              {llmPreview.text}
+            </pre>
+          )}
+        </div>
       )}
     </div>
   );
