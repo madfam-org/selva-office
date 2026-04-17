@@ -18,7 +18,9 @@ import json
 import os
 import sys
 
-from .probe import ProbeContext, RevenueLoopProbe
+import httpx
+
+from .probe import ProbeContext, ProbeReport, RevenueLoopProbe
 from .steps import (
     CrmHotLeadStep,
     DhanamBillingStep,
@@ -106,6 +108,37 @@ async def _run(ctx: ProbeContext, steps, *, short_circuit: bool, timeout_s: floa
         )
 
 
+async def _upload_report(report: ProbeReport, env: dict[str, str]) -> tuple[bool, str]:
+    """Best-effort POST of the report to Nexus /api/v1/probe/runs.
+
+    The probe's exit code must NOT depend on whether Nexus accepted the
+    upload — the probe's own stages define success. We log the outcome
+    for the CronJob logs but never escalate. selva.town /status renders
+    from the most recent successful upload; a failed upload means the
+    page stays stale, not that the loop itself is broken.
+    """
+    base_url = env.get("NEXUS_API_URL")
+    token = env.get("NEXUS_PROBE_TOKEN")
+    if not base_url or not token:
+        return False, "NEXUS_API_URL or NEXUS_PROBE_TOKEN not set — upload skipped"
+    url = f"{base_url.rstrip('/')}/api/v1/probe/runs"
+    try:
+        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as http:
+            resp = await http.post(
+                url,
+                json=report.to_dict(),
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Probe-Correlation-Id": report.correlation_id,
+                },
+            )
+    except Exception as exc:  # noqa: BLE001
+        return False, f"upload failed: {type(exc).__name__}: {exc}"
+    if resp.status_code >= 400:
+        return False, f"upload returned {resp.status_code}: {resp.text[:160]}"
+    return True, "uploaded"
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -130,7 +163,14 @@ def main(argv: list[str] | None = None) -> int:
     report = asyncio.run(
         _run(ctx, steps, short_circuit=args.short_circuit, timeout_s=args.timeout_s)
     )
-    print(json.dumps(report.to_dict(), indent=2))
+
+    # Upload to Nexus for the selva.town /status page. Best-effort — the
+    # probe's exit code reflects loop health, not Nexus availability.
+    uploaded, upload_detail = asyncio.run(_upload_report(report, env))
+
+    report_dict = report.to_dict()
+    report_dict["_upload"] = {"ok": uploaded, "detail": upload_detail}
+    print(json.dumps(report_dict, indent=2))
     return 0 if report.ok else 1
 
 

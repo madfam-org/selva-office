@@ -95,6 +95,17 @@ class Settings(BaseSettings):
     # -- Worker-to-API auth ---------------------------------------------------
     worker_api_token: str = "dev-bypass"  # Shared secret for worker/gateway → API calls
 
+    # -- Revenue-loop probe ---------------------------------------------------
+    # Shared secret between the MADFAM revenue-loop probe (K8s CronJob in
+    # packages/revenue-loop-probe) and the Nexus probe endpoints. Distinct
+    # from worker_api_token so we can rotate probe credentials without
+    # disrupting live agent workers.
+    nexus_probe_token: str = ""
+
+    # Sender address stamped on probe-issued email sends (dry-run returns
+    # this in the `from_address` contract check).
+    email_from: str = "Selva <noreply@selva.town>"
+
     # -- Colyseus -------------------------------------------------------------
     colyseus_secret: str = "change-me-in-production"
 

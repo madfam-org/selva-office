@@ -47,6 +47,7 @@ from .routers import (
     marketplace,
     metrics,
     playbooks,
+    probe,
     schedules,
     skills,
     skills_hub,
@@ -186,6 +187,8 @@ def create_app() -> FastAPI:
     # Autonomous operations (Swarm Manifesto)
     app.include_router(playbooks.router, prefix="/api/v1")
     app.include_router(crm_webhooks.router, prefix="/api/v1")
+    # Revenue-loop probe (A.7) — draft/email-send dry runs + run persistence
+    app.include_router(probe.router, prefix="/api/v1/probe")
 
     # -- OpenAI-compatible inference proxy (ecosystem LLM gateway) -------------
     app.include_router(inference_proxy.router, prefix="/v1")
