@@ -163,6 +163,14 @@ class SendMarketingEmailTool(BaseTool):
                 "agent_slug": {"type": "string"},
                 "agent_display_name": {"type": "string"},
                 "org_name": {"type": "string"},
+                "lead_id": {
+                    "type": "string",
+                    "description": (
+                        "Opaque lead identifier threaded through the T3.2 "
+                        "attribution funnel. Used as PostHog distinct_id "
+                        "when set. See docs/attribution-contract.md."
+                    ),
+                },
             },
             "required": ["to_email", "subject", "body_html", "org_id", "user_email"],
         }
@@ -284,13 +292,20 @@ class SendMarketingEmailTool(BaseTool):
                 resp.raise_for_status()
                 data = resp.json()
 
-            # Track in PostHog if available
+            # Track in PostHog if available. When a lead_id is threaded
+            # through from the CRM graph, use it as distinct_id so the
+            # T3.2 attribution funnel stays single-sourced (do NOT use
+            # the recipient email — it would fork the funnel once the
+            # user authenticates via Janua/Dhanam).
             try:
                 from nexus_api.analytics import track
-                track(to_email, "marketing_email_sent", {
+                lead_id = kwargs.get("lead_id") or ""
+                distinct_id = lead_id or to_email
+                track(distinct_id, "marketing_email_sent", {
                     "subject": subject,
                     "utm_campaign": utm_campaign,
                     "agent_tool": "send_marketing_email",
+                    "lead_id": lead_id,
                 })
             except Exception:
                 pass

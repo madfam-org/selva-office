@@ -14,6 +14,11 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..attribution import (
+    domain_of,
+    emit_lead_qualified,
+    extract_lead_id,
+)
 from ..config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -96,16 +101,25 @@ async def phyne_crm_webhook(request: Request):
         }
         graph_type = graph_type_map.get(internal_event, "research")
 
-        # Build task description from CRM event data
+        # Build task description from CRM event data. PII-safe: reference
+        # lead_id, not contact_name, so logs / ops dashboards stay clean.
         contact_name = data.get("contact_name", data.get("name", "Unknown"))
         contact_email = data.get("contact_email", data.get("email", ""))
-        description = f"CRM auto-dispatch: {event_type} for {contact_name} ({contact_email})"
+
+        # T3.2 — extract a stable `lead_id` and thread it through the funnel.
+        lead_id = extract_lead_id(data)
+
+        description = f"CRM auto-dispatch: {event_type} for lead:{lead_id}"
 
         task_payload = {
             "trigger_event": internal_event,
             "crm_event": event_type,
             "crm_data": data,
             "playbook_id": matching_playbook["id"],
+            # Attribution glue — preserved across the hop to the worker.
+            "lead_id": lead_id,
+            "utm_source": data.get("utm_source", "selva"),
+            "utm_campaign": data.get("utm_campaign", "hot_lead_auto"),
         }
 
         # Use Redis to enqueue directly (same pattern as swarms.py)
@@ -122,6 +136,10 @@ async def phyne_crm_webhook(request: Request):
             "payload": task_payload,
             "playbook_id": matching_playbook["id"],
             "playbook": matching_playbook,
+            # Promote lead_id to a top-level field for downstream consumers
+            # (worker initial_state loader, ops dashboards) that don't
+            # want to reach into payload.
+            "lead_id": lead_id,
         })
 
         pool = get_redis_pool(url=settings.redis_url)
@@ -134,14 +152,35 @@ async def phyne_crm_webhook(request: Request):
             matching_playbook["name"],
         )
 
-        # Track in PostHog
+        # T3.2 attribution funnel — emit `lead.qualified` with the
+        # anonymous lead_id as distinct_id. Never use contact_email as
+        # distinct_id: that would fork the funnel once the user
+        # authenticates with Janua.
+        try:
+            emit_lead_qualified(
+                lead_id,
+                trigger_event=internal_event,
+                playbook_name=matching_playbook["name"],
+                task_id=task_id,
+                utm_source=task_payload.get("utm_source", "selva"),
+                extra={
+                    "crm_event": event_type,
+                    "graph_type": graph_type,
+                    "recipient_domain": domain_of(contact_email),
+                },
+            )
+        except Exception:
+            logger.debug("emit_lead_qualified failed (non-fatal)", exc_info=True)
+
+        # Legacy ops event kept for the existing dashboards — distinct
+        # from the attribution funnel above.
         try:
             from ..analytics import track
             track("system", "selva_crm_auto_dispatch", {
                 "event": event_type,
                 "playbook": matching_playbook["name"],
                 "task_id": task_id,
-                "contact_email": contact_email,
+                "lead_id": lead_id,
             })
         except Exception:
             pass
@@ -151,6 +190,7 @@ async def phyne_crm_webhook(request: Request):
             "task_id": task_id,
             "playbook": matching_playbook["name"],
             "graph_type": graph_type,
+            "lead_id": lead_id,
         }
 
     except Exception as exc:
