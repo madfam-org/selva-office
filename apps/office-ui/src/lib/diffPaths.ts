@@ -1,5 +1,7 @@
 /**
- * Parse the "affected file paths" from a unified diff string.
+ * Parse the "affected file paths" from a unified diff string, and
+ * optionally split a multi-file diff into per-file sections so the UI
+ * can navigate between files without a backend worktree browser.
  *
  * A unified diff carries each file in a header block of the form:
  *
@@ -15,9 +17,7 @@
  * `/dev/null`, so we fall back to the `--- a/<path>` line in that
  * case.
  *
- * Used by `ApprovalPanel` to render an "Affected files" badge on
- * the collapsed card so reviewers can see which file(s) an agent
- * wants to touch before expanding. Pure-function; no DOM deps.
+ * Pure-function; no DOM deps.
  */
 
 export interface AffectedFile {
@@ -26,19 +26,30 @@ export interface AffectedFile {
   kind: 'added' | 'deleted' | 'modified';
 }
 
+export interface DiffSection extends AffectedFile {
+  /** The per-file diff body including its `---` / `+++` / `@@` headers. */
+  body: string;
+}
+
 const HEADER_ADDED = /^\+\+\+\s+(?:b\/)?(.+?)\s*$/;
 const HEADER_DELETED = /^---\s+(?:a\/)?(.+?)\s*$/;
 const DEV_NULL = /^\/?dev\/null$/;
 
-export function extractAffectedFiles(diff: string | null | undefined): AffectedFile[] {
-  if (!diff) return [];
+interface InternalSection {
+  startIdx: number;
+  nextIdx: number;
+  delPath: string;
+  addPath: string;
+}
 
+/**
+ * Walk a unified diff and yield one record per `--- … / +++ …` pair.
+ * Shared by `extractAffectedFiles` and `splitDiffByFile` so there's
+ * exactly one place that knows how the header pairs line up.
+ */
+function findSections(diff: string): { lines: string[]; sections: InternalSection[] } {
   const lines = diff.split('\n');
-  const files: AffectedFile[] = [];
-
-  // Walk the diff pairwise — a `---` line should be immediately followed
-  // by a `+++` line; when both are non-null we have a modification; when
-  // one is /dev/null we have an add or delete.
+  const sections: InternalSection[] = [];
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
@@ -50,30 +61,41 @@ export function extractAffectedFiles(diff: string | null | undefined): AffectedF
     const nextLine = lines[i + 1] ?? '';
     const addMatch = HEADER_ADDED.exec(nextLine);
     if (!addMatch) {
-      // Orphan `---` without a matching `+++` — skip (malformed or
-      // pathological; diff viewers will still render each side).
+      // Orphan `---` without a matching `+++` — skip (malformed).
       i += 1;
       continue;
     }
-
-    const delPath = delMatch[1];
-    const addPath = addMatch[1];
-    const delIsNull = DEV_NULL.test(delPath);
-    const addIsNull = DEV_NULL.test(addPath);
-
-    if (delIsNull && !addIsNull) {
-      files.push({ path: addPath, kind: 'added' });
-    } else if (addIsNull && !delIsNull) {
-      files.push({ path: delPath, kind: 'deleted' });
-    } else if (!delIsNull && !addIsNull) {
-      // Modification — both sides present; prefer the post-change path.
-      files.push({ path: addPath, kind: 'modified' });
-    }
-    // If both are /dev/null it's a no-op diff header; skip.
-
+    sections.push({
+      startIdx: i,
+      nextIdx: i + 2,
+      delPath: delMatch[1],
+      addPath: addMatch[1],
+    });
     i += 2;
   }
+  return { lines, sections };
+}
 
+function classify(
+  delPath: string,
+  addPath: string,
+): { path: string; kind: AffectedFile['kind'] } | null {
+  const delIsNull = DEV_NULL.test(delPath);
+  const addIsNull = DEV_NULL.test(addPath);
+  if (delIsNull && !addIsNull) return { path: addPath, kind: 'added' };
+  if (addIsNull && !delIsNull) return { path: delPath, kind: 'deleted' };
+  if (!delIsNull && !addIsNull) return { path: addPath, kind: 'modified' };
+  return null;
+}
+
+export function extractAffectedFiles(diff: string | null | undefined): AffectedFile[] {
+  if (!diff) return [];
+  const { sections } = findSections(diff);
+  const files: AffectedFile[] = [];
+  for (const s of sections) {
+    const c = classify(s.delPath, s.addPath);
+    if (c) files.push(c);
+  }
   // Deduplicate — a single file touched twice in one diff still counts once.
   const seen = new Set<string>();
   return files.filter((f) => {
@@ -82,4 +104,32 @@ export function extractAffectedFiles(diff: string | null | undefined): AffectedF
     seen.add(key);
     return true;
   });
+}
+
+/**
+ * Split a multi-file unified diff into one `DiffSection` per file.
+ *
+ * Each section carries the full original text from its `--- ` header
+ * up to the next file's `--- ` header (or end-of-diff), so the section
+ * body is independently renderable by `DiffViewer`. This lets the
+ * approval UI show a per-file picker / navigation without needing a
+ * backend worktree endpoint — the diff already carries the full
+ * proposed change.
+ *
+ * Returns an empty array for empty / null / unparseable input.
+ */
+export function splitDiffByFile(diff: string | null | undefined): DiffSection[] {
+  if (!diff) return [];
+  const { lines, sections: raw } = findSections(diff);
+  if (raw.length === 0) return [];
+
+  const out: DiffSection[] = [];
+  for (let i = 0; i < raw.length; i += 1) {
+    const section = raw[i];
+    const endIdx = i + 1 < raw.length ? raw[i + 1].startIdx : lines.length;
+    const body = lines.slice(section.startIdx, endIdx).join('\n');
+    const c = classify(section.delPath, section.addPath);
+    if (c) out.push({ ...c, body });
+  }
+  return out;
 }
