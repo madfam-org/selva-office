@@ -41,6 +41,7 @@ from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, F
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
+from .k8s_secret import KubernetesSecretWriteTool
 from .intelligence import (
     DOFMonitorTool,
     ExchangeRateTool,
@@ -258,4 +259,6 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)
         *get_vault_tools(),
+        # RFC 0005 Sprint 1a — Kubernetes Secret writer (HITL gated per env)
+        KubernetesSecretWriteTool(),
     ]
