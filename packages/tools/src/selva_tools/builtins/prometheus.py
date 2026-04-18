@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -276,7 +276,7 @@ class PromSilenceCreateTool(BaseTool):
             return ToolResult(
                 success=False, error="matchers must be a non-empty list."
             )
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ends = now + timedelta(minutes=int(kwargs["duration_minutes"]))
         payload = {
             "matchers": [
