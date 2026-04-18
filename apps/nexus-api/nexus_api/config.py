@@ -134,6 +134,12 @@ class Settings(BaseSettings):
     csp_extra_sources: str = ""
     log_format: str = "json"
 
+    # -- Revenue-loop probe (A.7) ---------------------------------------------
+    # Bearer token the external probe presents to hit /api/v1/probe/*.
+    # Empty default means the endpoints return 503 (feature not configured),
+    # matching the pattern of other optional external-provider tokens.
+    nexus_probe_token: str = ""
+
     model_config = {
         "env_file": (str(_PROJECT_ROOT / ".env"), ".env"),
         "env_file_encoding": "utf-8",
