@@ -18,6 +18,21 @@ interface TRPCResponse<T = unknown> {
   result?: { data?: T };
 }
 
+/**
+ * tRPC responses may arrive in two shapes depending on whether the server has
+ * the superjson transformer enabled:
+ *   - plain: `result.data = [...items]`
+ *   - superjson: `result.data = { json: { items: [...] } }` or `{ items: [...] }`
+ *
+ * Phyne-CRM currently runs both shapes across environments, so we accept
+ * either and defer the discriminant check to runtime.
+ */
+type TRPCListEnvelope<TItem> =
+  | TItem[]
+  | { json?: { items?: TItem[] }; items?: TItem[] }
+  | undefined
+  | null;
+
 interface PhyneLead {
   id: string;
   contact_id: string;
@@ -129,13 +144,11 @@ export class CRMScraper {
       return [];
     }
 
-    const json = (await response.json()) as TRPCResponse;
-    // tRPC with superjson: { result: { data: { json: { items: [...] } } } }
-    // tRPC without superjson: { result: { data: [...] } }
+    const json = (await response.json()) as TRPCResponse<TRPCListEnvelope<PhyneLead>>;
     const data = json.result?.data;
     const leads: PhyneLead[] = Array.isArray(data)
       ? data
-      : (data as any)?.json?.items ?? (data as any)?.items ?? [];
+      : data?.json?.items ?? data?.items ?? [];
     return leads;
   }
 
@@ -162,11 +175,11 @@ export class CRMScraper {
       return [];
     }
 
-    const json = (await response.json()) as TRPCResponse;
+    const json = (await response.json()) as TRPCResponse<TRPCListEnvelope<PhyneActivity>>;
     const data = json.result?.data;
     const activities: PhyneActivity[] = Array.isArray(data)
       ? data
-      : (data as any)?.json?.items ?? (data as any)?.items ?? [];
+      : data?.json?.items ?? data?.items ?? [];
     return activities.filter(
       (a) => a.status === "pending" || a.status === "overdue"
     );

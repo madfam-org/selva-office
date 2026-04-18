@@ -4,6 +4,31 @@ import { mockLogger } from "./helpers";
 // We test the HeartbeatService methods by importing the class and mocking
 // external dependencies (Octokit, WebSocket).
 
+/**
+ * Minimal structural types for the private surface we drive from tests.
+ * The real fields live on HeartbeatService; this alias just lets us cast
+ * without reaching for `any` every time. Keeping it loose — tests don't
+ * need to model the full private API, only what they invoke or inject.
+ */
+interface ExternalEvent {
+  source: string;
+  type: string;
+  payload: Record<string, unknown>;
+  timestamp: string;
+}
+interface EnemyWave {
+  kind: string;
+  source: string;
+  events: ExternalEvent[];
+  compiledAt: string;
+}
+interface HeartbeatPrivates {
+  scrapeGitHub(): Promise<ExternalEvent[]>;
+  compileEnemyWaves(events: ExternalEvent[]): EnemyWave[];
+  dispatch(waves: EnemyWave[]): Promise<void>;
+  ws: unknown;
+}
+
 // ---------------------------------------------------------------------------
 // scrapeGitHub
 // ---------------------------------------------------------------------------
@@ -27,7 +52,7 @@ describe("scrapeGitHub", () => {
     );
 
     // Access private method via type assertion
-    const events = await (service as any).scrapeGitHub();
+    const events = await (service as unknown as HeartbeatPrivates).scrapeGitHub();
     expect(events).toEqual([]);
   });
 
@@ -42,7 +67,7 @@ describe("scrapeGitHub", () => {
       mockLogger()
     );
 
-    const events = await (service as any).scrapeGitHub();
+    const events = await (service as unknown as HeartbeatPrivates).scrapeGitHub();
     expect(events).toEqual([]);
   });
 });
@@ -60,7 +85,7 @@ describe("compileEnemyWaves", () => {
       mockLogger()
     );
 
-    const waves = (service as any).compileEnemyWaves([]);
+    const waves = (service as unknown as HeartbeatPrivates).compileEnemyWaves([]);
     expect(waves).toEqual([]);
   });
 
@@ -78,11 +103,11 @@ describe("compileEnemyWaves", () => {
       { source: "crm", type: "follow_up", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
     ];
 
-    const waves = (service as any).compileEnemyWaves(events);
+    const waves = (service as unknown as HeartbeatPrivates).compileEnemyWaves(events);
     expect(waves).toHaveLength(2);
 
-    const githubWave = waves.find((w: any) => w.source === "github");
-    const crmWave = waves.find((w: any) => w.source === "crm");
+    const githubWave = waves.find((w: EnemyWave) => w.source === "github");
+    const crmWave = waves.find((w: EnemyWave) => w.source === "crm");
 
     expect(githubWave.events).toHaveLength(2);
     expect(crmWave.events).toHaveLength(1);
@@ -101,7 +126,7 @@ describe("compileEnemyWaves", () => {
       { source: "tickets", type: "normal", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
     ];
 
-    const waves = (service as any).compileEnemyWaves(events);
+    const waves = (service as unknown as HeartbeatPrivates).compileEnemyWaves(events);
     expect(waves).toHaveLength(1);
     expect(waves[0].kind).toBe("alert");
   });
@@ -118,7 +143,7 @@ describe("compileEnemyWaves", () => {
       { source: "support", type: "sla_breach", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
     ];
 
-    const waves = (service as any).compileEnemyWaves(events);
+    const waves = (service as unknown as HeartbeatPrivates).compileEnemyWaves(events);
     expect(waves[0].kind).toBe("alert");
   });
 
@@ -134,7 +159,7 @@ describe("compileEnemyWaves", () => {
       { source: "github", type: "pr_review_requested", payload: {}, timestamp: "2026-03-06T00:00:00Z" },
     ];
 
-    const waves = (service as any).compileEnemyWaves(events);
+    const waves = (service as unknown as HeartbeatPrivates).compileEnemyWaves(events);
     expect(waves[0].kind).toBe("enemy_wave");
   });
 });
@@ -162,7 +187,7 @@ describe("dispatch", () => {
     };
 
     // Inject mock websocket
-    (service as any).ws = mockWs;
+    (service as unknown as HeartbeatPrivates).ws = mockWs;
 
     const waves = [
       {
@@ -173,7 +198,7 @@ describe("dispatch", () => {
       },
     ];
 
-    await (service as any).dispatch(waves);
+    await (service as unknown as HeartbeatPrivates).dispatch(waves);
 
     expect(mockWs.send).toHaveBeenCalledTimes(1);
     const sent = JSON.parse(mockWs.send.mock.calls[0][0]);
