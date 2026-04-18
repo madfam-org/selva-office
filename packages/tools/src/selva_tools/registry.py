@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from .audience import Audience, can_access
 from .base import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -39,19 +40,42 @@ class ToolRegistry:
         """Get a tool by name."""
         return self._tools.get(name)
 
-    def list_tools(self) -> list[str]:
-        """List all registered tool names."""
-        return sorted(self._tools.keys())
+    def list_tools(self, audience: Audience | None = None) -> list[str]:
+        """List registered tool names, optionally filtered by audience.
 
-    def get_specs(self, tool_names: list[str] | None = None) -> list[dict[str, Any]]:
+        If ``audience`` is None, returns every registered tool (backward
+        compat with early callers). If set, returns only tools whose
+        ``audience`` is accessible to the requested swarm audience —
+        PLATFORM sees all, TENANT sees only TENANT-tagged.
+        """
+        if audience is None:
+            return sorted(self._tools.keys())
+        return sorted(
+            name for name, tool in self._tools.items()
+            if can_access(tool.audience, audience)
+        )
+
+    def get_specs(
+        self,
+        tool_names: list[str] | None = None,
+        *,
+        audience: Audience | None = None,
+    ) -> list[dict[str, Any]]:
         """Generate OpenAI function-calling specs for the given tools.
 
-        If tool_names is None, returns specs for all registered tools.
+        If ``tool_names`` is None, returns specs for all registered tools.
+        If ``audience`` is set, platform-only tools are filtered out for
+        tenant audiences (and for unknown ``tool_names``, those are
+        already dropped silently — this just adds an audience gate on
+        the matched tools). PLATFORM audience sees everything; TENANT
+        sees only TENANT-tagged tools.
         """
         if tool_names is None:
-            tools = self._tools.values()
+            tools = list(self._tools.values())
         else:
             tools = [self._tools[n] for n in tool_names if n in self._tools]
+        if audience is not None:
+            tools = [t for t in tools if can_access(t.audience, audience)]
         return [t.to_openai_spec() for t in tools]
 
     def discover_builtins(self) -> None:
