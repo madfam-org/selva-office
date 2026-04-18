@@ -24,12 +24,15 @@ from selva_observability import (
     init_sentry,
     init_tracing,
 )
+from selva_permissions import resolve_audience
 from selva_redis_pool import get_redis_pool
 from selva_redis_pool.task_stream import (
     MAX_RETRIES,
     TaskStreamConsumer,
 )
 from selva_redis_pool.timeout import get_task_timeout
+from selva_tools import Audience as ToolAudience
+from selva_tools import with_audience
 
 from .checkpointer import create_checkpointer
 from .config import get_settings
@@ -292,6 +295,20 @@ async def process_task(task_data: dict) -> None:
     if locale != "en" and "locale" not in workflow_variables:
         workflow_variables["locale"] = locale
 
+    # Resolve swarm audience from the task's org_id. Platform org (per
+    # PLATFORM_ORG_ID env) gets Audience.PLATFORM and can see all tools
+    # + platform skills; every other tenant gets Audience.TENANT and
+    # only sees the filtered registry. We cast the selva_permissions
+    # enum to the selva_tools enum so ``enforce_audience()`` in the
+    # tool layer matches by identity.
+    payload_for_audience = task_data.get("payload", {}) or {}
+    task_org_id = (
+        task_data.get("org_id")
+        or payload_for_audience.get("org_id")
+        or ""
+    )
+    task_audience = ToolAudience(resolve_audience(task_org_id).value)
+
     initial_state: dict = {
         "messages": [],
         "task_id": task_id,
@@ -306,6 +323,10 @@ async def process_task(task_data: dict) -> None:
         "locale": locale,
         "description": task_data.get("description", ""),
         "current_node_id": "",
+        # Thread org_id + audience uniformly so every graph can reason
+        # about which swarm this is running for.
+        "org_id": task_org_id,
+        "audience": task_audience.value,
     }
 
     # Add graph-specific state
@@ -457,21 +478,27 @@ async def process_task(task_data: dict) -> None:
         # Apply per-graph-type timeout
         timeout = get_task_timeout(graph_type)
 
-        if graph_type == "custom":
-            # Stream node progress for custom workflows
-            result = await asyncio.wait_for(
-                _run_custom_with_streaming(
-                    compiled, initial_state, task_id, agent_id, handler
-                ),
-                timeout=timeout,
-            )
-        else:
-            result = await asyncio.wait_for(
-                run_graph_with_interrupts(
-                    compiled, initial_state, task_id, agent_id, handler
-                ),
-                timeout=timeout,
-            )
+        # Bind the swarm's audience so any tool that calls
+        # enforce_audience() sees the current task's audience. The
+        # context is reset at the end of the ``with`` block so workers
+        # that process multiple tasks concurrently don't leak audience
+        # across tasks.
+        with with_audience(task_audience):
+            if graph_type == "custom":
+                # Stream node progress for custom workflows
+                result = await asyncio.wait_for(
+                    _run_custom_with_streaming(
+                        compiled, initial_state, task_id, agent_id, handler
+                    ),
+                    timeout=timeout,
+                )
+            else:
+                result = await asyncio.wait_for(
+                    run_graph_with_interrupts(
+                        compiled, initial_state, task_id, agent_id, handler
+                    ),
+                    timeout=timeout,
+                )
         graph_status = result.get("status", "completed")
         if graph_status in ("completed", "pushed"):
             api_status = "completed"

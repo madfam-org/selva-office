@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import abc
+import functools
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from .audience import Audience
+from .audience import Audience, enforce_audience
 
 
 class ToolResult(BaseModel):
@@ -40,6 +41,30 @@ class BaseTool(abc.ABC):
     name: str
     description: str
     audience: Audience = Audience.TENANT
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Auto-wrap each concrete subclass's ``execute`` with an audience
+        guard so tenant swarms can never invoke a platform tool at runtime.
+
+        Runs once per subclass at class-definition time. If the subclass
+        sets an explicit ``__selva_audience_enforced__ = True``, we
+        still re-wrap (belt-and-braces) — the wrapper is idempotent
+        via a sentinel attribute on the wrapped function.
+        """
+        super().__init_subclass__(**kwargs)
+        execute_fn = cls.__dict__.get("execute")
+        if execute_fn is None:
+            return  # Intermediate base, no own execute — skip.
+        if getattr(execute_fn, "_selva_audience_guarded", False):
+            return  # Already wrapped (e.g. via super().__init_subclass__).
+
+        @functools.wraps(execute_fn)
+        async def _guarded(self: BaseTool, **kw: Any) -> ToolResult:
+            enforce_audience(self.audience)
+            return await execute_fn(self, **kw)
+
+        _guarded._selva_audience_guarded = True  # type: ignore[attr-defined]
+        cls.execute = _guarded  # type: ignore[method-assign]
 
     @abc.abstractmethod
     def parameters_schema(self) -> dict[str, Any]:
