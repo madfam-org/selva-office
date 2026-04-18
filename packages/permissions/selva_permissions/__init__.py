@@ -1,5 +1,12 @@
 """AutoSwarm Permissions -- HITL permission system with action classification."""
 
+from .audience import (
+    PLATFORM_ORG_ID_ENV,
+    Audience,
+    get_platform_org_id,
+    is_platform_audience,
+    resolve_audience,
+)
 from .classifier import ActionClassifier
 from .confidence import (
     CREDIBLE_LOWER_BOUND_THRESHOLD,
@@ -42,6 +49,7 @@ from .role_matrices import ROLE_PERMISSION_MATRICES
 
 __all__ = [
     "ActionClassifier",
+    "Audience",
     "BucketState",
     "ConfidenceTier",
     "ContextRule",
@@ -49,6 +57,7 @@ __all__ = [
     "DEFAULT_PERMISSION_MATRIX",
     "DecisionOutcome",
     "INITIAL_BUCKET_STATE",
+    "PLATFORM_ORG_ID_ENV",
     "PermissionContext",
     "PermissionEngine",
     "RiskScoreRule",
@@ -72,6 +81,9 @@ __all__ = [
     "effective_tier",
     "features_for",
     "forced_ask_sample",
+    "get_platform_org_id",
+    "is_platform_audience",
     "promote_if_eligible",
+    "resolve_audience",
     "reversibility_cap",
 ]
