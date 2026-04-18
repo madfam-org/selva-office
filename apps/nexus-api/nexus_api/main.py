@@ -29,6 +29,7 @@ from .routers import (
     approvals,
     artifacts,
     audit,
+    audit_unified,
     billing,
     billing_internal,
     calendar,
@@ -174,6 +175,10 @@ def create_app() -> FastAPI:
     app.include_router(metrics.router, prefix="/api/v1/metrics")
     app.include_router(admin.router, prefix="/api/v1/admin")
     app.include_router(audit.router, prefix="/api/v1/audit")
+    # Cross-service unified view over the 4 Selva RFC ledgers. Separate
+    # from the middleware-row ``audit`` router above because the two
+    # tables have different schemas and different RBAC semantics.
+    app.include_router(audit_unified.router, prefix="/api/v1/audit/unified")
     app.include_router(analytics.router, prefix="/api/v1/analytics")
     app.include_router(tenants.router, prefix="/api/v1/tenants")
     app.include_router(voice.router, prefix="/api/v1/voice")
