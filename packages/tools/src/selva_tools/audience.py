@@ -21,9 +21,25 @@ known-dangerous tools and asserts they're tagged.
 from __future__ import annotations
 
 import enum
+import logging
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+
+logger = logging.getLogger(__name__)
+
+# Same env var as selva_permissions.audience.AUDIENCE_FILTER_ENABLED_ENV.
+# Duplicated here so selva_tools doesn't have to depend on
+# selva_permissions — the permissions package already imports from
+# selva_tools (via tool_catalog) in principle, so we avoid the
+# cross-dep by reading the env directly.
+_AUDIENCE_FILTER_ENABLED_ENV = "AUDIENCE_FILTER_ENABLED"
+
+
+def _enforcement_enabled() -> bool:
+    raw = os.environ.get(_AUDIENCE_FILTER_ENABLED_ENV, "")
+    return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
 class Audience(enum.StrEnum):
@@ -83,17 +99,33 @@ def can_access(tool_audience: Audience, swarm_audience: Audience | None) -> bool
     return tool_audience is Audience.TENANT
 
 
-def enforce_audience(tool_audience: Audience) -> None:
+def enforce_audience(tool_audience: Audience, tool_name: str | None = None) -> None:
     """Raise ``AudienceMismatch`` if the current swarm can't access the tool.
 
     Tools that want defense-in-depth can call this at the top of
     ``execute()``. The spec-time filter (``get_specs``) is the primary
     gate; this is the belt-and-braces for bugs where the filter
     regresses or a tool is invoked via a non-standard path.
+
+    Shadow mode: when ``AUDIENCE_FILTER_ENABLED`` is NOT truthy, the
+    check is observational only — log a structured "would-block" line
+    and return. This lets ops verify the production rate of would-be
+    blocks before flipping the flag to enforce.
     """
     swarm_audience = get_current_audience()
-    if not can_access(tool_audience, swarm_audience):
+    if can_access(tool_audience, swarm_audience):
+        return
+    label = tool_name or "unknown-tool"
+    if _enforcement_enabled():
         raise AudienceMismatch(
-            f"tool requires audience={tool_audience.value}, "
+            f"tool={label} requires audience={tool_audience.value}, "
             f"current swarm audience={swarm_audience.value if swarm_audience else 'unbound'}"
         )
+    # Shadow: log + allow.
+    logger.warning(
+        "audience_shadow_block tool=%s required=%s swarm=%s (permitting — "
+        "AUDIENCE_FILTER_ENABLED off)",
+        label,
+        tool_audience.value,
+        swarm_audience.value if swarm_audience else "unbound",
+    )

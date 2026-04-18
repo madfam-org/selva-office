@@ -60,7 +60,7 @@ class BaseTool(abc.ABC):
 
         @functools.wraps(execute_fn)
         async def _guarded(self: BaseTool, **kw: Any) -> ToolResult:
-            enforce_audience(self.audience)
+            enforce_audience(self.audience, tool_name=self.name)
             return await execute_fn(self, **kw)
 
         _guarded._selva_audience_guarded = True  # type: ignore[attr-defined]

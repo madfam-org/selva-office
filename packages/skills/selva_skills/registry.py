@@ -15,6 +15,22 @@ logger = logging.getLogger(__name__)
 _SKILL_DEFINITIONS_DIR = Path(__file__).resolve().parent.parent / "skill-definitions"
 _COMMUNITY_SKILLS_DIR = Path(__file__).resolve().parent.parent / "community-skills"
 
+# Feature flag env var — kept as a string check here so selva_skills
+# doesn't take a hard dep on selva_permissions. Matches the env var
+# declared in selva_permissions.audience.AUDIENCE_FILTER_ENABLED_ENV.
+_AUDIENCE_FILTER_ENABLED_ENV = "AUDIENCE_FILTER_ENABLED"
+
+
+def _enforcement_enabled() -> bool:
+    import os
+
+    return os.environ.get(_AUDIENCE_FILTER_ENABLED_ENV, "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
 
 class SkillAudienceMismatch(RuntimeError):  # noqa: N818 — "mismatch" is semantic
     """Raised when a skill is activated by a swarm that lacks audience access."""
@@ -33,6 +49,24 @@ def _can_access_skill(
     if swarm_audience is SkillAudience.PLATFORM:
         return True
     return skill_audience is SkillAudience.TENANT
+
+
+def _audience_violation(
+    name: str, skill_audience: SkillAudience, swarm_audience: SkillAudience
+) -> None:
+    """Raise or shadow-log depending on the feature flag."""
+    if _enforcement_enabled():
+        raise SkillAudienceMismatch(
+            f"skill '{name}' requires audience={skill_audience.value}, "
+            f"swarm audience={swarm_audience.value}"
+        )
+    logger.warning(
+        "audience_shadow_block skill=%s required=%s swarm=%s (permitting — "
+        "AUDIENCE_FILTER_ENABLED off)",
+        name,
+        skill_audience.value,
+        swarm_audience.value,
+    )
 
 
 class SkillRegistry:
@@ -153,10 +187,7 @@ class SkillRegistry:
             if audience is not None and not _can_access_skill(
                 defn.meta.audience, audience
             ):
-                raise SkillAudienceMismatch(
-                    f"skill '{name}' requires audience={defn.meta.audience.value}, "
-                    f"swarm audience={audience.value}"
-                )
+                _audience_violation(name, defn.meta.audience, audience)
             return defn
 
         meta = self._metadata.get(name)
@@ -164,10 +195,7 @@ class SkillRegistry:
             raise KeyError(f"Skill '{name}' not found in registry")
 
         if audience is not None and not _can_access_skill(meta.audience, audience):
-            raise SkillAudienceMismatch(
-                f"skill '{name}' requires audience={meta.audience.value}, "
-                f"swarm audience={audience.value}"
-            )
+            _audience_violation(name, meta.audience, audience)
 
         skill_dir = self._skill_source[name]
         skill_md_path = skill_dir / "SKILL.md"

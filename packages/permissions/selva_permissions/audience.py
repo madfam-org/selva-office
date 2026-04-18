@@ -21,6 +21,7 @@ import os
 from typing import Final
 
 PLATFORM_ORG_ID_ENV: Final[str] = "PLATFORM_ORG_ID"
+AUDIENCE_FILTER_ENABLED_ENV: Final[str] = "AUDIENCE_FILTER_ENABLED"
 
 
 class Audience(enum.StrEnum):
@@ -67,3 +68,19 @@ def resolve_audience(org_id: str | None) -> Audience:
 def is_platform_audience(org_id: str | None) -> bool:
     """Convenience: ``resolve_audience(org_id) is Audience.PLATFORM``."""
     return resolve_audience(org_id) is Audience.PLATFORM
+
+
+def is_audience_enforcement_enabled() -> bool:
+    """Feature flag for enforcement-vs-observe mode.
+
+    When ``AUDIENCE_FILTER_ENABLED`` is truthy, all audience checks
+    enforce (raise / 403 / filter). When false or unset, callers
+    should LOG the would-be violation but permit the action. This
+    lets us ship in shadow mode, observe the production rate of
+    would-be-blocked actions for 24-48h, then flip the flag to
+    enforce after confirming the blast radius is what we expect.
+
+    Truthy values: "1", "true", "yes", "on" (case-insensitive).
+    """
+    raw = os.environ.get(AUDIENCE_FILTER_ENABLED_ENV, "")
+    return raw.strip().lower() in ("1", "true", "yes", "on")

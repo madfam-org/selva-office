@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from selva_permissions import Audience as PermissionAudience
-from selva_permissions import resolve_audience
+from selva_permissions import is_audience_enforcement_enabled, resolve_audience
 from selva_redis_pool import get_redis_pool
 from selva_skills import SkillAudience, get_skill_registry
 
@@ -190,16 +190,26 @@ async def dispatch_task(
                 if meta is not None and meta.audience is SkillAudience.PLATFORM:
                     forbidden.append(skill_name)
         if forbidden:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "audience_mismatch",
-                    "message": (
-                        "Tenant swarms cannot dispatch platform-audience skills."
-                    ),
-                    "forbidden_skills": forbidden,
-                    "caller_audience": caller_audience.value,
-                },
+            if is_audience_enforcement_enabled():
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "error": "audience_mismatch",
+                        "message": (
+                            "Tenant swarms cannot dispatch platform-audience skills."
+                        ),
+                        "forbidden_skills": forbidden,
+                        "caller_audience": caller_audience.value,
+                    },
+                )
+            # Shadow mode: log + allow. Flip AUDIENCE_FILTER_ENABLED to
+            # enforce once the production rate of shadow blocks is known.
+            logging.getLogger(__name__).warning(
+                "audience_shadow_block caller_org=%s caller_audience=%s "
+                "forbidden_skills=%s (permitting — AUDIENCE_FILTER_ENABLED off)",
+                tenant.org_id,
+                caller_audience.value,
+                forbidden,
             )
 
     # -- Skill-based agent matching (when no explicit agents provided) --------

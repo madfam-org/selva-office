@@ -14,7 +14,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from selva_permissions import PLATFORM_ORG_ID_ENV
+from selva_permissions import AUDIENCE_FILTER_ENABLED_ENV, PLATFORM_ORG_ID_ENV
 
 
 def _dispatch_body(*, required_skills: list[str]) -> dict:
@@ -23,6 +23,12 @@ def _dispatch_body(*, required_skills: list[str]) -> dict:
         "graph_type": "coding",
         "required_skills": required_skills,
     }
+
+
+@pytest.fixture(autouse=True)
+def _enable_enforcement(monkeypatch: pytest.MonkeyPatch) -> None:
+    """All gate tests run with enforcement ON (default for tests)."""
+    monkeypatch.setenv(AUDIENCE_FILTER_ENABLED_ENV, "true")
 
 
 @pytest.mark.asyncio
@@ -144,3 +150,27 @@ class TestAudienceGate:
             detail = resp.json().get("detail", {})
             if isinstance(detail, dict):
                 assert detail.get("error") != "audience_mismatch", resp.text
+
+    async def test_shadow_mode_logs_but_allows(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Flag OFF → shadow mode. Tenant dispatches platform skill.
+        # Gate logs the violation but doesn't block (the request may
+        # still fail later, just not with an audience_mismatch 403).
+        monkeypatch.delenv(PLATFORM_ORG_ID_ENV, raising=False)
+        monkeypatch.setenv(AUDIENCE_FILTER_ENABLED_ENV, "false")
+        resp = await client.post(
+            "/api/v1/swarms/dispatch",
+            json=_dispatch_body(required_skills=["cluster-triage"]),
+            headers=auth_headers,
+        )
+        # Not a 403 with audience_mismatch error
+        if resp.status_code == 403:
+            detail = resp.json().get("detail", {})
+            if isinstance(detail, dict):
+                assert detail.get("error") != "audience_mismatch", (
+                    f"shadow mode should not raise audience_mismatch: {resp.text}"
+                )

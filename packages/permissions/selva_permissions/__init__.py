@@ -1,9 +1,11 @@
 """AutoSwarm Permissions -- HITL permission system with action classification."""
 
 from .audience import (
+    AUDIENCE_FILTER_ENABLED_ENV,
     PLATFORM_ORG_ID_ENV,
     Audience,
     get_platform_org_id,
+    is_audience_enforcement_enabled,
     is_platform_audience,
     resolve_audience,
 )
@@ -56,6 +58,7 @@ __all__ = [
     "DEFAULT_CONTEXT_RULES",
     "DEFAULT_PERMISSION_MATRIX",
     "DecisionOutcome",
+    "AUDIENCE_FILTER_ENABLED_ENV",
     "INITIAL_BUCKET_STATE",
     "PLATFORM_ORG_ID_ENV",
     "PermissionContext",
@@ -82,6 +85,7 @@ __all__ = [
     "features_for",
     "forced_ask_sample",
     "get_platform_org_id",
+    "is_audience_enforcement_enabled",
     "is_platform_audience",
     "promote_if_eligible",
     "resolve_audience",
