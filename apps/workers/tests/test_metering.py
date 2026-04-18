@@ -30,7 +30,7 @@ class TestMeterInferenceCall:
             await meter_inference_call(
                 usage={"input_tokens": 100, "output_tokens": 50},
                 provider="anthropic",
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6",
                 agent_id="agent-1",
                 task_id="task-1",
                 org_id="test-org",
@@ -42,7 +42,7 @@ class TestMeterInferenceCall:
             payload = call_args[1]["json"]
             assert payload["amount"] == 150
             assert payload["provider"] == "anthropic"
-            assert payload["model"] == "claude-sonnet-4-20250514"
+            assert payload["model"] == "claude-sonnet-4-6"
             assert payload["org_id"] == "test-org"
 
     @pytest.mark.asyncio
@@ -126,7 +126,7 @@ class TestCallLlmMetering:
         mock_response = MagicMock(
             content="Hello",
             provider="anthropic",
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6",
             usage={"input_tokens": 50, "output_tokens": 25},
         )
         mock_router = MagicMock()
@@ -149,7 +149,7 @@ class TestCallLlmMetering:
             mock_meter.assert_called_once_with(
                 usage={"input_tokens": 50, "output_tokens": 25},
                 provider="anthropic",
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6",
                 agent_id="agent-1",
                 task_id="task-1",
                 org_id="test-org",

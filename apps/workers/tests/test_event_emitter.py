@@ -121,7 +121,7 @@ class TestEmitEvent:
                 payload={"key": "value"},
                 duration_ms=150,
                 provider="anthropic",
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6",
                 token_count=500,
                 error_message="partial failure",
                 request_id="req-abc",
@@ -133,7 +133,7 @@ class TestEmitEvent:
             assert payload["payload"] == {"key": "value"}
             assert payload["duration_ms"] == 150
             assert payload["provider"] == "anthropic"
-            assert payload["model"] == "claude-sonnet-4-20250514"
+            assert payload["model"] == "claude-sonnet-4-6"
             assert payload["token_count"] == 500
             assert payload["error_message"] == "partial failure"
             assert payload["request_id"] == "req-abc"

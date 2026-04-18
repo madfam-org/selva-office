@@ -22,12 +22,12 @@ data:
     model_assignments:
       planning:
         provider: anthropic
-        model: claude-opus-4-20250514
+        model: claude-opus-4-7
         max_tokens: 8192
         temperature: 0.6
       coding:
         provider: anthropic
-        model: claude-sonnet-4-20250514
+        model: claude-sonnet-4-6
         max_tokens: 8192
         temperature: 0.4
       fast_coding:
@@ -37,27 +37,27 @@ data:
         temperature: 0.3
       review:
         provider: anthropic
-        model: claude-sonnet-4-20250514
+        model: claude-sonnet-4-6
         max_tokens: 4096
         temperature: 0.5
       research:
         provider: anthropic
-        model: claude-sonnet-4-20250514
+        model: claude-sonnet-4-6
         max_tokens: 8192
         temperature: 0.7
       crm:
         provider: anthropic
-        model: claude-haiku-4-20250514
+        model: claude-haiku-4-5-20251001
         max_tokens: 4096
         temperature: 0.7
       support:
         provider: anthropic
-        model: claude-haiku-4-20250514
+        model: claude-haiku-4-5-20251001
         max_tokens: 2048
         temperature: 0.7
       vision:
         provider: anthropic
-        model: claude-sonnet-4-20250514
+        model: claude-sonnet-4-6
         max_tokens: 4096
         temperature: 0.5
       embedding:
@@ -113,13 +113,13 @@ data:
         service_type: llm
         api_key_env: ANTHROPIC_API_KEY
         plan: pay_as_you_go
-        plan_details: "Pay-per-token. Opus 4, Sonnet 4, Haiku 4 available."
+        plan_details: "Pay-per-token. Opus 4.7, Sonnet 4.6, Haiku 4.5 available."
         payment_method: credit_card
         capacity:
           models:
-            - claude-opus-4-20250514
-            - claude-sonnet-4-20250514
-            - claude-haiku-4-20250514
+            - claude-opus-4-7
+            - claude-sonnet-4-6
+            - claude-haiku-4-5-20251001
         consumption_tracking: true
         status: active
         notes: "Primary provider for planning, coding, review, vision tasks."

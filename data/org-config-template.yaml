@@ -30,7 +30,7 @@ providers:
 model_assignments:
   # planning:
   #   provider: ""      # e.g., "anthropic", "openai", "deepinfra"
-  #   model: ""         # e.g., "claude-sonnet-4-20250514"
+  #   model: ""         # e.g., "claude-sonnet-4-6"
   #   max_tokens: 8192
   #   temperature: 0.6
   #

@@ -79,7 +79,7 @@ class TestBuildRouterFromEnv:
 model_assignments:
   coding:
     provider: anthropic
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-4-6
 """)
         router = build_router_from_env(
             org_config_path=str(config_file),

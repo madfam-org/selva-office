@@ -134,7 +134,7 @@ async def _seed_metrics_data(db: AsyncSession) -> dict[str, uuid.UUID]:
     for provider, model, amount in [
         ("openai", "gpt-4o", 1500),
         ("openai", "gpt-4o", 800),
-        ("anthropic", "claude-sonnet-4-20250514", 2200),
+        ("anthropic", "claude-sonnet-4-6", 2200),
     ]:
         db.add(ComputeTokenLedger(
             id=uuid.uuid4(),
