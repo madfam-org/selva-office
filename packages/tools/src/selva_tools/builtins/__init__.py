@@ -39,6 +39,12 @@ from .environment import EnvInfoTool, PackageInstallTool
 from .erp import CONTPAQiExportTool, GenericERPExportTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
 from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
+from .github_admin import (
+    GithubAdminAuditTeamMembershipTool,
+    GithubAdminCreateTeamTool,
+    GithubAdminSetBranchProtectionTool,
+    GithubAdminSetTeamMembershipTool,
+)
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
 from .k8s_secret import KubernetesSecretWriteTool
@@ -261,4 +267,10 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_vault_tools(),
         # RFC 0005 Sprint 1a — Kubernetes Secret writer (HITL gated per env)
         KubernetesSecretWriteTool(),
+        # RFC 0006 Sprint 1 — GitHub org/repo admin (team CRUD, membership
+        # reconcile, branch protection, drift audit). HITL-gated per op.
+        GithubAdminCreateTeamTool(),
+        GithubAdminSetTeamMembershipTool(),
+        GithubAdminSetBranchProtectionTool(),
+        GithubAdminAuditTeamMembershipTool(),
     ]
