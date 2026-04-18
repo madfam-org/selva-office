@@ -9,7 +9,7 @@ from ..base import InferenceProvider
 from ..types import InferenceRequest, InferenceResponse
 
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1"
-DEFAULT_MODEL = "claude-sonnet-4-20250514"
+DEFAULT_MODEL = "claude-sonnet-4-6"
 ANTHROPIC_VERSION = "2023-06-01"
 
 
@@ -187,7 +187,7 @@ class AnthropicProvider(InferenceProvider):
                 return [m["id"] for m in data.get("data", [])]
             # Fallback to known models if endpoint not available
             return [
-                "claude-sonnet-4-20250514",
-                "claude-haiku-4-20250514",
-                "claude-opus-4-20250514",
+                "claude-sonnet-4-6",
+                "claude-haiku-4-5-20251001",
+                "claude-opus-4-7",
             ]

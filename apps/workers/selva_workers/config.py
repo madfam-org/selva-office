@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     mistral_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434"
-    default_model: str = "claude-sonnet-4-20250514"
+    default_model: str = "claude-sonnet-4-6"
     inference_sensitivity: str = "internal"
     org_config_path: str = "~/.autoswarm/org-config.yaml"
 

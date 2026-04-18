@@ -21,7 +21,7 @@ class TestBillingRecord:
                 "action": "inference",
                 "amount": 150,
                 "provider": "anthropic",
-                "model": "claude-sonnet-4-20250514",
+                "model": "claude-sonnet-4-6",
                 "org_id": "test-org",
             },
         )
