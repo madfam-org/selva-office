@@ -1,0 +1,29 @@
+# CODEOWNERS for this repository.
+#
+# Enforces RFC 0001 Q4 decision (internal-devops/rfcs/0001-amendment-1-decisions-and-cost.md):
+# critical services require a second reviewer on changes that affect
+# production deployment. Rule lives here + GitHub branch protection
+# enforces "require approval from CODEOWNERS" on the default branch.
+#
+# Teams referenced below must exist in the GitHub organisation:
+#   - @madfam-org/platform                 (default approvers, ≥2 members)
+#   - @madfam-org/production-reviewers     (prod-critical paths, ≥2 members)
+#
+# Operator: create the teams, populate with ≥2 members each, then
+# enable branch protection on main requiring CODEOWNERS approval.
+
+# Default owners for everything
+*                                       @madfam-org/platform
+
+# Production deployment overlays — require second-reviewer gate per RFC 0001 Q4
+infra/k8s/overlays/production/**        @madfam-org/production-reviewers
+infra/k8s/production/**                 @madfam-org/production-reviewers
+
+# CI/CD workflows that deploy to prod
+.github/workflows/deploy*.yml           @madfam-org/production-reviewers
+.github/workflows/promote-*.yml         @madfam-org/production-reviewers
+.github/workflows/rollback-*.yml        @madfam-org/production-reviewers
+
+# Security-sensitive surfaces
+CODEOWNERS                              @madfam-org/production-reviewers
+.github/CODEOWNERS                      @madfam-org/production-reviewers
