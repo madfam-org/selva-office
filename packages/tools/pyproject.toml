@@ -6,6 +6,14 @@ requires-python = ">=3.12"
 dependencies = [
   "pydantic>=2.10.5",
   "httpx>=0.28.1",
+  # RFC 0005: k8s_secret tool uses the official SDK for in-cluster
+  # SA token discovery, object models, and kubeconfig loading. A bare
+  # httpx-against-the-API implementation was considered (it would drop
+  # a large transitive footprint) but the SDK's built-in SA-token
+  # mounting behaviour is exactly the feature we want to lean on, and
+  # the risk of rolling our own auth + TLS cert handling outweighs the
+  # weight savings. Revisit in Sprint 3 when Vault lands.
+  "kubernetes>=31.0.0",
 ]
 
 [project.optional-dependencies]

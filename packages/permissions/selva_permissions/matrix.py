@@ -24,4 +24,9 @@ DEFAULT_PERMISSION_MATRIX: dict[ActionCategory, PermissionLevel] = {
     ActionCategory.SECRET_MANAGEMENT: PermissionLevel.ASK,
     ActionCategory.INFRASTRUCTURE_MONITOR: PermissionLevel.ALLOW,
     ActionCategory.DATABASE_MIGRATION: PermissionLevel.ASK,
+    # RFC 0005: default is ASK; the write_kubernetes_secret tool reads
+    # SELVA_ENV at call time and escalates to ASK_DUAL for prod or
+    # relaxes to ALLOW for dev. Keeping the default at ASK means
+    # *unknown* callers fail-closed to human approval.
+    ActionCategory.K8S_SECRET_WRITE: PermissionLevel.ASK,
 }

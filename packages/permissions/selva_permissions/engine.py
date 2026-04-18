@@ -108,8 +108,17 @@ class PermissionEngine:
                 reason=reason,
             )
 
-        # ASK
-        reason = f"Action '{category.value}' requires human approval before execution."
+        # ASK / ASK_DUAL — both require approval; ASK_DUAL additionally
+        # requires a second distinct approver, enforced by the approval
+        # queue consumer (not this engine). Keeping the distinction in
+        # the returned `level` lets callers render the right UI.
+        if level == PermissionLevel.ASK_DUAL:
+            reason = (
+                f"Action '{category.value}' requires TWO distinct "
+                "human approvers before execution."
+            )
+        else:
+            reason = f"Action '{category.value}' requires human approval before execution."
         if escalation_reasons:
             reason += " " + "; ".join(escalation_reasons)
         return PermissionResult(
@@ -129,4 +138,5 @@ class PermissionEngine:
 
     def should_interrupt(self, category: ActionCategory) -> bool:
         """Return ``True`` if the action requires a human-in-the-loop check."""
-        return self._matrix.get(category, PermissionLevel.ASK) == PermissionLevel.ASK
+        level = self._matrix.get(category, PermissionLevel.ASK)
+        return level in (PermissionLevel.ASK, PermissionLevel.ASK_DUAL)

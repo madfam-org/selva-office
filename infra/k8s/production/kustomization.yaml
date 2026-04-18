@@ -20,6 +20,12 @@ resources:
   - backup-cronjob.yaml
   - keda-scaledobject.yaml
   - keda-trigger-auth.yaml
+  # RFC 0005 Sprint 1a — dedicated SA in the `autoswarm` namespace.
+  # The per-target-namespace Roles + RoleBindings live in
+  # selva-secret-writer-rolebinding.yaml and are applied OUTSIDE this
+  # kustomize bundle (kustomize's namespace: autoswarm would rewrite
+  # them incorrectly). See that file's header for the ops procedure.
+  - selva-secret-writer-sa.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: autoswarm-office

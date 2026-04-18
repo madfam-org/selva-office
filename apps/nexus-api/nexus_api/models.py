@@ -595,3 +595,87 @@ class ConsentLedger(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
+
+
+# ---------------------------------------------------------------------------
+# RFC 0005 — Selva K8s secret write audit log (migration 0019)
+# ---------------------------------------------------------------------------
+
+
+class SecretAuditLog(Base):
+    """Append-only audit row for every K8s Secret write attempt.
+
+    See ``internal-devops/rfcs/0005-selva-secret-management.md`` §"Audit
+    trail" for the schema contract. UPDATE/DELETE are revoked from the
+    app role at the DB level in migration 0019 — corrections land as
+    new rows with ``rollback_of_id`` set, never as mutations.
+
+    Crucially, ``value_sha256_prefix`` is exactly 8 hex chars: enough
+    to correlate rotations of the same secret (same prefix before/after
+    a deploy), not enough to brute-force the original value.
+    """
+
+    __tablename__ = "secret_audit_log"
+    __table_args__ = (
+        Index(
+            "ix_secret_audit_target",
+            "target_cluster",
+            "target_namespace",
+            "target_secret_name",
+            "target_key",
+        ),
+        Index("ix_secret_audit_created", "created_at"),
+        Index("ix_secret_audit_approval", "approval_request_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # -- Actors ---------------------------------------------------------
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # -- Target ---------------------------------------------------------
+    target_cluster: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_namespace: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_secret_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_key: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # -- Write intent + hash ------------------------------------------
+    operation: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Exactly 8 hex chars. RFC 0005 §"Audit trail" — enough for
+    # rotation correlation, not a brute-forceable fingerprint.
+    value_sha256_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
+    predecessor_sha256_prefix: Mapped[str | None] = mapped_column(
+        String(8), nullable=True
+    )
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # -- Approval chain ------------------------------------------------
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    # JSON: [{"user_sub": "...", "approved_at": "ISO-8601"}, ...]
+    approval_chain: Mapped[list[dict]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+
+    # -- Lifecycle -----------------------------------------------------
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+
+    # -- Tamper-evidence hash -----------------------------------------
+    # Same shape as ``ConsentLedger.signature_sha256``: a SHA-256 over
+    # the row's identifying fields so any post-insert mutation is
+    # detectable via ``verify_signature``.
+    signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)

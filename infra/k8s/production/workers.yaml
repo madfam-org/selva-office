@@ -132,6 +132,14 @@ spec:
             - name: org-config
               mountPath: /etc/autoswarm
               readOnly: true
+            # RFC 0005 Sprint 1a — projected SA token for the
+            # write_kubernetes_secret tool. Bound to a dedicated SA
+            # with narrow (create/update/patch only) RBAC. See
+            # selva-secret-writer-sa.yaml and
+            # selva-secret-writer-rolebinding.yaml.
+            - name: selva-secret-writer-token
+              mountPath: /var/run/secrets/selva/secret-writer
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
@@ -141,6 +149,18 @@ spec:
         - name: org-config
           configMap:
             name: autoswarm-org-config
+        # Projected token tied to the selva-secret-writer SA. Expires
+        # hourly via TokenRequest API auto-rotation. The tool falls
+        # back to in-cluster default SA config if this mount is absent
+        # (local dev / tests).
+        - name: selva-secret-writer-token
+          projected:
+            defaultMode: 0400
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  audience: kubernetes.default.svc
+                  expirationSeconds: 3600
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

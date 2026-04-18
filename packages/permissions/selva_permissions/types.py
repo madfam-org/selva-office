@@ -8,10 +8,19 @@ from pydantic import BaseModel
 
 
 class PermissionLevel(StrEnum):
-    """Possible permission decisions for an action."""
+    """Possible permission decisions for an action.
+
+    ASK_DUAL is a strict super-set of ASK that additionally requires a
+    second, distinct approver. Any policy pipeline that already special-
+    cases ASK should treat ASK_DUAL identically for the *first* approval
+    slot; the second-approver constraint is enforced by the approval
+    queue consumer, not by this enum. See RFC 0005 and RFC 0006/0007
+    which also re-use this primitive.
+    """
 
     ALLOW = "allow"
     ASK = "ask"
+    ASK_DUAL = "ask_dual"
     DENY = "deny"
 
 
@@ -33,6 +42,9 @@ class ActionCategory(StrEnum):
     SECRET_MANAGEMENT = "secret_management"
     INFRASTRUCTURE_MONITOR = "infra_monitor"
     DATABASE_MIGRATION = "database_migration"
+    # RFC 0005: k8s Secret write is a distinct risk class (values never
+    # leave worker memory, but bad writes can break consumers instantly).
+    K8S_SECRET_WRITE = "k8s_secret_write"
 
 
 class PermissionResult(BaseModel):
