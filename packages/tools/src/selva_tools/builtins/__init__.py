@@ -40,10 +40,16 @@ from .backup_ops import get_backup_tools
 from .cloudflare import get_cloudflare_tools
 from .cloudflare_r2 import get_r2_tools
 from .cloudflare_saas import get_cloudflare_saas_tools
+from .belvo_spei import get_belvo_spei_tools
 from .cloudflare_tunnel import get_cloudflare_tunnel_tools
+from .discord import get_discord_tools
 from .dns import get_dns_tools
 from .k8s_diagnostics import get_k8s_diagnostic_tools
 from .kustomize import get_kustomize_tools
+from .meeting_scheduler import get_meeting_scheduler_tools
+from .telegram import get_telegram_tools
+from .twilio_sms import get_twilio_sms_tools
+from .voice_call import get_voice_call_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
 from .email_tools import ReadEmailTool, SendEmailTool
 from .enclii_infra import (
@@ -299,6 +305,25 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_kustomize_tools(),
         # pgBackRest operations (info, backup, check)
         *get_backup_tools(),
+        # Phase 6 — Communications: Twilio SMS (send, template, status,
+        # opt-out). Mexican CDI compliance — explicit consent required.
+        *get_twilio_sms_tools(),
+        # Phase 6 — Communications: outbound voice calls (Twilio Voice,
+        # Vapi AI agent, and a hybrid call-and-transfer path). HITL-gated
+        # per the voice_mode consent ledger.
+        *get_voice_call_tools(),
+        # Phase 6 — Communications: Telegram bot (send message, photo,
+        # update webhook) for operator + ops-channel notifications.
+        *get_telegram_tools(),
+        # Phase 6 — Communications: Discord bot (channel message, DM,
+        # webhook) for community + dev-channel notifications.
+        *get_discord_tools(),
+        # Phase 6 — Adjacent: meeting scheduler (Google Calendar +
+        # Microsoft 365) with availability query + invite generation.
+        *get_meeting_scheduler_tools(),
+        # Phase 6 — Adjacent: Belvo SPEI bank transfers (Mexican SPEI
+        # rails). HITL-gated for transfer creation; read-only for status.
+        *get_belvo_spei_tools(),
         # NPM registry management (Verdaccio — token rotation + GitHub secrets)
         *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)
