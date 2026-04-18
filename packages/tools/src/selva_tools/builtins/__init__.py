@@ -23,6 +23,7 @@ from .accounting import (
     PaymentSummaryTool,
 )
 from .artifact import ListArtifactsTool, RetrieveArtifactTool, SaveArtifactTool
+from .billing_tools import CreateCheckoutLinkTool, GetRevenueMetricsTool
 from .calendar_tools import (
     CreateCalendarEventTool,
     ListCalendarEventsTool,
@@ -30,11 +31,21 @@ from .calendar_tools import (
 )
 from .code import BashExecTool, PythonExecTool
 from .communication import CreateReportTool, SendNotificationTool
+from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
 from .database_tools import DatabaseSchemaTool, SQLQueryTool, SQLWriteTool
 from .deploy import DeployStatusTool, DeployTool
+from .dns import get_dns_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
 from .email_tools import ReadEmailTool, SendEmailTool
+from .enclii_infra import (
+    EncliiExecTool,
+    EncliiHealthTool,
+    EncliiLogsTool,
+    EncliiRestartTool,
+    EncliiScaleTool,
+    EncliiSecretsTool,
+)
 from .environment import EnvInfoTool, PackageInstallTool
 from .erp import CONTPAQiExportTool, GenericERPExportTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
@@ -63,6 +74,7 @@ from .intelligence import (
     TIIETool,
     UMATrackerTool,
 )
+from .k8s_secret import KubernetesSecretWriteTool
 from .karafiel import (
     BlacklistCheckTool,
     CFDIGenerateTool,
@@ -80,20 +92,8 @@ from .legal import (
     LawSearchTool,
     REPSECheckTool,
 )
-from .billing_tools import CreateCheckoutLinkTool, GetRevenueMetricsTool
-from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
-from .dns import get_dns_tools
-from .npm_registry import get_npm_registry_tools
-from .vault import get_vault_tools
-from .enclii_infra import (
-    EncliiExecTool,
-    EncliiHealthTool,
-    EncliiLogsTool,
-    EncliiRestartTool,
-    EncliiScaleTool,
-    EncliiSecretsTool,
-)
 from .marketing_tools import SendMarketingEmailTool
+from .npm_registry import get_npm_registry_tools
 from .operations import CarrierTrackingTool, InventoryCheckTool, PedimentoLookupTool
 from .phygital_tools import (
     CreateWorkOrderTool,
@@ -107,11 +107,19 @@ from .pricing_intel import (
     CatalogTierGapTool,
     CompetitorPriceLookupTool,
 )
-from .product_catalog import ProductCatalogTool
 from .privacy import DataDeletionTool, PIIClassificationTool, PrivacyNoticeGeneratorTool
+from .product_catalog import ProductCatalogTool
 from .slack import SlackMessageTool
 from .stt import SpeechToTextTool
+from .vault import get_vault_tools
 from .web import WebFetchTool, WebScrapeTool, WebSearchTool
+from .webhooks import (
+    JanuaOidcRedirectRegisterTool,
+    ResendWebhookCreateTool,
+    StripeWebhookCreateTool,
+    StripeWebhookDeleteTool,
+    StripeWebhookListTool,
+)
 from .whatsapp import WhatsAppTemplateTool
 
 
@@ -286,4 +294,11 @@ def get_builtin_tools() -> list[BaseTool]:
         SetConfigMapValueTool(),
         DeleteConfigMapKeyTool(),
         ListConfigMapsTool(),
+        # RFC 0008 Sprint 1 — provider webhook management
+        # (signing secrets captured → RFC 0005 writer in one atomic flow)
+        StripeWebhookCreateTool(),
+        StripeWebhookListTool(),
+        StripeWebhookDeleteTool(),
+        ResendWebhookCreateTool(),
+        JanuaOidcRedirectRegisterTool(),
     ]
