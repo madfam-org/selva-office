@@ -1,0 +1,64 @@
+# Weekly pricing-intelligence sweep — k8s CronJob manifest.
+#
+# Runs once a week (Mondays 14:07 UTC = 08:07 CST in Mexico City).
+# Emits a markdown brief to stdout (scraped by Alertmanager / Grafana
+# Loki) and exits non-zero when any margin_risk or cannibalization_risk
+# crosses the threshold, so on-call gets paged on catalog drift.
+#
+# Pattern mirrors the revenue-loop-probe CronJob at
+# `packages/revenue-loop-probe/k8s/revenue-loop-probe-cronjob.yaml`.
+#
+# Apply:
+#   kubectl apply -f k8s-cronjob.yaml
+#
+# Or via enclii:
+#   enclii apply k8s-cronjob.yaml
+#
+# The image `ghcr.io/madfam-org/selva-nexus-api:latest` already bundles
+# the `selva_tools.cli.pricing_intel_weekly` module via the packages/
+# tools Python package. No separate image build needed.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pricing-intel-weekly
+  namespace: selva
+  labels:
+    app.kubernetes.io/name: pricing-intel-weekly
+    app.kubernetes.io/part-of: selva
+spec:
+  # Mondays at 14:07 UTC = 08:07 Mexico City. Offset 7m past the hour
+  # so it doesn't collide with revenue-loop-probe's hourly :07 sweep.
+  schedule: "7 14 * * 1"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 4
+  failedJobsHistoryLimit: 8
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: pricing-intel-weekly
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: runner
+              image: ghcr.io/madfam-org/selva-nexus-api:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "selva_tools.cli.pricing_intel_weekly"]
+              args:
+                # Exit 1 when any margin_risk or cannibalization_risk
+                # fires, so Alertmanager pages on catalog drift.
+                - "--fail-on-risk"
+              env:
+                - name: PRICING_INTEL_CATALOG_URL
+                  value: https://api.dhan.am/v1/billing/catalog
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
