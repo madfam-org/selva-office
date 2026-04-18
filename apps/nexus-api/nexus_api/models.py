@@ -1128,3 +1128,54 @@ class HitlConfidence(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
+
+
+class TenantIdentity(Base):
+    """Central cross-service ID map for a single tenant.
+
+    Every onboarded MADFAM tenant has identities across Janua, Dhanam,
+    PhyneCRM, Karafiel, Resend, Cloudflare, and Selva Office. When any
+    one drifts, data orphans. This table is the canonical mapping so
+    reconciliation + offboarding can enumerate every place a tenant
+    exists in O(1). Canonical id is the Janua org_id.
+    """
+
+    __tablename__ = "tenant_identities"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    canonical_id: Mapped[str] = mapped_column(
+        String(128), nullable=False, unique=True, index=True
+    )
+    legal_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    primary_contact_email: Mapped[str | None] = mapped_column(
+        String(320), nullable=True
+    )
+
+    janua_org_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    dhanam_space_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    phynecrm_tenant_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    karafiel_org_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+
+    resend_domain_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    cloudflare_zone_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    selva_office_seat_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    r2_bucket_names: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+
+    meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
