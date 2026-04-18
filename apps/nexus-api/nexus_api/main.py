@@ -55,6 +55,7 @@ from .routers import (
     skills,
     skills_hub,
     swarms,
+    tenant_identities,
     tenants,
     trajectories,
     voice,
@@ -182,6 +183,7 @@ def create_app() -> FastAPI:
     app.include_router(audit_unified.router, prefix="/api/v1/audit/unified")
     app.include_router(analytics.router, prefix="/api/v1/analytics")
     app.include_router(tenants.router, prefix="/api/v1/tenants")
+    app.include_router(tenant_identities.router, prefix="/api/v1")
     app.include_router(voice.router, prefix="/api/v1/voice")
     # Outbound voice mode + consent ledger (migration 0018).
     # Mounted at /api/v1 so both /onboarding/* and /settings/outbound-voice
