@@ -4,11 +4,12 @@ from .defaults import DEFAULT_ROLE_SKILLS
 from .parser import parse_skill_md_string
 from .refiner import RefinerMetrics
 from .registry import SkillRegistry, get_skill_registry
-from .types import SkillDefinition, SkillMetadata, SkillTier
+from .types import SkillAudience, SkillDefinition, SkillMetadata, SkillTier
 
 __all__ = [
     "DEFAULT_ROLE_SKILLS",
     "RefinerMetrics",
+    "SkillAudience",
     "SkillDefinition",
     "SkillMetadata",
     "SkillRegistry",

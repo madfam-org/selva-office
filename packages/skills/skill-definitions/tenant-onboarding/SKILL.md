@@ -1,6 +1,7 @@
 ---
 name: tenant-onboarding
 description: Bootstrap a brand-new MADFAM tenant end-to-end across every service the platform owns state in — Janua (auth), Dhanam (billing), PhyneCRM (ops), Karafiel (Mexican fiscal), Resend (email), Selva Office (workers), plus the central tenant_identities record. A single skill invocation advances a tenant from "signed contract" to "agents can operate on their behalf", with HITL gates on the two irreversible steps (SAT cert upload + DNS record publication). Use on every new tenant; never hand-assemble the primitives.
+audience: platform
 allowed_tools:
   - janua_oauth_client_create
   - janua_oauth_client_rotate_secret

@@ -1,6 +1,7 @@
 ---
 name: cluster-triage
 description: Diagnose and recover from Kubernetes cluster incidents — stuck rollouts, ImagePullBackOff, CrashLoopBackOff, sync failures, ArgoCD degradations. Composes k8s_diagnostics + argocd + backup_ops + cloudflare tools. Used as an autonomous responder to prod-alert webhooks AND as the playbook a human operator invokes when pointing the swarm at an incident.
+audience: platform
 allowed_tools:
   - k8s_get_pods
   - k8s_describe_pod

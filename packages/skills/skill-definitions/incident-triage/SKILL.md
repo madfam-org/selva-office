@@ -1,6 +1,7 @@
 ---
 name: incident-triage
 description: Respond to a live alert — correlate Prometheus + Loki + Sentry + cluster state, form a root-cause hypothesis, propose and apply the minimum fix, verify the alert clears, and record the incident for post-mortem. Composes prometheus + loki + sentry + cluster-triage tools. Invoked by Alertmanager webhooks AND by human operators pointing the swarm at a fresh incident.
+audience: platform
 allowed_tools:
   - prom_query
   - prom_query_range
