@@ -872,3 +872,107 @@ class ConfigmapAuditLog(Base):
     # SHA-256 over the row's identifying fields. See
     # nexus_api.audit.configmap_audit.verify_signature.
     signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# RFC 0008 — Selva provider webhook management audit log (migration 0022)
+# ---------------------------------------------------------------------------
+
+
+class WebhookAuditLog(Base):
+    """Append-only audit row for every provider webhook operation.
+
+    See ``internal-devops/rfcs/0008-selva-provider-webhook-management.md``
+    §"Audit trail" for the schema contract. Mirrors ``secret_audit_log``
+    append-only semantics: UPDATE/DELETE are revoked from the app role at
+    the DB level in migration 0022; corrections land as new rows.
+
+    The webhook signing secret returned by the provider is captured in
+    worker-process memory for ~100ms and written directly via the RFC 0005
+    secret writer. Only ``linked_secret_audit_id`` (FK → secret_audit_log)
+    survives here — neither the signing secret nor the raw endpoint URL
+    (which often carries tokens in its path) is ever stored on this row.
+
+    ``target_url_sha256_prefix`` is exactly 8 hex chars: enough to
+    correlate rotations of the same endpoint, not enough to brute-force
+    the original URL if it embeds a token.
+    """
+
+    __tablename__ = "webhook_audit_log"
+    __table_args__ = (
+        Index(
+            "ix_webhook_audit_target",
+            "provider",
+            "target_url_sha256_prefix",
+        ),
+        Index("ix_webhook_audit_created", "created_at"),
+        Index("ix_webhook_audit_approval", "approval_request_id"),
+        Index("ix_webhook_audit_webhook_id", "provider", "webhook_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # -- Actors ---------------------------------------------------------
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # -- Target ---------------------------------------------------------
+    # Provider identifier: "stripe", "resend", "janua", ...
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Action: "create", "list", "delete", "register_oidc_redirect"
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Provider-assigned webhook ID, if one was returned (None for list ops
+    # and for pre-API validation rejections).
+    webhook_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # First 8 hex chars of SHA-256(endpoint_url). Never the raw URL —
+    # webhook URLs often embed tokens in their paths.
+    target_url_sha256_prefix: Mapped[str | None] = mapped_column(
+        String(8), nullable=True
+    )
+    # Events registered on create/rotate (JSON array of strings). NULL
+    # for non-Stripe providers and non-create actions.
+    events_registered: Mapped[list[str] | None] = mapped_column(
+        JSON, nullable=True
+    )
+
+    # -- Linked secret write (RFC 0005 chain) --------------------------
+    # FK into ``secret_audit_log.id``. Populated whenever the provider
+    # returned a signing secret that the tool handed off to
+    # secrets.write_kubernetes_secret. NULL for list/delete/redirect ops
+    # that don't mint a secret.
+    linked_secret_audit_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    # Human-readable pointer to the resulting K8s Secret for operators
+    # (e.g. "karafiel/karafiel-secrets:STRIPE_WEBHOOK_SECRET"). This is
+    # a REFERENCE — NOT the secret value. Safe to surface in UIs.
+    resulting_secret_name: Mapped[str | None] = mapped_column(
+        String(512), nullable=True
+    )
+
+    # -- Approval chain ------------------------------------------------
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    approval_chain: Mapped[list[dict]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # -- Lifecycle -----------------------------------------------------
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # -- Request correlation ------------------------------------------
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # -- Tamper-evidence hash -----------------------------------------
+    signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)

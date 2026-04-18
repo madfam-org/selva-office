@@ -34,4 +34,8 @@ DEFAULT_PERMISSION_MATRIX: dict[ActionCategory, PermissionLevel] = {
     # prod+feature-flag-key=ASK_DUAL). Default ASK keeps unknown
     # callers fail-closed.
     ActionCategory.K8S_CONFIGMAP_WRITE: PermissionLevel.ASK,
+    # RFC 0008: default is ASK; the webhooks.* tools self-escalate to
+    # ASK_DUAL in prod for create/delete. Read-only *.list operations
+    # override to ALLOW at the call site.
+    ActionCategory.WEBHOOK_MANAGEMENT: PermissionLevel.ASK,
 }

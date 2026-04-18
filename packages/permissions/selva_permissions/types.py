@@ -53,6 +53,11 @@ class ActionCategory(StrEnum):
     # dev=ALLOW / staging=ASK / prod=ASK. Feature-flag-shaped keys in
     # prod auto-escalate to ASK_DUAL at the tool layer.
     K8S_CONFIGMAP_WRITE = "k8s_configmap_write"
+    # RFC 0008: provider webhook management (Stripe/Resend/Janua). Signing
+    # secrets returned by the provider are captured in-memory and written
+    # via K8S_SECRET_WRITE; a bad webhook destination could exfiltrate
+    # payment/auth events so mutating ops are HITL-gated.
+    WEBHOOK_MANAGEMENT = "webhook_management"
 
 
 class PermissionResult(BaseModel):
