@@ -42,8 +42,13 @@ from .cloudflare_r2 import get_r2_tools
 from .cloudflare_saas import get_cloudflare_saas_tools
 from .cloudflare_tunnel import get_cloudflare_tunnel_tools
 from .dns import get_dns_tools
+from .factory_manifest import get_factory_manifest_tools
+from .hitl_introspection import get_hitl_introspection_tools
 from .k8s_diagnostics import get_k8s_diagnostic_tools
 from .kustomize import get_kustomize_tools
+from .meta_harness import get_meta_harness_tools
+from .skill_performance import get_skill_performance_tools
+from .tool_catalog import get_tool_catalog_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
 from .email_tools import ReadEmailTool, SendEmailTool
 from .enclii_infra import (
@@ -299,6 +304,23 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_kustomize_tools(),
         # pgBackRest operations (info, backup, check)
         *get_backup_tools(),
+        # Phase 4 — Meta-improvement: Meta-Harness budget gate, Selva
+        # routing preview, role-summary + convergence + round-submit +
+        # tier-escalation. Wraps tezca/experiments/meta-harness.
+        *get_meta_harness_tools(),
+        # Phase 4 — Meta-improvement: HITL introspection. Agents query
+        # their own Bayesian trust state before acting (bucket state,
+        # effective tier, recent decisions, "why asked" narrative).
+        *get_hitl_introspection_tools(),
+        # Phase 4 — Meta-improvement: tool-catalog self-introspection.
+        # list_my_tools / search_tools_by_capability / describe_tool.
+        *get_tool_catalog_tools(),
+        # Phase 4 — Meta-improvement: factory-manifest publish + verify +
+        # read for per-repo build-shape declarations.
+        *get_factory_manifest_tools(),
+        # Phase 4 — Meta-improvement: skill performance signal into the
+        # ThompsonBandit + metric readback for the platform-evolution skill.
+        *get_skill_performance_tools(),
         # NPM registry management (Verdaccio — token rotation + GitHub secrets)
         *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)
