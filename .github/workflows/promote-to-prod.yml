@@ -1,0 +1,272 @@
+# PP.4 (RFC 0001 Phase 2) — promote staging -> prod.
+#
+# Promotes a staging image digest to production by reading from the
+# staging overlay and writing to the production overlay. Does NOT
+# rebuild — promotion is strictly a pointer update. This is the
+# single most important invariant of the pipeline.
+#
+# autoswarm-office is RFC 0001 Pattern B (manual gate) because the
+# workers run agent code that touches prod customer data via
+# SendEmail, SendMarketingEmail, git pushes, Stripe/Resend API calls,
+# and database writes. Mistakes would email real customers or push
+# real git branches.
+#
+# The scheduled auto-promote job is present in the template but gated
+# off via AUTO_PROMOTE_ENABLED — .enclii.yml declares
+# `promotion.pattern: manual`, and the repo variable
+# AUTO_PROMOTE_ENABLED defaults to "false". To enable auto-promote
+# in the future, flip the repo variable + update .enclii.yml.
+#
+# Multi-pod: promote accepts a component input (or `all`). Soak check
+# runs per-component against the staging overlay commit history.
+
+name: Promote staging -> prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Which image to promote"
+        required: true
+        type: choice
+        options:
+          - nexus-api
+          - office-ui
+          - colyseus
+          - admin
+          - gateway
+          - workers
+          - all
+      digest:
+        description: "Staging image digest to promote (sha256:...). Leave blank to read current staging overlay digest for the chosen component."
+        required: false
+        type: string
+      reason:
+        description: "Why are you promoting now? (shown in audit log; required)"
+        required: true
+        type: string
+
+  # Auto-promote gate — autoswarm-office is Pattern B, so this job
+  # exits early unless the repo variable AUTO_PROMOTE_ENABLED == "true".
+  schedule:
+    - cron: "*/15 * * * *"
+
+concurrency:
+  group: prod-promote
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate promotion candidate(s)
+    runs-on: ubuntu-latest
+    outputs:
+      should_promote: ${{ steps.resolve.outputs.should_promote }}
+      nexus_api_digest: ${{ steps.resolve.outputs.nexus_api_digest }}
+      office_ui_digest: ${{ steps.resolve.outputs.office_ui_digest }}
+      colyseus_digest: ${{ steps.resolve.outputs.colyseus_digest }}
+      admin_digest: ${{ steps.resolve.outputs.admin_digest }}
+      gateway_digest: ${{ steps.resolve.outputs.gateway_digest }}
+      workers_digest: ${{ steps.resolve.outputs.workers_digest }}
+      short: ${{ steps.resolve.outputs.short }}
+      reason: ${{ steps.resolve.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+
+      - id: resolve
+        name: Resolve digest(s) per component
+        env:
+          AUTO_ENABLED: ${{ vars.AUTO_PROMOTE_ENABLED || 'false' }}
+          MIN_SOAK_MIN: ${{ vars.MIN_SOAK_MINUTES || '30' }}
+          COMPONENT: ${{ inputs.component }}
+          INPUT_DIGEST: ${{ inputs.digest }}
+          INPUT_REASON: ${{ inputs.reason }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT" == "schedule" ]]; then
+            if [[ "$AUTO_ENABLED" != "true" ]]; then
+              echo "Auto-promote disabled for autoswarm-office (Pattern B — manual gate)."
+              echo "should_promote=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            COMPONENT="all"
+            REASON="auto:scheduled"
+          else
+            REASON="manual:$INPUT_REASON"
+          fi
+
+          IMAGE_MAP_NEXUS_API="ghcr.io/madfam-org/autoswarm-nexus-api"
+          IMAGE_MAP_OFFICE_UI="ghcr.io/madfam-org/autoswarm-office-ui"
+          IMAGE_MAP_COLYSEUS="ghcr.io/madfam-org/autoswarm-colyseus"
+          IMAGE_MAP_ADMIN="ghcr.io/madfam-org/autoswarm-admin"
+          IMAGE_MAP_GATEWAY="ghcr.io/madfam-org/autoswarm-gateway"
+          IMAGE_MAP_WORKERS="ghcr.io/madfam-org/selva-workers"
+
+          image_for() {
+            case "$1" in
+              nexus-api) echo "$IMAGE_MAP_NEXUS_API" ;;
+              office-ui) echo "$IMAGE_MAP_OFFICE_UI" ;;
+              colyseus)  echo "$IMAGE_MAP_COLYSEUS" ;;
+              admin)     echo "$IMAGE_MAP_ADMIN" ;;
+              gateway)   echo "$IMAGE_MAP_GATEWAY" ;;
+              workers)   echo "$IMAGE_MAP_WORKERS" ;;
+              *) echo ""; return 1 ;;
+            esac
+          }
+
+          read_staging_digest() {
+            local image="$1"
+            python3 - "$image" <<'PY'
+          import re, pathlib, sys
+          image = sys.argv[1]
+          text = pathlib.Path("infra/k8s/overlays/staging/kustomization.yaml").read_text()
+          m = re.search(r'name:\s+' + re.escape(image) + r'\n\s+digest:\s+(sha256:[a-f0-9]+)', text)
+          if not m: sys.exit(1)
+          print(m.group(1))
+          PY
+          }
+
+          resolve_one() {
+            local comp="$1"
+            local image
+            image=$(image_for "$comp")
+            local d
+            if [[ -n "$INPUT_DIGEST" && "$COMPONENT" != "all" ]]; then
+              d="$INPUT_DIGEST"
+            else
+              d=$(read_staging_digest "$image")
+            fi
+            if [[ ! "$d" =~ ^sha256:[a-f0-9]+$ ]]; then
+              echo "::error::Invalid $comp digest: $d"
+              exit 1
+            fi
+            if [[ "$d" == "sha256:0000000000000000000000000000000000000000000000000000000000000000" ]]; then
+              echo "::error::$comp staging digest is the placeholder — staging has never deployed this image. Refusing to promote."
+              exit 1
+            fi
+            # Soak check: find commit that wrote this digest to staging overlay
+            STAGING_COMMIT=$(git log --all -n 100 --format="%H" -- infra/k8s/overlays/staging/kustomization.yaml \
+              | while read sha; do
+                  if git show "$sha:infra/k8s/overlays/staging/kustomization.yaml" 2>/dev/null | grep -q "$d"; then
+                    echo "$sha"; break
+                  fi
+                done)
+            if [[ -z "$STAGING_COMMIT" ]]; then
+              echo "::error::$comp digest $d has no recent staging commit — refusing to promote."
+              exit 1
+            fi
+            STAGING_TIME=$(git show -s --format=%ct "$STAGING_COMMIT")
+            NOW=$(date +%s)
+            AGE_MIN=$(( (NOW - STAGING_TIME) / 60 ))
+            if [[ "$AGE_MIN" -lt "$MIN_SOAK_MIN" ]]; then
+              echo "::error::$comp digest soaked ${AGE_MIN}min; required ${MIN_SOAK_MIN}min."
+              exit 1
+            fi
+            echo "$d"
+          }
+
+          NEXUS_API_D=""
+          OFFICE_UI_D=""
+          COLYSEUS_D=""
+          ADMIN_D=""
+          GATEWAY_D=""
+          WORKERS_D=""
+
+          case "$COMPONENT" in
+            nexus-api) NEXUS_API_D=$(resolve_one nexus-api) ;;
+            office-ui) OFFICE_UI_D=$(resolve_one office-ui) ;;
+            colyseus)  COLYSEUS_D=$(resolve_one colyseus) ;;
+            admin)     ADMIN_D=$(resolve_one admin) ;;
+            gateway)   GATEWAY_D=$(resolve_one gateway) ;;
+            workers)   WORKERS_D=$(resolve_one workers) ;;
+            all)
+              NEXUS_API_D=$(resolve_one nexus-api)
+              OFFICE_UI_D=$(resolve_one office-ui)
+              COLYSEUS_D=$(resolve_one colyseus)
+              ADMIN_D=$(resolve_one admin)
+              GATEWAY_D=$(resolve_one gateway)
+              WORKERS_D=$(resolve_one workers)
+              ;;
+            *)
+              echo "::error::Unknown component $COMPONENT"; exit 1 ;;
+          esac
+
+          SHORT="$(git rev-parse --short HEAD)"
+          {
+            echo "nexus_api_digest=$NEXUS_API_D"
+            echo "office_ui_digest=$OFFICE_UI_D"
+            echo "colyseus_digest=$COLYSEUS_D"
+            echo "admin_digest=$ADMIN_D"
+            echo "gateway_digest=$GATEWAY_D"
+            echo "workers_digest=$WORKERS_D"
+            echo "short=$SHORT"
+            echo "reason=$REASON"
+            echo "should_promote=true"
+          } >> "$GITHUB_OUTPUT"
+
+  promote:
+    name: Write prod kustomization
+    needs: validate
+    if: needs.validate.outputs.should_promote == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MADFAM_BOT_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Patch prod overlay digests
+        env:
+          NEXUS_API_DIGEST: ${{ needs.validate.outputs.nexus_api_digest }}
+          OFFICE_UI_DIGEST: ${{ needs.validate.outputs.office_ui_digest }}
+          COLYSEUS_DIGEST: ${{ needs.validate.outputs.colyseus_digest }}
+          ADMIN_DIGEST: ${{ needs.validate.outputs.admin_digest }}
+          GATEWAY_DIGEST: ${{ needs.validate.outputs.gateway_digest }}
+          WORKERS_DIGEST: ${{ needs.validate.outputs.workers_digest }}
+          SHORT: ${{ needs.validate.outputs.short }}
+          REASON: ${{ needs.validate.outputs.reason }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          FILE="infra/k8s/overlays/production/kustomization.yaml"
+          python3 <<'PY'
+          import os, re, pathlib
+          path = pathlib.Path(os.environ["FILE"]) if "FILE" in os.environ else pathlib.Path("infra/k8s/overlays/production/kustomization.yaml")
+          text = path.read_text()
+
+          updates = {
+            "ghcr.io/madfam-org/autoswarm-nexus-api": os.environ.get("NEXUS_API_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-office-ui": os.environ.get("OFFICE_UI_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-colyseus":  os.environ.get("COLYSEUS_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-admin":     os.environ.get("ADMIN_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-gateway":   os.environ.get("GATEWAY_DIGEST", ""),
+            "ghcr.io/madfam-org/selva-workers":       os.environ.get("WORKERS_DIGEST", ""),
+          }
+
+          for image, digest in updates.items():
+              if not digest:
+                  continue
+              pattern = (
+                  r'(name:\s+' + re.escape(image)
+                  + r'\n\s+digest:\s+)sha256:[a-f0-9]+'
+              )
+              text = re.sub(pattern, lambda m, d=digest: m.group(1) + d, text)
+
+          path.write_text(text)
+          PY
+
+          git config user.name "autoswarm-bot"
+          git config user.email "bot@autoswarm.dev"
+          git add "$FILE"
+          git commit -m "deploy(prod): promote $SHORT
+
+          Reason: $REASON
+          Promoted-by: $ACTOR" || {
+            echo "No digest change — already at target"
+            exit 0
+          }
+          git push

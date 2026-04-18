@@ -1,0 +1,110 @@
+# PP.4 (RFC 0001 Phase 2) — autoswarm-office staging overlay.
+#
+# Imports the production canonical base and applies staging-specific
+# patches. Mirrors Karafiel's PP.1 pilot + Dhanam's PP.2b pattern,
+# scaled to 6 Deployments (nexus-api, office-ui, colyseus, admin,
+# gateway, workers) + 3 HPAs.
+#
+# Namespace choice: `autoswarm-staging` matches the ecosystem
+# convention (karafiel-staging, dhanam-staging) and the K8s namespace
+# tracks the **repo name** even though the product is now branded
+# Selva. This is deliberate — the RFC 0005 secret-writer RBAC in the
+# prod base is hardcoded to the `autoswarm` namespace, and renaming
+# the staging namespace to `selva-staging` would force a parallel
+# rename in 3 RBAC files. That rename is tracked as a follow-up; for
+# PP.4 we take the smaller diff.
+#
+# What staging differs from prod on:
+#   - namespace: autoswarm-staging
+#   - replicas: 1 per deploy (HPAs pinned to maxReplicas=1 via patch)
+#   - image digests: updated by staging-deploy.yml on every main merge
+#   - env: ENVIRONMENT=staging, SENTRY_ENVIRONMENT=staging, AUTO_DISPATCH_ENABLED=false
+#   - secrets: autoswarm-staging-{secrets,llm-secrets,admin-auth}
+#   - feature flags: voice-mode live sends off, Stripe live off,
+#     Reddit bot off, autonomous dispatch off
+#   - Cloudflare DNS + tunnel routes for staging-*.selva.town are
+#     ops-managed (see docs/PP_4_STAGING_AUDIT.md § recommended ordering).
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: autoswarm-staging
+
+resources:
+  - ../../production
+
+# Staging replicas: 1 everywhere. HPAs are pinned min=max=1 via
+# hpa-disable-patch.yaml — the deployments ignore HPA when at max.
+replicas:
+  - name: nexus-api
+    count: 1
+  - name: office-ui
+    count: 1
+  - name: colyseus
+    count: 1
+  - name: admin
+    count: 1
+  - name: gateway
+    count: 1
+  - name: workers
+    count: 1
+
+# Image digests for staging. CI (staging-deploy.yml) updates these on
+# every main-branch push via a Python regex patch. The placeholder
+# digest below will be overwritten by the first staging deploy.
+images:
+  - name: ghcr.io/madfam-org/autoswarm-nexus-api
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-office-ui
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-colyseus
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-admin
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-gateway
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/selva-workers
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+# Per-deployment strategic-merge-patches. Each file is a single-doc
+# patch with explicit `metadata.name` so kustomize's patch matcher
+# resolves cleanly (vs multi-doc files which trip up the name lookup
+# when namespace is rewritten by the overlay).
+patches:
+  - path: patch-nexus-api.yaml
+    target:
+      kind: Deployment
+      name: nexus-api
+  - path: patch-office-ui.yaml
+    target:
+      kind: Deployment
+      name: office-ui
+  - path: patch-colyseus.yaml
+    target:
+      kind: Deployment
+      name: colyseus
+  - path: patch-admin.yaml
+    target:
+      kind: Deployment
+      name: admin
+  - path: patch-gateway.yaml
+    target:
+      kind: Deployment
+      name: gateway
+  - path: patch-workers.yaml
+    target:
+      kind: Deployment
+      name: workers
+
+  # HPAs pinned to maxReplicas=1 in staging — single replica is fine
+  # and autoscaling would just mask deploy issues.
+  - path: hpa-disable-patch.yaml
+    target:
+      kind: HorizontalPodAutoscaler
+
+# `labels:` replaces the deprecated `commonLabels:`. Adds an
+# environment tag so Grafana/Prometheus can slice dashboards by tier.
+labels:
+  - pairs:
+      autoswarm.dev/environment: staging
+    includeSelectors: false

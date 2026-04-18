@@ -1,0 +1,56 @@
+# PP.4 — symmetric production overlay.
+#
+# This overlay is INTENTIONALLY empty beyond the namespace + resources
+# reference. It exists as a symmetric peer to overlays/staging/ so
+# that:
+#   1. The promote-to-prod workflow has a canonical target file for
+#      patching image digests (avoids writing to the canonical base
+#      `infra/k8s/production/kustomization.yaml` directly).
+#   2. When the prod ArgoCD Application is cut over to watch this
+#      path (tracked as PP.5, a separate PR), the path change is the
+#      only diff — no manifest rewrites.
+#
+# During Phase 1 (PP.4 → PP.5 transition), the ArgoCD prod
+# Application continues to watch `infra/k8s/production`. The
+# `promote-to-prod.yml` workflow writes digests HERE (into the
+# overlays/production block below). When PP.5 lands, the prod
+# ArgoCD Application is retargeted to this path and the direct-to-prod
+# `deploy.yml` workflow is decommissioned.
+#
+# Why write digests into the overlay instead of the base during
+# Phase 1? Because the base is still the active prod target —
+# accidentally committing a broken digest there has immediate prod
+# impact. Writing to this overlay is dead-code until PP.5 cutover, so
+# a promote-to-prod run during Phase 1 is effectively a rehearsal.
+#
+# NOTE: during the 14-day soak period, `deploy.yml`'s `commit-digests`
+# stage continues to write prod digests into
+# `infra/k8s/production/kustomization.yaml` (the base). Legacy path
+# remains authoritative until PP.5.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: autoswarm
+
+resources:
+  - ../../production
+
+# Production image digests. promote-to-prod.yml writes here on every
+# manual promote. All zero-digests until the first promote runs.
+images:
+  - name: ghcr.io/madfam-org/autoswarm-nexus-api
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-office-ui
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-colyseus
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-admin
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/autoswarm-gateway
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/madfam-org/selva-workers
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+commonLabels:
+  autoswarm.dev/environment: production

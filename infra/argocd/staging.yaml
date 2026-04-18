@@ -1,0 +1,49 @@
+# PP.4 — ArgoCD Application for the autoswarm-office staging tier.
+#
+# Peer of infra/argocd/application.yaml (prod). Watches the staging
+# overlay path on the same `main` branch and reconciles into the
+# `autoswarm-staging` namespace.
+#
+# Operator registers this by:
+#   kubectl apply -f infra/argocd/staging.yaml
+#   argocd app sync autoswarm-office-staging
+#
+# Post-registration the sync loop is pull-based: staging-deploy.yml
+# patches the overlay's image digests, commits, pushes; ArgoCD picks
+# up the commit within the sync interval (default 3 min) and
+# reconciles.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: autoswarm-office-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    autoswarm.dev/project: autoswarm
+    autoswarm.dev/environment: staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: autoswarm-office
+  source:
+    repoURL: https://github.com/madfam-org/autoswarm-office
+    targetRevision: main
+    path: infra/k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: autoswarm-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      # Staging should tolerate transient drift (e.g. operator patches)
+      # longer than prod — set a conservative retry profile.
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

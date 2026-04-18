@@ -1,0 +1,25 @@
+# PP.4 — staging patch for colyseus (game state server).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: colyseus
+spec:
+  template:
+    spec:
+      containers:
+        - name: colyseus
+          env:
+            - name: ENVIRONMENT
+              value: staging
+            - name: SENTRY_ENVIRONMENT
+              value: staging
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: redis-url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: secret-key
