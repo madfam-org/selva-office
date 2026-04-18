@@ -26,6 +26,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -484,3 +485,16 @@ def get_cloudflare_tools() -> list[BaseTool]:
         CloudflareCreateRedirectRuleTool(),
         CloudflareListPageRulesTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    CloudflareCreateZoneTool,
+    CloudflareListZonesTool,
+    CloudflareCreateDnsRecordTool,
+    CloudflareListDnsRecordsTool,
+    CloudflareCreateRedirectRuleTool,
+    CloudflareListPageRulesTool,
+):
+    _cls.audience = Audience.PLATFORM

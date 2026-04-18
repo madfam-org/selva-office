@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -391,3 +392,15 @@ def get_k8s_diagnostic_tools() -> list[BaseTool]:
         K8sGetReplicasetsTool(),
         K8sRolloutStatusTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    K8sGetPodsTool,
+    K8sDescribePodTool,
+    K8sGetEventsTool,
+    K8sGetReplicasetsTool,
+    K8sRolloutStatusTool,
+):
+    _cls.audience = Audience.PLATFORM

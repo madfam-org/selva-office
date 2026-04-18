@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -237,3 +238,14 @@ def get_resend_domain_tools() -> list[BaseTool]:
         ResendDomainListTool(),
         ResendDomainDeleteTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    ResendDomainAddTool,
+    ResendDomainVerifyTool,
+    ResendDomainListTool,
+    ResendDomainDeleteTool,
+):
+    _cls.audience = Audience.PLATFORM

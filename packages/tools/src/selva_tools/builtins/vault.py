@@ -26,6 +26,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -377,3 +378,15 @@ def get_vault_tools() -> list[BaseTool]:
         VaultDeleteTool(),
         VaultRotateTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    VaultStoreTool,
+    VaultRetrieveTool,
+    VaultListTool,
+    VaultDeleteTool,
+    VaultRotateTool,
+):
+    _cls.audience = Audience.PLATFORM

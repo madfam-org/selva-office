@@ -33,6 +33,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -328,3 +329,13 @@ def get_stripe_connect_tools() -> list[BaseTool]:
         StripeConnectAccountLinkTool(),
         StripeConnectAccountStatusTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    StripeConnectAccountCreateTool,
+    StripeConnectAccountLinkTool,
+    StripeConnectAccountStatusTool,
+):
+    _cls.audience = Audience.PLATFORM

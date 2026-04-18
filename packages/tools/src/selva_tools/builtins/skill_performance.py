@@ -34,6 +34,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -293,3 +294,12 @@ def get_skill_performance_tools() -> list[BaseTool]:
         SkillRecordOutcomeTool(),
         SkillGetMetricsTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    SkillRecordOutcomeTool,
+    SkillGetMetricsTool,
+):
+    _cls.audience = Audience.PLATFORM

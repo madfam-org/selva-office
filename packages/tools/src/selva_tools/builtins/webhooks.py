@@ -57,6 +57,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 from .k8s_secret import (
     ALLOWED_CLUSTERS,
@@ -1554,3 +1555,15 @@ class JanuaOidcRedirectRegisterTool(BaseTool):
                 "target_url_sha256_prefix": uri_prefix,
             },
         )
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    StripeWebhookCreateTool,
+    StripeWebhookListTool,
+    StripeWebhookDeleteTool,
+    ResendWebhookCreateTool,
+    JanuaOidcRedirectRegisterTool,
+):
+    _cls.audience = Audience.PLATFORM

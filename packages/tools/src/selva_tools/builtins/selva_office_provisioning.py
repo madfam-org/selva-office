@@ -27,6 +27,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -262,3 +263,13 @@ def get_selva_office_provisioning_tools() -> list[BaseTool]:
         SelvaOfficeSeatAssignDepartmentTool(),
         SelvaOfficeSeatRevokeTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    SelvaOfficeSeatCreateTool,
+    SelvaOfficeSeatAssignDepartmentTool,
+    SelvaOfficeSeatRevokeTool,
+):
+    _cls.audience = Audience.PLATFORM
