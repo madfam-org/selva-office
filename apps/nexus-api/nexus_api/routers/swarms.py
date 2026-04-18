@@ -13,7 +13,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from selva_permissions import Audience as PermissionAudience
+from selva_permissions import resolve_audience
 from selva_redis_pool import get_redis_pool
+from selva_skills import SkillAudience, get_skill_registry
 
 from ..auth import get_current_user, require_non_demo, require_non_guest
 from ..config import get_settings
@@ -166,6 +169,38 @@ async def dispatch_task(
                 detail="Workflow not found",
             )
         workflow_yaml = wf.yaml_content
+
+    # -- Audience gate --------------------------------------------------------
+    # A tenant swarm (org_id != PLATFORM_ORG_ID) cannot dispatch a task
+    # that requires platform-audience skills. Platform swarms can
+    # dispatch any audience (superset). Unset PLATFORM_ORG_ID means
+    # every caller is tenant audience — no platform skills are
+    # dispatchable at all, which is the safe default until MADFAM's
+    # own org is configured.
+    caller_audience = resolve_audience(tenant.org_id)
+    if body.required_skills and caller_audience is PermissionAudience.TENANT:
+        forbidden: list[str] = []
+        try:
+            skill_registry = get_skill_registry()
+        except Exception:
+            skill_registry = None
+        if skill_registry is not None:
+            for skill_name in body.required_skills:
+                meta = skill_registry.get_metadata(skill_name)
+                if meta is not None and meta.audience is SkillAudience.PLATFORM:
+                    forbidden.append(skill_name)
+        if forbidden:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "audience_mismatch",
+                    "message": (
+                        "Tenant swarms cannot dispatch platform-audience skills."
+                    ),
+                    "forbidden_skills": forbidden,
+                    "caller_audience": caller_audience.value,
+                },
+            )
 
     # -- Skill-based agent matching (when no explicit agents provided) --------
     assigned_agent_ids = body.assigned_agent_ids
