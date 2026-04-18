@@ -34,6 +34,7 @@ from selva_permissions import (
     apply_decision,
     compute_bucket_key,
     compute_signature,
+    promote_if_eligible,
 )
 
 from ..auth import CurrentUser, require_roles
@@ -235,8 +236,14 @@ async def _persist_decision_and_bucket(
     bucket.beta_beta = next_state.beta_beta
     bucket.confidence = next_state.confidence
     bucket.last_decision_at = now
-    # Sprint 1 never promotes — stay on ASK no matter what.
-    bucket.tier = HitlConfidenceTier.ASK
+    # Sprint 2: persist the next-state tier (apply_decision preserves or
+    # demotes on revert; the caller has already run promote_if_eligible
+    # when the outcome was positive). Also persist locked_until so the
+    # repromotion lock window survives restarts.
+    bucket.tier = HitlConfidenceTier(next_state.tier.value)
+    bucket.locked_until = next_state.locked_until
+    if bucket.tier is not HitlConfidenceTier.ASK and bucket.last_promoted_at is None:
+        bucket.last_promoted_at = now
 
     await db.flush()
     await db.refresh(decision)
@@ -263,6 +270,14 @@ async def record_decision(
     )
     _, state = await _load_bucket_state(db, bucket_key)
     next_state = apply_decision(state, body.outcome)
+    # Sprint 2: on positive outcomes, let the bucket earn a higher tier.
+    # Negative outcomes (reject/timeout/revert) never promote — revert
+    # actively demotes inside apply_decision itself.
+    if body.outcome in (
+        DecisionOutcome.APPROVED_CLEAN,
+        DecisionOutcome.APPROVED_MODIFIED,
+    ):
+        next_state = promote_if_eligible(next_state, body.action_category)
 
     decision = await _persist_decision_and_bucket(
         db,
@@ -288,7 +303,7 @@ async def record_decision(
         context_signature=context_signature,
         confidence=next_state.confidence,
         n_observed=next_state.n_observed,
-        tier=HitlConfidenceTier.ASK,
+        tier=HitlConfidenceTier(next_state.tier.value),
     )
 
 
