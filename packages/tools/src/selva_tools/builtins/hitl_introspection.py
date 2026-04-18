@@ -362,23 +362,23 @@ def _build_narrative(
 ) -> str:
     """Assemble a one-line 'why asked' narrative from decision+bucket."""
     # Sprint 2 promotion threshold from selva_permissions default.
-    PROMOTION_MIN_OBSERVED = 10
-    LCB_THRESHOLD = 0.70
+    promotion_min_observed = 10
+    lcb_threshold = 0.70
     if bucket is None:
         return (
             f"first-observation: no prior rows for bucket "
             f"{decision.get('bucket_key')}"
         )
     n_observed = int(bucket.get("n_observed", 0))
-    if n_observed < PROMOTION_MIN_OBSERVED:
+    if n_observed < promotion_min_observed:
         return (
-            f"sample-limited: {n_observed}/{PROMOTION_MIN_OBSERVED} "
+            f"sample-limited: {n_observed}/{promotion_min_observed} "
             f"required observations"
         )
     confidence = float(bucket.get("confidence", 0.0))
-    if confidence < LCB_THRESHOLD:
+    if confidence < lcb_threshold:
         return (
-            f"LCB {confidence:.2f} below {LCB_THRESHOLD:.2f} threshold "
+            f"LCB {confidence:.2f} below {lcb_threshold:.2f} threshold "
             f"(n={n_observed})"
         )
     return (

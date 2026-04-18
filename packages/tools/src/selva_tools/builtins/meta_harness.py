@@ -85,7 +85,7 @@ async def _run_cli(args: list[str]) -> tuple[int, str, str]:
             stdout_b, stderr_b = await asyncio.wait_for(
                 proc.communicate(), timeout=CLI_TIMEOUT_SEC
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             await proc.wait()
             return 124, "", f"timed out after {CLI_TIMEOUT_SEC}s: {shlex.join(cmd)}"

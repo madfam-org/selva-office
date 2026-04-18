@@ -196,7 +196,7 @@ class FactoryManifestVerifyTool(BaseTool):
             except json.JSONDecodeError as e:
                 return ToolResult(
                     success=True,
-                    output=f"manifest JSON invalid",
+                    output="manifest JSON invalid",
                     data={
                         "repo": repo,
                         "valid": False,
@@ -286,7 +286,7 @@ class FactoryManifestPublishTool(BaseTool):
             if merged == current:
                 return ToolResult(
                     success=True,
-                    output=f"no change — manifest already matches",
+                    output="no change — manifest already matches",
                     data={
                         "repo": repo,
                         "path": str(path),
