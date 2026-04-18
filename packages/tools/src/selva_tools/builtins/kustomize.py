@@ -24,6 +24,7 @@ try:
 except ImportError:  # pragma: no cover — yaml is a runtime dep
     yaml = None
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -251,3 +252,13 @@ def get_kustomize_tools() -> list[BaseTool]:
         KustomizeSetImageTool(),
         KustomizeBuildTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    KustomizeListImagesTool,
+    KustomizeSetImageTool,
+    KustomizeBuildTool,
+):
+    _cls.audience = Audience.PLATFORM

@@ -24,6 +24,7 @@ import os
 import re
 from typing import Any
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -452,3 +453,14 @@ def get_db_lifecycle_tools() -> list[BaseTool]:
         DbMaskAndCopyTool(),
         DbSizeReportTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    DbDumpToR2Tool,
+    DbRestoreFromR2Tool,
+    DbMaskAndCopyTool,
+    DbSizeReportTool,
+):
+    _cls.audience = Audience.PLATFORM

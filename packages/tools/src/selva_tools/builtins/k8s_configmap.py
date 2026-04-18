@@ -60,6 +60,7 @@ import uuid
 from enum import Enum
 from typing import Any
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger("selva.tools.k8s_configmap")
@@ -1311,3 +1312,14 @@ class ListConfigMapsTool(BaseTool):
                 "count": len(items),
             },
         )
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    ReadConfigMapTool,
+    SetConfigMapValueTool,
+    DeleteConfigMapKeyTool,
+    ListConfigMapsTool,
+):
+    _cls.audience = Audience.PLATFORM

@@ -18,6 +18,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -309,3 +310,14 @@ def get_argocd_tools() -> list[BaseTool]:
         ArgocdSyncAppTool(),
         ArgocdRefreshAppTool(),
     ]
+
+
+# Audience tagging — platform infra (sync app state, trigger reconciliation).
+# Tenant swarms must not see these.
+for _cls in (
+    ArgocdListAppsTool,
+    ArgocdGetAppTool,
+    ArgocdSyncAppTool,
+    ArgocdRefreshAppTool,
+):
+    _cls.audience = Audience.PLATFORM

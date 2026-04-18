@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -305,3 +306,14 @@ def get_cloudflare_tunnel_tools() -> list[BaseTool]:
         CfTunnelGetIngressTool(),
         CfTunnelPutIngressTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    CfTunnelListTool,
+    CfTunnelCreateTool,
+    CfTunnelGetIngressTool,
+    CfTunnelPutIngressTool,
+):
+    _cls.audience = Audience.PLATFORM

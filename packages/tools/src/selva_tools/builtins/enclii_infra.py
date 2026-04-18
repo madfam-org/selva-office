@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -392,3 +393,16 @@ class EncliiSecretsTool(BaseTool):
 
         except httpx.HTTPError as exc:
             return ToolResult(success=False, error=f"Secrets operation failed: {exc}")
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    EncliiExecTool,
+    EncliiRestartTool,
+    EncliiScaleTool,
+    EncliiLogsTool,
+    EncliiHealthTool,
+    EncliiSecretsTool,
+):
+    _cls.audience = Audience.PLATFORM

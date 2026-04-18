@@ -19,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -612,3 +613,20 @@ class DeleteUrlForwardingTool(BaseTool):
         except Exception as e:
             logger.error("porkbun_delete_url_forwarding failed: %s", e)
             return ToolResult(success=False, error=str(e))
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    ListDomainsTool,
+    GetNameserversTool,
+    UpdateNameserversTool,
+    ListDnsRecordsTool,
+    CreateDnsRecordTool,
+    DeleteDnsRecordTool,
+    PingTool,
+    DomainHealthCheckTool,
+    ListUrlForwardingTool,
+    DeleteUrlForwardingTool,
+):
+    _cls.audience = Audience.PLATFORM

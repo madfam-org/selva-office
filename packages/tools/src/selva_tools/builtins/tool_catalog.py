@@ -21,6 +21,7 @@ import logging
 import re
 from typing import Any
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 from ..registry import get_tool_registry
 
@@ -309,3 +310,13 @@ def get_tool_catalog_tools() -> list[BaseTool]:
         SearchToolsByCapabilityTool(),
         DescribeToolTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    ListMyToolsTool,
+    SearchToolsByCapabilityTool,
+    DescribeToolTool,
+):
+    _cls.audience = Audience.PLATFORM

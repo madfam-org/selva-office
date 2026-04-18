@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -266,3 +267,14 @@ def get_r2_tools() -> list[BaseTool]:
         R2BucketDeleteTool(),
         R2CorsSetTool(),
     ]
+
+
+# Audience tagging — platform-only tools. Tenant swarms are filtered
+# out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
+for _cls in (
+    R2BucketListTool,
+    R2BucketCreateTool,
+    R2BucketDeleteTool,
+    R2CorsSetTool,
+):
+    _cls.audience = Audience.PLATFORM
