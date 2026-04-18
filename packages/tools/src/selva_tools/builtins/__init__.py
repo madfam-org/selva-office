@@ -41,7 +41,13 @@ from .cloudflare import get_cloudflare_tools
 from .cloudflare_r2 import get_r2_tools
 from .cloudflare_saas import get_cloudflare_saas_tools
 from .cloudflare_tunnel import get_cloudflare_tunnel_tools
+from .dhanam_provisioning import get_dhanam_provisioning_tools
 from .dns import get_dns_tools
+from .janua_admin import get_janua_admin_tools
+from .karafiel_provisioning import get_karafiel_provisioning_tools
+from .phynecrm_provisioning import get_phynecrm_provisioning_tools
+from .resend_domain import get_resend_domain_tools
+from .tenant_identity import get_tenant_identity_tools
 from .k8s_diagnostics import get_k8s_diagnostic_tools
 from .kustomize import get_kustomize_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
@@ -299,6 +305,25 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_kustomize_tools(),
         # pgBackRest operations (info, backup, check)
         *get_backup_tools(),
+        # Phase 2 — Tenant onboarding primitives: Janua OAuth-client admin
+        # (create/update/rotate/delete) + org creation for fresh tenants.
+        *get_janua_admin_tools(),
+        # Phase 2 — Tenant onboarding primitives: Dhanam space + subscription
+        # + credit-ledger management for billing bootstrap.
+        *get_dhanam_provisioning_tools(),
+        # Phase 2 — Tenant onboarding primitives: PhyneCRM tenant_config +
+        # pipeline bootstrap + config read (voice_mode / onboarding state).
+        *get_phynecrm_provisioning_tools(),
+        # Phase 2 — Tenant onboarding primitives: Karafiel org + SAT cert +
+        # PAC register + invoice-serie setup (Mexican fiscal compliance).
+        # SAT cert upload is explicitly HITL-gated (legal-entity signing key).
+        *get_karafiel_provisioning_tools(),
+        # Phase 2 — Tenant onboarding primitives: Resend domain add/verify/
+        # list/delete (bring-your-own-domain email sending).
+        *get_resend_domain_tools(),
+        # Phase 2 — Tenant onboarding primitives: central tenant_identities
+        # record (canonical_id ↔ per-service IDs) + resolve + drift check.
+        *get_tenant_identity_tools(),
         # NPM registry management (Verdaccio — token rotation + GitHub secrets)
         *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)
