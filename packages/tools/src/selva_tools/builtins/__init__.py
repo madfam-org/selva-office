@@ -35,6 +35,7 @@ from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
 from .database_tools import DatabaseSchemaTool, SQLQueryTool, SQLWriteTool
 from .deploy import DeployStatusTool, DeployTool
+from .cloudflare import get_cloudflare_tools
 from .dns import get_dns_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
 from .email_tools import ReadEmailTool, SendEmailTool
@@ -275,6 +276,8 @@ def get_builtin_tools() -> list[BaseTool]:
         EncliiSecretsTool(),
         # DNS management tools (Porkbun — Orchestration Node)
         *get_dns_tools(),
+        # Cloudflare zone + DNS + Page Rules management
+        *get_cloudflare_tools(),
         # NPM registry management (Verdaccio — token rotation + GitHub secrets)
         *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)

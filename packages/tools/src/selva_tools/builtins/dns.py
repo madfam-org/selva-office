@@ -506,4 +506,109 @@ def get_dns_tools() -> list[BaseTool]:
         CreateDnsRecordTool(),
         DeleteDnsRecordTool(),
         DomainHealthCheckTool(),
+        ListUrlForwardingTool(),
+        DeleteUrlForwardingTool(),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Porkbun URL forwarding (read + delete)
+# ---------------------------------------------------------------------------
+#
+# Porkbun offers a built-in HTTP redirect service via ALIAS + CNAME into
+# uixie.porkbun.com. After migrating NS to Cloudflare, these forwards
+# become dead weight — CF owns the redirect. These two tools let an agent
+# clean them up as part of the migration flow.
+
+
+class ListUrlForwardingTool(BaseTool):
+    """List Porkbun URL forwarding entries for a domain."""
+
+    name = "porkbun_list_url_forwarding"
+    description = (
+        "List the URL-forwarding entries a domain has configured in Porkbun. "
+        "Each entry has an id, subdomain, location (target), type, includePath, "
+        "and wildcard flag. Used primarily to find the id of a forward that "
+        "needs to be deleted."
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string",
+                    "description": "Apex domain (e.g. 'example.com').",
+                },
+            },
+            "required": ["domain"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        err = _check_credentials()
+        if err:
+            return ToolResult(success=False, error=err)
+        domain = kwargs["domain"]
+        try:
+            resp = await _post(f"domain/getUrlForwarding/{domain}")
+            if resp.get("status") != "SUCCESS":
+                return ToolResult(
+                    success=False,
+                    error=f"porkbun: {resp.get('message') or resp}",
+                )
+            forwards = resp.get("forwards") or []
+            return ToolResult(
+                success=True,
+                output=f"Found {len(forwards)} forward(s) for {domain}.",
+                data={"forwards": forwards},
+            )
+        except Exception as e:
+            logger.error("porkbun_list_url_forwarding failed: %s", e)
+            return ToolResult(success=False, error=str(e))
+
+
+class DeleteUrlForwardingTool(BaseTool):
+    """Delete a single URL-forwarding entry from a domain."""
+
+    name = "porkbun_delete_url_forwarding"
+    description = (
+        "Delete a URL-forwarding entry on a Porkbun domain by its id. Use "
+        "porkbun_list_url_forwarding to look the id up. Typically invoked "
+        "as the last step of an NS-migration to Cloudflare: once CF owns "
+        "the redirect, the Porkbun-side forward is redundant."
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "domain": {"type": "string"},
+                "forward_id": {
+                    "type": "string",
+                    "description": "Id of the forward entry to delete.",
+                },
+            },
+            "required": ["domain", "forward_id"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        err = _check_credentials()
+        if err:
+            return ToolResult(success=False, error=err)
+        domain = kwargs["domain"]
+        fid = kwargs["forward_id"]
+        try:
+            resp = await _post(f"domain/deleteUrlForward/{domain}/{fid}")
+            if resp.get("status") != "SUCCESS":
+                return ToolResult(
+                    success=False,
+                    error=f"porkbun: {resp.get('message') or resp}",
+                )
+            return ToolResult(
+                success=True,
+                output=f"Deleted URL forward {fid} on {domain}.",
+                data={"domain": domain, "forward_id": fid},
+            )
+        except Exception as e:
+            logger.error("porkbun_delete_url_forwarding failed: %s", e)
+            return ToolResult(success=False, error=str(e))
