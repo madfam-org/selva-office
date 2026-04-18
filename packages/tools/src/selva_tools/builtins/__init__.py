@@ -37,6 +37,9 @@ from .database_tools import DatabaseSchemaTool, SQLQueryTool, SQLWriteTool
 from .deploy import DeployStatusTool, DeployTool
 from .argocd import get_argocd_tools
 from .cloudflare import get_cloudflare_tools
+from .cloudflare_r2 import get_r2_tools
+from .cloudflare_saas import get_cloudflare_saas_tools
+from .cloudflare_tunnel import get_cloudflare_tunnel_tools
 from .dns import get_dns_tools
 from .k8s_diagnostics import get_k8s_diagnostic_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
@@ -280,6 +283,12 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_dns_tools(),
         # Cloudflare zone + DNS + Page Rules management
         *get_cloudflare_tools(),
+        # Cloudflare Zero Trust Tunnel (route public hostnames to cluster)
+        *get_cloudflare_tunnel_tools(),
+        # Cloudflare R2 object storage (bucket CRUD + CORS)
+        *get_r2_tools(),
+        # Cloudflare for SaaS custom-hostname onboarding (tenant bring-your-own-domain)
+        *get_cloudflare_saas_tools(),
         # ArgoCD application management (sync, refresh, read status)
         *get_argocd_tools(),
         # Kubernetes read-side diagnostics (pods, events, replicasets, rollouts)
