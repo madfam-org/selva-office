@@ -1,5 +1,78 @@
 # CLAUDE.md -- AutoSwarm Office
 
+## Deployment Pipeline (dev → staging → prod)
+
+autoswarm-office is the **Phase 4** target for the 3-tier pipeline
+defined in [internal-devops/rfcs/0001-dev-staging-prod-pipeline.md](https://github.com/madfam-org/internal-devops/blob/main/rfcs/0001-dev-staging-prod-pipeline.md).
+
+**Current state (PP.4 shipped):** Staging now lives at
+`infra/k8s/overlays/staging/` as a Kustomize overlay of the prod
+canonical base (`infra/k8s/production/`), digest-pinned, reconciled
+by the `autoswarm-office-staging` ArgoCD Application
+(`infra/argocd/staging.yaml`). Promote + rollback are manual workflows
+(Pattern B — agent code that touches prod customer data).
+
+See [docs/PP_4_STAGING_AUDIT.md](docs/PP_4_STAGING_AUDIT.md) for the
+row-by-row gap analysis.
+
+### Flow
+
+| Action | Trigger | Workflow | Target |
+|---|---|---|---|
+| Build + deploy all 6 services to staging | push to `main` | `.github/workflows/staging-deploy.yml` | `autoswarm-staging` namespace |
+| Build + deploy to prod (legacy, still live) | push to `main` | `.github/workflows/deploy.yml` | `autoswarm` namespace |
+| Promote one or all services to prod | manual `workflow_dispatch` | `.github/workflows/promote-to-prod.yml` | `infra/k8s/overlays/production/kustomization.yaml` |
+| Rollback prod | manual `workflow_dispatch` | `.github/workflows/rollback-prod.yml` | `infra/k8s/overlays/production/kustomization.yaml` |
+
+Staging and legacy prod run side-by-side during the 14-day soak. PP.5
+will cut over the prod ArgoCD Application's `path:` from
+`infra/k8s/production` to `infra/k8s/overlays/production` and
+decommission the `commit-digests` stage of `deploy.yml`.
+
+### Promotion rules (Pattern B — manual gate)
+
+- Promotion is a **pointer update**, never a rebuild.
+- Promote only after staging has soaked ≥30 min and the staging smoke
+  passed (enforced by `promote-to-prod.yml` via git-log traversal of
+  the staging overlay + `MIN_SOAK_MINUTES` repo var).
+- autoswarm-office is Pattern B because workers execute agent code
+  that sends real customer emails (Resend), pushes real git branches
+  (GitHub API), and calls Stripe/PhyneCRM/Dhanam in production.
+
+### Rollback
+
+- RTO target: <5 min.
+- Trigger `rollback-prod.yml` with the target digest; defaults to the
+  previous prod digest automatically (read from git history of the
+  prod overlay).
+
+### Staging guardrails (what MUST stay off)
+
+- `AUTO_DISPATCH_ENABLED=false` on the gateway (heartbeat loop does
+  not dispatch SwarmTasks → no autonomous emails, PRs, or webhooks)
+- `FEATURE_STRIPE_MXN_LIVE=false` on workers (no live Stripe events)
+- `FEATURE_VOICE_MODE_LIVE=false` on workers (voice-mode tool layer
+  refuses sends anyway when `voice_mode` is NULL, but belt + braces)
+- `FEATURE_REDDIT_BOT=false` on workers
+- HPAs pinned to `maxReplicas=1` in staging (3 HPAs: nexus-api,
+  office-ui, colyseus)
+- Staging secrets (`autoswarm-staging-secrets`,
+  `autoswarm-staging-llm-secrets`, `autoswarm-staging-admin-auth`)
+  provisioned in the `autoswarm-staging` namespace — template at
+  `infra/k8s/overlays/staging/staging-secrets-template.yaml`.
+
+### Operator actions pending
+
+- Register Janua staging OAuth client (`autoswarm-office-staging`)
+  with redirect URIs for `staging-admin.selva.town` and
+  `staging.selva.town`.
+- Provision the 3 staging Secrets per the bootstrap commands in
+  `docs/PP_4_STAGING_AUDIT.md` § recommended ordering.
+- Create Cloudflare DNS + tunnel routes for `staging-api.selva.town`,
+  `staging.selva.town`, `staging-admin.selva.town`,
+  `staging-ws.selva.town`, `staging-gw.selva.town`.
+- `kubectl apply -f infra/argocd/staging.yaml` + sync.
+
 ## Quick Start (Local Dev)
 
 ```bash
