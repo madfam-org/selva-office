@@ -768,3 +768,107 @@ class GithubAdminAuditLog(Base):
     # SHA-256 over the row's identifying fields. See
     # nexus_api.audit.github_admin_audit.verify_signature.
     signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# RFC 0007 — Selva ConfigMap audit log (migration 0021)
+# ---------------------------------------------------------------------------
+
+
+class ConfigmapAuditLog(Base):
+    """Append-only audit row for every ``config.*`` tool invocation.
+
+    See ``internal-devops/rfcs/0007-selva-configmap-and-feature-flag-tool.md``
+    §"Audit trail" for the schema contract. UPDATE/DELETE are revoked from
+    the app role at the DB level in migration 0021 — corrections land as
+    new rows with ``rollback_of_id`` set, never as mutations.
+
+    Unlike ``SecretAuditLog`` (which refuses to see the value at all),
+    this ledger stores the 8-hex-char SHA-256 prefix of both the new and
+    the predecessor value. That lets a forensic reviewer reconstruct a
+    diff of which keys flipped without ever storing plaintext — important
+    because ConfigMaps legitimately carry semi-sensitive data (internal
+    hostnames, webhook URLs, cron expressions).
+
+    ``target_key`` is nullable because ``list`` and (rarely) ``read``
+    operations are not key-scoped.
+    """
+
+    __tablename__ = "configmap_audit_log"
+    __table_args__ = (
+        Index(
+            "ix_configmap_audit_target",
+            "target_cluster",
+            "target_namespace",
+            "target_configmap_name",
+            "target_key",
+        ),
+        Index("ix_configmap_audit_created", "created_at"),
+        Index("ix_configmap_audit_approval", "approval_request_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # -- Actors ---------------------------------------------------------
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Opaque correlation id set by the caller (tool or API). Lets ops
+    # correlate an audit row to a specific worker task / HTTP request
+    # without leaking internal IDs.
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # -- Target ---------------------------------------------------------
+    target_cluster: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_namespace: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_configmap_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Nullable: list/read-all operations are not key-scoped.
+    target_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # -- Write intent + hash prefixes ----------------------------------
+    # read / write / delete / list (see migration 0021 CHECK).
+    operation: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Exactly 8 hex chars when present. Nullable for read/list/delete
+    # operations. NEVER the raw value.
+    value_sha256_prefix: Mapped[str | None] = mapped_column(
+        String(8), nullable=True
+    )
+    # Predecessor value hash prefix — lets forensics reconstruct a
+    # before/after diff for any key flip without plaintext on either side.
+    previous_value_sha256_prefix: Mapped[str | None] = mapped_column(
+        String(8), nullable=True
+    )
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # -- HITL enforcement snapshot -------------------------------------
+    # One of "allow", "ask", "ask_dual" — records which gate was enforced
+    # for this specific call (so we can post-hoc audit escalation decisions
+    # on feature-flag keys without re-running the gate logic).
+    hitl_level: Mapped[str] = mapped_column(String(16), nullable=False)
+
+    # -- Approval chain ------------------------------------------------
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    # JSON: [{"user_sub": "...", "approved_at": "ISO-8601"}, ...]
+    approval_chain: Mapped[list[dict]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+
+    # -- Lifecycle -----------------------------------------------------
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+
+    # -- Tamper-evidence -----------------------------------------------
+    # SHA-256 over the row's identifying fields. See
+    # nexus_api.audit.configmap_audit.verify_signature.
+    signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
