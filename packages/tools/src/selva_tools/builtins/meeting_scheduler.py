@@ -22,7 +22,7 @@ responsibility and easy to layer on).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
 
 from ..base import BaseTool, ToolResult
@@ -45,13 +45,13 @@ def _parse_iso(s: str) -> datetime:
         s = s[:-1] + "+00:00"
     dt = datetime.fromisoformat(s)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
 def _iso(dt: datetime) -> str:
     """Emit an ISO-8601 UTC string with trailing 'Z' for cross-provider safety."""
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _event_range(event: dict[str, Any]) -> tuple[datetime, datetime] | None:
