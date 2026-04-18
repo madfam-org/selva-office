@@ -1,3 +1,10 @@
+# PP.4 note — this is the LEGACY direct-to-prod workflow.
+#
+# It continues to run side-by-side with the new staging-first path
+# (staging-deploy.yml + promote-to-prod.yml) during a 14-day soak.
+# After the soak + PP.5 ArgoCD prod cutover, this workflow's
+# `commit-digests` stage will be decommissioned in a follow-up PR.
+# Keep side-by-side for continuity; do not delete.
 name: Build & Deploy
 
 on:
@@ -5,6 +12,7 @@ on:
     branches: [main]
     paths-ignore:
       - "infra/k8s/production/kustomization.yaml"
+      - "infra/k8s/overlays/**"
   workflow_dispatch:
     inputs:
       force_build:

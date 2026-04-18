@@ -1,0 +1,164 @@
+# PP.4 (RFC 0001 Phase 2) — emergency prod rollback.
+#
+# Writes a target digest into
+# infra/k8s/overlays/production/kustomization.yaml and commits. ArgoCD
+# reconciles within ~3 min. Intended RTO <5 min.
+#
+# There is no auto-trigger — rollbacks are always a human call. Per
+# RFC 0001, leaving `digest` blank rolls back to the previous prod
+# digest for the chosen component by reading git history.
+#
+# NOTE: during the PP.4 → PP.5 transition, the prod ArgoCD
+# Application still watches `infra/k8s/production` (the base) as its
+# `path:`. This workflow writes to `infra/k8s/overlays/production`
+# (the new overlay). That means rollbacks via this workflow only
+# affect prod once PP.5 cuts over the ArgoCD prod Application path.
+# Until then, production rollback is via the legacy path (revert
+# the `deploy.yml` digest commit on main) — kept for continuity.
+# This workflow is ready to go the moment PP.5 lands.
+
+name: Rollback prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Which image to roll back"
+        required: true
+        type: choice
+        options:
+          - nexus-api
+          - office-ui
+          - colyseus
+          - admin
+          - gateway
+          - workers
+      digest:
+        description: "Digest to roll back to (sha256:...). Leave blank to use the previous prod digest from git history."
+        required: false
+        type: string
+      reason:
+        description: "Why are you rolling back? (shown in audit log; required)"
+        required: true
+        type: string
+
+concurrency:
+  group: prod-rollback
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Write target digest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MADFAM_BOT_PAT || secrets.GITHUB_TOKEN }}
+          fetch-depth: 100
+
+      - name: Resolve target digest
+        id: target
+        env:
+          COMPONENT: ${{ inputs.component }}
+          INPUT_DIGEST: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          FILE="infra/k8s/overlays/production/kustomization.yaml"
+
+          image_for() {
+            case "$1" in
+              nexus-api) echo "ghcr.io/madfam-org/autoswarm-nexus-api" ;;
+              office-ui) echo "ghcr.io/madfam-org/autoswarm-office-ui" ;;
+              colyseus)  echo "ghcr.io/madfam-org/autoswarm-colyseus" ;;
+              admin)     echo "ghcr.io/madfam-org/autoswarm-admin" ;;
+              gateway)   echo "ghcr.io/madfam-org/autoswarm-gateway" ;;
+              workers)   echo "ghcr.io/madfam-org/selva-workers" ;;
+              *) echo ""; return 1 ;;
+            esac
+          }
+          IMAGE=$(image_for "$COMPONENT")
+
+          read_current_digest() {
+            python3 - "$IMAGE" "$FILE" <<'PY'
+          import re, pathlib, sys
+          image, file = sys.argv[1], sys.argv[2]
+          t = pathlib.Path(file).read_text()
+          m = re.search(r'name:\s+' + re.escape(image) + r'\n\s+digest:\s+(sha256:[a-f0-9]+)', t)
+          if m: print(m.group(1))
+          PY
+          }
+
+          if [[ -n "$INPUT_DIGEST" ]]; then
+            TARGET="$INPUT_DIGEST"
+          else
+            CURRENT=$(read_current_digest)
+            if [[ -z "$CURRENT" ]]; then
+              echo "::error::Could not read current prod digest for $COMPONENT from $FILE"
+              exit 1
+            fi
+            TARGET=""
+            for sha in $(git log -n 80 --format=%H -- "$FILE"); do
+              HIST=$(git show "$sha:$FILE" 2>/dev/null | python3 - "$IMAGE" <<'PY'
+          import re, sys
+          image = sys.argv[1]
+          t = sys.stdin.read()
+          m = re.search(r'name:\s+' + re.escape(image) + r'\n\s+digest:\s+(sha256:[a-f0-9]+)', t)
+          if m: print(m.group(1))
+          PY
+          )
+              if [[ -n "$HIST" && "$HIST" != "$CURRENT" && "$HIST" != "sha256:0000000000000000000000000000000000000000000000000000000000000000" ]]; then
+                TARGET="$HIST"
+                break
+              fi
+            done
+            if [[ -z "$TARGET" ]]; then
+              echo "::error::Cannot find previous $COMPONENT digest in git history. Pass one explicitly via the digest input."
+              exit 1
+            fi
+          fi
+
+          if [[ ! "$TARGET" =~ ^sha256:[a-f0-9]+$ ]]; then
+            echo "::error::Invalid digest: $TARGET"; exit 1
+          fi
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "Rolling back $COMPONENT to $TARGET"
+
+      - name: Patch prod overlay
+        env:
+          TARGET: ${{ steps.target.outputs.target }}
+          IMAGE: ${{ steps.target.outputs.image }}
+          COMPONENT: ${{ inputs.component }}
+          REASON: ${{ inputs.reason }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          FILE="infra/k8s/overlays/production/kustomization.yaml"
+          python3 <<'PY'
+          import os, re, pathlib
+          p = pathlib.Path("infra/k8s/overlays/production/kustomization.yaml")
+          t = p.read_text()
+          target = os.environ["TARGET"]
+          image = os.environ["IMAGE"]
+          pat = r'(name:\s+' + re.escape(image) + r'\n\s+digest:\s+)sha256:[a-f0-9]+'
+          if not re.search(pat, t):
+              raise SystemExit(f"Could not locate {image} digest entry in {p}")
+          t = re.sub(pat, lambda m: m.group(1) + target, t)
+          p.write_text(t)
+          PY
+          SHORT="${TARGET:7:15}"
+          git config user.name "autoswarm-bot"
+          git config user.email "bot@autoswarm.dev"
+          git add "$FILE"
+          git commit -m "rollback(prod): restore $COMPONENT $SHORT
+
+          Reason: $REASON
+          Rolled-back-by: $ACTOR"
+          git push
+
+      - name: Notify
+        if: always()
+        run: |
+          echo "::notice::autoswarm-office ${{ inputs.component }} rolled back to ${{ steps.target.outputs.target }}. Monitor ArgoCD (autoswarm-office Application) for reconcile completion."

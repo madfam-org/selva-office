@@ -1,0 +1,216 @@
+# PP.4 (RFC 0001 Phase 2) — autoswarm-office staging deploy.
+#
+# Builds the 6 service images in parallel, patches their digests into
+# infra/k8s/overlays/staging/kustomization.yaml, commits, and lets the
+# autoswarm-office-staging ArgoCD Application reconcile. Post-reconcile
+# smoke hits every service's /health endpoint with 6 retries x 20s
+# (matches Karafiel + Dhanam).
+#
+# Triggered on every push to main. Does NOT touch production — that's
+# promote-to-prod.yml's job.
+#
+# Multi-pod adaptation: autoswarm-office has 6 deployables (nexus-api,
+# office-ui, colyseus, admin, gateway, workers). We fan out the build
+# step into 6 parallel jobs, then collect all digests in a single
+# patch job that updates the overlay atomically. This avoids 6 racing
+# commits to the overlay kustomization.
+
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'infra/k8s/overlays/production/kustomization.yaml'  # prod promotions don't rebuild
+      - 'infra/k8s/production/kustomization.yaml'  # legacy prod path
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: "Rebuild all 6 services even if unchanged"
+        type: boolean
+        default: false
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  ORG: madfam-org
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }} staging image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: nexus-api
+            image: autoswarm-nexus-api
+            dockerfile: infra/docker/Dockerfile.nexus-api
+          - service: office-ui
+            image: autoswarm-office-ui
+            dockerfile: infra/docker/Dockerfile.office-ui
+          - service: colyseus
+            image: autoswarm-colyseus
+            dockerfile: infra/docker/Dockerfile.colyseus
+          - service: admin
+            image: autoswarm-admin
+            dockerfile: infra/docker/Dockerfile.admin
+          - service: gateway
+            image: autoswarm-gateway
+            dockerfile: infra/docker/Dockerfile.gateway
+          - service: workers
+            image: selva-workers
+            dockerfile: infra/docker/Dockerfile.workers
+    outputs:
+      nexus-api: ${{ steps.export.outputs.nexus-api }}
+      office-ui: ${{ steps.export.outputs.office-ui }}
+      colyseus: ${{ steps.export.outputs.colyseus }}
+      admin: ${{ steps.export.outputs.admin }}
+      gateway: ${{ steps.export.outputs.gateway }}
+      workers: ${{ steps.export.outputs.workers }}
+      short: ${{ steps.sha.outputs.short }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=staging-${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=staging-${{ matrix.service }}
+          # Next.js public vars compiled into the image — point the
+          # staging image at staging hosts. Fallback via secrets so
+          # the workflow keeps working if the env vars aren't set.
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://staging-api.selva.town
+            NEXT_PUBLIC_COLYSEUS_URL=wss://staging-ws.selva.town
+            NEXT_PUBLIC_JANUA_ISSUER_URL=${{ secrets.JANUA_STAGING_ISSUER_URL || 'https://auth.selva.town' }}
+            NEXT_PUBLIC_JANUA_CLIENT_ID=${{ secrets.JANUA_STAGING_CLIENT_ID || 'autoswarm-office-staging' }}
+            NEXT_PUBLIC_DEMO_ENABLED=true
+            NEXT_PUBLIC_GUEST_ACCESS_ENABLED=true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:staging-${{ steps.sha.outputs.short }}
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:staging-latest
+
+      # Export per-service digest under a keyed output so the patch
+      # job can read all 6 simultaneously.
+      - id: export
+        run: |
+          echo "${{ matrix.service }}=${{ steps.push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  update-staging-overlay:
+    name: Patch staging overlay digests
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MADFAM_BOT_PAT || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Patch overlay image digests
+        env:
+          NEXUS_API_DIGEST: ${{ needs.build.outputs.nexus-api }}
+          OFFICE_UI_DIGEST: ${{ needs.build.outputs.office-ui }}
+          COLYSEUS_DIGEST: ${{ needs.build.outputs.colyseus }}
+          ADMIN_DIGEST: ${{ needs.build.outputs.admin }}
+          GATEWAY_DIGEST: ${{ needs.build.outputs.gateway }}
+          WORKERS_DIGEST: ${{ needs.build.outputs.workers }}
+          SHORT: ${{ needs.build.outputs.short }}
+        run: |
+          set -euo pipefail
+          FILE="infra/k8s/overlays/staging/kustomization.yaml"
+          python3 <<'PY'
+          import os, re, pathlib
+          path = pathlib.Path("infra/k8s/overlays/staging/kustomization.yaml")
+          text = path.read_text()
+
+          updates = {
+            "ghcr.io/madfam-org/autoswarm-nexus-api": os.environ.get("NEXUS_API_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-office-ui": os.environ.get("OFFICE_UI_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-colyseus":  os.environ.get("COLYSEUS_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-admin":     os.environ.get("ADMIN_DIGEST", ""),
+            "ghcr.io/madfam-org/autoswarm-gateway":   os.environ.get("GATEWAY_DIGEST", ""),
+            "ghcr.io/madfam-org/selva-workers":       os.environ.get("WORKERS_DIGEST", ""),
+          }
+
+          for image, digest in updates.items():
+              if not digest:
+                  continue
+              pattern = (
+                  r'(name:\s+' + re.escape(image)
+                  + r'\n\s+digest:\s+)sha256:[a-f0-9]+'
+              )
+              text = re.sub(pattern, lambda m, d=digest: m.group(1) + d, text)
+
+          path.write_text(text)
+          PY
+
+          git config user.name "autoswarm-bot"
+          git config user.email "bot@autoswarm.dev"
+          git add "$FILE"
+          git commit -m "deploy(staging): update digests to $SHORT" || {
+            echo "No digest change — skipping push"
+            exit 0
+          }
+          # Retry on race: another workflow may have pushed to main
+          # between our checkout and our push.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git fetch origin main
+            git rebase origin/main
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to push staging digest commit after 3 attempts"
+          exit 1
+
+  smoke:
+    name: Staging smoke test
+    needs: update-staging-overlay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for ArgoCD reconcile
+        # ArgoCD sync interval is 3min default; add buffer for image pull
+        # + 6-pod rolling restart.
+        run: sleep 240
+
+      - name: Run staging smoke script
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL || 'https://staging-api.selva.town' }}
+          STAGING_UI_URL: ${{ vars.STAGING_UI_URL || 'https://staging.selva.town' }}
+          STAGING_ADMIN_URL: ${{ vars.STAGING_ADMIN_URL || 'https://staging-admin.selva.town' }}
+          STAGING_WS_URL: ${{ vars.STAGING_WS_URL || 'https://staging-ws.selva.town' }}
+          STAGING_GW_URL: ${{ vars.STAGING_GW_URL || 'https://staging-gw.selva.town' }}
+        run: |
+          chmod +x scripts/staging-smoke.sh
+          scripts/staging-smoke.sh
