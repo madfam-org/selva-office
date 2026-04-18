@@ -1,5 +1,14 @@
 # Selva Tool + Skill 100% Coverage Plan
 
+> **Status: shipped 2026-04-18.** All six phases landed as PRs #50–#57
+> on `main`. Registry now has ~65 tool modules / ~258 tool classes /
+> 26 skills. Follow-up admin/tenant audience split shipped as PRs
+> #60–#65 (see `CLAUDE.md` ## Tool + Skill Audience Split).
+>
+> This document is kept as a historical artifact of the plan + phasing
+> rationale. For the current tool/skill surface, check
+> `packages/tools/src/selva_tools/builtins/` directly.
+>
 > **Source:** 2026-04-18 capability audit.
 > **Goal:** The Selva swarm can (1) stabilize + maintain our infrastructure,
 > (2) improve the platform autonomously, and (3) onboard a new tenant end-to-end
