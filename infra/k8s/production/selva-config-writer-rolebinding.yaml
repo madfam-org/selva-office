@@ -1,0 +1,315 @@
+# RFC 0007 Sprint 1 — per-namespace bindings for the selva-config-writer
+# ServiceAccount + Role.
+#
+# Every allowed namespace gets:
+#   1. A copy of the Role (same spec, different namespace).
+#   2. A RoleBinding granting the SA (in `autoswarm`) the Role's verbs
+#      in that namespace.
+#
+# ADDING A NEW NAMESPACE requires:
+#   1. Add the Role + RoleBinding pair below.
+#   2. Add the namespace to ALLOWED_NAMESPACES in
+#      packages/tools/src/selva_tools/builtins/k8s_configmap.py.
+#   3. Open a PR. ArgoCD picks up the manifest after merge; the tool
+#      constant change propagates on the next worker image build.
+#
+# Explicitly NOT included: kube-system, default, argocd, monitoring,
+# ingress-nginx, cert-manager. If a future need arises to mutate
+# ConfigMaps in those namespaces, it should go through a separate RFC.
+---
+# ----------------------------------------------------------------------
+# karafiel (prod)
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: karafiel
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: karafiel
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# karafiel-staging
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: karafiel-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: karafiel-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# dhanam (prod)
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: dhanam
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: dhanam
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# dhanam-staging
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: dhanam-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: dhanam-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# janua (prod)
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: janua
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: janua
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# janua-staging
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: janua-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: janua-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# autoswarm-office (Selva's own -- manages its own org-config ConfigMap)
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: autoswarm-office
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: autoswarm-office
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# phyne-crm (prod)
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: phyne-crm
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: phyne-crm
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ----------------------------------------------------------------------
+# phyne-crm-staging
+# ----------------------------------------------------------------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: selva-config-writer
+  namespace: phyne-crm-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: selva-config-writer
+  namespace: phyne-crm-staging
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    rfc: "0007"
+subjects:
+  - kind: ServiceAccount
+    name: selva-config-writer
+    namespace: autoswarm
+roleRef:
+  kind: Role
+  name: selva-config-writer
+  apiGroup: rbac.authorization.k8s.io

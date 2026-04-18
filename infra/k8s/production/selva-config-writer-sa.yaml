@@ -1,0 +1,30 @@
+# RFC 0007 Sprint 1 — dedicated ServiceAccount for the Selva worker's
+# ConfigMap read/write tool family (`config.*`). Kept separate from the
+# main `autoswarm-sa` AND the `selva-secret-writer` SA so the RBAC
+# surface for each capability can be audited independently.
+#
+# The projected token from this SA is mounted at
+#   /var/run/secrets/selva/config-writer/token
+# on the worker pod (see workers.yaml `volumes:` block).
+#
+# See internal-devops/rfcs/0007-selva-configmap-and-feature-flag-tool.md.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: selva-config-writer
+  namespace: autoswarm
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/component: config-writer
+    rfc: "0007"
+  annotations:
+    madfam.io/purpose: >
+      Narrowly-scoped SA used by the Selva config.* tool family.
+      RoleBindings in each target namespace grant get/list/create/
+      update/patch/delete on ConfigMap objects. Unlike the secret-
+      writer SA, this one CAN read ConfigMap values (workers
+      legitimately need to inspect flags), but audit logs ensure
+      every read/write/delete is recorded with a SHA-256 prefix of
+      the value rather than plaintext.
+automountServiceAccountToken: false

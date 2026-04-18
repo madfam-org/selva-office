@@ -29,4 +29,9 @@ DEFAULT_PERMISSION_MATRIX: dict[ActionCategory, PermissionLevel] = {
     # relaxes to ALLOW for dev. Keeping the default at ASK means
     # *unknown* callers fail-closed to human approval.
     ActionCategory.K8S_SECRET_WRITE: PermissionLevel.ASK,
+    # RFC 0007: ConfigMap mutations. Default ASK; per-env override is
+    # applied at the tool layer (dev=ALLOW, staging=ASK, prod=ASK,
+    # prod+feature-flag-key=ASK_DUAL). Default ASK keeps unknown
+    # callers fail-closed.
+    ActionCategory.K8S_CONFIGMAP_WRITE: PermissionLevel.ASK,
 }

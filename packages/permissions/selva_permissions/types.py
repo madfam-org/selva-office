@@ -49,6 +49,10 @@ class ActionCategory(StrEnum):
     # branch protection). Mutating operations are HITL-gated; read-only
     # audits default to ALLOW.
     GITHUB_ADMIN = "github_admin"
+    # RFC 0007: k8s ConfigMap writes (feature flags, non-secret config).
+    # dev=ALLOW / staging=ASK / prod=ASK. Feature-flag-shaped keys in
+    # prod auto-escalate to ASK_DUAL at the tool layer.
+    K8S_CONFIGMAP_WRITE = "k8s_configmap_write"
 
 
 class PermissionResult(BaseModel):

@@ -1,0 +1,40 @@
+# RFC 0007 Sprint 1 — namespace-scoped Role (NOT ClusterRole) granting
+# the selva-config-writer SA the ability to read and mutate ConfigMaps.
+#
+# Unlike selva-secret-writer (RFC 0005), this role DOES allow `get`
+# and `list` on configmaps -- workers legitimately need to inspect
+# the current value of a feature flag before proposing a change, and
+# drift-audit flows need to enumerate ConfigMaps in a namespace.
+#
+# What's still excluded:
+#   - NO access to `secrets` (that's selva-secret-writer's job).
+#   - NO access to `pods`, `deployments`, `serviceaccounts`, etc.
+#   - NO `deletecollection` (tool can delete one key at a time, never
+#     purge all ConfigMaps in a namespace).
+#
+# The same Role is instantiated once per target namespace via a
+# RoleBinding in selva-config-writer-rolebinding.yaml. Adding a new
+# namespace requires a manifest PR there AND an update to the
+# ALLOWED_NAMESPACES constant in
+# packages/tools/src/selva_tools/builtins/k8s_configmap.py.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  # Role name is identical in every namespace where it's defined so
+  # the RoleBinding template can reference it without branching.
+  name: selva-config-writer
+  # namespace is template-substituted; each target namespace gets its
+  # own Role instance (kustomize/overlays or manual apply).
+  labels:
+    app.kubernetes.io/part-of: autoswarm-office
+    app.kubernetes.io/component: config-writer
+    rfc: "0007"
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    # get/list: read-only inspection + drift audits.
+    # create/update/patch: set_configmap_value / delete_configmap_key.
+    # delete: single-ConfigMap teardown (operator UI only — tool does
+    # not surface full-ConfigMap delete per RFC 0007 non-offerings).
+    verbs: ["get", "list", "create", "update", "patch", "delete"]

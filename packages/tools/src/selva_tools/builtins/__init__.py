@@ -47,6 +47,12 @@ from .github_admin import (
 )
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
+from .k8s_configmap import (
+    DeleteConfigMapKeyTool,
+    ListConfigMapsTool,
+    ReadConfigMapTool,
+    SetConfigMapValueTool,
+)
 from .k8s_secret import KubernetesSecretWriteTool
 from .intelligence import (
     DOFMonitorTool,
@@ -273,4 +279,11 @@ def get_builtin_tools() -> list[BaseTool]:
         GithubAdminSetTeamMembershipTool(),
         GithubAdminSetBranchProtectionTool(),
         GithubAdminAuditTeamMembershipTool(),
+        # RFC 0007 Sprint 1 — Kubernetes ConfigMap tools (feature flags,
+        # non-secret config). dev=ALLOW / staging=ASK / prod=ASK;
+        # FEATURE_*/ENABLE_*/*_ENABLED keys in prod escalate to ASK_DUAL.
+        ReadConfigMapTool(),
+        SetConfigMapValueTool(),
+        DeleteConfigMapKeyTool(),
+        ListConfigMapsTool(),
     ]
