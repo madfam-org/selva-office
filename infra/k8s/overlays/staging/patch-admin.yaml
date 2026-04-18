@@ -1,0 +1,37 @@
+# PP.4 — staging patch for admin (Next.js admin dashboard).
+#
+# The admin Deployment uses envFrom with 3 refs in the base:
+#   - configMapRef: autoswarm-config
+#   - secretRef: autoswarm-secrets
+#   - secretRef: autoswarm-admin-auth
+#
+# Strategic merge patch on `envFrom` replaces the entire list, so we
+# must restate all three — with the two Secret refs retargeted to
+# their `-staging` variants.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin
+spec:
+  template:
+    spec:
+      containers:
+        - name: admin
+          envFrom:
+            - configMapRef:
+                name: autoswarm-config
+            - secretRef:
+                name: autoswarm-staging-secrets
+            - secretRef:
+                name: autoswarm-staging-admin-auth
+          env:
+            - name: ENVIRONMENT
+              value: staging
+            - name: SENTRY_ENVIRONMENT
+              value: staging
+            - name: NEXT_PUBLIC_API_URL
+              value: https://staging-api.selva.town
+            - name: NEXT_PUBLIC_JANUA_ISSUER_URL
+              value: https://auth.selva.town
+            - name: NEXT_PUBLIC_JANUA_CLIENT_ID
+              value: autoswarm-office-staging

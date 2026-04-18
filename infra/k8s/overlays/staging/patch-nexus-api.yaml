@@ -1,0 +1,61 @@
+# PP.4 — staging patch for nexus-api (secretRefs + env overrides).
+#
+# Single-doc strategic-merge-patch: kustomize merges `env` by name,
+# so setting ENVIRONMENT here replaces the base's
+# `ENVIRONMENT=production`. Secret refs are rewritten to
+# autoswarm-staging-secrets / autoswarm-staging-llm-secrets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: nexus-api
+          env:
+            - name: ENVIRONMENT
+              value: staging
+            - name: SENTRY_ENVIRONMENT
+              value: staging
+            - name: SENTRY_RELEASE
+              value: autoswarm-nexus-api@staging
+            - name: CORS_ORIGINS
+              value: "https://staging.selva.town,https://staging-admin.selva.town,https://staging-api.selva.town"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: redis-url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: secret-key
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: RESEND_API_KEY
+            - name: WORKER_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: WORKER_API_TOKEN
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-llm-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: DEEPINFRA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-llm-secrets
+                  key: DEEPINFRA_API_KEY
+                  optional: true

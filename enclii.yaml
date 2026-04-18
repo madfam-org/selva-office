@@ -1,3 +1,23 @@
+# PP.4 — project-level promotion policy (RFC 0001 Pattern B).
+#
+# autoswarm-office is Pattern B (manual gate) because workers run
+# agent code that touches prod customer data via email sends, git
+# pushes, database writes, and Stripe/Resend/GitHub API calls. A bad
+# promote here would email real customers or push real git branches.
+# Human confirmation is the right trade-off.
+#
+# Interpreted by Enclii 0.8+ promotion hook; workflows also read
+# these values via `vars.MIN_SOAK_MINUTES` / `vars.AUTO_PROMOTE_ENABLED`.
+apiVersion: enclii.dev/v1
+kind: Project
+metadata:
+  name: autoswarm-office
+spec:
+  promotion:
+    pattern: manual
+    min_soak_minutes: 30
+    require_smoke_pass: true
+---
 apiVersion: enclii.dev/v1
 kind: Service
 metadata:

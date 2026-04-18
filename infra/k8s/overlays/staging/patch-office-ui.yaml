@@ -1,0 +1,30 @@
+# PP.4 — staging patch for office-ui (env overrides only; no secrets).
+#
+# office-ui is a pure Next.js frontend. Public env vars are baked at
+# build-time via staging-deploy.yml's docker build-args, but we also
+# override the runtime values here so hotfixes via `kubectl set env`
+# stay consistent.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: office-ui
+spec:
+  template:
+    spec:
+      containers:
+        - name: office-ui
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: https://staging-api.selva.town
+            - name: NEXT_PUBLIC_COLYSEUS_URL
+              value: wss://staging-ws.selva.town
+            - name: NEXT_PUBLIC_JANUA_ISSUER_URL
+              value: https://auth.selva.town
+            - name: NEXT_PUBLIC_JANUA_CLIENT_ID
+              value: autoswarm-office-staging
+            - name: NEXT_PUBLIC_DEMO_ENABLED
+              value: "true"
+            - name: NEXT_PUBLIC_GUEST_ACCESS_ENABLED
+              value: "true"
+            - name: NEXT_PUBLIC_APP_URL
+              value: https://staging.selva.town

@@ -1,0 +1,89 @@
+# PP.4 — staging patch for workers (agent task execution).
+#
+# CRITICAL staging guardrails: the workers pod runs LLM-driven agents
+# with tool access (SendEmail, GitPush, Stripe, PhyneCRM, Dhanam
+# billing). Keep the live-effect feature flags OFF in staging.
+#
+# DHANAM_API_URL points at dhanam's staging tier. YANTRA4D, COTIZA,
+# PRAVARA MES do not have staging tiers; workers must not hit them
+# autonomously — AUTO_DISPATCH_ENABLED=false on the gateway + HITL
+# on tool invocations are the safety nets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workers
+spec:
+  template:
+    spec:
+      containers:
+        - name: workers
+          env:
+            - name: ENVIRONMENT
+              value: staging
+            - name: SENTRY_ENVIRONMENT
+              value: staging
+            - name: FEATURE_STRIPE_MXN_LIVE
+              value: "false"
+            - name: FEATURE_VOICE_MODE_LIVE
+              value: "false"
+            - name: FEATURE_REDDIT_BOT
+              value: "false"
+            - name: DHANAM_API_URL
+              value: "https://staging-api.dhan.am"
+            - name: ENCLII_API_URL
+              value: "https://api.enclii.dev"
+            - name: YANTRA4D_API_URL
+              value: "https://api.yantra4d.com"
+            - name: COTIZA_API_URL
+              value: "https://api.cotiza.studio"
+            - name: PRAVARA_MES_API_URL
+              value: "https://mes-api.madfam.io"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: redis-url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: secret-key
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-llm-secrets
+                  key: RESEND_API_KEY
+                  optional: true
+            - name: COLYSEUS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: colyseus-secret
+            - name: WORKER_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-llm-secrets
+                  key: WORKER_API_TOKEN
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-llm-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: DEEPINFRA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-llm-secrets
+                  key: DEEPINFRA_API_KEY
+                  optional: true
+            - name: ENCLII_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: autoswarm-staging-secrets
+                  key: ENCLII_API_TOKEN
+                  optional: true
