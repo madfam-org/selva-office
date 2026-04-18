@@ -12,8 +12,8 @@ import pytest
 @pytest.mark.asyncio
 async def test_semaphore_limits_concurrency():
     """Verify that the semaphore caps parallel task execution."""
-    import autoswarm_workers.__main__ as worker_mod
-    from autoswarm_workers.__main__ import _process_with_semaphore
+    import selva_workers.__main__ as worker_mod
+    from selva_workers.__main__ import _process_with_semaphore
 
     counter = {"active": 0, "max_active": 0}
     original_semaphore = worker_mod._task_semaphore
@@ -46,7 +46,7 @@ async def test_semaphore_limits_concurrency():
 @pytest.mark.asyncio
 async def test_shutdown_drains_active_tasks():
     """Verify that active tasks are drained on shutdown."""
-    from autoswarm_workers.__main__ import _active_tasks
+    from selva_workers.__main__ import _active_tasks
 
     completed = {"count": 0}
 
@@ -66,8 +66,8 @@ async def test_shutdown_drains_active_tasks():
 @pytest.mark.asyncio
 async def test_ack_on_success():
     """Verify that successful tasks are acknowledged."""
-    import autoswarm_workers.__main__ as worker_mod
-    from autoswarm_workers.__main__ import _process_with_semaphore
+    import selva_workers.__main__ as worker_mod
+    from selva_workers.__main__ import _process_with_semaphore
 
     original_semaphore = worker_mod._task_semaphore
     worker_mod._task_semaphore = asyncio.Semaphore(1)
@@ -85,8 +85,8 @@ async def test_ack_on_success():
 @pytest.mark.asyncio
 async def test_dlq_on_max_retries_concurrent():
     """Verify that tasks are moved to DLQ after max retries."""
-    import autoswarm_workers.__main__ as worker_mod
-    from autoswarm_workers.__main__ import _process_with_semaphore
+    import selva_workers.__main__ as worker_mod
+    from selva_workers.__main__ import _process_with_semaphore
 
     original_semaphore = worker_mod._task_semaphore
     worker_mod._task_semaphore = asyncio.Semaphore(1)
@@ -105,7 +105,7 @@ async def test_dlq_on_max_retries_concurrent():
 @pytest.mark.asyncio
 async def test_removes_stale_worktrees(tmp_path):
     """Verify that worktrees older than stale_hours are removed."""
-    from autoswarm_workers.__main__ import _cleanup_stale_worktrees
+    from selva_workers.__main__ import _cleanup_stale_worktrees
 
     # Create a repo with _worktrees
     repo = tmp_path / "my-repo"
@@ -126,7 +126,7 @@ async def test_removes_stale_worktrees(tmp_path):
 @pytest.mark.asyncio
 async def test_preserves_fresh_worktrees(tmp_path):
     """Verify that recent worktrees are not removed."""
-    from autoswarm_workers.__main__ import _cleanup_stale_worktrees
+    from selva_workers.__main__ import _cleanup_stale_worktrees
 
     repo = tmp_path / "my-repo"
     wt_root = repo / "_worktrees"
@@ -142,7 +142,7 @@ async def test_preserves_fresh_worktrees(tmp_path):
 @pytest.mark.asyncio
 async def test_handles_missing_base_dir():
     """Verify graceful handling of nonexistent base directory."""
-    from autoswarm_workers.__main__ import _cleanup_stale_worktrees
+    from selva_workers.__main__ import _cleanup_stale_worktrees
 
     removed = await _cleanup_stale_worktrees("/nonexistent/path", stale_hours=24)
     assert removed == 0

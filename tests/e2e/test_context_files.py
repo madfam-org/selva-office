@@ -7,7 +7,7 @@ class TestContextFileLoader:
     def test_loads_agents_md(self, tmp_path):
         """AGENTS.md in workspace root is loaded and returned."""
         (tmp_path / "AGENTS.md").write_text("# Project Architecture\nUse hexagonal architecture.")
-        from autoswarm_workflows.context_files import ContextFileLoader
+        from selva_workflows.context_files import ContextFileLoader
         loader = ContextFileLoader()
         result = loader.load_context(str(tmp_path))
         assert "Project Architecture" in result
@@ -17,7 +17,7 @@ class TestContextFileLoader:
         """Both present: both injected, .autoswarm.md listed last (highest priority)."""
         (tmp_path / "AGENTS.md").write_text("# AGENTS\nBase instructions.")
         (tmp_path / ".autoswarm.md").write_text("# Local Override\nWorkspace-specific override.")
-        from autoswarm_workflows.context_files import ContextFileLoader
+        from selva_workflows.context_files import ContextFileLoader
         loader = ContextFileLoader()
         result = loader.load_context(str(tmp_path))
         # Both present, .autoswarm.md appears after AGENTS.md
@@ -28,21 +28,21 @@ class TestContextFileLoader:
     def test_cross_tool_files_loaded(self, tmp_path):
         """CLAUDE.md and GEMINI.md are also picked up for cross-tool compatibility."""
         (tmp_path / "CLAUDE.md").write_text("# Claude context\nSome docs.")
-        from autoswarm_workflows.context_files import ContextFileLoader
+        from selva_workflows.context_files import ContextFileLoader
         loader = ContextFileLoader()
         result = loader.load_context(str(tmp_path))
         assert "Claude context" in result
 
     def test_nonexistent_workspace_returns_empty(self):
         """Non-existent workspace returns empty string without crashing."""
-        from autoswarm_workflows.context_files import ContextFileLoader
+        from selva_workflows.context_files import ContextFileLoader
         loader = ContextFileLoader()
         result = loader.load_context("/this/does/not/exist")
         assert result == ""
 
     def test_empty_workspace_returns_empty(self, tmp_path):
         """Workspace with no context files returns empty string."""
-        from autoswarm_workflows.context_files import ContextFileLoader
+        from selva_workflows.context_files import ContextFileLoader
         loader = ContextFileLoader()
         result = loader.load_context(str(tmp_path))
         assert result == ""
@@ -51,7 +51,7 @@ class TestContextFileLoader:
         """Files exceeding the token cap are truncated with a warning marker."""
         huge_content = "word " * 50_000  # ~250k chars >> 32k limit
         (tmp_path / "AGENTS.md").write_text(huge_content)
-        from autoswarm_workflows.context_files import ContextFileLoader
+        from selva_workflows.context_files import ContextFileLoader
         loader = ContextFileLoader(max_chars_per_file=1000)
         result = loader.load_context(str(tmp_path))
         assert "truncated" in result.lower()

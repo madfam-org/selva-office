@@ -1,5 +1,5 @@
 [project]
-name = "autoswarm-a2a"
+name = "selva-a2a"
 version = "0.1.0"
 description = "A2A protocol implementation for AutoSwarm agents"
 requires-python = ">=3.12"
@@ -14,7 +14,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["autoswarm_a2a"]
+packages = ["selva_a2a"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

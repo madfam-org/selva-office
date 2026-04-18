@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from autoswarm_tools.execute_code import ExecuteCodeTool
+from selva_tools.execute_code import ExecuteCodeTool
 
 
 @pytest.mark.asyncio

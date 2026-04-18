@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from autoswarm_skills.defaults import DEFAULT_ROLE_SKILLS
-from autoswarm_skills.registry import SkillRegistry
+from selva_skills.defaults import DEFAULT_ROLE_SKILLS
+from selva_skills.registry import SkillRegistry
 
 # Resolve to the real skill-definitions directory
 SKILL_DEFS_DIR = Path(__file__).resolve().parent.parent / "skill-definitions"

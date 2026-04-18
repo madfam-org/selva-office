@@ -23,7 +23,7 @@ spec:
         address: redis.data.svc.cluster.local:6379
         databaseIndex: "8"
         stream: autoswarm:task-stream
-        consumerGroup: autoswarm-workers
+        consumerGroup: selva-workers
         # Target: 5 pending messages per replica.
         pendingEntriesCount: "5"
       authenticationRef:

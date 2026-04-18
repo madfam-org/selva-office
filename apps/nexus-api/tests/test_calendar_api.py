@@ -198,7 +198,7 @@ async def test_list_events_with_connection(
         "nexus_api.routers.calendar._fetch_events",
         new_callable=AsyncMock,
     ) as mock_fetch:
-        from autoswarm_calendar import CalendarEvent, CalendarProvider
+        from selva_calendar import CalendarEvent, CalendarProvider
 
         mock_fetch.return_value = [
             CalendarEvent(

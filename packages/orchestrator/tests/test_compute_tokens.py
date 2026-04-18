@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_orchestrator.compute_tokens import ComputeTokenManager
+from selva_orchestrator.compute_tokens import ComputeTokenManager
 
 
 @pytest.fixture()

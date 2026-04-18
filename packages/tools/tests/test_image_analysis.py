@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins import get_builtin_tools
-from autoswarm_tools.builtins.image_analysis import ImageAnalysisTool
+from selva_tools.builtins import get_builtin_tools
+from selva_tools.builtins.image_analysis import ImageAnalysisTool
 
 
 class TestImageAnalysisToolMetadata:

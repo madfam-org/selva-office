@@ -15,8 +15,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from autoswarm_tools.builtins import email_tools, marketing_tools
-from autoswarm_tools.builtins._spf_check import SpfResult
+from selva_tools.builtins import email_tools, marketing_tools
+from selva_tools.builtins._spf_check import SpfResult
 
 
 @pytest.mark.asyncio

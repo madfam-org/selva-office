@@ -110,7 +110,7 @@ jobs:
             dockerfile: infra/docker/Dockerfile.gateway
             changed: gateway
           - service: workers
-            image: autoswarm-workers
+            image: selva-workers
             dockerfile: infra/docker/Dockerfile.workers
             changed: workers
     steps:
@@ -206,7 +206,7 @@ jobs:
           git config user.name "autoswarm-bot"
           git config user.email "bot@autoswarm.dev"
 
-          SERVICES=("nexus-api:autoswarm-nexus-api" "office-ui:autoswarm-office-ui" "colyseus:autoswarm-colyseus" "admin:autoswarm-admin" "gateway:autoswarm-gateway" "workers:autoswarm-workers")
+          SERVICES=("nexus-api:autoswarm-nexus-api" "office-ui:autoswarm-office-ui" "colyseus:autoswarm-colyseus" "admin:autoswarm-admin" "gateway:autoswarm-gateway" "workers:selva-workers")
 
           for ATTEMPT in 1 2 3; do
             git fetch origin main

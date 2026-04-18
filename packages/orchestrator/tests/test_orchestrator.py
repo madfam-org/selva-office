@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import uuid
 
-from autoswarm_orchestrator.orchestrator import SwarmOrchestrator
-from autoswarm_orchestrator.types import AgentConfig, AgentRole, AgentStatus
+from selva_orchestrator.orchestrator import SwarmOrchestrator
+from selva_orchestrator.types import AgentConfig, AgentRole, AgentStatus
 
 
 def _make_orchestrator(*agents: AgentConfig) -> SwarmOrchestrator:

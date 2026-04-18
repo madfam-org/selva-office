@@ -30,7 +30,7 @@ def _task_data(
 
 
 def _perm_allow():
-    from autoswarm_permissions.types import PermissionLevel
+    from selva_permissions.types import PermissionLevel
 
     perm_result = MagicMock()
     perm_result.level = PermissionLevel.ALLOW
@@ -41,7 +41,7 @@ def _build_test_graph():
     """Build a coding graph without push_gate (avoids interrupt)."""
     from langgraph.graph import END, StateGraph
 
-    from autoswarm_workers.graphs.coding import (
+    from selva_workers.graphs.coding import (
         CodingState,
         _route_after_implement,
         _route_after_test,
@@ -49,7 +49,7 @@ def _build_test_graph():
         plan,
         review,
     )
-    from autoswarm_workers.graphs.coding import (
+    from selva_workers.graphs.coding import (
         test as test_node,
     )
 
@@ -111,24 +111,24 @@ async def test_coding_pipeline_mock_llm_succeeds(tmp_path):
     git_instance.cleanup_worktree = AsyncMock()
 
     with (
-        patch("autoswarm_workers.__main__._update_task_status", new_callable=AsyncMock),
-        patch("autoswarm_workers.__main__._publish_agent_status", new_callable=AsyncMock),
-        patch("autoswarm_workers.__main__._emit_event", new_callable=AsyncMock),
+        patch("selva_workers.__main__._update_task_status", new_callable=AsyncMock),
+        patch("selva_workers.__main__._publish_agent_status", new_callable=AsyncMock),
+        patch("selva_workers.__main__._emit_event", new_callable=AsyncMock),
         patch(
-            "autoswarm_workers.__main__._fetch_agent_skills",
+            "selva_workers.__main__._fetch_agent_skills",
             new_callable=AsyncMock,
             return_value=[],
         ),
-        patch("autoswarm_workers.__main__.get_redis_pool", return_value=MagicMock()),
-        patch("autoswarm_observability.bind_task_context"),
-        patch("autoswarm_observability.clear_context"),
-        patch("autoswarm_workers.inference.get_model_router", return_value=MagicMock()),
-        patch("autoswarm_workers.inference.call_llm", side_effect=mock_llm),
-        patch("autoswarm_workers.tools.git_tool.GitTool", return_value=git_instance),
-        patch("autoswarm_workers.graphs.coding.check_permission", return_value=_perm_allow()),
-        patch("autoswarm_workers.__main__.GRAPH_BUILDERS", {"coding": _build_test_graph}),
+        patch("selva_workers.__main__.get_redis_pool", return_value=MagicMock()),
+        patch("selva_observability.bind_task_context"),
+        patch("selva_observability.clear_context"),
+        patch("selva_workers.inference.get_model_router", return_value=MagicMock()),
+        patch("selva_workers.inference.call_llm", side_effect=mock_llm),
+        patch("selva_workers.tools.git_tool.GitTool", return_value=git_instance),
+        patch("selva_workers.graphs.coding.check_permission", return_value=_perm_allow()),
+        patch("selva_workers.__main__.GRAPH_BUILDERS", {"coding": _build_test_graph}),
     ):
-        from autoswarm_workers.__main__ import process_task
+        from selva_workers.__main__ import process_task
 
         data = _task_data(payload={"repo_path": str(repo)})
         await process_task(data)
@@ -139,7 +139,7 @@ async def test_coding_pipeline_mock_llm_succeeds(tmp_path):
 @pytest.mark.asyncio
 async def test_coding_pipeline_timeout(tmp_path):
     """Task exceeding timeout -> status 'failed'."""
-    import autoswarm_workers.__main__ as worker_mod
+    import selva_workers.__main__ as worker_mod
 
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -159,8 +159,8 @@ async def test_coding_pipeline_timeout(tmp_path):
             new_callable=AsyncMock, return_value=[],
         ),
         patch.object(worker_mod, "get_redis_pool", return_value=MagicMock()),
-        patch("autoswarm_observability.bind_task_context"),
-        patch("autoswarm_observability.clear_context"),
+        patch("selva_observability.bind_task_context"),
+        patch("selva_observability.clear_context"),
         patch.object(
             worker_mod, "run_graph_with_interrupts", side_effect=slow_graph,
         ),

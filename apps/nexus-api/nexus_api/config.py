@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     github_token: str = ""
 
     # Continuous learning / skills registry
-    autoswarm_skills_dir: str = "/var/lib/autoswarm/skills"
+    selva_skills_dir: str = "/var/lib/autoswarm/skills"
     skill_refine_interval_days: int = 7      # Refine skills older than N days
 
     # Memory compaction

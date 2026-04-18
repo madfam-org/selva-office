@@ -44,10 +44,10 @@ class TestRegistryV1Compliance:
     def test_v1_skill_loads_cleanly(self, skills_dir, caplog):
         (skills_dir / "v1_skill.py").write_text(V1_SKILL)
 
-        from autoswarm_skills.registry import SkillRegistry
+        from selva_skills.registry import SkillRegistry
         reg = SkillRegistry(skills_dir=str(skills_dir))
 
-        with caplog.at_level(logging.WARNING, logger="autoswarm_skills.registry"):
+        with caplog.at_level(logging.WARNING, logger="selva_skills.registry"):
             reg.load_skills()
 
         assert "v1_skill" in reg.skills
@@ -56,10 +56,10 @@ class TestRegistryV1Compliance:
     def test_legacy_skill_warns(self, skills_dir, caplog):
         (skills_dir / "legacy_skill.py").write_text(LEGACY_SKILL)
 
-        from autoswarm_skills.registry import SkillRegistry
+        from selva_skills.registry import SkillRegistry
         reg = SkillRegistry(skills_dir=str(skills_dir))
 
-        with caplog.at_level(logging.WARNING, logger="autoswarm_skills.registry"):
+        with caplog.at_level(logging.WARNING, logger="selva_skills.registry"):
             reg.load_skills()
 
         assert "legacy_skill" in reg.skills
@@ -68,7 +68,7 @@ class TestRegistryV1Compliance:
     def test_list_skills_returns_descriptions(self, skills_dir):
         (skills_dir / "v1_skill.py").write_text(V1_SKILL)
 
-        from autoswarm_skills.registry import SkillRegistry
+        from selva_skills.registry import SkillRegistry
         reg = SkillRegistry(skills_dir=str(skills_dir))
         reg.load_skills()
 
@@ -80,7 +80,7 @@ class TestRegistryV1Compliance:
 class TestQAOracleV1Synthesis:
     def test_synthesis_prompt_mandates_schema_version(self, tmp_path, monkeypatch):
         """The SKILL_SYNTHESIS_PROMPT should require SKILL_SCHEMA_VERSION = 'agentskills/v1'."""
-        from autoswarm_workflows.acp_qa_oracle import SKILL_SYNTHESIS_PROMPT
+        from selva_workflows.acp_qa_oracle import SKILL_SYNTHESIS_PROMPT
         assert "agentskills/v1" in SKILL_SYNTHESIS_PROMPT
         assert "SKILL_SCHEMA_VERSION" in SKILL_SYNTHESIS_PROMPT
         assert "SKILL_VERSION" in SKILL_SYNTHESIS_PROMPT
@@ -91,7 +91,7 @@ class TestQAOracleV1Synthesis:
         """Stub compiler should at minimum embed the run_id in SKILL_METADATA."""
         monkeypatch.setenv("AUTOSWARM_SKILLS_DIR", str(tmp_path))
 
-        from autoswarm_workflows.acp_qa_oracle import ACPQAOracleNode
+        from selva_workflows.acp_qa_oracle import ACPQAOracleNode
         node = ACPQAOracleNode(source_code="x = 1", test_suite="")
         path = node._compile_skill_stub("run-v1-check")
 

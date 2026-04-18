@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.base import BaseTool, ToolResult
-from autoswarm_tools.registry import ToolRegistry
+from selva_tools.base import BaseTool, ToolResult
+from selva_tools.registry import ToolRegistry
 
 
 class MockTool(BaseTool):

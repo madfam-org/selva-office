@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from autoswarm_skills.hub import SkillsHubClient
+from selva_skills.hub import SkillsHubClient
 
 from ..auth import get_current_user
 

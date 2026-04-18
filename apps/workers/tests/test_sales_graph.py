@@ -9,7 +9,7 @@ class TestSalesGraphStructure:
     """Sales graph has correct nodes, edges, and conditional routing."""
 
     def test_graph_has_expected_nodes(self) -> None:
-        from autoswarm_workers.graphs.sales import build_sales_graph
+        from selva_workers.graphs.sales import build_sales_graph
 
         graph = build_sales_graph()
         node_names = set(graph.nodes.keys())
@@ -22,14 +22,14 @@ class TestSalesGraphStructure:
         assert "track_cobranza" in node_names
 
     def test_graph_compiles(self) -> None:
-        from autoswarm_workers.graphs.sales import build_sales_graph
+        from selva_workers.graphs.sales import build_sales_graph
 
         graph = build_sales_graph()
         compiled = graph.compile()
         assert compiled is not None
 
     def test_sales_state_fields(self) -> None:
-        from autoswarm_workers.graphs.sales import SalesState
+        from selva_workers.graphs.sales import SalesState
 
         annotations = SalesState.__annotations__
         assert "lead_id" in annotations
@@ -41,7 +41,7 @@ class TestSalesGraphStructure:
         assert "customer_email" in annotations
 
     def test_graph_has_seven_nodes(self) -> None:
-        from autoswarm_workers.graphs.sales import build_sales_graph
+        from selva_workers.graphs.sales import build_sales_graph
 
         graph = build_sales_graph()
         # 7 nodes + __start__ + __end__
@@ -52,7 +52,7 @@ class TestQualifyLead:
     """qualify_lead() fetches and scores leads."""
 
     def test_qualify_lead_from_payload(self) -> None:
-        from autoswarm_workers.graphs.sales import qualify_lead
+        from selva_workers.graphs.sales import qualify_lead
 
         result = qualify_lead({
             "messages": [],
@@ -73,7 +73,7 @@ class TestQualifyLead:
         assert "qualified" in result["messages"][0].content.lower()
 
     def test_qualify_lead_unqualified_low_score(self) -> None:
-        from autoswarm_workers.graphs.sales import qualify_lead
+        from selva_workers.graphs.sales import qualify_lead
 
         result = qualify_lead({
             "messages": [],
@@ -89,7 +89,7 @@ class TestQualifyLead:
 
     def test_qualify_lead_default_score_passes(self) -> None:
         """Without explicit score, default of 50 passes threshold."""
-        from autoswarm_workers.graphs.sales import qualify_lead
+        from selva_workers.graphs.sales import qualify_lead
 
         result = qualify_lead({
             "messages": [],
@@ -100,7 +100,7 @@ class TestQualifyLead:
         assert result["status"] == "qualified"
 
     def test_qualify_lead_extracts_contact_info(self) -> None:
-        from autoswarm_workers.graphs.sales import qualify_lead
+        from selva_workers.graphs.sales import qualify_lead
 
         result = qualify_lead({
             "messages": [],
@@ -121,10 +121,10 @@ class TestGenerateCotizacion:
 
     def test_generate_cotizacion_template_fallback(self) -> None:
         """Without LLM, generates a template cotizacion."""
-        from autoswarm_workers.graphs.sales import generate_cotizacion
+        from selva_workers.graphs.sales import generate_cotizacion
 
         # Force the template fallback by blocking inference import.
-        with patch.dict("sys.modules", {"autoswarm_workers.inference": None}):
+        with patch.dict("sys.modules", {"selva_workers.inference": None}):
             result = generate_cotizacion({
                 "messages": [],
                 "lead_data": {"name": "Cliente Test", "rfc": "XAXX010101000"},
@@ -147,9 +147,9 @@ class TestGenerateCotizacion:
         assert "Cotizacion generated" in result["messages"][0].content
 
     def test_generate_cotizacion_empty_items(self) -> None:
-        from autoswarm_workers.graphs.sales import generate_cotizacion
+        from selva_workers.graphs.sales import generate_cotizacion
 
-        with patch.dict("sys.modules", {"autoswarm_workers.inference": None}):
+        with patch.dict("sys.modules", {"selva_workers.inference": None}):
             result = generate_cotizacion({
                 "messages": [],
                 "lead_data": {"name": "Empty"},
@@ -162,10 +162,10 @@ class TestGenerateCotizacion:
     def test_generate_cotizacion_preserves_messages(self) -> None:
         from langchain_core.messages import AIMessage
 
-        from autoswarm_workers.graphs.sales import generate_cotizacion
+        from selva_workers.graphs.sales import generate_cotizacion
 
         existing = AIMessage(content="prior message")
-        with patch.dict("sys.modules", {"autoswarm_workers.inference": None}):
+        with patch.dict("sys.modules", {"selva_workers.inference": None}):
             result = generate_cotizacion({
                 "messages": [existing],
                 "lead_data": {"name": "Test"},
@@ -181,7 +181,7 @@ class TestApprovalGate:
 
     def test_approval_gate_is_callable(self) -> None:
         """Verify the function exists and has correct signature."""
-        from autoswarm_workers.graphs.sales import approval_gate
+        from selva_workers.graphs.sales import approval_gate
 
         assert callable(approval_gate)
 
@@ -190,7 +190,7 @@ class TestSendCotizacion:
     """send_cotizacion() sends via WhatsApp or email."""
 
     def test_send_cotizacion_log_only_without_contact(self) -> None:
-        from autoswarm_workers.graphs.sales import send_cotizacion
+        from selva_workers.graphs.sales import send_cotizacion
 
         result = send_cotizacion({
             "messages": [],
@@ -203,7 +203,7 @@ class TestSendCotizacion:
         assert "log_only" in result["messages"][0].content
 
     def test_send_cotizacion_skips_on_denied(self) -> None:
-        from autoswarm_workers.graphs.sales import send_cotizacion
+        from selva_workers.graphs.sales import send_cotizacion
 
         result = send_cotizacion({
             "messages": [],
@@ -215,7 +215,7 @@ class TestSendCotizacion:
         assert result["status"] == "cancelled"
 
     def test_send_cotizacion_with_email(self) -> None:
-        from autoswarm_workers.graphs.sales import send_cotizacion
+        from selva_workers.graphs.sales import send_cotizacion
 
         with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
             result = send_cotizacion({
@@ -234,7 +234,7 @@ class TestConvertToPedido:
     """convert_to_pedido() creates an order from the cotizacion."""
 
     def test_convert_to_pedido_creates_order(self) -> None:
-        from autoswarm_workers.graphs.sales import convert_to_pedido
+        from selva_workers.graphs.sales import convert_to_pedido
 
         result = convert_to_pedido({
             "messages": [],
@@ -255,7 +255,7 @@ class TestConvertToPedido:
 
     def test_convert_to_pedido_without_crm(self) -> None:
         """Without PhyneCRM, still creates the pedido locally."""
-        from autoswarm_workers.graphs.sales import convert_to_pedido
+        from selva_workers.graphs.sales import convert_to_pedido
 
         result = convert_to_pedido({
             "messages": [],
@@ -273,7 +273,7 @@ class TestDispatchBilling:
 
     def test_dispatch_billing_graceful_without_nexus(self) -> None:
         """Without nexus-api, flags for manual invoice."""
-        from autoswarm_workers.graphs.sales import dispatch_billing
+        from selva_workers.graphs.sales import dispatch_billing
 
         result = dispatch_billing({
             "messages": [],
@@ -288,7 +288,7 @@ class TestDispatchBilling:
         assert "Billing dispatched" in result["messages"][0].content
 
     def test_dispatch_billing_builds_conceptos(self) -> None:
-        from autoswarm_workers.graphs.sales import dispatch_billing
+        from selva_workers.graphs.sales import dispatch_billing
 
         result = dispatch_billing({
             "messages": [],
@@ -309,7 +309,7 @@ class TestTrackCobranza:
     """track_cobranza() tracks payment collection."""
 
     def test_track_cobranza_completes_without_dhanam(self) -> None:
-        from autoswarm_workers.graphs.sales import track_cobranza
+        from selva_workers.graphs.sales import track_cobranza
 
         result = track_cobranza({
             "messages": [],
@@ -324,7 +324,7 @@ class TestTrackCobranza:
         assert result["result"]["lead_id"] == "lead-cobranza"
 
     def test_track_cobranza_result_structure(self) -> None:
-        from autoswarm_workers.graphs.sales import track_cobranza
+        from selva_workers.graphs.sales import track_cobranza
 
         result = track_cobranza({
             "messages": [],
@@ -344,25 +344,25 @@ class TestConditionalEdges:
     """Conditional edge routing functions."""
 
     def test_route_after_qualify_unqualified_goes_to_end(self) -> None:
-        from autoswarm_workers.graphs.sales import _route_after_qualify
+        from selva_workers.graphs.sales import _route_after_qualify
 
         result = _route_after_qualify({"status": "unqualified"})
         assert result == "__end__"
 
     def test_route_after_qualify_ok_goes_to_cotizacion(self) -> None:
-        from autoswarm_workers.graphs.sales import _route_after_qualify
+        from selva_workers.graphs.sales import _route_after_qualify
 
         result = _route_after_qualify({"status": "qualified"})
         assert result == "generate_cotizacion"
 
     def test_route_after_approval_denied_goes_to_end(self) -> None:
-        from autoswarm_workers.graphs.sales import _route_after_approval
+        from selva_workers.graphs.sales import _route_after_approval
 
         result = _route_after_approval({"status": "denied"})
         assert result == "__end__"
 
     def test_route_after_approval_ok_goes_to_send(self) -> None:
-        from autoswarm_workers.graphs.sales import _route_after_approval
+        from selva_workers.graphs.sales import _route_after_approval
 
         result = _route_after_approval({"status": "approved"})
         assert result == "send_cotizacion"
@@ -372,18 +372,18 @@ class TestSalesRegistration:
     """Sales graph is properly registered in the system."""
 
     def test_sales_in_graph_builders(self) -> None:
-        from autoswarm_workers.__main__ import GRAPH_BUILDERS
+        from selva_workers.__main__ import GRAPH_BUILDERS
 
         assert "sales" in GRAPH_BUILDERS
 
     def test_sales_timeout_configured(self) -> None:
-        from autoswarm_redis_pool.timeout import DEFAULT_TIMEOUTS
+        from selva_redis_pool.timeout import DEFAULT_TIMEOUTS
 
         assert "sales" in DEFAULT_TIMEOUTS
         assert DEFAULT_TIMEOUTS["sales"] == 300
 
     def test_sales_builder_returns_graph(self) -> None:
-        from autoswarm_workers.graphs.sales import build_sales_graph
+        from selva_workers.graphs.sales import build_sales_graph
 
         graph = build_sales_graph()
         assert graph is not None

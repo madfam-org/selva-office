@@ -12,20 +12,20 @@ class TestCreateCheckpointer:
 
     def test_returns_memory_saver_when_no_database_url(self) -> None:
         with patch(
-            "autoswarm_workers.checkpointer.get_settings",
+            "selva_workers.checkpointer.get_settings",
             return_value=MagicMock(database_url=None),
         ):
-            from autoswarm_workers.checkpointer import create_checkpointer
+            from selva_workers.checkpointer import create_checkpointer
 
             saver = create_checkpointer()
             assert isinstance(saver, MemorySaver)
 
     def test_returns_memory_saver_when_database_url_empty(self) -> None:
         with patch(
-            "autoswarm_workers.checkpointer.get_settings",
+            "selva_workers.checkpointer.get_settings",
             return_value=MagicMock(database_url=""),
         ):
-            from autoswarm_workers.checkpointer import create_checkpointer
+            from selva_workers.checkpointer import create_checkpointer
 
             saver = create_checkpointer()
             assert isinstance(saver, MemorySaver)
@@ -37,7 +37,7 @@ class TestCreateCheckpointer:
 
         with (
             patch(
-                "autoswarm_workers.checkpointer.get_settings",
+                "selva_workers.checkpointer.get_settings",
                 return_value=MagicMock(
                     database_url="postgresql+asyncpg://user:pass@localhost/db"
                 ),
@@ -51,7 +51,7 @@ class TestCreateCheckpointer:
                 },
             ),
         ):
-            from autoswarm_workers.checkpointer import create_checkpointer
+            from selva_workers.checkpointer import create_checkpointer
 
             saver = create_checkpointer()
             assert saver is mock_saver
@@ -63,7 +63,7 @@ class TestCreateCheckpointer:
     def test_falls_back_to_memory_on_postgres_error(self) -> None:
         with (
             patch(
-                "autoswarm_workers.checkpointer.get_settings",
+                "selva_workers.checkpointer.get_settings",
                 return_value=MagicMock(
                     database_url="postgresql+asyncpg://user:pass@localhost/db"
                 ),
@@ -73,7 +73,7 @@ class TestCreateCheckpointer:
                 {"langgraph.checkpoint.postgres": None},
             ),
         ):
-            from autoswarm_workers.checkpointer import create_checkpointer
+            from selva_workers.checkpointer import create_checkpointer
 
             saver = create_checkpointer()
             assert isinstance(saver, MemorySaver)

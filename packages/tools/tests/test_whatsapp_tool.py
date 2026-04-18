@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from autoswarm_tools.builtins import get_builtin_tools
-from autoswarm_tools.builtins.whatsapp import TEMPLATE_CATALOG, WhatsAppTemplateTool
+from selva_tools.builtins import get_builtin_tools
+from selva_tools.builtins.whatsapp import TEMPLATE_CATALOG, WhatsAppTemplateTool
 
 
 class TestWhatsAppToolMetadata:

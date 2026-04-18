@@ -13,21 +13,21 @@ from langchain_core.messages import HumanMessage
 
 def _make_settings(**overrides):
     """Create a Settings instance without reading the .env file."""
-    from autoswarm_workers.config import Settings
+    from selva_workers.config import Settings
 
     return Settings(_env_file=None, **overrides)
 
 
 def test_build_model_router_creates_providers():
     """build_model_router creates real provider instances when API keys are set."""
-    from autoswarm_workers.inference import build_model_router
+    from selva_workers.inference import build_model_router
 
     mock_settings = _make_settings(
         anthropic_api_key="sk-test-ant",
         openai_api_key="sk-test-oai",
         openrouter_api_key="sk-test-or",
     )
-    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+    with patch("selva_workers.inference.get_settings", return_value=mock_settings):
         router = build_model_router()
 
     names = router.available_providers
@@ -39,10 +39,10 @@ def test_build_model_router_creates_providers():
 
 def test_build_model_router_always_includes_ollama():
     """build_model_router includes Ollama even when no cloud API keys are set."""
-    from autoswarm_workers.inference import build_model_router
+    from selva_workers.inference import build_model_router
 
     mock_settings = _make_settings()
-    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+    with patch("selva_workers.inference.get_settings", return_value=mock_settings):
         router = build_model_router()
 
     names = router.available_providers
@@ -53,10 +53,10 @@ def test_build_model_router_always_includes_ollama():
 
 def test_build_model_router_registers_groq():
     """Groq is registered when GROQ_API_KEY is set."""
-    from autoswarm_workers.inference import build_model_router
+    from selva_workers.inference import build_model_router
 
     mock_settings = _make_settings(groq_api_key="gsk-test-groq")
-    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+    with patch("selva_workers.inference.get_settings", return_value=mock_settings):
         router = build_model_router()
 
     assert "groq" in router.available_providers
@@ -64,10 +64,10 @@ def test_build_model_router_registers_groq():
 
 def test_build_model_router_skips_groq_without_key():
     """Groq is NOT registered when no key is set."""
-    from autoswarm_workers.inference import build_model_router
+    from selva_workers.inference import build_model_router
 
     mock_settings = _make_settings()
-    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+    with patch("selva_workers.inference.get_settings", return_value=mock_settings):
         router = build_model_router()
 
     assert "groq" not in router.available_providers
@@ -75,10 +75,10 @@ def test_build_model_router_skips_groq_without_key():
 
 def test_build_model_router_registers_mistral():
     """Mistral is registered when MISTRAL_API_KEY is set."""
-    from autoswarm_workers.inference import build_model_router
+    from selva_workers.inference import build_model_router
 
     mock_settings = _make_settings(mistral_api_key="msk-test-mistral")
-    with patch("autoswarm_workers.inference.get_settings", return_value=mock_settings):
+    with patch("selva_workers.inference.get_settings", return_value=mock_settings):
         router = build_model_router()
 
     assert "mistral" in router.available_providers
@@ -86,7 +86,7 @@ def test_build_model_router_registers_mistral():
 
 def test_get_model_router_returns_singleton():
     """get_model_router caches and returns the same instance."""
-    import autoswarm_workers.inference as inf
+    import selva_workers.inference as inf
 
     # Reset singleton state.
     inf._router = None
@@ -124,8 +124,8 @@ def _make_coding_state(task_text: str = "Fix the login bug") -> dict:
     }
 
 
-@patch("autoswarm_workers.inference.get_model_router")
-@patch("autoswarm_workers.inference.call_llm", new_callable=AsyncMock)
+@patch("selva_workers.inference.get_model_router")
+@patch("selva_workers.inference.call_llm", new_callable=AsyncMock)
 def test_plan_node_with_mocked_llm(mock_call_llm, mock_get_router):
     """plan() calls LLM and produces structured plan output."""
     import json
@@ -135,7 +135,7 @@ def test_plan_node_with_mocked_llm(mock_call_llm, mock_get_router):
     )
     mock_get_router.return_value = MagicMock()
 
-    from autoswarm_workers.graphs.coding import plan
+    from selva_workers.graphs.coding import plan
 
     state = plan(_make_coding_state())
 
@@ -148,11 +148,11 @@ def test_plan_node_with_mocked_llm(mock_call_llm, mock_get_router):
 
 def test_plan_node_fallback_without_llm():
     """plan() falls back to static steps when LLM is unavailable."""
-    from autoswarm_workers.graphs.coding import plan
+    from selva_workers.graphs.coding import plan
 
     # No LLM configured — should use fallback.
     with patch(
-        "autoswarm_workers.inference.get_model_router",
+        "selva_workers.inference.get_model_router",
         side_effect=RuntimeError("no providers"),
     ):
         state = plan(_make_coding_state())
@@ -163,8 +163,8 @@ def test_plan_node_fallback_without_llm():
     assert "Analyze requirements" in plan_data["steps"][0]
 
 
-@patch("autoswarm_workers.inference.get_model_router")
-@patch("autoswarm_workers.inference.call_llm", new_callable=AsyncMock)
+@patch("selva_workers.inference.get_model_router")
+@patch("selva_workers.inference.call_llm", new_callable=AsyncMock)
 def test_implement_node_with_mocked_llm(mock_call_llm, mock_get_router):
     """implement() calls LLM and records a change with summary."""
     mock_call_llm.return_value = "def fix_login():\n    pass"
@@ -173,7 +173,7 @@ def test_implement_node_with_mocked_llm(mock_call_llm, mock_get_router):
     # First produce a plan so implement can reference plan steps.
     import json
 
-    from autoswarm_workers.graphs.coding import implement, plan
+    from selva_workers.graphs.coding import implement, plan
 
     mock_call_llm.return_value = json.dumps(
         {"description": "Fix login", "steps": ["Fix auth"]}
@@ -190,8 +190,8 @@ def test_implement_node_with_mocked_llm(mock_call_llm, mock_get_router):
     assert len(state["code_changes"]) == 1
 
 
-@patch("autoswarm_workers.inference.get_model_router")
-@patch("autoswarm_workers.inference.call_llm", new_callable=AsyncMock)
+@patch("selva_workers.inference.get_model_router")
+@patch("selva_workers.inference.call_llm", new_callable=AsyncMock)
 def test_review_node_with_mocked_llm(mock_call_llm, mock_get_router):
     """review() calls LLM and returns parsed review summary."""
     import json
@@ -201,7 +201,7 @@ def test_review_node_with_mocked_llm(mock_call_llm, mock_get_router):
     )
     mock_get_router.return_value = MagicMock()
 
-    from autoswarm_workers.graphs.coding import review
+    from selva_workers.graphs.coding import review
 
     state = _make_coding_state()
     state["code_changes"] = [
@@ -234,7 +234,7 @@ def _make_tool_call_message(tool_name: str, tool_args: dict | None = None):
 
 def test_tool_executor_unknown_tool_returns_failure():
     """tool_executor marks unrecognised tools as failed, not successful."""
-    from autoswarm_workers.graphs.base import tool_executor
+    from selva_workers.graphs.base import tool_executor
 
     state = {
         "messages": [_make_tool_call_message("unknown_tool", {"foo": "bar"})],

@@ -11,12 +11,12 @@ class TestCodingWorktree:
     """Worktree lifecycle in the coding graph."""
 
     def test_plan_creates_worktree_when_repo_path_set(self) -> None:
-        from autoswarm_workers.graphs.coding import plan
+        from selva_workers.graphs.coding import plan
 
         mock_git = MagicMock()
         mock_git.create_worktree = AsyncMock(return_value="/tmp/worktrees/task-t1")
 
-        with patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git):
+        with patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git):
             result = plan({
                 "messages": [AIMessage(content="Build a feature")],
                 "repo_path": "/repos/myapp",
@@ -26,7 +26,7 @@ class TestCodingWorktree:
         assert result["worktree_path"] == "/tmp/worktrees/task-t1"
 
     def test_plan_skips_worktree_when_no_repo_path(self) -> None:
-        from autoswarm_workers.graphs.coding import plan
+        from selva_workers.graphs.coding import plan
 
         result = plan({
             "messages": [AIMessage(content="Build a feature")],
@@ -36,7 +36,7 @@ class TestCodingWorktree:
         assert result.get("worktree_path") is None
 
     def test_plan_skips_worktree_when_already_set(self) -> None:
-        from autoswarm_workers.graphs.coding import plan
+        from selva_workers.graphs.coding import plan
 
         result = plan({
             "messages": [AIMessage(content="Build a feature")],
@@ -48,7 +48,7 @@ class TestCodingWorktree:
         assert result["worktree_path"] == "/existing/worktree"
 
     def test_implement_sets_bash_cwd_to_worktree(self, tmp_path) -> None:
-        from autoswarm_workers.graphs.coding import _bash_tool, implement
+        from selva_workers.graphs.coding import _bash_tool, implement
 
         worktree = str(tmp_path / "worktree")
         (tmp_path / "worktree").mkdir()
@@ -68,7 +68,7 @@ class TestCodingWorktree:
             _bash_tool.allowed_cwd = original_cwd
 
     def test_push_gate_cleans_up_worktree_on_approve(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.configure_identity = AsyncMock(
@@ -92,12 +92,12 @@ class TestCodingWorktree:
 
         with (
             patch(
-                "autoswarm_workers.graphs.coding.interrupt",
+                "selva_workers.graphs.coding.interrupt",
                 return_value={"approved": True},
             ),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=mock_settings,
             ),
         ):
@@ -112,17 +112,17 @@ class TestCodingWorktree:
         mock_git.cleanup_worktree.assert_called_once_with("/tmp/worktrees/task-t1")
 
     def test_push_gate_cleans_up_worktree_on_deny(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.cleanup_worktree = AsyncMock()
 
         with (
             patch(
-                "autoswarm_workers.graphs.coding.interrupt",
+                "selva_workers.graphs.coding.interrupt",
                 return_value={"approved": False, "feedback": "Needs work"},
             ),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
         ):
             result = push_gate({
                 "messages": [],
@@ -135,7 +135,7 @@ class TestCodingWorktree:
         mock_git.cleanup_worktree.assert_called_once_with("/tmp/worktrees/task-t1")
 
     def test_worktree_path_stored_in_state(self) -> None:
-        from autoswarm_workers.graphs.coding import CodingState
+        from selva_workers.graphs.coding import CodingState
 
         # Verify the TypedDict has the field.
         annotations = CodingState.__annotations__
@@ -143,7 +143,7 @@ class TestCodingWorktree:
         assert "repo_path" in annotations
 
     def test_test_node_uses_worktree_path(self) -> None:
-        from autoswarm_workers.graphs.coding import test
+        from selva_workers.graphs.coding import test
 
         result = test({
             "messages": [],
@@ -155,7 +155,7 @@ class TestCodingWorktree:
         assert result["status"] == "testing"
 
     def test_plan_sets_branch_name(self) -> None:
-        from autoswarm_workers.graphs.coding import plan
+        from selva_workers.graphs.coding import plan
 
         result = plan({
             "messages": [AIMessage(content="Build a feature")],
@@ -169,7 +169,7 @@ class TestPushGateCommitPush:
     """push_gate commits and pushes on approval (Gap 3)."""
 
     def test_approved_commits_and_pushes_before_cleanup(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.configure_identity = AsyncMock(
@@ -193,12 +193,12 @@ class TestPushGateCommitPush:
 
         with (
             patch(
-                "autoswarm_workers.graphs.coding.interrupt",
+                "selva_workers.graphs.coding.interrupt",
                 return_value={"approved": True},
             ),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=mock_settings,
             ),
         ):
@@ -222,7 +222,7 @@ class TestPushGateCommitPush:
         mock_git.cleanup_worktree.assert_called_once()
 
     def test_denied_does_not_commit_or_push(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.commit = AsyncMock()
@@ -231,10 +231,10 @@ class TestPushGateCommitPush:
 
         with (
             patch(
-                "autoswarm_workers.graphs.coding.interrupt",
+                "selva_workers.graphs.coding.interrupt",
                 return_value={"approved": False, "feedback": "Needs work"},
             ),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
         ):
             result = push_gate({
                 "messages": [],
@@ -250,7 +250,7 @@ class TestPushGateCommitPush:
         mock_git.cleanup_worktree.assert_called_once()
 
     def test_commit_failure_does_not_prevent_cleanup(self) -> None:
-        from autoswarm_workers.graphs.coding import push_gate
+        from selva_workers.graphs.coding import push_gate
 
         mock_git = MagicMock()
         mock_git.configure_identity = AsyncMock(
@@ -269,12 +269,12 @@ class TestPushGateCommitPush:
 
         with (
             patch(
-                "autoswarm_workers.graphs.coding.interrupt",
+                "selva_workers.graphs.coding.interrupt",
                 return_value={"approved": True},
             ),
-            patch("autoswarm_workers.tools.git_tool.GitTool", return_value=mock_git),
+            patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=mock_settings,
             ),
         ):

@@ -13,24 +13,24 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins import get_builtin_tools
-from autoswarm_tools.builtins.calendar_tools import (
+from selva_tools.builtins import get_builtin_tools
+from selva_tools.builtins.calendar_tools import (
     CreateCalendarEventTool,
     ListCalendarEventsTool,
 )
-from autoswarm_tools.builtins.database_tools import (
+from selva_tools.builtins.database_tools import (
     DatabaseSchemaTool,
     SQLQueryTool,
     SQLWriteTool,
 )
-from autoswarm_tools.builtins.document_tools import (
+from selva_tools.builtins.document_tools import (
     GenerateChartTool,
     GeneratePDFTool,
     MarkdownToHTMLTool,
     ParsePDFTool,
 )
-from autoswarm_tools.builtins.email_tools import ReadEmailTool, SendEmailTool
-from autoswarm_tools.builtins.http_tools import (
+from selva_tools.builtins.email_tools import ReadEmailTool, SendEmailTool
+from selva_tools.builtins.http_tools import (
     GraphQLQueryTool,
     HTTPRequestTool,
     WebhookSendTool,
@@ -137,32 +137,32 @@ def test_tool_openai_spec(tool_cls: type) -> None:
 
 class TestSSRFValidation:
     def test_valid_public_url(self) -> None:
-        from autoswarm_tools.builtins.http_tools import _validate_url
+        from selva_tools.builtins.http_tools import _validate_url
 
         # Should not raise for a public URL
         result = _validate_url("https://example.com/api")
         assert result == "https://example.com/api"
 
     def test_rejects_private_ip(self) -> None:
-        from autoswarm_tools.builtins.http_tools import _validate_url
+        from selva_tools.builtins.http_tools import _validate_url
 
         with pytest.raises(ValueError, match="private/reserved"):
             _validate_url("http://127.0.0.1:8080/api")
 
     def test_rejects_ftp_scheme(self) -> None:
-        from autoswarm_tools.builtins.http_tools import _validate_url
+        from selva_tools.builtins.http_tools import _validate_url
 
         with pytest.raises(ValueError, match="scheme must be http or https"):
             _validate_url("ftp://example.com/file")
 
     def test_rejects_long_url(self) -> None:
-        from autoswarm_tools.builtins.http_tools import _validate_url
+        from selva_tools.builtins.http_tools import _validate_url
 
         with pytest.raises(ValueError, match="maximum length"):
             _validate_url("https://example.com/" + "a" * 2100)
 
     def test_rejects_missing_hostname(self) -> None:
-        from autoswarm_tools.builtins.http_tools import _validate_url
+        from selva_tools.builtins.http_tools import _validate_url
 
         with pytest.raises(ValueError, match="missing a hostname"):
             _validate_url("https://")
@@ -251,16 +251,16 @@ class TestReadEmail:
 
 class TestPageRangeParser:
     def test_single_page(self) -> None:
-        from autoswarm_tools.builtins.document_tools import _parse_page_range
+        from selva_tools.builtins.document_tools import _parse_page_range
 
         assert _parse_page_range("3") == [2]  # zero-based
 
     def test_range(self) -> None:
-        from autoswarm_tools.builtins.document_tools import _parse_page_range
+        from selva_tools.builtins.document_tools import _parse_page_range
 
         assert _parse_page_range("1-3") == [0, 1, 2]
 
     def test_mixed(self) -> None:
-        from autoswarm_tools.builtins.document_tools import _parse_page_range
+        from selva_tools.builtins.document_tools import _parse_page_range
 
         assert _parse_page_range("1,3,5") == [0, 2, 4]

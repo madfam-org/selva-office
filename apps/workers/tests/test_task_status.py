@@ -12,7 +12,7 @@ _MOCK_AUTH = {"Authorization": "Bearer test-token"}
 def _patch_auth():
     """Patch get_worker_auth_headers to return a test token."""
     return patch(
-        "autoswarm_workers.task_status.get_worker_auth_headers",
+        "selva_workers.task_status.get_worker_auth_headers",
         return_value=_MOCK_AUTH,
     )
 
@@ -24,13 +24,13 @@ class TestUpdateTaskStatus:
     async def test_patches_running_status(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status("http://test:4300", "task-1", "running")
 
@@ -46,13 +46,13 @@ class TestUpdateTaskStatus:
     async def test_patches_completed_with_result(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status(
                 "http://test:4300", "task-1", "completed", {"output": "done"},
@@ -67,13 +67,13 @@ class TestUpdateTaskStatus:
     async def test_patches_failed_with_error(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status(
                 "http://test:4300", "task-1", "failed", {"error": "boom"},
@@ -87,12 +87,12 @@ class TestUpdateTaskStatus:
     async def test_skips_unknown_task_id(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
             ) as mock_ffr,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status("http://test:4300", "unknown", "running")
             mock_ffr.assert_not_called()
@@ -101,13 +101,13 @@ class TestUpdateTaskStatus:
     async def test_does_not_raise_on_failure(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=False,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             # Should not raise.
             await update_task_status("http://test:4300", "task-1", "running")
@@ -116,14 +116,14 @@ class TestUpdateTaskStatus:
     async def test_logs_warning_on_failure(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=False,
             ),
-            patch("autoswarm_workers.task_status.logger") as mock_logger,
+            patch("selva_workers.task_status.logger") as mock_logger,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status("http://test:4300", "task-1", "running")
             mock_logger.warning.assert_called()
@@ -133,13 +133,13 @@ class TestUpdateTaskStatus:
     async def test_includes_started_at_when_provided(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status(
                 "http://test:4300", "task-1", "running",
@@ -154,13 +154,13 @@ class TestUpdateTaskStatus:
     async def test_includes_error_message_when_provided(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status(
                 "http://test:4300", "task-1", "failed",
@@ -177,13 +177,13 @@ class TestUpdateTaskStatus:
     async def test_omits_metadata_when_not_provided(self) -> None:
         with (
             patch(
-                "autoswarm_workers.task_status.fire_and_forget_request",
+                "selva_workers.task_status.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             _patch_auth(),
         ):
-            from autoswarm_workers.task_status import update_task_status
+            from selva_workers.task_status import update_task_status
 
             await update_task_status("http://test:4300", "task-1", "running")
 

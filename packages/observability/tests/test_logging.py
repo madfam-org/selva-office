@@ -1,4 +1,4 @@
-"""Tests for autoswarm_observability logging and sentry modules."""
+"""Tests for selva_observability logging and sentry modules."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from unittest.mock import MagicMock, patch
 
 import structlog
 
-from autoswarm_observability.logging import (
+from selva_observability.logging import (
     bind_task_context,
     clear_context,
     configure_logging,
 )
-from autoswarm_observability.sentry import init_sentry
+from selva_observability.sentry import init_sentry
 
 
 class TestConfigureLogging:

@@ -20,7 +20,7 @@ class TestContextCompressor:
 
     def test_no_compression_below_threshold(self):
         """Message list below threshold is returned unchanged."""
-        from autoswarm_workflows.context_compressor import ContextCompressor
+        from selva_workflows.context_compressor import ContextCompressor
         compressor = ContextCompressor(compress_threshold=20)
         messages = self._make_messages(10)
         result = compressor.compress_sync(messages)
@@ -29,7 +29,7 @@ class TestContextCompressor:
     @pytest.mark.asyncio
     async def test_compression_above_threshold(self):
         """Message list above threshold is compressed to head + summary + tail."""
-        from autoswarm_workflows.context_compressor import ContextCompressor
+        from selva_workflows.context_compressor import ContextCompressor
 
         mock_response = MagicMock()
         mock_response.content = "Summary of middle turns."
@@ -37,12 +37,12 @@ class TestContextCompressor:
         mock_router.complete = AsyncMock(return_value=mock_response)
 
         with patch(
-            "autoswarm_workflows.context_compressor.get_default_router",
+            "selva_workflows.context_compressor.get_default_router",
             return_value=mock_router, create=True,
         ):
-            with patch("autoswarm_workflows.context_compressor.InferenceRequest", create=True):
-                with patch("autoswarm_workflows.context_compressor.RoutingPolicy", create=True):
-                    with patch("autoswarm_workflows.context_compressor.Sensitivity", create=True):
+            with patch("selva_workflows.context_compressor.InferenceRequest", create=True):
+                with patch("selva_workflows.context_compressor.RoutingPolicy", create=True):
+                    with patch("selva_workflows.context_compressor.Sensitivity", create=True):
                         compressor = ContextCompressor(
                             keep_head=2, keep_tail=3, compress_threshold=10,
                         )
@@ -56,17 +56,17 @@ class TestContextCompressor:
     @pytest.mark.asyncio
     async def test_compression_preserves_system_head(self):
         """System prompt is always in the first position after compression."""
-        from autoswarm_workflows.context_compressor import ContextCompressor
+        from selva_workflows.context_compressor import ContextCompressor
         with patch(
-            "autoswarm_workflows.context_compressor.get_default_router",
+            "selva_workflows.context_compressor.get_default_router",
             create=True,
         ) as mock_router_fn:
             mock_router = AsyncMock()
             mock_router.complete = AsyncMock(return_value=MagicMock(content="summary"))
             mock_router_fn.return_value = mock_router
-            with patch("autoswarm_workflows.context_compressor.InferenceRequest", create=True):
-                with patch("autoswarm_workflows.context_compressor.RoutingPolicy", create=True):
-                    with patch("autoswarm_workflows.context_compressor.Sensitivity", create=True):
+            with patch("selva_workflows.context_compressor.InferenceRequest", create=True):
+                with patch("selva_workflows.context_compressor.RoutingPolicy", create=True):
+                    with patch("selva_workflows.context_compressor.Sensitivity", create=True):
                         compressor = ContextCompressor(
                             keep_head=2, keep_tail=3,
                             compress_threshold=10,
@@ -107,12 +107,12 @@ class TestCheckpointManager:
 class TestSoulLoader:
     def test_no_soul_file_returns_empty(self, tmp_path):
         """SoulLoader returns empty string when no SOUL.md is found."""
-        from autoswarm_workflows.soul import SoulLoader
+        from selva_workflows.soul import SoulLoader
         loader = SoulLoader()
         # Override paths to point to temp dir
-        with patch("autoswarm_workflows.soul._PROJECT_SOUL_PATH", tmp_path / "nonexistent.md"):
+        with patch("selva_workflows.soul._PROJECT_SOUL_PATH", tmp_path / "nonexistent.md"):
             with patch(
-                "autoswarm_workflows.soul._DEFAULT_SOUL_PATH",
+                "selva_workflows.soul._DEFAULT_SOUL_PATH",
                 tmp_path / "also_nonexistent.md",
             ):
                 result = loader.load(force_reload=True)
@@ -122,9 +122,9 @@ class TestSoulLoader:
         """SoulLoader reads SOUL.md from the project path."""
         soul_path = tmp_path / "SOUL.md"
         soul_path.write_text("# AutoSwarm Agent\nYou are professional and precise.")
-        from autoswarm_workflows.soul import SoulLoader
+        from selva_workflows.soul import SoulLoader
         loader = SoulLoader()
-        with patch("autoswarm_workflows.soul._PROJECT_SOUL_PATH", soul_path):
+        with patch("selva_workflows.soul._PROJECT_SOUL_PATH", soul_path):
             result = loader.load(force_reload=True)
         assert "professional and precise" in result
 
@@ -132,9 +132,9 @@ class TestSoulLoader:
         """SOUL.md files exceeding the token cap are truncated."""
         soul_path = tmp_path / "SOUL.md"
         soul_path.write_text("word " * 50_000)
-        from autoswarm_workflows.soul import SoulLoader
+        from selva_workflows.soul import SoulLoader
         loader = SoulLoader()
-        with patch("autoswarm_workflows.soul._PROJECT_SOUL_PATH", soul_path):
+        with patch("selva_workflows.soul._PROJECT_SOUL_PATH", soul_path):
             result = loader.load(force_reload=True)
         assert len(result) <= 8_100  # 8000 chars + truncation marker
 
@@ -142,9 +142,9 @@ class TestSoulLoader:
         """format_for_prompt wraps content in a section header."""
         soul_path = tmp_path / "SOUL.md"
         soul_path.write_text("You are precise and thoughtful.")
-        from autoswarm_workflows.soul import SoulLoader
+        from selva_workflows.soul import SoulLoader
         loader = SoulLoader()
-        with patch("autoswarm_workflows.soul._PROJECT_SOUL_PATH", soul_path):
+        with patch("selva_workflows.soul._PROJECT_SOUL_PATH", soul_path):
             result = loader.format_for_prompt()
         assert "Agent Personality" in result
         assert "precise and thoughtful" in result

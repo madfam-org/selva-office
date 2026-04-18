@@ -1,5 +1,5 @@
 [project]
-name = "autoswarm-workers"
+name = "selva-workers"
 version = "0.1.0"
 description = "LangGraph execution workers for AutoSwarm Office"
 requires-python = ">=3.12"
@@ -13,11 +13,11 @@ dependencies = [
   "pydantic>=2.10.5",
   "pydantic-settings>=2.7.1",
   "madfam-inference",
-  "autoswarm-permissions",
-  "autoswarm-skills",
-  "autoswarm-workflows",
-  "autoswarm-observability",
-  "autoswarm-redis-pool",
+  "selva-permissions",
+  "selva-skills",
+  "selva-workflows",
+  "selva-observability",
+  "selva-redis-pool",
   "sentry-sdk>=2.19.0",
   "prometheus-client>=0.21.0",
   "aiohttp>=3.11.0",
@@ -29,4 +29,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["autoswarm_workers"]
+packages = ["selva_workers"]

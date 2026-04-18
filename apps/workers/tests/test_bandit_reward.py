@@ -21,10 +21,10 @@ class TestBanditRewardValues:
         mock_bandit = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
         ):
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             await update_bandit_reward("agent-1", 1.0)
             mock_bandit.update.assert_called_once_with("agent-1", 1.0)
@@ -34,10 +34,10 @@ class TestBanditRewardValues:
         mock_bandit = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
         ):
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             await update_bandit_reward("agent-2", 0.0)
             mock_bandit.update.assert_called_once_with("agent-2", 0.0)
@@ -47,10 +47,10 @@ class TestBanditRewardValues:
         mock_bandit = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
         ):
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             await update_bandit_reward("agent-3", 0.2)
             mock_bandit.update.assert_called_once_with("agent-3", 0.2)
@@ -58,9 +58,9 @@ class TestBanditRewardValues:
     @pytest.mark.asyncio
     async def test_skip_unknown_agent(self) -> None:
         with patch(
-            "autoswarm_orchestrator.bandit.ThompsonBandit",
+            "selva_orchestrator.bandit.ThompsonBandit",
         ) as mock_cls:
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             await update_bandit_reward("unknown", 1.0)
             mock_cls.assert_not_called()
@@ -68,13 +68,13 @@ class TestBanditRewardValues:
     @pytest.mark.asyncio
     async def test_graceful_on_bandit_error(self) -> None:
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
             patch(
-                "autoswarm_orchestrator.bandit.ThompsonBandit",
+                "selva_orchestrator.bandit.ThompsonBandit",
                 side_effect=RuntimeError("disk full"),
             ),
         ):
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             # Should not raise
             await update_bandit_reward("agent-1", 1.0)

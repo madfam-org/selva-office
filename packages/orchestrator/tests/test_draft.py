@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_orchestrator.draft import (
+from selva_orchestrator.draft import (
     _ROLE_NAMES,
     ROLE_WEIGHTS,
     draft_agent_role,
     generate_agent_name,
 )
-from autoswarm_orchestrator.types import AgentRole
+from selva_orchestrator.types import AgentRole
 
 
 class TestDraftWithPreference:

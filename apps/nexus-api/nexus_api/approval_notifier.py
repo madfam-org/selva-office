@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 logger = logging.getLogger(__name__)
 

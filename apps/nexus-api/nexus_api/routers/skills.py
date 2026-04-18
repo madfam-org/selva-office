@@ -7,8 +7,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from autoswarm_skills import SkillTier, get_skill_registry
-from autoswarm_skills.skill_md import SkillMDRegistry  # Gap 4
+from selva_skills import SkillTier, get_skill_registry
+from selva_skills.skill_md import SkillMDRegistry  # Gap 4
 
 from ..auth import get_current_user
 
@@ -132,7 +132,7 @@ async def refiner_metrics(
 
     Useful for monitoring the health of the skill self-improvement loop.
     """
-    from autoswarm_skills.refiner import SkillRefiner
+    from selva_skills.refiner import SkillRefiner
 
     refiner = SkillRefiner()
     metrics = refiner.get_metrics()

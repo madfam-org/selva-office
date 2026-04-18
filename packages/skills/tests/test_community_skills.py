@@ -8,8 +8,8 @@ from unittest import mock
 
 import pytest
 
-from autoswarm_skills.registry import SkillRegistry, get_skill_registry
-from autoswarm_skills.types import SkillTier
+from selva_skills.registry import SkillRegistry, get_skill_registry
+from selva_skills.types import SkillTier
 
 SKILL_DEFS_DIR = Path(__file__).resolve().parent.parent / "skill-definitions"
 COMMUNITY_DIR = Path(__file__).resolve().parent.parent / "community-skills"
@@ -168,7 +168,7 @@ def test_community_enabled_property(registry: SkillRegistry) -> None:
 
 
 def test_env_var_controls_singleton() -> None:
-    import autoswarm_skills.registry as reg_mod
+    import selva_skills.registry as reg_mod
 
     # Reset singleton
     reg_mod._registry = None

@@ -5,14 +5,14 @@ from __future__ import annotations
 import pytest
 import yaml
 
-from autoswarm_workflows.schema import (
+from selva_workflows.schema import (
     EdgeDefinition,
     NodeDefinition,
     NodeType,
     TriggerCondition,
     WorkflowDefinition,
 )
-from autoswarm_workflows.serializer import WorkflowSerializer
+from selva_workflows.serializer import WorkflowSerializer
 
 
 class TestWorkflowSerializer:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from autoswarm_workers.prompts import (
+from selva_workers.prompts import (
     build_implement_prompt,
     build_plan_prompt,
     build_review_prompt,

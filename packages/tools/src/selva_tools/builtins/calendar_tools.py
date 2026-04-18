@@ -1,0 +1,289 @@
+"""Calendar tools: create and list events via calendar adapters."""
+
+from __future__ import annotations
+
+import logging
+from datetime import date, timedelta
+from typing import Any
+
+from ..base import BaseTool, ToolResult
+
+logger = logging.getLogger("autoswarm.calendar_tools")
+
+# Mexican federal holidays per Articulo 74 LFT
+# Note: Some holidays are observed on the nearest Monday (movable).
+# This mapping uses the canonical dates; the tool handles movable holidays.
+MEXICAN_HOLIDAYS: dict[tuple[int, int], str] = {
+    (1, 1): "Anio Nuevo",
+    (2, 5): "Dia de la Constitucion",  # First Monday of February
+    (3, 21): "Natalicio de Benito Juarez",  # Third Monday of March
+    (5, 1): "Dia del Trabajo",
+    (9, 16): "Dia de la Independencia",
+    (11, 20): "Dia de la Revolucion",  # Third Monday of November
+    (12, 25): "Navidad",
+}
+
+
+class CreateCalendarEventTool(BaseTool):
+    name = "create_calendar_event"
+    description = (
+        "Create a calendar event with title, start/end times, description, and attendees. "
+        "Uses the selva_calendar Google adapter when available."
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "Event title",
+                },
+                "start_time": {
+                    "type": "string",
+                    "description": "Start time in ISO 8601 format (e.g. 2026-04-15T09:00:00Z)",
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": "End time in ISO 8601 format",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Event description",
+                    "default": "",
+                },
+                "attendees": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of attendee email addresses",
+                    "default": [],
+                },
+                "calendar_id": {
+                    "type": "string",
+                    "description": "Calendar ID (defaults to primary)",
+                    "default": "primary",
+                },
+            },
+            "required": ["title", "start_time", "end_time"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        title = kwargs.get("title", "")
+        start_time = kwargs.get("start_time", "")
+        end_time = kwargs.get("end_time", "")
+        description = kwargs.get("description", "")
+        attendees = kwargs.get("attendees", [])
+        calendar_id = kwargs.get("calendar_id", "primary")
+
+        try:
+            from selva_calendar.google import GoogleCalendarAdapter
+
+            adapter = GoogleCalendarAdapter()
+            event = await adapter.create_event(
+                calendar_id=calendar_id,
+                title=title,
+                start_time=start_time,
+                end_time=end_time,
+                description=description,
+                attendees=attendees,
+            )
+            event_id = event.get("id", "unknown") if isinstance(event, dict) else "created"
+            return ToolResult(
+                output=f"Event '{title}' created (id={event_id})",
+                data={
+                    "event_id": event_id,
+                    "title": title,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                },
+            )
+        except ImportError:
+            logger.warning("selva_calendar not available")
+            return ToolResult(
+                success=False,
+                error="Calendar not configured. Install selva_calendar package.",
+            )
+        except Exception as exc:
+            logger.error("create_calendar_event failed: %s", exc)
+            return ToolResult(success=False, error=str(exc))
+
+
+class ListCalendarEventsTool(BaseTool):
+    name = "list_calendar_events"
+    description = (
+        "List calendar events for a given date. "
+        "Uses the selva_calendar Google adapter when available."
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "description": "Date in YYYY-MM-DD format",
+                },
+                "calendar_id": {
+                    "type": "string",
+                    "description": "Calendar ID (defaults to primary)",
+                    "default": "primary",
+                },
+            },
+            "required": ["date"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        date = kwargs.get("date", "")
+        calendar_id = kwargs.get("calendar_id", "primary")
+
+        try:
+            from selva_calendar.google import GoogleCalendarAdapter
+
+            adapter = GoogleCalendarAdapter()
+            events = await adapter.list_events(
+                calendar_id=calendar_id,
+                time_min=f"{date}T00:00:00Z",
+                time_max=f"{date}T23:59:59Z",
+            )
+            event_list = events if isinstance(events, list) else []
+            summary = "\n".join(
+                f"- {e.get('summary', 'Untitled')} ({e.get('start', {}).get('dateTime', '')})"
+                for e in event_list
+            )
+            return ToolResult(
+                output=summary or f"No events on {date}",
+                data={"date": date, "events": event_list, "count": len(event_list)},
+            )
+        except ImportError:
+            logger.warning("selva_calendar not available")
+            return ToolResult(
+                success=False,
+                error="Calendar not configured. Install selva_calendar package.",
+            )
+        except Exception as exc:
+            logger.error("list_calendar_events failed: %s", exc)
+            return ToolResult(success=False, error=str(exc))
+
+
+def _is_mexican_holiday(d: date) -> tuple[bool, str]:
+    """Check if a date is a Mexican federal holiday.
+
+    Returns (is_holiday, holiday_name).
+    """
+    canonical = MEXICAN_HOLIDAYS.get((d.month, d.day))
+    if canonical:
+        return True, canonical
+    return False, ""
+
+
+def _is_business_day(d: date) -> bool:
+    """Check if a date is a Mexican business day (not weekend, not holiday)."""
+    if d.weekday() >= 5:
+        return False
+    is_hol, _ = _is_mexican_holiday(d)
+    return not is_hol
+
+
+def _next_business_day(d: date) -> date:
+    """Find the next Mexican business day after the given date."""
+    candidate = d + timedelta(days=1)
+    while not _is_business_day(candidate):
+        candidate += timedelta(days=1)
+    return candidate
+
+
+class MexicanBusinessCalendarTool(BaseTool):
+    name = "mexican_business_calendar"
+    description = (
+        "Check Mexican business days, holidays (Art. 74 LFT), "
+        "and CFDI deadlines"
+    )
+
+    def parameters_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "is_business_day",
+                        "next_business_day",
+                        "holidays_in_month",
+                        "cfdi_deadline",
+                    ],
+                    "description": "Action to perform",
+                },
+                "date": {
+                    "type": "string",
+                    "description": "Date in YYYY-MM-DD format (defaults to today)",
+                },
+            },
+            "required": ["action"],
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        action: str = kwargs.get("action", "")
+        date_str: str = kwargs.get("date", "")
+
+        # Parse date or use today
+        if date_str:
+            try:
+                d = date.fromisoformat(date_str)
+            except ValueError:
+                return ToolResult(
+                    success=False,
+                    error=f"Invalid date format: '{date_str}'. Use YYYY-MM-DD.",
+                )
+        else:
+            d = date.today()
+
+        if action == "is_business_day":
+            is_weekend = d.weekday() >= 5
+            is_hol, hol_name = _is_mexican_holiday(d)
+            is_biz = not is_weekend and not is_hol
+            data: dict[str, Any] = {
+                "is_business_day": is_biz,
+                "date": d.isoformat(),
+                "is_weekend": is_weekend,
+                "is_holiday": is_hol,
+            }
+            if hol_name:
+                data["holiday_name"] = hol_name
+            return ToolResult(success=True, data=data)
+
+        elif action == "next_business_day":
+            nbd = _next_business_day(d)
+            return ToolResult(
+                success=True,
+                data={"next_business_day": nbd.isoformat(), "from_date": d.isoformat()},
+            )
+
+        elif action == "holidays_in_month":
+            holidays: list[dict[str, Any]] = [
+                {"day": day, "name": name}
+                for (m, day), name in sorted(MEXICAN_HOLIDAYS.items())
+                if m == d.month
+            ]
+            return ToolResult(
+                success=True,
+                data={"month": d.month, "year": d.year, "holidays": holidays},
+            )
+
+        elif action == "cfdi_deadline":
+            # ISR provisional declaration deadline: 17th of each month
+            deadline = date(d.year, d.month, 17)
+            # If the 17th falls on a weekend, move to the next business day
+            if not _is_business_day(deadline):
+                while not _is_business_day(deadline):
+                    deadline += timedelta(days=1)
+            return ToolResult(
+                success=True,
+                data={
+                    "cfdi_deadline": deadline.isoformat(),
+                    "type": "ISR provisional",
+                    "month": d.month,
+                    "year": d.year,
+                },
+            )
+
+        return ToolResult(success=False, error=f"Unknown action: {action}")

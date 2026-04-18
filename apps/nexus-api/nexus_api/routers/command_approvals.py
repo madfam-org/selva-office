@@ -99,7 +99,7 @@ async def _resolve(
     await db.refresh(req)
 
     # Notify the in-process approval store
-    from autoswarm_tools.approval import resolve_approval
+    from selva_tools.approval import resolve_approval
     resolve_approval(request_id, approved, resolved_by=user.sub)
 
     logger.info("Approval %s %s by %s", request_id, req.status, user.sub)

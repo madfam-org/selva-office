@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_workflows.compiler import WorkflowCompiler
-from autoswarm_workflows.schema import (
+from selva_workflows.compiler import WorkflowCompiler
+from selva_workflows.schema import (
     ContextPolicyConfig,
     ContextWindowPolicy,
     EdgeDefinition,

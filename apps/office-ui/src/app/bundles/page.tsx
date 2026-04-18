@@ -9,14 +9,18 @@
  * Live à-la-carte total pulled from Dhanam's public billing catalog
  * so the savings math stays honest as list prices change.
  *
- * IMPORTANT: bundle SKUs are NOT yet in the Dhanam catalog — Stripe
- * has no native bundle primitive and modelling them would either
- * duplicate every tier or introduce parent/child product shapes
- * that `sync-catalog.ts` doesn't support yet. This page is a
- * marketing surface showing the PROPOSED bundle composition; the
- * "Buy" CTA routes to sales until the bundle SKU work lands.
+ * VISIBILITY: admin-only. Route is guarded by a server-side role check
+ * (see below). Non-admins hitting /bundles are redirected to /office.
+ * Rationale: bundle SKUs are still a PROPOSED pricing surface — we want
+ * internal operators to review the math before making it a public page.
+ *
+ * When bundle SKUs are modelled as first-class Dhanam products (parent/
+ * child tier shapes in sync-catalog.ts), drop the admin gate and this
+ * becomes a public marketing page.
  */
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 import {
@@ -233,7 +237,37 @@ function EmptyState() {
   );
 }
 
+/**
+ * Server-side admin gate. Reads the `janua-session` cookie JWT (already
+ * verified by middleware before reaching here — we just decode the
+ * payload to read `roles`), and redirects non-admins to /office.
+ *
+ * Kept inline rather than extracted to a shared util because (a) it's
+ * the only admin-gated page in the app right now, and (b) the
+ * "extracted util" rewrite lives with the eventual Janua middleware
+ * refactor, not here.
+ */
+async function requireAdmin(): Promise<void> {
+  const token = (await cookies()).get('janua-session')?.value;
+  if (!token) redirect('/login?next=/bundles');
+
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) throw new Error('malformed JWT');
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const claims = JSON.parse(Buffer.from(padded, 'base64').toString('utf-8')) as {
+      roles?: string[];
+    };
+    if (!claims.roles?.includes('admin')) redirect('/office');
+  } catch {
+    redirect('/login?next=/bundles');
+  }
+}
+
 export default async function BundlesPage() {
+  await requireAdmin();
+
   const catalog = await fetchCatalog();
 
   return (

@@ -216,7 +216,7 @@ class TestCRMAutoDispatch:
                 {"pb-test-001": mock_playbook},
             ),
             patch(
-                "autoswarm_redis_pool.get_redis_pool",
+                "selva_redis_pool.get_redis_pool",
                 return_value=mock_redis_pool,
             ),
         ):
@@ -274,7 +274,7 @@ class TestCRMAutoDispatch:
                 {"pb-test-002": mock_playbook},
             ),
             patch(
-                "autoswarm_redis_pool.get_redis_pool",
+                "selva_redis_pool.get_redis_pool",
                 return_value=mock_redis_pool,
             ),
         ):
@@ -320,7 +320,7 @@ class TestCRMAutoDispatch:
                 {"pb-support-001": mock_playbook},
             ),
             patch(
-                "autoswarm_redis_pool.get_redis_pool",
+                "selva_redis_pool.get_redis_pool",
                 return_value=mock_redis_pool,
             ),
         ):

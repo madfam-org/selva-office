@@ -6,7 +6,7 @@ import warnings
 
 import pytest
 
-from autoswarm_workers.config import Settings
+from selva_workers.config import Settings
 
 
 def _make_settings(**overrides: object) -> Settings:

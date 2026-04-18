@@ -12,7 +12,7 @@ def run_acp_workflow_task(self, target_url: str):
     """
     logger.info(f"Executing background ACP dirty analyst task for {target_url}")
     try:
-        from autoswarm_workflows.acp_analyst import ACPAnalystNode
+        from selva_workflows.acp_analyst import ACPAnalystNode
         # In a complete implementation, this triggers the compilation and execution of the graph.
         # Since Phase I returns a dict right now:
         node = ACPAnalystNode(target_url=target_url)

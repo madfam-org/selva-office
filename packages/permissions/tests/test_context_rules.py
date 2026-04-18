@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from autoswarm_permissions import (
+from selva_permissions import (
     DEFAULT_CONTEXT_RULES,
     DEFAULT_PERMISSION_MATRIX,
     ROLE_PERMISSION_MATRICES,
@@ -15,7 +15,7 @@ from autoswarm_permissions import (
     TimeOfDayRule,
     TrustLevelRule,
 )
-from autoswarm_permissions.types import ActionCategory, PermissionLevel
+from selva_permissions.types import ActionCategory, PermissionLevel
 
 
 class TestTimeOfDayRule:

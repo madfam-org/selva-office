@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from autoswarm_workers.tools.bash_tool import BashResult
-from autoswarm_workers.tools.git_tool import GitTool
+from selva_workers.tools.bash_tool import BashResult
+from selva_workers.tools.git_tool import GitTool
 
 
 @pytest.fixture
@@ -105,6 +105,6 @@ async def test_cleanup_worktree_shutil_fallback(git_tool: GitTool) -> None:
         wt_path.mkdir()
         (wt_path / "test.txt").write_text("hello")
 
-        with patch("autoswarm_workers.tools.git_tool.shutil.rmtree") as mock_rmtree:
+        with patch("selva_workers.tools.git_tool.shutil.rmtree") as mock_rmtree:
             await git_tool.cleanup_worktree(str(wt_path))
             mock_rmtree.assert_called_once_with(str(wt_path), ignore_errors=True)

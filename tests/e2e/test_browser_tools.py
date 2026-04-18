@@ -25,23 +25,23 @@ class TestBrowserExtract:
         mock_pw.chromium = MagicMock()
         mock_pw.chromium.launch = AsyncMock(return_value=mock_browser)
 
-        with patch("autoswarm_tools.browser.PLAYWRIGHT_AVAILABLE", True):
-            with patch("autoswarm_tools.browser.async_playwright", return_value=mock_pw):
-                from autoswarm_tools.browser import browser_extract
+        with patch("selva_tools.browser.PLAYWRIGHT_AVAILABLE", True):
+            with patch("selva_tools.browser.async_playwright", return_value=mock_pw):
+                from selva_tools.browser import browser_extract
                 result = await browser_extract("https://example.com")
                 assert "Hello from SPA" in result
 
     @pytest.mark.asyncio
     async def test_extract_fallback_without_playwright(self):
         """browser_extract falls back to requests when Playwright is absent."""
-        with patch("autoswarm_tools.browser.PLAYWRIGHT_AVAILABLE", False):
+        with patch("selva_tools.browser.PLAYWRIGHT_AVAILABLE", False):
             with patch("requests.get") as mock_get:
                 mock_get.return_value = MagicMock(
                     text="<html><body>Plain content</body></html>",
                     status_code=200,
                 )
                 mock_get.return_value.raise_for_status = MagicMock()
-                from autoswarm_tools.browser import browser_extract
+                from selva_tools.browser import browser_extract
                 result = await browser_extract("https://example.com")
                 assert isinstance(result, str)
 
@@ -66,16 +66,16 @@ class TestBrowserScreenshot:
         mock_pw.chromium = MagicMock()
         mock_pw.chromium.launch = AsyncMock(return_value=mock_browser)
 
-        with patch("autoswarm_tools.browser.PLAYWRIGHT_AVAILABLE", True):
-            with patch("autoswarm_tools.browser.async_playwright", return_value=mock_pw):
-                from autoswarm_tools.browser import browser_screenshot
+        with patch("selva_tools.browser.PLAYWRIGHT_AVAILABLE", True):
+            with patch("selva_tools.browser.async_playwright", return_value=mock_pw):
+                from selva_tools.browser import browser_screenshot
                 result = await browser_screenshot("https://example.com")
                 assert result == expected_b64
 
     @pytest.mark.asyncio
     async def test_screenshot_returns_empty_without_playwright(self):
-        with patch("autoswarm_tools.browser.PLAYWRIGHT_AVAILABLE", False):
-            from autoswarm_tools.browser import browser_screenshot
+        with patch("selva_tools.browser.PLAYWRIGHT_AVAILABLE", False):
+            from selva_tools.browser import browser_screenshot
             result = await browser_screenshot("https://example.com")
             assert result == ""
 
@@ -91,13 +91,13 @@ class TestVisionDescribe:
         mock_router.complete = AsyncMock(return_value=mock_response)
 
         with patch(
-            "autoswarm_tools.browser.get_default_router",
+            "selva_tools.browser.get_default_router",
             return_value=mock_router, create=True,
         ):
-            with patch("autoswarm_tools.browser.InferenceRequest", create=True):
-                with patch("autoswarm_tools.browser.RoutingPolicy", create=True):
-                    with patch("autoswarm_tools.browser.Sensitivity", create=True):
-                        from autoswarm_tools.browser import vision_describe
+            with patch("selva_tools.browser.InferenceRequest", create=True):
+                with patch("selva_tools.browser.RoutingPolicy", create=True):
+                    with patch("selva_tools.browser.Sensitivity", create=True):
+                        from selva_tools.browser import vision_describe
                         result = await vision_describe("base64fakeimage==")
                         assert isinstance(result, str)
 
@@ -105,9 +105,9 @@ class TestVisionDescribe:
     async def test_vision_describe_fallback_on_error(self):
         """vision_describe returns placeholder when LLM is unavailable."""
         with patch(
-            "autoswarm_tools.browser.get_default_router",
+            "selva_tools.browser.get_default_router",
             side_effect=Exception("No provider"), create=True,
         ):
-            from autoswarm_tools.browser import vision_describe
+            from selva_tools.browser import vision_describe
             result = await vision_describe("base64fakeimage==")
             assert "unavailable" in result.lower()

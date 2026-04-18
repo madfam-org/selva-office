@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoswarm_skills import get_skill_registry, parse_skill_md_string
+from selva_skills import get_skill_registry, parse_skill_md_string
 
 from ..auth import get_current_user, require_non_guest
 from ..database import get_db
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["marketplace"], dependencies=[Depends(get_current_user)])  # noqa: B008
 
-# Resolve community-skills directory relative to the autoswarm_skills package.
+# Resolve community-skills directory relative to the selva_skills package.
 _COMMUNITY_SKILLS_DIR = (
     Path(__file__).resolve().parents[4] / "packages" / "skills" / "community-skills"
 )

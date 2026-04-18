@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from autoswarm_workflows.memory_provider import (
+from selva_workflows.memory_provider import (
     RedisMemoryProvider,
     SQLiteMemoryProvider,
     get_memory_provider,
