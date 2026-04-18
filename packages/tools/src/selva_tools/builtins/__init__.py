@@ -41,9 +41,14 @@ from .cloudflare import get_cloudflare_tools
 from .cloudflare_r2 import get_r2_tools
 from .cloudflare_saas import get_cloudflare_saas_tools
 from .cloudflare_tunnel import get_cloudflare_tunnel_tools
+from .db_lifecycle import get_db_lifecycle_tools
 from .dns import get_dns_tools
+from .grafana import get_grafana_tools
 from .k8s_diagnostics import get_k8s_diagnostic_tools
 from .kustomize import get_kustomize_tools
+from .loki import get_loki_tools
+from .prometheus import get_prometheus_tools
+from .sentry import get_sentry_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
 from .email_tools import ReadEmailTool, SendEmailTool
 from .enclii_infra import (
@@ -299,6 +304,22 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_kustomize_tools(),
         # pgBackRest operations (info, backup, check)
         *get_backup_tools(),
+        # Phase 5 — Observability: Prometheus instant/range queries,
+        # Alertmanager active alerts + maintenance silences.
+        *get_prometheus_tools(),
+        # Phase 5 — Observability: Loki LogQL range queries + label listing
+        # for incident-triage log correlation.
+        *get_loki_tools(),
+        # Phase 5 — Observability: Sentry issue list/get/update/events/
+        # breadcrumbs for error-tracking + Seer-style RCA.
+        *get_sentry_tools(),
+        # Phase 5 — Observability: Grafana read-only dashboard list +
+        # panel PNG export for incident + post-mortem reports.
+        *get_grafana_tools(),
+        # Phase 5 — Data lifecycle: Postgres dump-to-R2, restore-from-R2,
+        # mask-and-copy (for staging refresh per PhyneCRM PP.5), and
+        # per-table size reports.
+        *get_db_lifecycle_tools(),
         # NPM registry management (Verdaccio — token rotation + GitHub secrets)
         *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)
