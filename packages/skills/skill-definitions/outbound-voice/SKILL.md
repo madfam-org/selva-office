@@ -1,6 +1,7 @@
 ---
 name: outbound-voice
 description: Reach a warm lead or customer across channels in a consent-aware waterfall (email → SMS → voice call). Composes email_tools + twilio_sms + voice_call + calendar_tools and respects the tenant's voice_mode consent ledger. Used by sales + customer-success flows where a response is time-sensitive and a single channel has already been tried without success.
+audience: tenant
 allowed_tools:
   - send_email
   - sms_send

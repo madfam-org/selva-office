@@ -1,6 +1,7 @@
 ---
 name: skill-creator
 description: Meta-skill for creating new MADFAM skills following the AgentSkills specification with proper directory structure and validation.
+audience: platform
 allowed_tools:
   - file_read
   - file_write

@@ -1,6 +1,7 @@
 ---
 name: dns-migration
 description: Migrate a domain's authoritative DNS from Porkbun to Cloudflare, then configure the intended service on the Cloudflare side — typically a full-domain 301 redirect or a proxied record into the MADFAM cluster. Handles zone creation, NS delegation, DNS records, Page Rules, and cleanup of legacy Porkbun URL forwarding.
+audience: platform
 allowed_tools:
   - porkbun_list_domains
   - porkbun_get_nameservers

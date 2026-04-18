@@ -1,6 +1,7 @@
 ---
 name: staging-refresh
 description: Refresh the staging database from prod with PII masked. Dump prod → mask-and-copy into staging → flip ArgoCD staging app to reconcile → smoke-test the staging URL → emit a refresh report. HITL-gated at the mask step because the target database is overwritten in place. Per the PhyneCRM PP.5 staging spec.
+audience: platform
 allowed_tools:
   - db_dump_to_r2
   - db_restore_from_r2

@@ -1,6 +1,7 @@
 ---
 name: mcp-builder
 description: Model Context Protocol server development for building platform extensions and tool integrations.
+audience: platform
 allowed_tools:
   - file_read
   - file_write

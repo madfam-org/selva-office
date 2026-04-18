@@ -8,12 +8,31 @@ from pathlib import Path
 
 from .defaults import DEFAULT_ROLE_SKILLS
 from .parser import parse_skill_md
-from .types import SkillDefinition, SkillMetadata, SkillTier
+from .types import SkillAudience, SkillDefinition, SkillMetadata, SkillTier
 
 logger = logging.getLogger(__name__)
 
 _SKILL_DEFINITIONS_DIR = Path(__file__).resolve().parent.parent / "skill-definitions"
 _COMMUNITY_SKILLS_DIR = Path(__file__).resolve().parent.parent / "community-skills"
+
+
+class SkillAudienceMismatch(RuntimeError):  # noqa: N818 — "mismatch" is semantic
+    """Raised when a skill is activated by a swarm that lacks audience access."""
+
+
+def _can_access_skill(
+    skill_audience: SkillAudience, swarm_audience: SkillAudience | None
+) -> bool:
+    """Mirror of ``selva_tools.can_access`` for skills.
+
+    Platform swarms see everything; tenant swarms see only tenant-tagged
+    skills. Unbound swarm_audience is permissive (backward compat).
+    """
+    if swarm_audience is None:
+        return True
+    if swarm_audience is SkillAudience.PLATFORM:
+        return True
+    return skill_audience is SkillAudience.TENANT
 
 
 class SkillRegistry:
@@ -87,28 +106,68 @@ class SkillRegistry:
 
     # -- Queries ---------------------------------------------------------------
 
-    def list_skills(self, tier: SkillTier | None = None) -> list[SkillMetadata]:
-        """Return metadata for discovered skills, optionally filtered by tier."""
-        if tier is None:
-            return list(self._metadata.values())
-        return [m for m in self._metadata.values() if m.tier == tier]
+    def list_skills(
+        self,
+        tier: SkillTier | None = None,
+        *,
+        audience: SkillAudience | None = None,
+    ) -> list[SkillMetadata]:
+        """Return metadata for discovered skills, optionally filtered.
+
+        Args:
+            tier: ``CORE`` or ``COMMUNITY`` filter.
+            audience: ``PLATFORM`` sees all; ``TENANT`` sees only
+                tenant-audience skills; ``None`` applies no filter.
+        """
+        results = list(self._metadata.values())
+        if tier is not None:
+            results = [m for m in results if m.tier == tier]
+        if audience is not None:
+            results = [m for m in results if _can_access_skill(m.audience, audience)]
+        return results
 
     def get_metadata(self, name: str) -> SkillMetadata | None:
         """Return metadata for a single skill, or None if not found."""
         return self._metadata.get(name)
 
-    def activate(self, name: str) -> SkillDefinition:
+    def activate(
+        self,
+        name: str,
+        *,
+        audience: SkillAudience | None = None,
+    ) -> SkillDefinition:
         """Load full SKILL.md body on demand. Cache after first load.
+
+        Args:
+            name: Skill identifier (must match discovered skill directory).
+            audience: Optional swarm audience to enforce. If set and the
+                skill's declared audience exceeds the swarm's, raises
+                ``SkillAudienceMismatch`` before loading the body.
 
         Raises:
             KeyError: If the skill name is not discovered.
+            SkillAudienceMismatch: If ``audience`` is set and incompatible.
         """
         if name in self._definitions:
-            return self._definitions[name]
+            defn = self._definitions[name]
+            if audience is not None and not _can_access_skill(
+                defn.meta.audience, audience
+            ):
+                raise SkillAudienceMismatch(
+                    f"skill '{name}' requires audience={defn.meta.audience.value}, "
+                    f"swarm audience={audience.value}"
+                )
+            return defn
 
         meta = self._metadata.get(name)
         if meta is None:
             raise KeyError(f"Skill '{name}' not found in registry")
+
+        if audience is not None and not _can_access_skill(meta.audience, audience):
+            raise SkillAudienceMismatch(
+                f"skill '{name}' requires audience={meta.audience.value}, "
+                f"swarm audience={audience.value}"
+            )
 
         skill_dir = self._skill_source[name]
         skill_md_path = skill_dir / "SKILL.md"
