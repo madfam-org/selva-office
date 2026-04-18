@@ -30,12 +30,12 @@ class TestRecordExperience:
         mock_mem_manager = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_exp_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
-            patch("autoswarm_memory.get_memory_manager", return_value=mock_mem_manager),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_exp_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_memory.get_memory_manager", return_value=mock_mem_manager),
         ):
-            from autoswarm_workers.learning import record_experience
+            from selva_workers.learning import record_experience
 
             await record_experience(
                 agent_id="agent-1",
@@ -61,12 +61,12 @@ class TestRecordExperience:
         mock_exp_store = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_exp_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
-            patch("autoswarm_memory.get_memory_manager", return_value=MagicMock()),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_exp_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_memory.get_memory_manager", return_value=MagicMock()),
         ):
-            from autoswarm_workers.learning import record_experience
+            from selva_workers.learning import record_experience
 
             await record_experience(
                 agent_id="agent-1",
@@ -87,12 +87,12 @@ class TestRecordExperience:
         mock_exp_store = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_exp_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
-            patch("autoswarm_memory.get_memory_manager", return_value=MagicMock()),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_exp_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_memory.get_memory_manager", return_value=MagicMock()),
         ):
-            from autoswarm_workers.learning import record_experience
+            from selva_workers.learning import record_experience
 
             await record_experience(
                 agent_id="agent-1",
@@ -112,10 +112,10 @@ class TestRecordExperience:
     async def test_fire_and_forget_on_error(self) -> None:
         """record_experience should not raise even if internals fail."""
         with patch(
-            "autoswarm_memory.get_embedding_provider",
+            "selva_memory.get_embedding_provider",
             side_effect=RuntimeError("embed fail"),
         ):
-            from autoswarm_workers.learning import record_experience
+            from selva_workers.learning import record_experience
 
             # Should not raise
             await record_experience(
@@ -136,17 +136,17 @@ class TestGenerateReflexion:
         mock_exp_store = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_exp_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_exp_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
             patch(
-                "autoswarm_workers.inference.call_llm",
+                "selva_workers.inference.call_llm",
                 new_callable=AsyncMock,
                 return_value="Lesson 1: Validate inputs. Lesson 2: Add error handling.",
             ),
-            patch("autoswarm_workers.inference.get_model_router", return_value=MagicMock()),
+            patch("selva_workers.inference.get_model_router", return_value=MagicMock()),
         ):
-            from autoswarm_workers.learning import generate_reflexion
+            from selva_workers.learning import generate_reflexion
 
             await generate_reflexion(
                 agent_id="agent-1",
@@ -168,16 +168,16 @@ class TestGenerateReflexion:
         mock_exp_store = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_memory.ExperienceStore", return_value=mock_exp_store),
-            patch("autoswarm_memory.get_embedding_provider", return_value=MagicMock()),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_memory.ExperienceStore", return_value=mock_exp_store),
+            patch("selva_memory.get_embedding_provider", return_value=MagicMock()),
             patch(
-                "autoswarm_workers.inference.call_llm",
+                "selva_workers.inference.call_llm",
                 side_effect=RuntimeError("no LLM"),
             ),
-            patch("autoswarm_workers.inference.get_model_router", return_value=MagicMock()),
+            patch("selva_workers.inference.get_model_router", return_value=MagicMock()),
         ):
-            from autoswarm_workers.learning import generate_reflexion
+            from selva_workers.learning import generate_reflexion
 
             await generate_reflexion(
                 agent_id="agent-1",
@@ -195,10 +195,10 @@ class TestGenerateReflexion:
     @pytest.mark.asyncio
     async def test_fire_and_forget_on_error(self) -> None:
         with patch(
-            "autoswarm_memory.get_embedding_provider",
+            "selva_memory.get_embedding_provider",
             side_effect=RuntimeError("fail"),
         ):
-            from autoswarm_workers.learning import generate_reflexion
+            from selva_workers.learning import generate_reflexion
 
             await generate_reflexion(
                 agent_id="agent-1",
@@ -215,16 +215,16 @@ class TestUpdateAgentPerformance:
     async def test_patches_completed(self) -> None:
         with (
             patch(
-                "autoswarm_workers.http_retry.fire_and_forget_request",
+                "selva_workers.http_retry.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.auth.get_worker_auth_headers",
+                "selva_workers.auth.get_worker_auth_headers",
                 return_value=_MOCK_AUTH,
             ),
         ):
-            from autoswarm_workers.learning import update_agent_performance
+            from selva_workers.learning import update_agent_performance
 
             await update_agent_performance(
                 "http://test:4300", "agent-1", "completed", duration_seconds=30.5,
@@ -240,16 +240,16 @@ class TestUpdateAgentPerformance:
     async def test_patches_failed(self) -> None:
         with (
             patch(
-                "autoswarm_workers.http_retry.fire_and_forget_request",
+                "selva_workers.http_retry.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.auth.get_worker_auth_headers",
+                "selva_workers.auth.get_worker_auth_headers",
                 return_value=_MOCK_AUTH,
             ),
         ):
-            from autoswarm_workers.learning import update_agent_performance
+            from selva_workers.learning import update_agent_performance
 
             await update_agent_performance("http://test:4300", "agent-1", "failed")
 
@@ -260,10 +260,10 @@ class TestUpdateAgentPerformance:
     @pytest.mark.asyncio
     async def test_skips_unknown_agent(self) -> None:
         with patch(
-            "autoswarm_workers.http_retry.fire_and_forget_request",
+            "selva_workers.http_retry.fire_and_forget_request",
             new_callable=AsyncMock,
         ) as mock_ffr:
-            from autoswarm_workers.learning import update_agent_performance
+            from selva_workers.learning import update_agent_performance
 
             await update_agent_performance("http://test:4300", "unknown", "completed")
             mock_ffr.assert_not_called()
@@ -272,16 +272,16 @@ class TestUpdateAgentPerformance:
     async def test_denial_flag(self) -> None:
         with (
             patch(
-                "autoswarm_workers.http_retry.fire_and_forget_request",
+                "selva_workers.http_retry.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.auth.get_worker_auth_headers",
+                "selva_workers.auth.get_worker_auth_headers",
                 return_value=_MOCK_AUTH,
             ),
         ):
-            from autoswarm_workers.learning import update_agent_performance
+            from selva_workers.learning import update_agent_performance
 
             await update_agent_performance(
                 "http://test:4300", "agent-1", "completed", was_approval_denied=True,
@@ -300,10 +300,10 @@ class TestUpdateBanditReward:
         mock_bandit = MagicMock()
 
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
-            patch("autoswarm_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_orchestrator.bandit.ThompsonBandit", return_value=mock_bandit),
         ):
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             await update_bandit_reward("agent-1", 1.0)
 
@@ -312,9 +312,9 @@ class TestUpdateBanditReward:
     @pytest.mark.asyncio
     async def test_skips_unknown_agent(self) -> None:
         with patch(
-            "autoswarm_orchestrator.bandit.ThompsonBandit",
+            "selva_orchestrator.bandit.ThompsonBandit",
         ) as mock_cls:
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             await update_bandit_reward("unknown", 1.0)
             mock_cls.assert_not_called()
@@ -322,12 +322,12 @@ class TestUpdateBanditReward:
     @pytest.mark.asyncio
     async def test_fire_and_forget_on_error(self) -> None:
         with (
-            patch("autoswarm_workers.config.get_settings", return_value=_mock_settings()),
+            patch("selva_workers.config.get_settings", return_value=_mock_settings()),
             patch(
-                "autoswarm_orchestrator.bandit.ThompsonBandit",
+                "selva_orchestrator.bandit.ThompsonBandit",
                 side_effect=RuntimeError("bandit fail"),
             ),
         ):
-            from autoswarm_workers.learning import update_bandit_reward
+            from selva_workers.learning import update_bandit_reward
 
             await update_bandit_reward("agent-1", 0.5)

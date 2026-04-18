@@ -9,7 +9,7 @@ class TestBillingGraphStructure:
     """Billing graph has correct nodes, edges, and conditional routing."""
 
     def test_graph_has_expected_nodes(self) -> None:
-        from autoswarm_workers.graphs.billing import build_billing_graph
+        from selva_workers.graphs.billing import build_billing_graph
 
         graph = build_billing_graph()
         node_names = set(graph.nodes.keys())
@@ -21,14 +21,14 @@ class TestBillingGraphStructure:
         assert "notify_customer" in node_names
 
     def test_graph_compiles(self) -> None:
-        from autoswarm_workers.graphs.billing import build_billing_graph
+        from selva_workers.graphs.billing import build_billing_graph
 
         graph = build_billing_graph()
         compiled = graph.compile()
         assert compiled is not None
 
     def test_billing_state_fields(self) -> None:
-        from autoswarm_workers.graphs.billing import BillingState
+        from selva_workers.graphs.billing import BillingState
 
         annotations = BillingState.__annotations__
         assert "emisor_rfc" in annotations
@@ -45,7 +45,7 @@ class TestFetchContext:
     """fetch_context() gathers billing data from adapters or state."""
 
     def test_fetch_context_populates_state(self) -> None:
-        from autoswarm_workers.graphs.billing import fetch_context
+        from selva_workers.graphs.billing import fetch_context
 
         result = fetch_context({
             "messages": [],
@@ -64,7 +64,7 @@ class TestFetchContext:
         assert "Billing context fetched" in result["messages"][0].content
 
     def test_fetch_context_reads_from_workflow_variables(self) -> None:
-        from autoswarm_workers.graphs.billing import fetch_context
+        from selva_workers.graphs.billing import fetch_context
 
         result = fetch_context({
             "messages": [],
@@ -81,7 +81,7 @@ class TestFetchContext:
 
     def test_fetch_context_without_adapters(self) -> None:
         """Without DHANAM or PHYNE env vars, falls back to state values."""
-        from autoswarm_workers.graphs.billing import fetch_context
+        from selva_workers.graphs.billing import fetch_context
 
         result = fetch_context({
             "messages": [],
@@ -98,7 +98,7 @@ class TestValidateRfcs:
     """validate_rfcs() blocks on invalid or missing RFCs."""
 
     def test_validate_rfcs_blocks_on_empty_emisor(self) -> None:
-        from autoswarm_workers.graphs.billing import validate_rfcs
+        from selva_workers.graphs.billing import validate_rfcs
 
         result = validate_rfcs({
             "messages": [],
@@ -110,7 +110,7 @@ class TestValidateRfcs:
         assert "Missing" in result["result"]["error"]
 
     def test_validate_rfcs_blocks_on_empty_receptor(self) -> None:
-        from autoswarm_workers.graphs.billing import validate_rfcs
+        from selva_workers.graphs.billing import validate_rfcs
 
         result = validate_rfcs({
             "messages": [],
@@ -122,7 +122,7 @@ class TestValidateRfcs:
 
     def test_validate_rfcs_passes_without_karafiel(self) -> None:
         """Without KARAFIEL_API_URL, validation is skipped (passes)."""
-        from autoswarm_workers.graphs.billing import validate_rfcs
+        from selva_workers.graphs.billing import validate_rfcs
 
         result = validate_rfcs({
             "messages": [],
@@ -137,7 +137,7 @@ class TestValidateRfcs:
     def test_validate_rfcs_blocks_on_invalid_emisor_with_karafiel(self) -> None:
         import sys
 
-        from autoswarm_workers.graphs.billing import validate_rfcs
+        from selva_workers.graphs.billing import validate_rfcs
 
         mock_adapter_instance = MagicMock()
         mock_adapter_instance.validate_rfc.return_value = False
@@ -148,7 +148,7 @@ class TestValidateRfcs:
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
-            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
+            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = validate_rfcs({
                 "messages": [],
@@ -164,7 +164,7 @@ class TestCheckBlacklist:
     """check_blacklist() blocks listed RFCs."""
 
     def test_blacklist_passes_without_karafiel(self) -> None:
-        from autoswarm_workers.graphs.billing import check_blacklist
+        from selva_workers.graphs.billing import check_blacklist
 
         result = check_blacklist({
             "messages": [],
@@ -177,7 +177,7 @@ class TestCheckBlacklist:
     def test_blacklist_blocks_listed_rfc(self) -> None:
         import sys
 
-        from autoswarm_workers.graphs.billing import check_blacklist
+        from selva_workers.graphs.billing import check_blacklist
 
         mock_adapter_instance = MagicMock()
         mock_adapter_instance.check_blacklist.return_value = True
@@ -188,7 +188,7 @@ class TestCheckBlacklist:
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
-            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
+            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = check_blacklist({
                 "messages": [],
@@ -201,7 +201,7 @@ class TestCheckBlacklist:
     def test_blacklist_clear_continues(self) -> None:
         import sys
 
-        from autoswarm_workers.graphs.billing import check_blacklist
+        from selva_workers.graphs.billing import check_blacklist
 
         mock_adapter_instance = MagicMock()
         mock_adapter_instance.check_blacklist.return_value = False
@@ -212,7 +212,7 @@ class TestCheckBlacklist:
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
-            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
+            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = check_blacklist({
                 "messages": [],
@@ -227,7 +227,7 @@ class TestGenerateCfdi:
 
     def test_generate_cfdi_creates_xml_placeholder(self) -> None:
         """Without Karafiel, generates a placeholder XML."""
-        from autoswarm_workers.graphs.billing import generate_cfdi
+        from selva_workers.graphs.billing import generate_cfdi
 
         result = generate_cfdi({
             "messages": [],
@@ -246,7 +246,7 @@ class TestGenerateCfdi:
     def test_generate_cfdi_with_karafiel(self) -> None:
         import sys
 
-        from autoswarm_workers.graphs.billing import generate_cfdi
+        from selva_workers.graphs.billing import generate_cfdi
 
         mock_adapter_instance = MagicMock()
         mock_adapter_instance.generate_cfdi.return_value = {
@@ -260,7 +260,7 @@ class TestGenerateCfdi:
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
-            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
+            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = generate_cfdi({
                 "messages": [],
@@ -278,7 +278,7 @@ class TestStampCfdi:
 
     def test_stamp_cfdi_returns_folio_placeholder(self) -> None:
         """Without Karafiel, returns a placeholder stamp result."""
-        from autoswarm_workers.graphs.billing import stamp_cfdi
+        from selva_workers.graphs.billing import stamp_cfdi
 
         result = stamp_cfdi({
             "messages": [],
@@ -292,7 +292,7 @@ class TestStampCfdi:
         assert "stamped" in result["messages"][0].content.lower()
 
     def test_stamp_cfdi_fails_without_xml(self) -> None:
-        from autoswarm_workers.graphs.billing import stamp_cfdi
+        from selva_workers.graphs.billing import stamp_cfdi
 
         result = stamp_cfdi({
             "messages": [],
@@ -303,7 +303,7 @@ class TestStampCfdi:
         assert "No cfdi_xml" in result["result"]["error"]
 
     def test_stamp_cfdi_fails_with_empty_xml(self) -> None:
-        from autoswarm_workers.graphs.billing import stamp_cfdi
+        from selva_workers.graphs.billing import stamp_cfdi
 
         result = stamp_cfdi({
             "messages": [],
@@ -315,7 +315,7 @@ class TestStampCfdi:
     def test_stamp_cfdi_with_karafiel(self) -> None:
         import sys
 
-        from autoswarm_workers.graphs.billing import stamp_cfdi
+        from selva_workers.graphs.billing import stamp_cfdi
 
         mock_adapter_instance = MagicMock()
         mock_adapter_instance.stamp_cfdi.return_value = {
@@ -329,7 +329,7 @@ class TestStampCfdi:
         with (
             patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
-            patch("autoswarm_workers.graphs.billing._run_async", side_effect=lambda x: x),
+            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
             result = stamp_cfdi({
                 "messages": [],
@@ -346,7 +346,7 @@ class TestNotifyCustomer:
 
     def test_notify_customer_sends_via_log_only(self) -> None:
         """Without contact info, defaults to log_only."""
-        from autoswarm_workers.graphs.billing import notify_customer
+        from selva_workers.graphs.billing import notify_customer
 
         result = notify_customer({
             "messages": [],
@@ -361,7 +361,7 @@ class TestNotifyCustomer:
 
     def test_notify_customer_with_email(self) -> None:
         """With customer_email and SMTP_HOST set, uses email channel."""
-        from autoswarm_workers.graphs.billing import notify_customer
+        from selva_workers.graphs.billing import notify_customer
 
         with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
             result = notify_customer({
@@ -377,7 +377,7 @@ class TestNotifyCustomer:
 
     def test_notify_customer_with_phone_fallback_to_email(self) -> None:
         """Phone notification fails, falls back to email."""
-        from autoswarm_workers.graphs.billing import notify_customer
+        from selva_workers.graphs.billing import notify_customer
 
         with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
             result = notify_customer({
@@ -394,7 +394,7 @@ class TestNotifyCustomer:
         assert result["result"]["notification_channel"] == "email"
 
     def test_notify_customer_result_structure(self) -> None:
-        from autoswarm_workers.graphs.billing import notify_customer
+        from selva_workers.graphs.billing import notify_customer
 
         result = notify_customer({
             "messages": [],
@@ -413,25 +413,25 @@ class TestConditionalEdges:
     """Conditional edge routing functions."""
 
     def test_route_after_validate_error_goes_to_end(self) -> None:
-        from autoswarm_workers.graphs.billing import _route_after_validate
+        from selva_workers.graphs.billing import _route_after_validate
 
         result = _route_after_validate({"status": "error"})
         assert result == "__end__"
 
     def test_route_after_validate_ok_goes_to_blacklist(self) -> None:
-        from autoswarm_workers.graphs.billing import _route_after_validate
+        from selva_workers.graphs.billing import _route_after_validate
 
         result = _route_after_validate({"status": "rfcs_validated"})
         assert result == "check_blacklist"
 
     def test_route_after_blacklist_blocked_goes_to_end(self) -> None:
-        from autoswarm_workers.graphs.billing import _route_after_blacklist
+        from selva_workers.graphs.billing import _route_after_blacklist
 
         result = _route_after_blacklist({"status": "blocked"})
         assert result == "__end__"
 
     def test_route_after_blacklist_clear_goes_to_generate(self) -> None:
-        from autoswarm_workers.graphs.billing import _route_after_blacklist
+        from selva_workers.graphs.billing import _route_after_blacklist
 
         result = _route_after_blacklist({"status": "blacklist_clear"})
         assert result == "generate_cfdi"
@@ -441,18 +441,18 @@ class TestBillingRegistration:
     """Billing graph is properly registered in the system."""
 
     def test_billing_in_graph_builders(self) -> None:
-        from autoswarm_workers.__main__ import GRAPH_BUILDERS
+        from selva_workers.__main__ import GRAPH_BUILDERS
 
         assert "billing" in GRAPH_BUILDERS
 
     def test_billing_timeout_configured(self) -> None:
-        from autoswarm_redis_pool.timeout import DEFAULT_TIMEOUTS
+        from selva_redis_pool.timeout import DEFAULT_TIMEOUTS
 
         assert "billing" in DEFAULT_TIMEOUTS
         assert DEFAULT_TIMEOUTS["billing"] == 300
 
     def test_billing_builder_returns_graph(self) -> None:
-        from autoswarm_workers.graphs.billing import build_billing_graph
+        from selva_workers.graphs.billing import build_billing_graph
 
         graph = build_billing_graph()
         assert graph is not None

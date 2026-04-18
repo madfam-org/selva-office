@@ -23,7 +23,7 @@ class TestTestNodeUsesRunAsync:
         """The test() node source must NOT contain asyncio.get_event_loop."""
         import inspect
 
-        from autoswarm_workers.graphs.coding import test
+        from selva_workers.graphs.coding import test
 
         # Get the wrapped function (under @instrumented_node)
         fn = getattr(test, "__wrapped__", test)
@@ -46,17 +46,17 @@ class TestTestNodeUsesRunAsync:
         mock_bash.execute = AsyncMock(return_value=bash_result)
 
         with (
-            patch("autoswarm_workers.graphs.coding._bash_tool", mock_bash),
+            patch("selva_workers.graphs.coding._bash_tool", mock_bash),
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 new_callable=AsyncMock,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.graphs.coding import test
+            from selva_workers.graphs.coding import test
 
             state = {
                 "messages": [],
@@ -83,17 +83,17 @@ class TestTestNodeUsesRunAsync:
         mock_bash.execute = AsyncMock(return_value=bash_result)
 
         with (
-            patch("autoswarm_workers.graphs.coding._bash_tool", mock_bash),
+            patch("selva_workers.graphs.coding._bash_tool", mock_bash),
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 new_callable=AsyncMock,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.graphs.coding import test
+            from selva_workers.graphs.coding import test
 
             state = {
                 "messages": [],
@@ -113,17 +113,17 @@ class TestTestNodeUsesRunAsync:
         mock_bash.execute = AsyncMock(side_effect=RuntimeError("no bash"))
 
         with (
-            patch("autoswarm_workers.graphs.coding._bash_tool", mock_bash),
+            patch("selva_workers.graphs.coding._bash_tool", mock_bash),
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 new_callable=AsyncMock,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.graphs.coding import test
+            from selva_workers.graphs.coding import test
 
             state = {
                 "messages": [],

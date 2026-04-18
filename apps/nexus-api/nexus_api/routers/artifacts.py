@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoswarm_tools.storage import LocalFSStorage
+from selva_tools.storage import LocalFSStorage
 
 from ..auth import get_current_user
 from ..database import get_db

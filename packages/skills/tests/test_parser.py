@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from autoswarm_skills.parser import parse_skill_md
+from selva_skills.parser import parse_skill_md
 
 
 @pytest.fixture()

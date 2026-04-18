@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins.karafiel import (
+from selva_tools.builtins.karafiel import (
     BlacklistCheckTool,
     CFDIGenerateTool,
     CFDIStampTool,
@@ -65,7 +65,7 @@ class TestKarafielToolsInRegistry:
     """Karafiel tools are registered in get_builtin_tools()."""
 
     def test_all_karafiel_tools_in_registry(self) -> None:
-        from autoswarm_tools.builtins import get_builtin_tools
+        from selva_tools.builtins import get_builtin_tools
 
         tools = get_builtin_tools()
         names = {t.name for t in tools}

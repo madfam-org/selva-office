@@ -9,7 +9,7 @@ Usage:
 import asyncio
 import sys
 
-from autoswarm_sdk import AutoSwarm
+from selva_sdk import AutoSwarm
 
 
 async def main(workflow_id: str) -> None:

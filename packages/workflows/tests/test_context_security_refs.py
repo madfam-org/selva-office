@@ -1,4 +1,4 @@
-from autoswarm_workflows.context_files import ContextFileLoader
+from selva_workflows.context_files import ContextFileLoader
 
 
 def test_injection_detection_warn(tmp_path):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins.accounting import (
+from selva_tools.builtins.accounting import (
     BankReconciliationTool,
     DeclarationPrepTool,
     ISRCalculatorTool,
@@ -57,7 +57,7 @@ class TestAccountingToolsInRegistry:
     """Accounting tools are registered in get_builtin_tools()."""
 
     def test_all_accounting_tools_in_registry(self) -> None:
-        from autoswarm_tools.builtins import get_builtin_tools
+        from selva_tools.builtins import get_builtin_tools
 
         tools = get_builtin_tools()
         names = {t.name for t in tools}

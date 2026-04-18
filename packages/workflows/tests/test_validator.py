@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from autoswarm_workflows.schema import (
+from selva_workflows.schema import (
     EdgeDefinition,
     NodeDefinition,
     NodeType,
     TriggerCondition,
     WorkflowDefinition,
 )
-from autoswarm_workflows.validator import WorkflowValidator
+from selva_workflows.validator import WorkflowValidator
 
 
 def _make_workflow(**kwargs) -> WorkflowDefinition:  # type: ignore[no-untyped-def]

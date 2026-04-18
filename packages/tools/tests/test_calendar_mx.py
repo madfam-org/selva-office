@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins import get_builtin_tools
-from autoswarm_tools.builtins.calendar_tools import (
+from selva_tools.builtins import get_builtin_tools
+from selva_tools.builtins.calendar_tools import (
     MEXICAN_HOLIDAYS,
     MexicanBusinessCalendarTool,
     _is_business_day,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_orchestrator.types import AgentRole
+from selva_orchestrator.types import AgentRole
 
 
 @pytest.fixture()

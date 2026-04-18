@@ -152,7 +152,7 @@ class TestWebhookLeadIdPropagation:
                 {"pb-t32-1": mock_playbook},
             ),
             patch(
-                "autoswarm_redis_pool.get_redis_pool",
+                "selva_redis_pool.get_redis_pool",
                 return_value=mock_redis_pool,
             ),
             patch("nexus_api.attribution.track") as mock_track,
@@ -234,7 +234,7 @@ class TestWebhookLeadIdPropagation:
                 {"pb-t32-2": mock_playbook},
             ),
             patch(
-                "autoswarm_redis_pool.get_redis_pool",
+                "selva_redis_pool.get_redis_pool",
                 return_value=mock_redis_pool,
             ),
             patch("nexus_api.attribution.track"),

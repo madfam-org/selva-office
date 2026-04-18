@@ -1,4 +1,4 @@
-"""Tests for autoswarm_redis_pool.pool — RedisPool with circuit breaker."""
+"""Tests for selva_redis_pool.pool — RedisPool with circuit breaker."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import redis.asyncio as aioredis
 
-from autoswarm_redis_pool.pool import CircuitState, RedisPool, get_redis_pool
+from selva_redis_pool.pool import CircuitState, RedisPool, get_redis_pool
 
 
 class TestSingleton:

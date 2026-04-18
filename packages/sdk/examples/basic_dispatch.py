@@ -8,7 +8,7 @@ Usage:
 
 import asyncio
 
-from autoswarm_sdk import AutoSwarm
+from selva_sdk import AutoSwarm
 
 
 async def main() -> None:

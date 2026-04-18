@@ -1,12 +1,12 @@
 ---
-# PersistentVolumeClaim: autoswarm-skills-pvc
+# PersistentVolumeClaim: selva-skills-pvc
 # Provides durable, RWX storage for the procedurally generated Python skill
 # scripts written by the QA Oracle's Hermes continuous-learning loop.
 # Mount at: /var/lib/autoswarm/skills  (all Celery workers + Nexus API)
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: autoswarm-skills-pvc
+  name: selva-skills-pvc
   namespace: autoswarm
   labels:
     app.kubernetes.io/part-of: autoswarm-office

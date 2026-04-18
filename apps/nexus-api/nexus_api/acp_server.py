@@ -98,7 +98,7 @@ async def handle_get_result(params: dict, req_id: Any) -> None:
 
 async def handle_list_skills(params: dict, req_id: Any) -> None:
     try:
-        from autoswarm_skills import get_skill_registry  # type: ignore
+        from selva_skills import get_skill_registry  # type: ignore
         skills = [{"name": s.name, "description": s.description}
                   for s in get_skill_registry().list_skills()]
         _write(_response(req_id, {"skills": skills}))

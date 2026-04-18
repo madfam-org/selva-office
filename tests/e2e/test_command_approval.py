@@ -3,7 +3,7 @@ E2E tests — Gap 2: Dangerous Command Approval System
 """
 import pytest
 
-from autoswarm_tools.approval import is_dangerous
+from selva_tools.approval import is_dangerous
 
 
 class TestIsDangerous:
@@ -49,8 +49,8 @@ class TestRequestApproval:
         mock_settings.auto_approve_dangerous = False
         mock_settings.command_approval_timeout_seconds = 5
 
-        with patch("autoswarm_tools.approval.get_settings", return_value=mock_settings):
-            from autoswarm_tools.approval import request_approval
+        with patch("selva_tools.approval.get_settings", return_value=mock_settings):
+            from selva_tools.approval import request_approval
             result = await request_approval(
                 command="rm -rf /tmp/old",
                 run_id="test-run-001",
@@ -69,9 +69,9 @@ class TestRequestApproval:
         mock_settings.auto_approve_dangerous = False
         mock_settings.command_approval_timeout_seconds = 1  # Very short for test
 
-        with patch("autoswarm_tools.approval.get_settings", return_value=mock_settings):
-            with patch("autoswarm_tools.approval._persist_and_broadcast", new_callable=AsyncMock):
-                from autoswarm_tools.approval import ApprovalStatus, request_approval
+        with patch("selva_tools.approval.get_settings", return_value=mock_settings):
+            with patch("selva_tools.approval._persist_and_broadcast", new_callable=AsyncMock):
+                from selva_tools.approval import ApprovalStatus, request_approval
                 result = await request_approval(
                     command="rm -rf /tmp/old2",
                     run_id="test-run-002",

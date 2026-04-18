@@ -6,15 +6,15 @@ import asyncio
 
 import pytest
 
-from autoswarm_workflows.nodes.batch import BatchNodeHandler, _aggregate
-from autoswarm_workflows.schema import (
+from selva_workflows.nodes.batch import BatchNodeHandler, _aggregate
+from selva_workflows.schema import (
     BatchAggregateStrategy,
     EdgeDefinition,
     NodeDefinition,
     NodeType,
     WorkflowDefinition,
 )
-from autoswarm_workflows.validator import WorkflowValidator
+from selva_workflows.validator import WorkflowValidator
 
 
 def _make_batch_node(**overrides) -> NodeDefinition:  # type: ignore[no-untyped-def]

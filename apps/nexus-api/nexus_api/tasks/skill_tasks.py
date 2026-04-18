@@ -19,7 +19,7 @@ def refine_skills_task(self, force: bool = False) -> dict:
     """
     logger.info("SkillRefiner beat task starting (force=%s).", force)
     try:
-        from autoswarm_skills.refiner import SkillRefiner
+        from selva_skills.refiner import SkillRefiner
         refiner = SkillRefiner()
         results = refiner.refine_all()
         logger.info("SkillRefiner complete: %s", results)

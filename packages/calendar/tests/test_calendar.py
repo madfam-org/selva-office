@@ -7,9 +7,9 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 
-from autoswarm_calendar import CalendarEvent, CalendarProvider
-from autoswarm_calendar.google import GoogleCalendarAdapter
-from autoswarm_calendar.microsoft import MicrosoftCalendarAdapter
+from selva_calendar import CalendarEvent, CalendarProvider
+from selva_calendar.google import GoogleCalendarAdapter
+from selva_calendar.microsoft import MicrosoftCalendarAdapter
 
 # ---------------------------------------------------------------------------
 # Mock transport helpers

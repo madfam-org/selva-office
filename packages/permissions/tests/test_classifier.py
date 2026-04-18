@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_permissions.classifier import ActionClassifier
-from autoswarm_permissions.engine import PermissionEngine
-from autoswarm_permissions.types import ActionCategory, PermissionLevel
+from selva_permissions.classifier import ActionClassifier
+from selva_permissions.engine import PermissionEngine
+from selva_permissions.types import ActionCategory, PermissionLevel
 
 
 @pytest.fixture()

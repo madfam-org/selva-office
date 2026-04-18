@@ -13,7 +13,7 @@ _MOCK_AUTH = {"Authorization": "Bearer test-token"}
 def _patch_auth():
     """Patch get_worker_auth_headers for event_emitter calls."""
     return patch(
-        "autoswarm_workers.auth.get_worker_auth_headers",
+        "selva_workers.auth.get_worker_auth_headers",
         return_value=_MOCK_AUTH,
     )
 
@@ -33,17 +33,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             await emit_event(
                 "http://test:4300",
@@ -71,17 +71,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             await emit_event(
                 "http://test:4300",
@@ -98,17 +98,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             await emit_event(
                 "http://test:4300",
@@ -145,17 +145,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             await emit_event(
                 "http://test:4300",
@@ -174,17 +174,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             await emit_event(
                 "http://test:4300",
@@ -203,17 +203,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             await emit_event(
                 "http://test:4300",
@@ -230,17 +230,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ),
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import EVENTS_CHANNEL, emit_event
+            from selva_workers.event_emitter import EVENTS_CHANNEL, emit_event
 
             await emit_event(
                 "http://test:4300",
@@ -266,18 +266,18 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ),
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
-            patch("autoswarm_workers.event_emitter.logger") as mock_logger,
+            patch("selva_workers.event_emitter.logger") as mock_logger,
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             # Should not raise.
             await emit_event(
@@ -295,17 +295,17 @@ class TestEmitEvent:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.fire_and_forget_request",
+                "selva_workers.event_emitter.fire_and_forget_request",
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_ffr,
             patch(
-                "autoswarm_workers.event_emitter.get_redis_pool",
+                "selva_workers.event_emitter.get_redis_pool",
                 return_value=mock_pool,
             ),
             _patch_auth(),
         ):
-            from autoswarm_workers.event_emitter import emit_event
+            from selva_workers.event_emitter import emit_event
 
             # Default org_id should be omitted.
             await emit_event(
@@ -346,15 +346,15 @@ class TestInstrumentedNode:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 side_effect=_capture_emit,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def my_node(state):  # type: ignore[no-untyped-def]
@@ -376,15 +376,15 @@ class TestInstrumentedNode:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 side_effect=_capture_emit,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def slow_node(state):  # type: ignore[no-untyped-def]
@@ -406,15 +406,15 @@ class TestInstrumentedNode:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 side_effect=_capture_emit,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def plan(state):  # type: ignore[no-untyped-def]
@@ -433,15 +433,15 @@ class TestInstrumentedNode:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 side_effect=_capture_emit,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def implement(state):  # type: ignore[no-untyped-def]
@@ -460,15 +460,15 @@ class TestInstrumentedNode:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 side_effect=_capture_emit,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def failing_node(state):  # type: ignore[no-untyped-def]
@@ -484,10 +484,10 @@ class TestInstrumentedNode:
 
     def test_preserves_function_name(self) -> None:
         with patch(
-            "autoswarm_workers.config.get_settings",
+            "selva_workers.config.get_settings",
             return_value=MagicMock(nexus_api_url="http://test:4300"),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def review(state):  # type: ignore[no-untyped-def]
@@ -504,15 +504,15 @@ class TestInstrumentedNode:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 side_effect=_capture_emit,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def odd_node(state):  # type: ignore[no-untyped-def]
@@ -535,15 +535,15 @@ class TestInstrumentedNode:
 
         with (
             patch(
-                "autoswarm_workers.event_emitter.emit_event",
+                "selva_workers.event_emitter.emit_event",
                 side_effect=_capture_emit,
             ),
             patch(
-                "autoswarm_workers.config.get_settings",
+                "selva_workers.config.get_settings",
                 return_value=MagicMock(nexus_api_url="http://test:4300"),
             ),
         ):
-            from autoswarm_workers.event_emitter import instrumented_node
+            from selva_workers.event_emitter import instrumented_node
 
             @instrumented_node
             def compute(state):  # type: ignore[no-untyped-def]

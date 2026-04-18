@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from unittest.mock import MagicMock, patch
 
-from autoswarm_tools.builtins import _spf_check
+from selva_tools.builtins import _spf_check
 
 
 def _make_answer(text: str) -> MagicMock:

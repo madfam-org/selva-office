@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from autoswarm_tools.builtins._email_signatures import build_identity
+from selva_tools.builtins._email_signatures import build_identity
 
 
 def test_user_direct_uses_user_mailbox() -> None:

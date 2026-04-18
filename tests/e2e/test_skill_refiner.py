@@ -56,7 +56,7 @@ def test_refine_all_skips_healthy_fresh_skill(skills_dir):
     )
     _write(skills_dir, "healthy_skill", fresh_skill)
 
-    from autoswarm_skills.refiner import SkillRefiner
+    from selva_skills.refiner import SkillRefiner
     refiner = SkillRefiner(skills_dir=str(skills_dir), refine_interval_days=7)
     results = refiner.refine_all()
 
@@ -67,7 +67,7 @@ def test_refine_all_flags_stale_skill(skills_dir):
     """A passing skill with stale last_validated should be reported as 'refined'."""
     _write(skills_dir, "stale_skill", VALID_SKILL)  # last_validated=2020
 
-    from autoswarm_skills.refiner import SkillRefiner
+    from selva_skills.refiner import SkillRefiner
     refiner = SkillRefiner(skills_dir=str(skills_dir), refine_interval_days=7)
 
     with patch.object(refiner, "_llm_refine", return_value="refined") as mock_refine:
@@ -81,7 +81,7 @@ def test_refine_all_flags_broken_skill(skills_dir):
     """A skill whose SKILL_ENTRYPOINT raises should be marked 'refined'."""
     _write(skills_dir, "broken_skill", BROKEN_SKILL)
 
-    from autoswarm_skills.refiner import SkillRefiner
+    from selva_skills.refiner import SkillRefiner
     refiner = SkillRefiner(skills_dir=str(skills_dir), refine_interval_days=7)
 
     with patch.object(refiner, "_llm_refine", return_value="refined"):
@@ -99,7 +99,7 @@ def test_refine_one_force(skills_dir):
     )
     _write(skills_dir, "forced_skill", fresh_skill)
 
-    from autoswarm_skills.refiner import SkillRefiner
+    from selva_skills.refiner import SkillRefiner
     refiner = SkillRefiner(skills_dir=str(skills_dir))
 
     with patch.object(refiner, "_llm_refine", return_value="refined") as mock_refine:
@@ -112,7 +112,7 @@ def test_refine_one_force(skills_dir):
 def test_sandbox_execute_passes_valid_skill(skills_dir):
     path = _write(skills_dir, "sandbox_pass", VALID_SKILL)
 
-    from autoswarm_skills.refiner import SkillRefiner
+    from selva_skills.refiner import SkillRefiner
     refiner = SkillRefiner(skills_dir=str(skills_dir))
     stderr, passed = refiner._sandbox_execute(path)
     assert passed is True
@@ -121,7 +121,7 @@ def test_sandbox_execute_passes_valid_skill(skills_dir):
 def test_sandbox_execute_fails_broken_skill(skills_dir):
     path = _write(skills_dir, "sandbox_fail", BROKEN_SKILL)
 
-    from autoswarm_skills.refiner import SkillRefiner
+    from selva_skills.refiner import SkillRefiner
     refiner = SkillRefiner(skills_dir=str(skills_dir))
     stderr, passed = refiner._sandbox_execute(path)
     assert passed is False

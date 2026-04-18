@@ -9,7 +9,7 @@ import httpx
 from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
-from autoswarm_redis_pool import get_redis_pool
+from selva_redis_pool import get_redis_pool
 
 from ..config import get_settings
 from ..database import async_session_factory

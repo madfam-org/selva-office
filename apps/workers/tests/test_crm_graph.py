@@ -11,7 +11,7 @@ class TestCRMGraphStructure:
     """CRM graph has correct nodes and edges."""
 
     def test_graph_has_expected_nodes(self) -> None:
-        from autoswarm_workers.graphs.crm import build_crm_graph
+        from selva_workers.graphs.crm import build_crm_graph
 
         graph = build_crm_graph()
         node_names = set(graph.nodes.keys())
@@ -21,14 +21,14 @@ class TestCRMGraphStructure:
         assert "send" in node_names
 
     def test_graph_compiles(self) -> None:
-        from autoswarm_workers.graphs.crm import build_crm_graph
+        from selva_workers.graphs.crm import build_crm_graph
 
         graph = build_crm_graph()
         compiled = graph.compile()
         assert compiled is not None
 
     def test_crm_state_fields(self) -> None:
-        from autoswarm_workers.graphs.crm import CRMState
+        from selva_workers.graphs.crm import CRMState
 
         annotations = CRMState.__annotations__
         assert "draft_content" in annotations
@@ -40,7 +40,7 @@ class TestFetchContext:
     """fetch_context() gathers CRM data for the recipient."""
 
     def test_fallback_mock_context_without_phyne(self) -> None:
-        from autoswarm_workers.graphs.crm import fetch_context
+        from selva_workers.graphs.crm import fetch_context
 
         result = fetch_context({
             "messages": [],
@@ -54,7 +54,7 @@ class TestFetchContext:
         assert "CRM context fetched" in result["messages"][0].content
 
     def test_context_includes_mock_history(self) -> None:
-        from autoswarm_workers.graphs.crm import fetch_context
+        from selva_workers.graphs.crm import fetch_context
 
         result = fetch_context({
             "messages": [],
@@ -67,7 +67,7 @@ class TestFetchContext:
         assert len(crm_ctx["contact_history"]) == 2
 
     def test_defaults_when_no_recipient(self) -> None:
-        from autoswarm_workers.graphs.crm import fetch_context
+        from selva_workers.graphs.crm import fetch_context
 
         result = fetch_context({"messages": []})
         assert result["recipient"] == "unknown@example.com"
@@ -75,7 +75,7 @@ class TestFetchContext:
 
     def test_with_phyne_configured(self) -> None:
         """When PHYNE_CRM_URL is set but adapter fails, falls back to mock."""
-        from autoswarm_workers.graphs.crm import fetch_context
+        from selva_workers.graphs.crm import fetch_context
 
         with patch.dict("os.environ", {"PHYNE_CRM_URL": "http://fake-phyne:8080"}):
             result = fetch_context({
@@ -91,7 +91,7 @@ class TestDraftCommunication:
     """draft_communication() produces a draft for approval."""
 
     def test_fallback_draft_without_llm(self) -> None:
-        from autoswarm_workers.graphs.crm import draft_communication
+        from selva_workers.graphs.crm import draft_communication
 
         result = draft_communication({
             "messages": [AIMessage(
@@ -107,7 +107,7 @@ class TestDraftCommunication:
         assert "user@test.com" in result["draft_content"]
 
     def test_draft_message_added(self) -> None:
-        from autoswarm_workers.graphs.crm import draft_communication
+        from selva_workers.graphs.crm import draft_communication
 
         result = draft_communication({
             "messages": [],
@@ -123,10 +123,10 @@ class TestApprovalGate:
     """approval_gate() uses interrupt() for HITL review."""
 
     def test_approved_sets_status(self) -> None:
-        from autoswarm_workers.graphs.crm import approval_gate
+        from selva_workers.graphs.crm import approval_gate
 
         with patch(
-            "autoswarm_workers.graphs.crm.interrupt",
+            "selva_workers.graphs.crm.interrupt",
             return_value={"approved": True},
         ):
             result = approval_gate({
@@ -139,10 +139,10 @@ class TestApprovalGate:
         assert result["status"] == "approved"
 
     def test_denied_sets_status(self) -> None:
-        from autoswarm_workers.graphs.crm import approval_gate
+        from selva_workers.graphs.crm import approval_gate
 
         with patch(
-            "autoswarm_workers.graphs.crm.interrupt",
+            "selva_workers.graphs.crm.interrupt",
             return_value={"approved": False, "feedback": "Tone is wrong"},
         ):
             result = approval_gate({
@@ -160,7 +160,7 @@ class TestSendNode:
     """send() executes the outbound CRM action."""
 
     def test_skips_if_denied(self) -> None:
-        from autoswarm_workers.graphs.crm import send
+        from selva_workers.graphs.crm import send
 
         result = send({
             "messages": [],
@@ -172,11 +172,11 @@ class TestSendNode:
         assert result["status"] == "cancelled"
 
     def test_permission_deny_blocks(self) -> None:
-        from autoswarm_workers.graphs.crm import send
+        from selva_workers.graphs.crm import send
 
         mock_result = MagicMock()
-        with patch("autoswarm_workers.graphs.base.check_permission") as mock_check:
-            from autoswarm_permissions.types import PermissionLevel
+        with patch("selva_workers.graphs.base.check_permission") as mock_check:
+            from selva_permissions.types import PermissionLevel
 
             mock_result.level = PermissionLevel.DENY
             mock_check.return_value = mock_result
@@ -191,11 +191,11 @@ class TestSendNode:
         assert result["status"] == "blocked"
 
     def test_send_succeeds_with_allow(self) -> None:
-        from autoswarm_workers.graphs.crm import send
+        from selva_workers.graphs.crm import send
 
         mock_result = MagicMock()
-        with patch("autoswarm_workers.graphs.base.check_permission") as mock_check:
-            from autoswarm_permissions.types import PermissionLevel
+        with patch("selva_workers.graphs.base.check_permission") as mock_check:
+            from selva_permissions.types import PermissionLevel
 
             mock_result.level = PermissionLevel.ALLOW
             mock_check.return_value = mock_result
@@ -212,11 +212,11 @@ class TestSendNode:
         assert result["result"]["delivered"] is True
 
     def test_send_result_contains_message_id(self) -> None:
-        from autoswarm_workers.graphs.crm import send
+        from selva_workers.graphs.crm import send
 
         mock_result = MagicMock()
-        with patch("autoswarm_workers.graphs.base.check_permission") as mock_check:
-            from autoswarm_permissions.types import PermissionLevel
+        with patch("selva_workers.graphs.base.check_permission") as mock_check:
+            from selva_permissions.types import PermissionLevel
 
             mock_result.level = PermissionLevel.ALLOW
             mock_check.return_value = mock_result
@@ -237,13 +237,13 @@ class TestCRMRegistration:
     """CRM graph builder is importable."""
 
     def test_crm_in_graph_builders(self) -> None:
-        from autoswarm_workers.graphs.crm import build_crm_graph
+        from selva_workers.graphs.crm import build_crm_graph
 
         graph = build_crm_graph()
         assert graph is not None
 
     def test_crm_timeout_configured(self) -> None:
-        from autoswarm_redis_pool.timeout import DEFAULT_TIMEOUTS
+        from selva_redis_pool.timeout import DEFAULT_TIMEOUTS
 
         assert "crm" in DEFAULT_TIMEOUTS
         assert DEFAULT_TIMEOUTS["crm"] == 120

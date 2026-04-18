@@ -4,7 +4,7 @@ E2E tests — Gap 3: Plugin Architecture
 from pathlib import Path
 
 MINIMAL_PLUGIN_PY = '''
-from autoswarm_plugins.plugin_base import AutoSwarmPlugin, HookType
+from selva_plugins.plugin_base import AutoSwarmPlugin, HookType
 
 class Plugin(AutoSwarmPlugin):
     def setup(self):
@@ -42,7 +42,7 @@ class TestPluginManager:
         """Plugin in .autoswarm/plugins/ is discovered and loaded."""
         plugin_root = self._create_plugin_dir(tmp_path)
 
-        from autoswarm_plugins.manager import PluginManager
+        from selva_plugins.manager import PluginManager
         manager = PluginManager(extra_dirs=[str(plugin_root)])
         count = manager.discover()
         assert count == 1
@@ -50,7 +50,7 @@ class TestPluginManager:
     def test_register_tools_returns_tool(self, tmp_path):
         """Plugin's tool is returned by get_all_tools()."""
         plugin_root = self._create_plugin_dir(tmp_path)
-        from autoswarm_plugins.manager import PluginManager
+        from selva_plugins.manager import PluginManager
         manager = PluginManager(extra_dirs=[str(plugin_root)])
         manager.discover()
         tools = manager.get_all_tools()
@@ -59,7 +59,7 @@ class TestPluginManager:
     def test_context_addenda_injected_for_phase(self, tmp_path):
         """Context addenda from plugin are returned for the correct phase."""
         plugin_root = self._create_plugin_dir(tmp_path)
-        from autoswarm_plugins.manager import PluginManager
+        from selva_plugins.manager import PluginManager
         manager = PluginManager(extra_dirs=[str(plugin_root)])
         manager.discover()
         addenda = manager.get_context_addenda("phase_i_analyst")
@@ -68,8 +68,8 @@ class TestPluginManager:
     def test_hook_fires_at_declared_phase(self, tmp_path):
         """PRE_PHASE hook fires and returns result."""
         plugin_root = self._create_plugin_dir(tmp_path)
-        from autoswarm_plugins.manager import PluginManager
-        from autoswarm_plugins.plugin_base import HookType
+        from selva_plugins.manager import PluginManager
+        from selva_plugins.plugin_base import HookType
         manager = PluginManager(extra_dirs=[str(plugin_root)])
         manager.discover()
         results = manager.dispatch_hook(HookType.PRE_PHASE, phase="phase_i_analyst")
@@ -77,7 +77,7 @@ class TestPluginManager:
 
     def test_empty_dir_loads_zero_plugins(self, tmp_path):
         """No plugins found in an empty directory."""
-        from autoswarm_plugins.manager import PluginManager
+        from selva_plugins.manager import PluginManager
         manager = PluginManager(extra_dirs=[str(tmp_path)])
         count = manager.discover()
         assert count == 0

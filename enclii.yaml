@@ -299,7 +299,7 @@ spec:
 apiVersion: enclii.dev/v1
 kind: Service
 metadata:
-  name: autoswarm-workers
+  name: selva-workers
   project: autoswarm-office
   description: AutoSwarm Office — Background task workers
 spec:

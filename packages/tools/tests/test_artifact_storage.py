@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from autoswarm_tools.storage.local import LocalFSStorage
+from selva_tools.storage.local import LocalFSStorage
 
 
 @pytest.fixture()

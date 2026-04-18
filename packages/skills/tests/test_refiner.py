@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from autoswarm_skills.refiner import RefinerMetrics, SkillRefiner
+from selva_skills.refiner import RefinerMetrics, SkillRefiner
 
 VALID_SKILL = textwrap.dedent('''\
     SKILL_SCHEMA_VERSION = "agentskills/v1"

@@ -6,10 +6,10 @@ import tempfile
 
 import pytest
 
-from autoswarm_memory.embeddings import EmbeddingProvider
-from autoswarm_memory.experience import ExperienceRecord, ExperienceStore
-from autoswarm_memory.manager import MemoryManager
-from autoswarm_memory.store import MemoryStore
+from selva_memory.embeddings import EmbeddingProvider
+from selva_memory.experience import ExperienceRecord, ExperienceStore
+from selva_memory.manager import MemoryManager
+from selva_memory.store import MemoryStore
 
 
 @pytest.fixture

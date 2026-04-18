@@ -15,7 +15,7 @@ Contract this must hold (mirrors office-ui PR #23's extractLlmPreview):
 
 from __future__ import annotations
 
-from autoswarm_workers.inference import (
+from selva_workers.inference import (
     LLM_EVENT_TEXT_MAX_CHARS,
     _build_llm_event_payload,
 )

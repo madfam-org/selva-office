@@ -8,7 +8,7 @@ from collections import Counter
 
 import pytest
 
-from autoswarm_orchestrator.bandit import ThompsonBandit
+from selva_orchestrator.bandit import ThompsonBandit
 
 
 class TestThompsonBanditBasics:

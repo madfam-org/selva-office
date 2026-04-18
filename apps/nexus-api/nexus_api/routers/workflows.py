@@ -108,7 +108,7 @@ def _workflow_to_response(wf: Workflow) -> WorkflowResponse:
 
 def _validate_yaml(yaml_content: str) -> WorkflowValidationResponse:
     """Parse and validate a YAML workflow definition."""
-    from autoswarm_workflows import WorkflowSerializer, WorkflowValidator
+    from selva_workflows import WorkflowSerializer, WorkflowValidator
 
     try:
         workflow_def = WorkflowSerializer.from_yaml(yaml_content)
@@ -158,7 +158,7 @@ async def create_workflow(
         )
 
     # Extract version from parsed YAML
-    from autoswarm_workflows import WorkflowSerializer
+    from selva_workflows import WorkflowSerializer
 
     parsed = WorkflowSerializer.from_yaml(body.yaml_content)
 
@@ -210,7 +210,7 @@ async def list_workflows(
 @router.get("/templates", response_model=list[WorkflowTemplateResponse])
 async def list_templates() -> list[WorkflowTemplateResponse]:
     """List available workflow templates from data/workflow-templates/."""
-    from autoswarm_workflows import WorkflowSerializer
+    from selva_workflows import WorkflowSerializer
 
     templates: list[WorkflowTemplateResponse] = []
 
@@ -270,7 +270,7 @@ async def create_from_template(
             },
         )
 
-    from autoswarm_workflows import WorkflowSerializer
+    from selva_workflows import WorkflowSerializer
 
     parsed = WorkflowSerializer.from_yaml(yaml_content)
     workflow_name = body.name or parsed.name
@@ -323,7 +323,7 @@ async def update_workflow(
             )
         wf.yaml_content = body.yaml_content
 
-        from autoswarm_workflows import WorkflowSerializer
+        from selva_workflows import WorkflowSerializer
 
         parsed = WorkflowSerializer.from_yaml(body.yaml_content)
         wf.version = parsed.version
@@ -376,7 +376,7 @@ async def import_workflow(
             detail={"message": "Invalid workflow YAML", "errors": validation.errors},
         )
 
-    from autoswarm_workflows import WorkflowSerializer
+    from selva_workflows import WorkflowSerializer
 
     parsed = WorkflowSerializer.from_yaml(body.yaml_content)
 

@@ -8,8 +8,8 @@ from typing import Any
 import httpx
 import pytest
 
-from autoswarm_sdk import AutoSwarm, AutoSwarmSync
-from autoswarm_sdk.exceptions import (
+from selva_sdk import AutoSwarm, AutoSwarmSync
+from selva_sdk.exceptions import (
     AuthenticationError,
     AutoSwarmError,
     NotFoundError,

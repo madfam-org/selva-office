@@ -9,7 +9,7 @@ class TestAccountingGraphStructure:
     """Accounting graph has correct nodes, edges, and conditional routing."""
 
     def test_graph_has_expected_nodes(self) -> None:
-        from autoswarm_workers.graphs.accounting import build_accounting_graph
+        from selva_workers.graphs.accounting import build_accounting_graph
 
         graph = build_accounting_graph()
         node_names = set(graph.nodes.keys())
@@ -20,14 +20,14 @@ class TestAccountingGraphStructure:
         assert "review_gate" in node_names
 
     def test_graph_compiles(self) -> None:
-        from autoswarm_workers.graphs.accounting import build_accounting_graph
+        from selva_workers.graphs.accounting import build_accounting_graph
 
         graph = build_accounting_graph()
         compiled = graph.compile()
         assert compiled is not None
 
     def test_accounting_state_fields(self) -> None:
-        from autoswarm_workers.graphs.accounting import AccountingState
+        from selva_workers.graphs.accounting import AccountingState
 
         annotations = AccountingState.__annotations__
         assert "org_id" in annotations
@@ -47,7 +47,7 @@ class TestFetchPeriodData:
     """fetch_period_data() gathers data from Dhanam or falls back."""
 
     def test_requires_org_id_and_period(self) -> None:
-        from autoswarm_workers.graphs.accounting import fetch_period_data
+        from selva_workers.graphs.accounting import fetch_period_data
 
         result = fetch_period_data({
             "messages": [],
@@ -59,7 +59,7 @@ class TestFetchPeriodData:
         assert "org_id" in err or "period" in err
 
     def test_requires_period(self) -> None:
-        from autoswarm_workers.graphs.accounting import fetch_period_data
+        from selva_workers.graphs.accounting import fetch_period_data
 
         result = fetch_period_data({
             "messages": [],
@@ -70,7 +70,7 @@ class TestFetchPeriodData:
 
     def test_fetches_without_dhanam(self) -> None:
         """Without DHANAM_API_URL, falls back to empty data."""
-        from autoswarm_workers.graphs.accounting import fetch_period_data
+        from selva_workers.graphs.accounting import fetch_period_data
 
         result = fetch_period_data({
             "messages": [],
@@ -88,7 +88,7 @@ class TestFetchPeriodData:
         assert "Period data fetched" in result["messages"][0].content
 
     def test_reads_from_workflow_variables(self) -> None:
-        from autoswarm_workers.graphs.accounting import fetch_period_data
+        from selva_workers.graphs.accounting import fetch_period_data
 
         result = fetch_period_data({
             "messages": [],
@@ -111,7 +111,7 @@ class TestReconcileBank:
 
     def test_reconcile_without_karafiel(self) -> None:
         """Without KARAFIEL_API_URL, reconciliation has no CFDI data."""
-        from autoswarm_workers.graphs.accounting import reconcile_bank
+        from selva_workers.graphs.accounting import reconcile_bank
 
         result = reconcile_bank({
             "messages": [],
@@ -129,7 +129,7 @@ class TestReconcileBank:
         assert result["reconciliation"]["unmatched_bank_count"] == 1
 
     def test_reconcile_skips_on_error(self) -> None:
-        from autoswarm_workers.graphs.accounting import reconcile_bank
+        from selva_workers.graphs.accounting import reconcile_bank
 
         result = reconcile_bank({
             "messages": [],
@@ -138,7 +138,7 @@ class TestReconcileBank:
         assert result["status"] == "error"
 
     def test_reconcile_with_empty_transactions(self) -> None:
-        from autoswarm_workers.graphs.accounting import reconcile_bank
+        from selva_workers.graphs.accounting import reconcile_bank
 
         result = reconcile_bank({
             "messages": [],
@@ -157,7 +157,7 @@ class TestComputeTaxes:
 
     def test_compute_taxes_without_karafiel(self) -> None:
         """Without Karafiel, uses placeholder values."""
-        from autoswarm_workers.graphs.accounting import compute_taxes
+        from selva_workers.graphs.accounting import compute_taxes
 
         result = compute_taxes({
             "messages": [],
@@ -182,7 +182,7 @@ class TestComputeTaxes:
         assert "ISR" in content.upper() or "isr" in content.lower()
 
     def test_compute_taxes_skips_on_error(self) -> None:
-        from autoswarm_workers.graphs.accounting import compute_taxes
+        from selva_workers.graphs.accounting import compute_taxes
 
         result = compute_taxes({
             "messages": [],
@@ -191,7 +191,7 @@ class TestComputeTaxes:
         assert result["status"] == "error"
 
     def test_compute_taxes_uses_dhanam_income_when_higher(self) -> None:
-        from autoswarm_workers.graphs.accounting import compute_taxes
+        from selva_workers.graphs.accounting import compute_taxes
 
         result = compute_taxes({
             "messages": [],
@@ -209,7 +209,7 @@ class TestPrepareDeclaration:
 
     def test_prepare_without_karafiel(self) -> None:
         """Without Karafiel, returns placeholder declarations."""
-        from autoswarm_workers.graphs.accounting import prepare_declaration
+        from selva_workers.graphs.accounting import prepare_declaration
 
         result = prepare_declaration({
             "messages": [],
@@ -242,7 +242,7 @@ class TestPrepareDeclaration:
         assert "Declarations prepared" in result["messages"][0].content
 
     def test_prepare_skips_on_error(self) -> None:
-        from autoswarm_workers.graphs.accounting import prepare_declaration
+        from selva_workers.graphs.accounting import prepare_declaration
 
         result = prepare_declaration({
             "messages": [],
@@ -251,7 +251,7 @@ class TestPrepareDeclaration:
         assert result["status"] == "error"
 
     def test_diot_groups_by_rfc(self) -> None:
-        from autoswarm_workers.graphs.accounting import prepare_declaration
+        from selva_workers.graphs.accounting import prepare_declaration
 
         result = prepare_declaration({
             "messages": [],
@@ -280,7 +280,7 @@ class TestReviewGate:
     """review_gate() uses interrupt for HITL approval."""
 
     def test_review_gate_skips_on_error(self) -> None:
-        from autoswarm_workers.graphs.accounting import review_gate
+        from selva_workers.graphs.accounting import review_gate
 
         result = review_gate({
             "messages": [],
@@ -289,7 +289,7 @@ class TestReviewGate:
         assert result["status"] == "error"
 
     def test_review_gate_skips_on_blocked(self) -> None:
-        from autoswarm_workers.graphs.accounting import review_gate
+        from selva_workers.graphs.accounting import review_gate
 
         result = review_gate({
             "messages": [],
@@ -298,10 +298,10 @@ class TestReviewGate:
         assert result["status"] == "blocked"
 
     def test_review_gate_approved(self) -> None:
-        from autoswarm_workers.graphs.accounting import review_gate
+        from selva_workers.graphs.accounting import review_gate
 
         with patch(
-            "autoswarm_workers.graphs.accounting.interrupt",
+            "selva_workers.graphs.accounting.interrupt",
             return_value={"approved": True},
         ):
             result = review_gate({
@@ -322,10 +322,10 @@ class TestReviewGate:
         assert "approved" in result["messages"][0].content.lower()
 
     def test_review_gate_denied(self) -> None:
-        from autoswarm_workers.graphs.accounting import review_gate
+        from selva_workers.graphs.accounting import review_gate
 
         with patch(
-            "autoswarm_workers.graphs.accounting.interrupt",
+            "selva_workers.graphs.accounting.interrupt",
             return_value={"approved": False, "feedback": "Fix reconciliation"},
         ):
             result = review_gate({
@@ -346,13 +346,13 @@ class TestConditionalEdges:
     """Conditional edge routing functions."""
 
     def test_route_after_fetch_error_goes_to_end(self) -> None:
-        from autoswarm_workers.graphs.accounting import _route_after_fetch
+        from selva_workers.graphs.accounting import _route_after_fetch
 
         result = _route_after_fetch({"status": "error"})
         assert result == "__end__"
 
     def test_route_after_fetch_ok_goes_to_reconcile(self) -> None:
-        from autoswarm_workers.graphs.accounting import _route_after_fetch
+        from selva_workers.graphs.accounting import _route_after_fetch
 
         result = _route_after_fetch({"status": "data_fetched"})
         assert result == "reconcile_bank"
@@ -362,18 +362,18 @@ class TestAccountingRegistration:
     """Accounting graph is properly registered in the system."""
 
     def test_accounting_in_graph_builders(self) -> None:
-        from autoswarm_workers.__main__ import GRAPH_BUILDERS
+        from selva_workers.__main__ import GRAPH_BUILDERS
 
         assert "accounting" in GRAPH_BUILDERS
 
     def test_accounting_timeout_configured(self) -> None:
-        from autoswarm_redis_pool.timeout import DEFAULT_TIMEOUTS
+        from selva_redis_pool.timeout import DEFAULT_TIMEOUTS
 
         assert "accounting" in DEFAULT_TIMEOUTS
         assert DEFAULT_TIMEOUTS["accounting"] == 600
 
     def test_accounting_builder_returns_graph(self) -> None:
-        from autoswarm_workers.graphs.accounting import build_accounting_graph
+        from selva_workers.graphs.accounting import build_accounting_graph
 
         graph = build_accounting_graph()
         assert graph is not None
@@ -384,21 +384,21 @@ class TestPeriodToRange:
     """_period_to_range() helper converts YYYY-MM to date range."""
 
     def test_normal_month(self) -> None:
-        from autoswarm_workers.graphs.accounting import _period_to_range
+        from selva_workers.graphs.accounting import _period_to_range
 
         since, until = _period_to_range("2026-04")
         assert since == "2026-04-01"
         assert until == "2026-05-01"
 
     def test_december_wraps_year(self) -> None:
-        from autoswarm_workers.graphs.accounting import _period_to_range
+        from selva_workers.graphs.accounting import _period_to_range
 
         since, until = _period_to_range("2026-12")
         assert since == "2026-12-01"
         assert until == "2027-01-01"
 
     def test_january(self) -> None:
-        from autoswarm_workers.graphs.accounting import _period_to_range
+        from selva_workers.graphs.accounting import _period_to_range
 
         since, until = _period_to_range("2026-01")
         assert since == "2026-01-01"

@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoswarm_calendar import (
+from selva_calendar import (
     CalendarEvent,
     CalendarProvider,
     GoogleCalendarAdapter,

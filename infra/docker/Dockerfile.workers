@@ -31,4 +31,4 @@ ENV PYTHONUNBUFFERED=1
 
 USER appuser
 
-CMD ["python", "-m", "autoswarm_workers"]
+CMD ["python", "-m", "selva_workers"]

@@ -12,7 +12,7 @@ class _FakeToolResult(SimpleNamespace):
 
 
 def _allow_perm():
-    from autoswarm_permissions.types import PermissionLevel
+    from selva_permissions.types import PermissionLevel
 
     result = MagicMock()
     result.level = PermissionLevel.ALLOW
@@ -23,7 +23,7 @@ class TestCRMSendAttributionThreading:
     """Verify send() threads lead_id into the marketing email tool and PostHog."""
 
     def test_send_passes_lead_id_to_tool_and_emits_playbook_sent(self) -> None:
-        from autoswarm_workers.graphs import crm as crm_graph
+        from selva_workers.graphs import crm as crm_graph
 
         captured_kwargs: dict = {}
         posthog_calls: list[tuple] = []
@@ -35,15 +35,15 @@ class TestCRMSendAttributionThreading:
 
         with (
             patch(
-                "autoswarm_workers.graphs.base.check_permission",
+                "selva_workers.graphs.base.check_permission",
                 return_value=_allow_perm(),
             ),
             patch(
-                "autoswarm_tools.builtins.marketing_tools.SendMarketingEmailTool",
+                "selva_tools.builtins.marketing_tools.SendMarketingEmailTool",
                 return_value=_FakeTool(),
             ),
             patch(
-                "autoswarm_workers.attribution.emit_playbook_sent",
+                "selva_workers.attribution.emit_playbook_sent",
                 side_effect=lambda lead_id, **kw: posthog_calls.append((lead_id, kw)),
             ),
         ):
@@ -81,7 +81,7 @@ class TestCRMSendAttributionThreading:
 
     def test_send_without_lead_id_does_not_emit_playbook_sent(self) -> None:
         """No lead_id → no PostHog emit (prevents orphan events)."""
-        from autoswarm_workers.graphs import crm as crm_graph
+        from selva_workers.graphs import crm as crm_graph
 
         class _FakeTool:
             async def execute(self, **kwargs):  # type: ignore[no-untyped-def]
@@ -91,15 +91,15 @@ class TestCRMSendAttributionThreading:
 
         with (
             patch(
-                "autoswarm_workers.graphs.base.check_permission",
+                "selva_workers.graphs.base.check_permission",
                 return_value=_allow_perm(),
             ),
             patch(
-                "autoswarm_tools.builtins.marketing_tools.SendMarketingEmailTool",
+                "selva_tools.builtins.marketing_tools.SendMarketingEmailTool",
                 return_value=_FakeTool(),
             ),
             patch(
-                "autoswarm_workers.attribution.emit_playbook_sent",
+                "selva_workers.attribution.emit_playbook_sent",
                 side_effect=lambda lead_id, **kw: posthog_calls.append((lead_id, kw)),
             ),
         ):
@@ -125,7 +125,7 @@ class TestAttributionModuleContract:
     def test_emit_playbook_sent_logs_when_no_posthog(self, caplog) -> None:
         import logging
 
-        from autoswarm_workers import attribution as attr
+        from selva_workers import attribution as attr
 
         # Force unconfigured state
         attr._client = None
@@ -148,7 +148,7 @@ class TestAttributionModuleContract:
         )
 
     def test_emit_playbook_sent_skips_empty_lead_id(self) -> None:
-        from autoswarm_workers import attribution as attr
+        from selva_workers import attribution as attr
 
         attr.emit_playbook_sent(
             "",
@@ -158,7 +158,7 @@ class TestAttributionModuleContract:
         )
 
     def test_domain_of_worker(self) -> None:
-        from autoswarm_workers.attribution import domain_of
+        from selva_workers.attribution import domain_of
 
         assert domain_of("a@Example.com") == "example.com"
         assert domain_of("no-at-sign") is None

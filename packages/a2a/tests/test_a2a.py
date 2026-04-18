@@ -8,15 +8,15 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from autoswarm_a2a.client import A2AClient
-from autoswarm_a2a.schema import (
+from selva_a2a.client import A2AClient
+from selva_a2a.schema import (
     AgentCard,
     AgentSkill,
     TaskRequest,
     TaskResponse,
     TaskStatus,
 )
-from autoswarm_a2a.server import create_a2a_router
+from selva_a2a.server import create_a2a_router
 
 # -- Schema tests -------------------------------------------------------------
 
