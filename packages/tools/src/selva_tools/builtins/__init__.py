@@ -59,8 +59,10 @@ from .meta_harness import get_meta_harness_tools
 from .phynecrm_provisioning import get_phynecrm_provisioning_tools
 from .prometheus import get_prometheus_tools
 from .resend_domain import get_resend_domain_tools
+from .selva_office_provisioning import get_selva_office_provisioning_tools
 from .sentry import get_sentry_tools
 from .skill_performance import get_skill_performance_tools
+from .stripe_connect import get_stripe_connect_tools
 from .telegram import get_telegram_tools
 from .tenant_identity import get_tenant_identity_tools
 from .tool_catalog import get_tool_catalog_tools
@@ -340,6 +342,14 @@ def get_builtin_tools() -> list[BaseTool]:
         # Phase 2 — Tenant onboarding primitives: central tenant_identities
         # record (canonical_id ↔ per-service IDs) + resolve + drift check.
         *get_tenant_identity_tools(),
+        # Phase 2 — Tenant billing: Stripe Connect Express onboarding
+        # (tenant-side payment collection). Platform creates the account,
+        # tenant completes KYC on Stripe's hosted form.
+        *get_stripe_connect_tools(),
+        # Phase 2 — Tenant workspace: Selva Office seat provisioning
+        # (create / assign-department / revoke). Binds Janua user subs
+        # to tenant orgs inside the office UI.
+        *get_selva_office_provisioning_tools(),
         # Phase 4 — Meta-improvement: Meta-Harness budget gate, Selva
         # routing preview, role-summary + convergence + round-submit +
         # tier-escalation. Wraps tezca/experiments/meta-harness.
