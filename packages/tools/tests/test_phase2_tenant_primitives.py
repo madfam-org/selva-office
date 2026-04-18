@@ -20,7 +20,6 @@ from selva_tools.builtins.dhanam_provisioning import (
 from selva_tools.builtins.janua_admin import (
     JanuaOauthClientCreateTool,
     JanuaOauthClientRotateSecretTool,
-    JanuaOrgCreateTool,
     get_janua_admin_tools,
 )
 from selva_tools.builtins.karafiel_provisioning import (
@@ -44,7 +43,6 @@ from selva_tools.builtins.tenant_identity import (
     TenantValidateConsistencyTool,
     get_tenant_identity_tools,
 )
-
 
 # -- Registry shape ---------------------------------------------------------
 
