@@ -679,3 +679,92 @@ class SecretAuditLog(Base):
     # the row's identifying fields so any post-insert mutation is
     # detectable via ``verify_signature``.
     signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# RFC 0006 — Selva GitHub admin audit log (migration 0020)
+# ---------------------------------------------------------------------------
+
+
+class GithubAdminAuditLog(Base):
+    """Append-only audit row for every ``github_admin.*`` tool invocation.
+
+    See ``internal-devops/rfcs/0006-selva-github-admin-tools.md`` §"Audit
+    trail" for the schema contract. UPDATE/DELETE are revoked from the
+    app role at the DB level in migration 0020 — corrections land as
+    new rows with ``rollback_of_id`` set, never as mutations.
+
+    The GitHub PAT itself is NEVER stored. Only the 8-hex-char SHA-256
+    prefix (``token_sha256_prefix``) crosses this model's boundary. That's
+    enough to correlate a row to a PAT rotation window at audit time but
+    not enough to brute-force the token.
+    """
+
+    __tablename__ = "github_admin_audit_log"
+    __table_args__ = (
+        Index(
+            "ix_github_admin_audit_target",
+            "target_org",
+            "target_repo",
+            "target_team_slug",
+        ),
+        Index("ix_github_admin_audit_created", "created_at"),
+        Index("ix_github_admin_audit_approval", "approval_request_id"),
+        Index("ix_github_admin_audit_operation", "operation", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_new_uuid
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # -- Actors ---------------------------------------------------------
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # -- Operation + target ----------------------------------------------
+    # ``operation`` is one of: create_team, set_team_membership,
+    # set_branch_protection, audit_team_membership. Enforced by CHECK.
+    operation: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_org: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_repo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target_team_slug: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target_branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # -- PAT fingerprint (8 hex chars) ----------------------------------
+    token_sha256_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
+
+    # -- Request + response payloads ------------------------------------
+    # ``request_body`` is the full tool input (no PAT -- contract).
+    # ``response_summary`` is a structured diff of what the apply step did.
+    request_body: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    response_summary: Mapped[dict] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # -- Approval chain --------------------------------------------------
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    # JSON: [{"user_sub": "...", "approved_at": "ISO-8601"}, ...]
+    approval_chain: Mapped[list[dict]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+
+    # -- Lifecycle -------------------------------------------------------
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+
+    # -- Tamper-evidence -------------------------------------------------
+    # SHA-256 over the row's identifying fields. See
+    # nexus_api.audit.github_admin_audit.verify_signature.
+    signature_sha256: Mapped[str] = mapped_column(String(64), nullable=False)

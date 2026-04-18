@@ -45,6 +45,10 @@ class ActionCategory(StrEnum):
     # RFC 0005: k8s Secret write is a distinct risk class (values never
     # leave worker memory, but bad writes can break consumers instantly).
     K8S_SECRET_WRITE = "k8s_secret_write"
+    # RFC 0006: GitHub org/repo admin (team CRUD, membership reconcile,
+    # branch protection). Mutating operations are HITL-gated; read-only
+    # audits default to ALLOW.
+    GITHUB_ADMIN = "github_admin"
 
 
 class PermissionResult(BaseModel):
