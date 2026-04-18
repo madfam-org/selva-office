@@ -2,18 +2,29 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from selva_permissions import (
+    FORCED_SAMPLING_RATE,
+    HIGH_REVERSIBILITY_COST_CATEGORIES,
     INITIAL_BUCKET_STATE,
     BucketState,
     ConfidenceTier,
     DecisionOutcome,
     apply_decision,
+    beta_lcb,
     compute_bucket_key,
     compute_signature,
     current_tier,
+    demote_if_idle,
+    effective_tier,
     features_for,
+    forced_ask_sample,
+    promote_if_eligible,
+    reversibility_cap,
 )
 
 
@@ -98,20 +109,24 @@ class TestApplyDecision:
         # Beta(81, 21) mean ~= 0.794 — bounded around 0.79-0.80.
         assert 0.78 < s.confidence < 0.81
 
-    def test_sprint1_tier_stays_ask_always(self) -> None:
-        """No matter the decision sequence, tier stays ASK in Sprint 1."""
+    def test_apply_decision_preserves_tier(self) -> None:
+        """apply_decision updates counters + posterior but never bumps tier.
+
+        Promotion is the caller's responsibility via promote_if_eligible;
+        demotion is this function's job only on DOWNSTREAM_REVERTED.
+        """
         s = INITIAL_BUCKET_STATE
         for _ in range(100):
             s = apply_decision(s, DecisionOutcome.APPROVED_CLEAN)
-            assert s.tier is ConfidenceTier.ASK
+            assert s.tier is ConfidenceTier.ASK  # never auto-promoted
 
 
 class TestCurrentTier:
     def test_none_state_returns_ask(self) -> None:
         assert current_tier(None) is ConfidenceTier.ASK
 
-    def test_populated_state_still_returns_ask(self) -> None:
-        """Sprint 1 is observe-only: even a high-confidence bucket gates."""
+    def test_returns_stored_tier(self) -> None:
+        """Legacy API: returns whatever tier the bucket stores (Sprint 2)."""
         s = BucketState(
             n_observed=1000,
             n_approved_clean=1000,
@@ -121,9 +136,9 @@ class TestCurrentTier:
             n_reverted=0,
             beta_alpha=1001.0,
             beta_beta=1.0,
-            tier=ConfidenceTier.ALLOW,  # even if someone else set it
+            tier=ConfidenceTier.ALLOW,
         )
-        assert current_tier(s) is ConfidenceTier.ASK
+        assert current_tier(s) is ConfidenceTier.ALLOW
 
 
 # -- Context signatures -------------------------------------------------------
@@ -248,6 +263,274 @@ class TestBucketKey:
         assert compute_bucket_key(None, "deploy", "org-1", sig) == compute_bucket_key(
             None, "deploy", "org-1", sig
         )
+
+
+# -- Sprint 2: Beta LCB ------------------------------------------------------
+
+
+class TestBetaLCB:
+    def test_uniform_prior_is_below_mean(self) -> None:
+        # Beta(1,1) mean=0.5, LCB strictly < 0.5 at 95%.
+        lcb = beta_lcb(1.0, 1.0)
+        assert 0.0 <= lcb < 0.5
+
+    def test_heavy_positive_pulls_lcb_up(self) -> None:
+        # 100 cleans / 0 rejects → very tight posterior, LCB ≥ 0.95.
+        lcb = beta_lcb(101.0, 1.0)
+        assert lcb >= 0.95
+
+    def test_balanced_stays_near_mean(self) -> None:
+        # 10 pos / 10 neg → mean 0.5, moderate spread.
+        lcb = beta_lcb(11.0, 11.0)
+        assert 0.3 < lcb < 0.5
+
+    def test_degenerate_zero_mass_returns_zero(self) -> None:
+        assert beta_lcb(0.0, 0.0) == 0.0
+
+
+# -- Sprint 2: reversibility caps --------------------------------------------
+
+
+class TestReversibilityCap:
+    def test_high_cost_categories_cap_at_ask_quiet(self) -> None:
+        for category in HIGH_REVERSIBILITY_COST_CATEGORIES:
+            assert reversibility_cap(category) is ConfidenceTier.ASK_QUIET
+
+    def test_arbitrary_category_defaults_to_allow(self) -> None:
+        assert reversibility_cap("llm_call") is ConfidenceTier.ALLOW
+        assert reversibility_cap("file_write") is ConfidenceTier.ALLOW
+
+
+# -- Sprint 2: promote_if_eligible -------------------------------------------
+
+
+def _saturate_clean(n: int) -> BucketState:
+    """Shortcut: bucket with n clean approvals and nothing else."""
+    s = INITIAL_BUCKET_STATE
+    for _ in range(n):
+        s = apply_decision(s, DecisionOutcome.APPROVED_CLEAN)
+    return s
+
+
+class TestPromoteIfEligible:
+    def test_fresh_bucket_stays_ask(self) -> None:
+        s = promote_if_eligible(INITIAL_BUCKET_STATE, "llm_call")
+        assert s.tier is ConfidenceTier.ASK
+
+    def test_min_samples_blocks_promotion_below_threshold(self) -> None:
+        # 9 cleans → LCB might be high but sample count is still 9 < 10.
+        s = _saturate_clean(9)
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ASK
+
+    def test_reaches_ask_quiet_at_10_clean(self) -> None:
+        s = _saturate_clean(10)
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ASK_QUIET
+
+    def test_reaches_allow_shadow_at_30_clean(self) -> None:
+        s = _saturate_clean(30)
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ALLOW_SHADOW
+
+    def test_reaches_allow_at_100_clean(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ALLOW
+
+    def test_high_reversibility_category_hard_capped_at_ask_quiet(self) -> None:
+        s = _saturate_clean(1000)
+        s = promote_if_eligible(s, "deploy")
+        assert s.tier is ConfidenceTier.ASK_QUIET
+
+    def test_spend_capped_at_ask_quiet(self) -> None:
+        s = _saturate_clean(1000)
+        s = promote_if_eligible(s, "spend")
+        assert s.tier is ConfidenceTier.ASK_QUIET
+
+    def test_external_communication_capped_at_ask_quiet(self) -> None:
+        s = _saturate_clean(1000)
+        s = promote_if_eligible(s, "external_communication")
+        assert s.tier is ConfidenceTier.ASK_QUIET
+
+    def test_locked_bucket_does_not_promote(self) -> None:
+        s = _saturate_clean(100)
+        s = replace(s, locked_until=datetime.now(UTC) + timedelta(days=1))
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ASK  # stayed where it was
+
+    def test_expired_lock_allows_promotion(self) -> None:
+        s = _saturate_clean(100)
+        s = replace(s, locked_until=datetime.now(UTC) - timedelta(days=1))
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ALLOW
+
+    def test_rejections_block_promotion_via_lcb(self) -> None:
+        # 30 cleans + 30 rejects → LCB < 0.7, should not promote.
+        s = INITIAL_BUCKET_STATE
+        for _ in range(30):
+            s = apply_decision(s, DecisionOutcome.APPROVED_CLEAN)
+        for _ in range(30):
+            s = apply_decision(s, DecisionOutcome.REJECTED)
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ASK
+
+
+# -- Sprint 2: downstream-revert demotion ------------------------------------
+
+
+class TestApplyDecisionRevertDemotes:
+    def test_revert_drops_tier_one_step(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")
+        assert s.tier is ConfidenceTier.ALLOW
+        s = apply_decision(s, DecisionOutcome.DOWNSTREAM_REVERTED)
+        assert s.tier is ConfidenceTier.ALLOW_SHADOW
+
+    def test_revert_at_ask_stays_at_ask(self) -> None:
+        s = apply_decision(INITIAL_BUCKET_STATE, DecisionOutcome.DOWNSTREAM_REVERTED)
+        assert s.tier is ConfidenceTier.ASK
+
+    def test_revert_sets_locked_until(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")
+        before = datetime.now(UTC)
+        s = apply_decision(s, DecisionOutcome.DOWNSTREAM_REVERTED)
+        assert s.locked_until is not None
+        assert s.locked_until > before
+
+
+# -- Sprint 2: idle demotion -------------------------------------------------
+
+
+class TestDemoteIfIdle:
+    def test_fresh_bucket_no_op(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")  # now has last_decision_at
+        out = demote_if_idle(s, now=s.last_decision_at + timedelta(minutes=1))
+        assert out.tier is ConfidenceTier.ALLOW
+
+    def test_idle_30d_demotes_to_ask(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")
+        far_future = s.last_decision_at + timedelta(days=31)
+        out = demote_if_idle(s, now=far_future)
+        assert out.tier is ConfidenceTier.ASK
+
+    def test_idle_demotion_sets_lock(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")
+        far = s.last_decision_at + timedelta(days=40)
+        out = demote_if_idle(s, now=far)
+        assert out.locked_until is not None
+        assert out.locked_until > far
+
+    def test_ask_state_noop(self) -> None:
+        s = INITIAL_BUCKET_STATE
+        out = demote_if_idle(s, now=datetime.now(UTC))
+        assert out is s  # same object, unchanged
+
+
+# -- Sprint 2: forced-ASK sampling -------------------------------------------
+
+
+class TestForcedAskSample:
+    def test_ask_tier_never_samples(self) -> None:
+        for i in range(100):
+            assert not forced_ask_sample(
+                ConfidenceTier.ASK, "bk", str(i).encode()
+            )
+
+    def test_ask_quiet_never_samples(self) -> None:
+        # FORCED_SAMPLING_RATE is 0 for ASK_QUIET — UI already shows everything.
+        for i in range(100):
+            assert not forced_ask_sample(
+                ConfidenceTier.ASK_QUIET, "bk", str(i).encode()
+            )
+
+    def test_allow_samples_near_configured_rate(self) -> None:
+        rate = FORCED_SAMPLING_RATE[ConfidenceTier.ALLOW]
+        hits = sum(
+            forced_ask_sample(ConfidenceTier.ALLOW, "bk", str(i).encode())
+            for i in range(2000)
+        )
+        empirical = hits / 2000
+        # 2000 trials at p=0.05 — 95% CI ≈ ±0.01. Generous ±0.02.
+        assert abs(empirical - rate) < 0.02
+
+    def test_deterministic_same_nonce(self) -> None:
+        r1 = forced_ask_sample(ConfidenceTier.ALLOW, "bk", b"decision-xyz")
+        r2 = forced_ask_sample(ConfidenceTier.ALLOW, "bk", b"decision-xyz")
+        assert r1 == r2
+
+    def test_different_buckets_resolve_independently(self) -> None:
+        # Very small chance of collision by design — just confirm it CAN differ.
+        bucket_a = [
+            forced_ask_sample(ConfidenceTier.ALLOW, "bucket-a", str(i).encode())
+            for i in range(100)
+        ]
+        bucket_b = [
+            forced_ask_sample(ConfidenceTier.ALLOW, "bucket-b", str(i).encode())
+            for i in range(100)
+        ]
+        assert bucket_a != bucket_b
+
+
+# -- Sprint 2: effective_tier composition ------------------------------------
+
+
+class TestEffectiveTier:
+    def test_none_state_returns_ask(self) -> None:
+        assert effective_tier(None, "llm_call") is ConfidenceTier.ASK
+
+    def test_allow_tier_in_deploy_drops_to_ask_quiet(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")  # ALLOW
+        assert effective_tier(s, "deploy") is ConfidenceTier.ASK_QUIET
+
+    def test_idle_demotion_applied_at_read(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")
+        # Simulate reading the bucket 31 days later.
+        far = s.last_decision_at + timedelta(days=31)
+        assert effective_tier(s, "llm_call", now=far) is ConfidenceTier.ASK
+
+    def test_forced_sampling_returns_ask(self) -> None:
+        """Find a nonce that triggers a forced sample."""
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")  # ALLOW
+        # 5% rate → in 100 tries we'll almost certainly hit one.
+        found_sample = False
+        for i in range(200):
+            nonce = f"try-{i}".encode()
+            if forced_ask_sample(ConfidenceTier.ALLOW, "bucket-1", nonce):
+                result = effective_tier(
+                    s,
+                    "llm_call",
+                    bucket_key="bucket-1",
+                    decision_nonce=nonce,
+                )
+                assert result is ConfidenceTier.ASK
+                found_sample = True
+                break
+        assert found_sample, "expected at least one forced sample in 200 tries"
+
+    def test_nonce_that_doesnt_sample_returns_tier(self) -> None:
+        s = _saturate_clean(100)
+        s = promote_if_eligible(s, "llm_call")
+        # Find a nonce that does NOT trigger.
+        for i in range(200):
+            nonce = f"try-{i}".encode()
+            if not forced_ask_sample(ConfidenceTier.ALLOW, "bucket-1", nonce):
+                result = effective_tier(
+                    s,
+                    "llm_call",
+                    bucket_key="bucket-1",
+                    decision_nonce=nonce,
+                )
+                assert result is ConfidenceTier.ALLOW
+                return
+        pytest.fail("could not find a non-sampling nonce in 200 tries")
 
     def test_bucket_key_is_deterministic(self) -> None:
         args = ("agent-1", "email_send", "org-1", "fakesig")
