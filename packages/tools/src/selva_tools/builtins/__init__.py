@@ -35,8 +35,10 @@ from .crm_tools import CreateActivityTool, CreateLeadTool, UpdateLeadStatusTool
 from .data import CsvReadTool, DataTransformTool, JsonParseTool
 from .database_tools import DatabaseSchemaTool, SQLQueryTool, SQLWriteTool
 from .deploy import DeployStatusTool, DeployTool
+from .argocd import get_argocd_tools
 from .cloudflare import get_cloudflare_tools
 from .dns import get_dns_tools
+from .k8s_diagnostics import get_k8s_diagnostic_tools
 from .document_tools import GenerateChartTool, GeneratePDFTool, MarkdownToHTMLTool, ParsePDFTool
 from .email_tools import ReadEmailTool, SendEmailTool
 from .enclii_infra import (
@@ -278,6 +280,10 @@ def get_builtin_tools() -> list[BaseTool]:
         *get_dns_tools(),
         # Cloudflare zone + DNS + Page Rules management
         *get_cloudflare_tools(),
+        # ArgoCD application management (sync, refresh, read status)
+        *get_argocd_tools(),
+        # Kubernetes read-side diagnostics (pods, events, replicasets, rollouts)
+        *get_k8s_diagnostic_tools(),
         # NPM registry management (Verdaccio — token rotation + GitHub secrets)
         *get_npm_registry_tools(),
         # Vault — secure secret storage (Orchestration Node — HITL gated)
