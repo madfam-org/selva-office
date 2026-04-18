@@ -600,6 +600,61 @@ uv run ruff check .   # Python linting
 uv run mypy .         # Python type checking
 ```
 
+## Tool + Skill Audience Split (admin vs tenant)
+
+Selva enforces a two-tier audience model so the MADFAM platform swarm
+and tenant (customer-org) swarms see different registries:
+
+- `Audience.PLATFORM` — MADFAM-only tools/skills: Cloudflare, K8s,
+  ArgoCD, Kustomize, Enclii, GitHub org admin, Vault, Janua admin,
+  tenant_identities CRUD, Stripe Connect (platform creates tenant
+  accounts), Resend domain, Karafiel org/SAT upload/PAC register,
+  Dhanam space/subscription create, PhyneCRM tenant bootstrap, and
+  the five MADFAM runbook skills (cluster-triage, dns-migration,
+  incident-triage, staging-refresh, tenant-onboarding) plus meta
+  skills (skill-creator, mcp-builder).
+- `Audience.TENANT` (default) — everything a tenant swarm can use:
+  email send, CRM primitives, their own calendar/SMS/voice/Discord/
+  Telegram, Karafiel CFDI generate/stamp, Dhanam credit-ledger query,
+  PhyneCRM tenant-config read, pricing/ops/legal/marketing tools, etc.
+
+**How it flows end-to-end**:
+
+1. `PLATFORM_ORG_ID` env defines the MADFAM internal org_id. Unset =
+   everyone is tenant audience (safe default).
+2. Worker resolves audience from the task's `org_id` at dispatch time
+   (`selva_permissions.resolve_audience`), binds it via
+   `selva_tools.with_audience(...)` context manager.
+3. `BaseTool.__init_subclass__` auto-wraps every tool's `execute()`
+   with `enforce_audience(self.audience, tool_name=self.name)`. A
+   tenant swarm invoking a platform tool raises `AudienceMismatch`
+   before the tool body runs.
+4. `ToolRegistry.get_specs(audience=...)` filters platform tools from
+   the spec list when tenant audience is requested (defense in depth
+   for any future caller that binds tools to an LLM).
+5. Skill loader (`SkillRegistry.activate(name, audience=...)`) raises
+   `SkillAudienceMismatch` if a tenant swarm asks for a platform skill.
+6. Nexus-api `POST /api/v1/swarms/dispatch` returns `403
+   audience_mismatch` when a tenant caller names a platform skill in
+   `required_skills`.
+
+**Feature flag + shadow mode**:
+
+- `AUDIENCE_FILTER_ENABLED` env var (default off). When off, every
+  enforcement point logs a `audience_shadow_block` warning instead
+  of raising/returning 403. Lets ops observe the production rate of
+  would-be-blocks for 24-48h before flipping to enforce.
+- When ready, set `AUDIENCE_FILTER_ENABLED=true` on workers +
+  nexus-api. The three gates (tool execute, skill activate, dispatch
+  endpoint) all flip in the same release.
+
+**Regression test**: `packages/tools/tests/test_platform_tool_registry.py`
+hardcodes the list of ~130 platform tools and fails CI if any of them
+gets accidentally promoted to TENANT (or renamed without updating the
+list). New platform tools MUST be added to the list + tagged via the
+module-bottom `for _cls in (…): _cls.audience = Audience.PLATFORM`
+block pattern (see any existing platform module for template).
+
 ## MADFAM Ecosystem
 
 - **Janua** handles all authentication. Never implement custom auth. Use the

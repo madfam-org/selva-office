@@ -18,7 +18,16 @@ from typing import Any
 
 import pytest
 
-from selva_tools import (
+# Enable enforcement for all tests in this module.
+pytestmark = pytest.mark.usefixtures("_audience_enforce_on")
+
+
+@pytest.fixture
+def _audience_enforce_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AUDIENCE_FILTER_ENABLED", "true")
+
+
+from selva_tools import (  # noqa: E402
     Audience,
     AudienceMismatch,
     BaseTool,

@@ -14,8 +14,17 @@ from __future__ import annotations
 
 import pytest
 
-from selva_skills import SkillAudience, SkillMetadata, get_skill_registry
-from selva_skills.registry import SkillAudienceMismatch
+# Enable enforcement for all tests in this module.
+pytestmark = pytest.mark.usefixtures("_audience_enforce_on")
+
+
+@pytest.fixture
+def _audience_enforce_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AUDIENCE_FILTER_ENABLED", "true")
+
+
+from selva_skills import SkillAudience, SkillMetadata, get_skill_registry  # noqa: E402
+from selva_skills.registry import SkillAudienceMismatch  # noqa: E402
 
 # Skills that MUST be tagged platform. Belt-and-braces regression test.
 PLATFORM_SKILLS: frozenset[str] = frozenset(

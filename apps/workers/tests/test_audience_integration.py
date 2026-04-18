@@ -9,7 +9,11 @@ from __future__ import annotations
 
 import pytest
 
-from selva_permissions import PLATFORM_ORG_ID_ENV, resolve_audience
+from selva_permissions import (
+    AUDIENCE_FILTER_ENABLED_ENV,
+    PLATFORM_ORG_ID_ENV,
+    resolve_audience,
+)
 from selva_permissions import Audience as PermissionAudience
 from selva_tools import Audience, AudienceMismatch, with_audience
 from selva_tools.builtins.cloudflare import CloudflareListZonesTool
@@ -19,6 +23,9 @@ from selva_tools.builtins.tenant_identity import TenantResolveTool
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(PLATFORM_ORG_ID_ENV, raising=False)
+    # Enforcement tests run with the flag ON so we exercise the
+    # raise-path of enforce_audience.
+    monkeypatch.setenv(AUDIENCE_FILTER_ENABLED_ENV, "true")
 
 
 @pytest.mark.asyncio
