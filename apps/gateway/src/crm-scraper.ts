@@ -153,7 +153,12 @@ export class CRMScraper {
   }
 
   private async fetchActivities(): Promise<PhyneActivity[]> {
-    const url = `${this.baseUrl}/api/trpc/activities.listForEntity?input=${encodeURIComponent(JSON.stringify({ type: "all", id: "" }))}`;
+    // PhyneCRM's `activities.listForEntity` requires {entityType, entityId:<uuid>}
+    // to scope to a single entity — wrong endpoint for a cross-entity scrape.
+    // `activities.list` returns a paginated envelope across all entities and is
+    // the right call here. The input shape is the shared `paginationInput`
+    // ({cursor?, limit?, ownerId?}); we send no input to get the default page.
+    const url = `${this.baseUrl}/api/trpc/activities.list`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
@@ -170,7 +175,7 @@ export class CRMScraper {
     if (!response.ok) {
       this.logger.error(
         { statusCode: response.status },
-        "activities.listForEntity request failed"
+        "activities.list request failed"
       );
       return [];
     }
