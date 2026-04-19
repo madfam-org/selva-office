@@ -741,6 +741,37 @@ The `packages/skills/` package implements the AgentSkills standard.
   BaseTool instances. Stdio and HTTP transports. `discover_mcp_tools(transport)`
   auto-registers.
 
+#### SWE pipeline tools (pre-pr-audit building blocks)
+
+These tools are the building blocks the `pre-pr-audit` skill composes into
+a pre-submission gate. They're TENANT-audience (default) — any tenant swarm
+can use them without platform privileges.
+
+- `git_create_pr` (in `builtins/git.py`) — wraps `gh pr create` with
+  pre-flight guards: refuses protected branches (main/master/develop/trunk),
+  warns on non-conventional-commit titles, loads `.github/pull_request_template.md`
+  when body is empty, auto-adds CODEOWNERS-derived reviewers. Returns the
+  PR URL in `data.url`.
+- `lint_and_typecheck` (in `builtins/dev_quality.py`) — runs ruff + mypy
+  (Python) and/or eslint + tsc (TypeScript). Auto-detects language from
+  config-file presence. Missing toolchains are reported as `skipped`, not
+  errors. Returns structured `{findings: [...], skipped: [...], summary}`.
+- `test_coverage_for_diff` (in `builtins/dev_quality.py`) — runs
+  `pytest --cov=. --cov-report=json` (or reuses an existing
+  `.coverage.json`), intersects covered lines with lines added or modified
+  in `git diff <base_ref>...HEAD`, returns uncovered changed lines per file.
+  Skips gracefully when neither pytest nor a pre-rendered coverage file is
+  available.
+- `deploy_preflight` (in `builtins/deploy_preflight.py`) — runs
+  `kustomize build` locally and inspects the rendered YAML. Blocker
+  checks: image digest-pinned (rejects `:latest` or mutable tags),
+  `resources.requests` present, `securityContext.privileged: false`
+  explicit. Advisory (opt-in via `checks=["all"]`): `resources.limits`
+  and `imagePullSecrets` for GHCR. Never touches the cluster.
+
+See `packages/skills/skill-definitions/pre-pr-audit/SKILL.md` for how the
+skill composes these four tools into a pre-submission gate.
+
 ### Agent Memory (`packages/memory`)
 - **MemoryStore**: Per-agent FAISS `IndexFlatIP` with metadata. `store()`, `search()`,
   `list_entries()`, `delete()`. Persists to disk (index.faiss + entries.json).

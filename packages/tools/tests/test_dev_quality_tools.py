@@ -256,3 +256,216 @@ class TestTestCoverageForDiff:
             )
 
         assert result.data["uncovered"] == [{"file": "new_module.py", "lines": [1, 2]}]
+
+    @pytest.mark.asyncio
+    async def test_malformed_coverage_json_returns_structured_error(
+        self, tmp_path: Path
+    ) -> None:
+        """A broken coverage.json should fail cleanly, not raise."""
+        from selva_tools.builtins import dev_quality as dq
+
+        diff_out = (
+            "--- a/a.py\n"
+            "+++ b/a.py\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+x = 1\n"
+        )
+        cov_path = tmp_path / ".coverage.json"
+        cov_path.write_text("{not valid json")
+
+        run, _calls = _mock_run([
+            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+        ])
+        with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
+            result = await dq.TestCoverageForDiffTool().execute(
+                base_ref="main",
+                coverage_file=str(cov_path),
+                repo_path=str(tmp_path),
+            )
+
+        assert not result.success
+        assert "could not read coverage.json" in (result.error or "")
+
+    @pytest.mark.asyncio
+    async def test_coverage_file_missing_and_pytest_unavailable(
+        self, tmp_path: Path
+    ) -> None:
+        """When no coverage.json exists AND pytest isn't installed, surface a
+        helpful error instead of silently producing wrong results."""
+        from selva_tools.builtins import dev_quality as dq
+
+        diff_out = (
+            "--- a/a.py\n"
+            "+++ b/a.py\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+x = 1\n"
+        )
+        run, _calls = _mock_run([
+            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+        ])
+        with (
+            patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
+            patch.object(dq, "_available", return_value=False),
+        ):
+            result = await dq.TestCoverageForDiffTool().execute(
+                base_ref="main",
+                repo_path=str(tmp_path),
+            )
+
+        assert not result.success
+        assert "pytest not installed" in (result.error or "")
+        assert result.data["changed_files"] == ["a.py"]
+
+    @pytest.mark.asyncio
+    async def test_coverage_key_normalization_handles_dot_prefix(
+        self, tmp_path: Path
+    ) -> None:
+        """coverage.py sometimes keys files as './path' rather than 'path';
+        the tool should match either form before flagging lines uncovered."""
+        from selva_tools.builtins import dev_quality as dq
+
+        diff_out = (
+            "--- a/pkg/mod.py\n"
+            "+++ b/pkg/mod.py\n"
+            "@@ -0,0 +1,2 @@\n"
+            "+a = 1\n"
+            "+b = 2\n"
+        )
+        # Coverage keyed with "./" prefix — tool must normalize to match.
+        cov_path = tmp_path / ".coverage.json"
+        cov_path.write_text(json.dumps({
+            "files": {
+                "./pkg/mod.py": {"missing_lines": [2]},
+            },
+        }))
+
+        run, _calls = _mock_run([
+            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+        ])
+        with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
+            result = await dq.TestCoverageForDiffTool().execute(
+                base_ref="main",
+                coverage_file=str(cov_path),
+                repo_path=str(tmp_path),
+            )
+
+        # Key matched — only line 2 should be uncovered, not the full [1, 2].
+        assert result.data["uncovered"] == [{"file": "pkg/mod.py", "lines": [2]}]
+
+
+class TestLintAndTypeCheckTypescript:
+    """TypeScript-side lint/typecheck paths — exercise eslint + tsc wiring
+    and the explicit-languages override."""
+
+    @pytest.mark.asyncio
+    async def test_parses_eslint_json_into_findings(self, tmp_path: Path) -> None:
+        from selva_tools.builtins import dev_quality as dq
+
+        # Mark repo as TS + create the eslint binary path the tool probes.
+        (tmp_path / "package.json").write_text("{}")
+        (tmp_path / "tsconfig.json").write_text("{}")
+        eslint_bin = tmp_path / "node_modules" / ".bin" / "eslint"
+        eslint_bin.parent.mkdir(parents=True)
+        eslint_bin.touch()
+
+        eslint_payload = json.dumps([
+            {
+                "filePath": "src/a.ts",
+                "messages": [
+                    {
+                        "ruleId": "no-unused-vars",
+                        "severity": 2,
+                        "message": "'x' is assigned a value but never used.",
+                        "line": 3,
+                        "column": 7,
+                    },
+                    {
+                        "ruleId": "prefer-const",
+                        "severity": 1,
+                        "message": "'y' is never reassigned.",
+                        "line": 4,
+                        "column": 9,
+                    },
+                ],
+            },
+        ])
+        run, _calls = _mock_run([
+            {"stdout": eslint_payload, "stderr": "", "return_code": 1, "success": False},
+        ])
+
+        with (
+            patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
+            # tsc probe: skip (binary absent in tmp)
+            patch.object(dq, "_available", return_value=True),
+        ):
+            result = await dq.LintAndTypeCheckTool().execute(
+                repo_path=str(tmp_path),
+                languages=["typescript"],
+            )
+
+        findings = [f for f in result.data["findings"] if f["tool"] == "eslint"]
+        assert len(findings) == 2
+        assert findings[0]["severity"] == "error"  # severity=2 → error
+        assert findings[1]["severity"] == "warning"  # severity=1 → warning
+        assert findings[0]["code"] == "no-unused-vars"
+        # tsc binary absent → skipped, not errored.
+        skipped_tools = {s["tool"] for s in result.data["skipped"]}
+        assert "tsc" in skipped_tools
+
+    @pytest.mark.asyncio
+    async def test_parses_tsc_error_output(self, tmp_path: Path) -> None:
+        from selva_tools.builtins import dev_quality as dq
+
+        (tmp_path / "package.json").write_text("{}")
+        (tmp_path / "tsconfig.json").write_text("{}")
+        tsc_bin = tmp_path / "node_modules" / ".bin" / "tsc"
+        tsc_bin.parent.mkdir(parents=True)
+        tsc_bin.touch()
+
+        tsc_out = (
+            "src/a.ts(12,5): error TS2304: Cannot find name 'foo'.\n"
+            "src/b.ts(3,1): error TS2322: Type 'number' is not assignable to type 'string'.\n"
+        )
+        run, _calls = _mock_run([
+            {"stdout": tsc_out, "stderr": "", "return_code": 1, "success": False},
+        ])
+
+        with (
+            patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
+            patch.object(dq, "_available", return_value=True),
+        ):
+            result = await dq.LintAndTypeCheckTool().execute(
+                repo_path=str(tmp_path),
+                languages=["typescript"],
+            )
+
+        findings = [f for f in result.data["findings"] if f["tool"] == "tsc"]
+        assert len(findings) == 2
+        assert findings[0]["code"] == "TS2304"
+        assert findings[0]["line"] == 12
+        assert findings[0]["column"] == 5
+        assert findings[1]["code"] == "TS2322"
+
+    @pytest.mark.asyncio
+    async def test_fix_mode_appends_fix_flag_to_ruff(self, tmp_path: Path) -> None:
+        """`fix=True` must propagate as `--fix` to ruff so auto-fixable issues
+        actually get applied. Capture the command string and assert."""
+        from selva_tools.builtins import dev_quality as dq
+
+        (tmp_path / "pyproject.toml").write_text("")
+
+        run, calls = _mock_run([
+            {"stdout": "[]", "stderr": "", "return_code": 0, "success": True},
+        ])
+        with (
+            patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
+            patch.object(dq, "_available", side_effect=lambda cwd, exe: exe == "ruff"),
+        ):
+            await dq.LintAndTypeCheckTool().execute(
+                repo_path=str(tmp_path),
+                fix=True,
+            )
+
+        ruff_cmd = next((c for c in calls if c["command"].startswith("ruff ")), None)
+        assert ruff_cmd is not None
+        assert "--fix" in ruff_cmd["command"]
