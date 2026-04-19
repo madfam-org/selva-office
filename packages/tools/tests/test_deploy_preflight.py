@@ -288,3 +288,107 @@ class TestDeployPreflightTool:
         assert result_all.data["verdict"] == "ready"  # warn-only → still ready
         warns = [f for f in result_all.data["findings"] if f["severity"] == "warn"]
         assert len(warns) >= 1
+
+    @pytest.mark.asyncio
+    async def test_explicit_checks_subset_skips_unlisted_checks(self, tmp_path) -> None:
+        """Passing `checks=["image-digest-pinned"]` should run ONLY that check
+        — not the default four. A manifest that would be blocked by
+        `container-privileged-false` must come back ready."""
+        from selva_tools.builtins.deploy_preflight import DeployPreflightTool
+
+        # `privileged` is missing, image is bad — but only digest-pin runs.
+        rendered = yaml.dump({
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {"name": "api"},
+            "spec": {
+                "template": {
+                    "spec": {
+                        "containers": [{
+                            "name": "api",
+                            "image": "nginx:latest",
+                        }],
+                    },
+                },
+            },
+        })
+
+        async def run(self, command, *, timeout=30.0, cwd=None):
+            return {
+                "stdout": rendered,
+                "stderr": "",
+                "return_code": 0,
+                "success": True,
+            }
+
+        with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
+            result = await DeployPreflightTool().execute(
+                overlay_path="infra/k8s/production",
+                repo_path=str(tmp_path),
+                checks=["image-digest-pinned"],
+            )
+
+        # Only the requested check ran — digest-pin blocker fires, others don't.
+        checks = {f["check"] for f in result.data["findings"]}
+        assert checks == {"image-digest-pinned"}
+
+    @pytest.mark.asyncio
+    async def test_non_workload_docs_are_skipped(self, tmp_path) -> None:
+        """Rendered kustomize output often interleaves Services, ConfigMaps,
+        ServiceAccounts with workloads. The preflight walker must only
+        inspect workloads (Deployment/StatefulSet/etc.) and ignore the rest,
+        or it will false-positive on every Service (which has no containers)."""
+        from selva_tools.builtins.deploy_preflight import DeployPreflightTool
+
+        rendered_parts = [
+            yaml.dump({
+                "apiVersion": "v1",
+                "kind": "Service",
+                "metadata": {"name": "api"},
+                "spec": {"ports": [{"port": 80}]},
+            }),
+            yaml.dump({
+                "apiVersion": "v1",
+                "kind": "ConfigMap",
+                "metadata": {"name": "cfg"},
+                "data": {"FOO": "bar"},
+            }),
+            yaml.dump({
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {"name": "api"},
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "containers": [{
+                                "name": "api",
+                                "image": "ghcr.io/madfam/api@sha256:abc",
+                                "resources": {"requests": {"cpu": "100m", "memory": "64Mi"}},
+                                "securityContext": {"privileged": False},
+                            }],
+                        },
+                    },
+                },
+            }),
+        ]
+        rendered = "---\n".join(rendered_parts)
+
+        async def run(self, command, *, timeout=30.0, cwd=None):
+            return {
+                "stdout": rendered,
+                "stderr": "",
+                "return_code": 0,
+                "success": True,
+            }
+
+        with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
+            result = await DeployPreflightTool().execute(
+                overlay_path="infra/k8s/production",
+                repo_path=str(tmp_path),
+            )
+
+        # Only the Deployment should count toward resource_count; Service +
+        # ConfigMap are skipped. All checks pass → verdict ready.
+        assert result.data["resource_count"] == 1
+        assert result.data["verdict"] == "ready"
+        assert result.data["findings"] == []
