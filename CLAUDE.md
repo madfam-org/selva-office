@@ -138,7 +138,7 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - `apps/colyseus/src/handlers/teleport.ts` -- Player teleport handler
 - `packages/workflows/src/autoswarm_workflows/compiler.py` -- YAML-to-LangGraph compiler
 - `packages/workflows/src/autoswarm_workflows/schema.py` -- Workflow definition models
-- `packages/tools/src/autoswarm_tools/registry.py` -- Tool registry (24 built-in tools)
+- `packages/tools/src/selva_tools/registry.py` -- Tool registry (263 built-in tools; see `builtins/__init__.py:get_builtin_tools`)
 - `packages/memory/src/autoswarm_memory/store.py` -- Per-agent FAISS memory store
 - `packages/tools/src/autoswarm_tools/storage/local.py` -- Content-addressable artifact storage
 - `packages/tools/src/autoswarm_tools/builtins/artifact.py` -- Artifact management tools (save/retrieve/list)

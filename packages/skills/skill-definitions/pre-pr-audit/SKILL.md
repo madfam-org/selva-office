@@ -6,6 +6,10 @@ allowed_tools:
   - file_read
   - file_write
   - bash_execute
+  - lint_and_typecheck
+  - test_coverage_for_diff
+  - git_create_pr
+  - deploy_preflight
 metadata:
   category: quality
   complexity: medium
@@ -57,23 +61,37 @@ From `git diff <base>...HEAD` + uncommitted changes:
 
 ### 3. Test-coverage-for-diff pass
 
-Run the test suite restricted to changed paths:
+Use the `test_coverage_for_diff` tool — it runs coverage scoped to the
+diff vs the base ref and returns structured `{file, uncovered_lines}`
+findings without you having to parse pytest output.
 
-```bash
-# Python
-pytest <changed-test-files> -x
-
-# TypeScript
-pnpm test --filter <changed-package>
+```
+test_coverage_for_diff(base_ref="main", repo_path=".")
+→ {uncovered: [...], summary: {files_changed, changed_lines_uncovered}}
 ```
 
-- If no test files changed in the PR but source files did, that's a gap unless every source change is trivial (e.g., a version bump).
-- If new source modules exist with no corresponding test file, flag it.
+Any entry in `uncovered` is a 🔴 finding. If `changed_lines_uncovered
+== 0` but no test files changed, downgrade to 🟡 (tests may have existed
+already and just exercised the new code).
 
-### 4. Config-and-secrets pass
+### 4. Style + types pass
+
+Use the `lint_and_typecheck` tool — it runs ruff + mypy (Python)
+and/or eslint + tsc (TypeScript), auto-detects language, and returns
+structured findings. Missing toolchains are skipped (not errored) so
+a Python-only repo without pnpm won't trip this pass.
+
+```
+lint_and_typecheck(paths=["."], repo_path=".")
+→ {findings: [{tool, severity, file, line, code, message}], skipped: [...]}
+```
+
+Every `severity: error` finding is a 🔴 blocker. Warnings are 🟡.
+
+### 5. Config-and-secrets pass
 
 - New secrets referenced in code? Check they're templated in `.env.example` (with placeholder value).
-- New k8s manifests? Check resource requests/limits are reasonable — don't accept the defaults silently.
+- New k8s manifests? Run `deploy_preflight(overlay_path="infra/k8s/<overlay>")` — it surfaces un-pinned images, missing resource requests, missing `privileged: false`, and other Kyverno-policy blockers. `verdict: "blocked"` → 🔴.
 - New external service dependency? CLAUDE.md should call it out so operators know.
 
 ## Severity
@@ -120,9 +138,9 @@ Return structured JSON:
 
 ## Gating rules
 
-- `verdict = "blocked"` → do NOT call `gh pr create`. Return the finding list to the caller.
+- `verdict = "blocked"` → do NOT call `git_create_pr`. Return the finding list to the caller.
 - `verdict = "needs-remediation"` → close the closable gaps, re-run the audit, then proceed.
-- `verdict = "ready"` → proceed to PR creation. Include the audit report in the PR body under `## Pre-PR Audit`.
+- `verdict = "ready"` → call `git_create_pr(title=..., body=...)` to create the PR. The tool enforces additional guards (protected branch refuse, conventional-commit warning, CODEOWNERS auto-reviewers, PR template fallback) — include the audit report in the body under `## Pre-PR Audit`.
 
 ## Non-goals
 

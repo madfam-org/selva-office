@@ -27,15 +27,28 @@ def test_pre_pr_audit_skill_parses() -> None:
 
 
 def test_pre_pr_audit_skill_grants_minimum_tool_surface() -> None:
-    """The skill needs at least these tools to do its job:
-    - file_read (inspect diffs, CLAUDE.md, .env.example)
-    - bash_execute (run `git diff`, `pytest`, `grep`)
-    For remediation actions it also needs file_write.
-    Without these three it can report gaps but can't close them.
+    """The skill needs at least:
+    - file_read / file_write (inspect + remediate docs, .env.example, CLAUDE.md)
+    - bash_execute (grep, ad-hoc git)
+    - lint_and_typecheck (style pass)
+    - test_coverage_for_diff (coverage pass)
+    - git_create_pr (gated PR submission)
+    - deploy_preflight (manifest hygiene pass)
+    Without these the skill can't do its job as a pre-submission gate.
     """
     meta, _ = parse_skill_md(SKILL_DEFS_DIR / "pre-pr-audit" / "SKILL.md")
     tools = set(meta.allowed_tools)
-    assert {"file_read", "bash_execute", "file_write"}.issubset(tools)
+    required = {
+        "file_read",
+        "file_write",
+        "bash_execute",
+        "lint_and_typecheck",
+        "test_coverage_for_diff",
+        "git_create_pr",
+        "deploy_preflight",
+    }
+    missing = required - tools
+    assert not missing, f"skill missing required tools: {missing}"
 
 
 def test_pre_pr_audit_registered_for_tenant_swarms() -> None:

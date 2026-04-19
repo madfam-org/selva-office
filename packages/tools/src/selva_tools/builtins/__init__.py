@@ -80,8 +80,10 @@ from .enclii_infra import (
 )
 from .environment import EnvInfoTool, PackageInstallTool
 from .erp import CONTPAQiExportTool, GenericERPExportTool
+from .deploy_preflight import DeployPreflightTool
+from .dev_quality import LintAndTypeCheckTool, TestCoverageForDiffTool
 from .files import FileDeleteTool, FileListTool, FileReadTool, FileSearchTool, FileWriteTool
-from .git import GitBranchTool, GitCommitTool, GitDiffTool, GitPushTool
+from .git import GitBranchTool, GitCommitTool, GitCreatePRTool, GitDiffTool, GitPushTool
 from .github_admin import (
     GithubAdminAuditTeamMembershipTool,
     GithubAdminCreateTeamTool,
@@ -178,6 +180,12 @@ def get_builtin_tools() -> list[BaseTool]:
         GitPushTool(),
         GitDiffTool(),
         GitBranchTool(),
+        GitCreatePRTool(),
+        # Dev quality (pre-PR audit building blocks)
+        LintAndTypeCheckTool(),
+        TestCoverageForDiffTool(),
+        # Deployment pre-flight
+        DeployPreflightTool(),
         # Web (original)
         WebSearchTool(),
         WebFetchTool(),
