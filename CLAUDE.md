@@ -701,7 +701,7 @@ block pattern (see any existing platform module for template).
 
 The `packages/skills/` package implements the AgentSkills standard.
 
-- **Core skills** (10) live in `packages/skills/skill-definitions/`. Always loaded.
+- **Core skills** (25) live in `packages/skills/skill-definitions/`. Always loaded.
 - **Community skills** (~25) live in `packages/skills/community-skills/`. Vendored from
   [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills).
   Disabled by default.
