@@ -118,7 +118,6 @@ export function useProximityVideoLiveKit(options: LiveKitOptions) {
     };
     // We intentionally depend only on url and token — reconnect when
     // credentials change, not on every audioEnabled/videoEnabled toggle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, token]);
 
   // ── Toggle local audio/video tracks without reconnecting ───────────
