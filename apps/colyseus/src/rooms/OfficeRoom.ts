@@ -521,7 +521,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
     });
 
     // Fetch the department list from the API (which uses real UUID IDs).
-    let apiDepts: Array<Record<string, any>>;
+    let apiDepts: Array<Record<string, unknown>>;
     try {
       const listResp = await fetch(
         `${this.nexusApiUrl}/api/v1/departments/`,
@@ -534,7 +534,7 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
         );
         return;
       }
-      apiDepts = (await listResp.json()) as Array<Record<string, any>>;
+      apiDepts = (await listResp.json()) as Array<Record<string, unknown>>;
     } catch (err) {
       logger.error({ err }, "Failed to fetch department list");
       throw err;
@@ -552,19 +552,19 @@ export class OfficeRoom extends Room<OfficeStateSchema> {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!resp.ok) continue;
-        const detail = (await resp.json()) as Record<string, any>;
-        const agents = (detail.agents ?? []) as Array<Record<string, any>>;
+        const detail = (await resp.json()) as Record<string, unknown>;
+        const agents = (detail.agents ?? []) as Array<Record<string, unknown>>;
         for (let i = 0; i < agents.length; i++) {
           const a = agents[i];
           const agent = new AgentSchema();
-          agent.id = a.id;
-          agent.name = a.name;
-          agent.role = a.role;
-          agent.status = a.status ?? "idle";
-          agent.level = a.level ?? 1;
+          agent.id = a.id as string;
+          agent.name = a.name as string;
+          agent.role = a.role as string;
+          agent.status = (a.status as string) ?? "idle";
+          agent.level = (a.level as number) ?? 1;
           agent.x = dept.x + 48 + (i % 3) * 48;
           agent.y = dept.y + 48 + Math.floor(i / 3) * 48;
-          agent.currentTaskId = a.current_task_id ?? "";
+          agent.currentTaskId = (a.current_task_id as string) ?? "";
           agent.currentTaskDescription = "";
           agent.departmentId = stateKey;
           const skills = (a.effective_skills ?? []) as string[];
