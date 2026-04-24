@@ -25,6 +25,45 @@ logger = logging.getLogger(__name__)
 
 ARGOCD_SERVER = os.environ.get("ARGOCD_SERVER", "https://argocd-server.argocd.svc.cluster.local")
 ARGOCD_TOKEN = os.environ.get("ARGOCD_AUTH_TOKEN", "")
+# Audit 2026-04-23 H7. "Trust the cluster DNS name" isn't enough — any
+# compromised sidecar on the pod network could intercept the self-signed
+# TLS and impersonate argocd-server. Three valid configurations:
+#
+#   ARGOCD_CA_BUNDLE=/path/to/ca.crt   — preferred; mount the cluster CA
+#                                         (or argocd's serving CA) into the
+#                                         worker pod and point at it here.
+#   ARGOCD_INSECURE_TLS=true           — explicit opt-in for dev / port-
+#                                         forward flows. Logs a warning on
+#                                         every request so it doesn't
+#                                         silently creep into prod.
+#   (neither set)                      — default: verify=True against the
+#                                         system CA bundle. Will fail if
+#                                         argocd-server uses a self-signed
+#                                         cert whose CA isn't trusted; that
+#                                         failure is the correct signal to
+#                                         provide ARGOCD_CA_BUNDLE.
+ARGOCD_CA_BUNDLE = os.environ.get("ARGOCD_CA_BUNDLE", "")
+ARGOCD_INSECURE_TLS = os.environ.get("ARGOCD_INSECURE_TLS", "").lower() in (
+    "true",
+    "1",
+    "yes",
+)
+
+
+def _verify_setting() -> str | bool:
+    if ARGOCD_CA_BUNDLE:
+        return ARGOCD_CA_BUNDLE
+    if ARGOCD_INSECURE_TLS:
+        # Warn once per process rather than per-request to keep logs clean.
+        if not getattr(_verify_setting, "_warned", False):
+            logger.warning(
+                "ARGOCD_INSECURE_TLS=true — TLS verification disabled for "
+                "argocd-server. Mount a CA bundle via ARGOCD_CA_BUNDLE "
+                "before running in production."
+            )
+            _verify_setting._warned = True  # type: ignore[attr-defined]
+        return False
+    return True
 
 
 def _headers() -> dict[str, str]:
@@ -42,10 +81,10 @@ async def _request(
 ) -> tuple[int, dict[str, Any] | list[dict[str, Any]] | str]:
     """Low-level Argo CD API call; returns (status_code, parsed_body)."""
     url = f"{ARGOCD_SERVER.rstrip('/')}{path}"
-    # argocd-server runs with its own self-signed in-cluster cert; verify=False
-    # is fine when we're reaching it through cluster DNS.
-    async with httpx.AsyncClient(timeout=30, verify=False) as client:
-        resp = await client.request(method, url, headers=_headers(), json=json_body, params=params)
+    async with httpx.AsyncClient(timeout=30, verify=_verify_setting()) as client:
+        resp = await client.request(
+            method, url, headers=_headers(), json=json_body, params=params
+        )
         try:
             body = resp.json()
         except Exception:
