@@ -2,9 +2,10 @@ import hashlib
 import hmac
 
 import pytest
+from fastapi.testclient import TestClient
+
 from nexus_api.config import get_settings
 from nexus_api.main import app
-from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
