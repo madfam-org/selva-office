@@ -1774,7 +1774,7 @@ export class OfficeScene extends Phaser.Scene {
       .setDepth(5);
 
     // Skill badges (small text below agent name)
-    const skills = (agent as any).skills as string[] | undefined;
+    const skills = (agent as { skills?: string[] }).skills;
     if (skills && skills.length > 0) {
       const badgeText = skills.slice(0, 2).join(', ');
       this.add
@@ -1883,7 +1883,7 @@ export class OfficeScene extends Phaser.Scene {
 
     // Idle looking: briefly face a direction then return
     if (hint.lookDirection) {
-      const textureKey = `agent-${(agentSprite as any).agentRole || 'coder'}`;
+      const textureKey = `agent-${(agentSprite as { agentRole?: string }).agentRole || 'coder'}`;
       const lookAnim = `${textureKey}-idle`;
       if (this.anims.exists(lookAnim)) {
         sprite.setFlipX(hint.lookDirection === 'left');

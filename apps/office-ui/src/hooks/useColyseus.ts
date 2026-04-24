@@ -219,7 +219,7 @@ export function useColyseus(options?: string | ColyseusOptions): ColyseusState {
         departments.forEach((dept: Department) => {
           if (dept.agents) {
             const agents = parseArraySchema(dept.agents);
-            agents.forEach((agent: any) => {
+            agents.forEach((agent: { status?: string }) => {
               if (agent.status === 'working') activeCount++;
               if (agent.status === 'waiting_approval') pendingCount++;
             });

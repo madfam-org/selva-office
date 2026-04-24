@@ -1,4 +1,4 @@
-from apps.nexus_api.nexus_api.memory_store.db import EdgeMemoryDB
+from nexus_api.memory_store.db import EdgeMemoryDB
 
 
 def test_fts5_memory_search():
