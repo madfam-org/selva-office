@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
-
 
 # ---------- helpers ----------
 
@@ -48,9 +47,11 @@ class TestLintAndTypeCheck:
         (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n")
         (tmp_path / "x.py").write_text("x = 1\n")
 
-        run, _calls = _mock_run([
-            {"stdout": "[]", "stderr": "", "return_code": 0, "success": True},  # ruff
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": "[]", "stderr": "", "return_code": 0, "success": True},  # ruff
+            ]
+        )
 
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
@@ -69,17 +70,21 @@ class TestLintAndTypeCheck:
         from selva_tools.builtins import dev_quality as dq
 
         (tmp_path / "pyproject.toml").write_text("")
-        ruff_payload = json.dumps([
-            {
-                "code": "F401",
-                "filename": "x.py",
-                "location": {"row": 12, "column": 5},
-                "message": "imported but unused",
-            },
-        ])
-        run, _calls = _mock_run([
-            {"stdout": ruff_payload, "stderr": "", "return_code": 1, "success": False},
-        ])
+        ruff_payload = json.dumps(
+            [
+                {
+                    "code": "F401",
+                    "filename": "x.py",
+                    "location": {"row": 12, "column": 5},
+                    "message": "imported but unused",
+                },
+            ]
+        )
+        run, _calls = _mock_run(
+            [
+                {"stdout": ruff_payload, "stderr": "", "return_code": 1, "success": False},
+            ]
+        )
 
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
@@ -105,10 +110,12 @@ class TestLintAndTypeCheck:
             "services/foo.py:42:5: note: Expected str\n"  # note — ignored
             "services/bar.py:7: warning: Unused import [unused-import]\n"
         )
-        run, _calls = _mock_run([
-            {"stdout": "[]", "stderr": "", "return_code": 0, "success": True},  # ruff
-            {"stdout": mypy_out, "stderr": "", "return_code": 1, "success": False},  # mypy
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": "[]", "stderr": "", "return_code": 0, "success": True},  # ruff
+                {"stdout": mypy_out, "stderr": "", "return_code": 1, "success": False},  # mypy
+            ]
+        )
 
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
@@ -180,9 +187,11 @@ class TestTestCoverageForDiff:
     async def test_no_changed_files_returns_empty(self, tmp_path: Path) -> None:
         from selva_tools.builtins import dev_quality as dq
 
-        run, _calls = _mock_run([
-            {"stdout": "", "stderr": "", "return_code": 0, "success": True},  # git diff empty
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": "", "stderr": "", "return_code": 0, "success": True},  # git diff empty
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await dq.TestCoverageForDiffTool().execute(
                 base_ref="main", repo_path=str(tmp_path)
@@ -194,24 +203,23 @@ class TestTestCoverageForDiff:
     async def test_reports_uncovered_changed_lines(self, tmp_path: Path) -> None:
         from selva_tools.builtins import dev_quality as dq
 
-        diff_out = (
-            "--- a/a.py\n"
-            "+++ b/a.py\n"
-            "@@ -0,0 +1,3 @@\n"
-            "+one\n"
-            "+two\n"
-            "+three\n"
-        )
+        diff_out = "--- a/a.py\n+++ b/a.py\n@@ -0,0 +1,3 @@\n+one\n+two\n+three\n"
         cov_path = tmp_path / ".coverage.json"
-        cov_path.write_text(json.dumps({
-            "files": {
-                "a.py": {"missing_lines": [2, 3]},
-            },
-        }))
+        cov_path.write_text(
+            json.dumps(
+                {
+                    "files": {
+                        "a.py": {"missing_lines": [2, 3]},
+                    },
+                }
+            )
+        )
 
-        run, _calls = _mock_run([
-            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await dq.TestCoverageForDiffTool().execute(
                 base_ref="main",
@@ -230,9 +238,7 @@ class TestTestCoverageForDiff:
         }
 
     @pytest.mark.asyncio
-    async def test_file_not_in_coverage_marks_all_lines_uncovered(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_file_not_in_coverage_marks_all_lines_uncovered(self, tmp_path: Path) -> None:
         from selva_tools.builtins import dev_quality as dq
 
         diff_out = (
@@ -245,9 +251,11 @@ class TestTestCoverageForDiff:
         cov_path = tmp_path / ".coverage.json"
         cov_path.write_text(json.dumps({"files": {}}))
 
-        run, _calls = _mock_run([
-            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await dq.TestCoverageForDiffTool().execute(
                 base_ref="main",
@@ -258,24 +266,19 @@ class TestTestCoverageForDiff:
         assert result.data["uncovered"] == [{"file": "new_module.py", "lines": [1, 2]}]
 
     @pytest.mark.asyncio
-    async def test_malformed_coverage_json_returns_structured_error(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_malformed_coverage_json_returns_structured_error(self, tmp_path: Path) -> None:
         """A broken coverage.json should fail cleanly, not raise."""
         from selva_tools.builtins import dev_quality as dq
 
-        diff_out = (
-            "--- a/a.py\n"
-            "+++ b/a.py\n"
-            "@@ -0,0 +1,1 @@\n"
-            "+x = 1\n"
-        )
+        diff_out = "--- a/a.py\n+++ b/a.py\n@@ -0,0 +1,1 @@\n+x = 1\n"
         cov_path = tmp_path / ".coverage.json"
         cov_path.write_text("{not valid json")
 
-        run, _calls = _mock_run([
-            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await dq.TestCoverageForDiffTool().execute(
                 base_ref="main",
@@ -287,22 +290,17 @@ class TestTestCoverageForDiff:
         assert "could not read coverage.json" in (result.error or "")
 
     @pytest.mark.asyncio
-    async def test_coverage_file_missing_and_pytest_unavailable(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_coverage_file_missing_and_pytest_unavailable(self, tmp_path: Path) -> None:
         """When no coverage.json exists AND pytest isn't installed, surface a
         helpful error instead of silently producing wrong results."""
         from selva_tools.builtins import dev_quality as dq
 
-        diff_out = (
-            "--- a/a.py\n"
-            "+++ b/a.py\n"
-            "@@ -0,0 +1,1 @@\n"
-            "+x = 1\n"
+        diff_out = "--- a/a.py\n+++ b/a.py\n@@ -0,0 +1,1 @@\n+x = 1\n"
+        run, _calls = _mock_run(
+            [
+                {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+            ]
         )
-        run, _calls = _mock_run([
-            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
-        ])
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
             patch.object(dq, "_available", return_value=False),
@@ -317,31 +315,29 @@ class TestTestCoverageForDiff:
         assert result.data["changed_files"] == ["a.py"]
 
     @pytest.mark.asyncio
-    async def test_coverage_key_normalization_handles_dot_prefix(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_coverage_key_normalization_handles_dot_prefix(self, tmp_path: Path) -> None:
         """coverage.py sometimes keys files as './path' rather than 'path';
         the tool should match either form before flagging lines uncovered."""
         from selva_tools.builtins import dev_quality as dq
 
-        diff_out = (
-            "--- a/pkg/mod.py\n"
-            "+++ b/pkg/mod.py\n"
-            "@@ -0,0 +1,2 @@\n"
-            "+a = 1\n"
-            "+b = 2\n"
-        )
+        diff_out = "--- a/pkg/mod.py\n+++ b/pkg/mod.py\n@@ -0,0 +1,2 @@\n+a = 1\n+b = 2\n"
         # Coverage keyed with "./" prefix — tool must normalize to match.
         cov_path = tmp_path / ".coverage.json"
-        cov_path.write_text(json.dumps({
-            "files": {
-                "./pkg/mod.py": {"missing_lines": [2]},
-            },
-        }))
+        cov_path.write_text(
+            json.dumps(
+                {
+                    "files": {
+                        "./pkg/mod.py": {"missing_lines": [2]},
+                    },
+                }
+            )
+        )
 
-        run, _calls = _mock_run([
-            {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": diff_out, "stderr": "", "return_code": 0, "success": True},
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await dq.TestCoverageForDiffTool().execute(
                 base_ref="main",
@@ -368,30 +364,34 @@ class TestLintAndTypeCheckTypescript:
         eslint_bin.parent.mkdir(parents=True)
         eslint_bin.touch()
 
-        eslint_payload = json.dumps([
-            {
-                "filePath": "src/a.ts",
-                "messages": [
-                    {
-                        "ruleId": "no-unused-vars",
-                        "severity": 2,
-                        "message": "'x' is assigned a value but never used.",
-                        "line": 3,
-                        "column": 7,
-                    },
-                    {
-                        "ruleId": "prefer-const",
-                        "severity": 1,
-                        "message": "'y' is never reassigned.",
-                        "line": 4,
-                        "column": 9,
-                    },
-                ],
-            },
-        ])
-        run, _calls = _mock_run([
-            {"stdout": eslint_payload, "stderr": "", "return_code": 1, "success": False},
-        ])
+        eslint_payload = json.dumps(
+            [
+                {
+                    "filePath": "src/a.ts",
+                    "messages": [
+                        {
+                            "ruleId": "no-unused-vars",
+                            "severity": 2,
+                            "message": "'x' is assigned a value but never used.",
+                            "line": 3,
+                            "column": 7,
+                        },
+                        {
+                            "ruleId": "prefer-const",
+                            "severity": 1,
+                            "message": "'y' is never reassigned.",
+                            "line": 4,
+                            "column": 9,
+                        },
+                    ],
+                },
+            ]
+        )
+        run, _calls = _mock_run(
+            [
+                {"stdout": eslint_payload, "stderr": "", "return_code": 1, "success": False},
+            ]
+        )
 
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
@@ -426,9 +426,11 @@ class TestLintAndTypeCheckTypescript:
             "src/a.ts(12,5): error TS2304: Cannot find name 'foo'.\n"
             "src/b.ts(3,1): error TS2322: Type 'number' is not assignable to type 'string'.\n"
         )
-        run, _calls = _mock_run([
-            {"stdout": tsc_out, "stderr": "", "return_code": 1, "success": False},
-        ])
+        run, _calls = _mock_run(
+            [
+                {"stdout": tsc_out, "stderr": "", "return_code": 1, "success": False},
+            ]
+        )
 
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
@@ -454,9 +456,11 @@ class TestLintAndTypeCheckTypescript:
 
         (tmp_path / "pyproject.toml").write_text("")
 
-        run, calls = _mock_run([
-            {"stdout": "[]", "stderr": "", "return_code": 0, "success": True},
-        ])
+        run, calls = _mock_run(
+            [
+                {"stdout": "[]", "stderr": "", "return_code": 0, "success": True},
+            ]
+        )
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
             patch.object(dq, "_available", side_effect=lambda cwd, exe: exe == "ruff"),

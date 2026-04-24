@@ -196,7 +196,7 @@ def create_app() -> FastAPI:
     app.include_router(trajectories.router, prefix="/api/v1")
     # Next-tier: Session checkpoint/rollback
     app.include_router(checkpoints.router, prefix="/api/v1")
-    app.include_router(skills_hub.router, prefix="/api/v1")         # Track D1: agentskills.io hub
+    app.include_router(skills_hub.router, prefix="/api/v1")  # Track D1: agentskills.io hub
     # Autonomous operations (Swarm Manifesto)
     app.include_router(playbooks.router, prefix="/api/v1")
     app.include_router(crm_webhooks.router, prefix="/api/v1")
@@ -238,14 +238,16 @@ def create_app() -> FastAPI:
                     import json as _json
 
                     pool = get_redis_pool(url=settings.redis_url)
-                    task_msg = _json.dumps({
-                        "task_id": task_id,
-                        "graph_type": task.graph_type,
-                        "description": task.description,
-                        "assigned_agent_ids": [],
-                        "required_skills": [],
-                        "payload": task.payload or {},
-                    })
+                    task_msg = _json.dumps(
+                        {
+                            "task_id": task_id,
+                            "graph_type": task.graph_type,
+                            "description": task.description,
+                            "assigned_agent_ids": [],
+                            "required_skills": [],
+                            "payload": task.payload or {},
+                        }
+                    )
                     await pool.execute_with_retry(
                         "xadd", "autoswarm:task-stream", {"data": task_msg}
                     )
@@ -275,9 +277,7 @@ def create_app() -> FastAPI:
                 )
 
             async with async_session_factory() as db:
-                result = await db.execute(
-                    select(SwarmTask).where(SwarmTask.id == uid)
-                )
+                result = await db.execute(select(SwarmTask).where(SwarmTask.id == uid))
                 task = result.scalar_one_or_none()
 
             if task is None:

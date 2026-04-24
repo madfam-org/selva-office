@@ -62,6 +62,7 @@ async def _post(path: str, extra: dict[str, Any] | None = None) -> dict[str, Any
 # Tool: List all domains
 # ---------------------------------------------------------------------------
 
+
 class ListDomainsTool(BaseTool):
     """List all domains in the Porkbun account with status and expiry."""
 
@@ -108,6 +109,7 @@ class ListDomainsTool(BaseTool):
 # Tool: Get nameservers for a domain
 # ---------------------------------------------------------------------------
 
+
 class GetNameserversTool(BaseTool):
     """Get the current nameservers for a domain."""
 
@@ -142,7 +144,7 @@ class GetNameserversTool(BaseTool):
             output = (
                 f"Domain: {domain}\n"
                 f"Nameservers: {', '.join(ns)}\n"
-                f"Delegated to: {'Cloudflare' if is_cloudflare else 'Porkbun' if is_porkbun else 'Other'}"
+                f"Delegated to: {'Cloudflare' if is_cloudflare else 'Porkbun' if is_porkbun else 'Other'}"  # noqa: E501
             )
             return ToolResult(
                 success=True,
@@ -157,6 +159,7 @@ class GetNameserversTool(BaseTool):
 # ---------------------------------------------------------------------------
 # Tool: Update nameservers (delegate to Cloudflare)
 # ---------------------------------------------------------------------------
+
 
 class UpdateNameserversTool(BaseTool):
     """Update nameservers for a domain (e.g., delegate to Cloudflare)."""
@@ -209,6 +212,7 @@ class UpdateNameserversTool(BaseTool):
 # Tool: List DNS records
 # ---------------------------------------------------------------------------
 
+
 class ListDnsRecordsTool(BaseTool):
     """List all DNS records for a domain."""
 
@@ -259,6 +263,7 @@ class ListDnsRecordsTool(BaseTool):
 # ---------------------------------------------------------------------------
 # Tool: Create DNS record
 # ---------------------------------------------------------------------------
+
 
 class CreateDnsRecordTool(BaseTool):
     """Create a DNS record for a domain."""
@@ -330,7 +335,7 @@ class CreateDnsRecordTool(BaseTool):
             if data.get("status") != "SUCCESS":
                 return ToolResult(success=False, error=data.get("message", "Unknown error"))
             record_id = data.get("id", "?")
-            output = f"Created {record_type} record for {name or '@'}.{domain} → {content} (id={record_id})"
+            output = f"Created {record_type} record for {name or '@'}.{domain} → {content} (id={record_id})"  # noqa: E501
             return ToolResult(
                 success=True,
                 output=output,
@@ -344,6 +349,7 @@ class CreateDnsRecordTool(BaseTool):
 # ---------------------------------------------------------------------------
 # Tool: Delete DNS record
 # ---------------------------------------------------------------------------
+
 
 class DeleteDnsRecordTool(BaseTool):
     """Delete a DNS record by ID."""
@@ -388,6 +394,7 @@ class DeleteDnsRecordTool(BaseTool):
 # Tool: Ping / verify API credentials
 # ---------------------------------------------------------------------------
 
+
 class PingTool(BaseTool):
     """Verify Porkbun API credentials are valid."""
 
@@ -419,6 +426,7 @@ class PingTool(BaseTool):
 # Tool: Domain health check (bulk NS audit)
 # ---------------------------------------------------------------------------
 
+
 class DomainHealthCheckTool(BaseTool):
     """Check NS delegation status for all domains — identify which need Cloudflare migration."""
 
@@ -439,7 +447,9 @@ class DomainHealthCheckTool(BaseTool):
             # Get all domains
             list_data = await _post("domain/listAll")
             if list_data.get("status") != "SUCCESS":
-                return ToolResult(success=False, error=list_data.get("message", "Failed to list domains"))
+                return ToolResult(
+                    success=False, error=list_data.get("message", "Failed to list domains")
+                )
 
             domains = list_data.get("domains", [])
             active = [d for d in domains if d["status"] == "ACTIVE"]
@@ -495,6 +505,7 @@ class DomainHealthCheckTool(BaseTool):
 # ---------------------------------------------------------------------------
 # Registry helper
 # ---------------------------------------------------------------------------
+
 
 def get_dns_tools() -> list[BaseTool]:
     """Return all Porkbun DNS tools for registration in the tool registry."""

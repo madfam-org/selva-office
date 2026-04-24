@@ -83,9 +83,7 @@ def _form_encode(payload: dict[str, Any]) -> dict[str, str]:
     return out
 
 
-async def _request(
-    method: str, path: str, form: dict[str, Any] | None = None
-):
+async def _request(method: str, path: str, form: dict[str, Any] | None = None):
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         resp = await client.request(
             method,

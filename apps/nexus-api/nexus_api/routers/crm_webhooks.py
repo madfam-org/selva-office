@@ -10,7 +10,6 @@ import hashlib
 import hmac
 import json
 import logging
-from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -63,8 +62,8 @@ async def phyne_crm_webhook(request: Request):
 
     try:
         payload = json.loads(body)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from exc
 
     event_type = payload.get("event", "")
     data = payload.get("data", {})
@@ -86,13 +85,15 @@ async def phyne_crm_webhook(request: Request):
             break
 
     if not matching_playbook:
-        logger.info("No matching playbook for CRM event %s (%s), skipping dispatch", event_type, internal_event)
+        logger.info(
+            "No matching playbook for CRM event %s (%s), skipping dispatch",
+            event_type,
+            internal_event,
+        )
         return {"status": "ok", "event": event_type, "no_playbook": True}
 
     # Auto-dispatch a SwarmTask
     try:
-        from ..database import async_session_factory
-
         graph_type_map = {
             "crm:hot_lead": "crm",
             "crm:lead_created": "crm",
@@ -103,7 +104,6 @@ async def phyne_crm_webhook(request: Request):
 
         # Build task description from CRM event data. PII-safe: reference
         # lead_id, not contact_name, so logs / ops dashboards stay clean.
-        contact_name = data.get("contact_name", data.get("name", "Unknown"))
         contact_email = data.get("contact_email", data.get("email", ""))
 
         # T3.2 — extract a stable `lead_id` and thread it through the funnel.
@@ -123,24 +123,27 @@ async def phyne_crm_webhook(request: Request):
         }
 
         # Use Redis to enqueue directly (same pattern as swarms.py)
-        from selva_redis_pool import get_redis_pool
         import uuid
 
+        from selva_redis_pool import get_redis_pool
+
         task_id = str(uuid.uuid4())
-        task_msg = json.dumps({
-            "task_id": task_id,
-            "graph_type": graph_type,
-            "description": description,
-            "assigned_agent_ids": [],
-            "required_skills": ["crm-outreach"],
-            "payload": task_payload,
-            "playbook_id": matching_playbook["id"],
-            "playbook": matching_playbook,
-            # Promote lead_id to a top-level field for downstream consumers
-            # (worker initial_state loader, ops dashboards) that don't
-            # want to reach into payload.
-            "lead_id": lead_id,
-        })
+        task_msg = json.dumps(
+            {
+                "task_id": task_id,
+                "graph_type": graph_type,
+                "description": description,
+                "assigned_agent_ids": [],
+                "required_skills": ["crm-outreach"],
+                "payload": task_payload,
+                "playbook_id": matching_playbook["id"],
+                "playbook": matching_playbook,
+                # Promote lead_id to a top-level field for downstream consumers
+                # (worker initial_state loader, ops dashboards) that don't
+                # want to reach into payload.
+                "lead_id": lead_id,
+            }
+        )
 
         pool = get_redis_pool(url=settings.redis_url)
         await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
@@ -176,12 +179,17 @@ async def phyne_crm_webhook(request: Request):
         # from the attribution funnel above.
         try:
             from ..analytics import track
-            track("system", "selva_crm_auto_dispatch", {
-                "event": event_type,
-                "playbook": matching_playbook["name"],
-                "task_id": task_id,
-                "lead_id": lead_id,
-            })
+
+            track(
+                "system",
+                "selva_crm_auto_dispatch",
+                {
+                    "event": event_type,
+                    "playbook": matching_playbook["name"],
+                    "task_id": task_id,
+                    "lead_id": lead_id,
+                },
+            )
         except Exception:
             pass
 

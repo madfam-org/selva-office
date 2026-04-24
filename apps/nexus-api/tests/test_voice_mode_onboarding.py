@@ -179,10 +179,14 @@ async def test_voice_mode_selected_emits_event(
     assert resp.status_code == 201
 
     events = (
-        await db_session.execute(
-            select(TaskEvent).where(TaskEvent.event_type == "voice_mode.selected")
+        (
+            await db_session.execute(
+                select(TaskEvent).where(TaskEvent.event_type == "voice_mode.selected")
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(events) == 1
     payload = events[0].payload or {}
     assert payload.get("mode") == "user_direct"
@@ -283,6 +287,4 @@ def test_compute_signature_is_deterministic() -> None:
     )
     assert compute_signature(**args) == compute_signature(**args)
     # Different field -> different digest.
-    assert compute_signature(**{**args, "mode": "agent_identified"}) != compute_signature(
-        **args
-    )
+    assert compute_signature(**{**args, "mode": "agent_identified"}) != compute_signature(**args)

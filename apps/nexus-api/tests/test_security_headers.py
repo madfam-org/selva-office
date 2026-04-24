@@ -163,9 +163,7 @@ class TestCSPHeader:
                 parts = directive.split()
                 # Count how many times the origin appears (should be 1)
                 count = parts.count("http://localhost:4301")
-                assert count == 1, (
-                    f"Origin duplicated {count} times in connect-src: {directive}"
-                )
+                assert count == 1, f"Origin duplicated {count} times in connect-src: {directive}"
                 break
         else:
             pytest.fail("connect-src directive not found in CSP")

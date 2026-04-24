@@ -69,25 +69,19 @@ def create_a2a_router(
             task_id = await dispatch_task(req)
         except Exception:
             logger.exception("A2A task dispatch failed")
-            raise HTTPException(
-                status_code=502, detail="Internal dispatch error"
-            ) from None
+            raise HTTPException(status_code=502, detail="Internal dispatch error") from None
         return TaskResponse(task_id=task_id, status=TaskStatus.PENDING)
 
     @router.get("/tasks/{task_id}", response_model=TaskResponse)
     async def get_task(task_id: str) -> TaskResponse:
         """Poll the status of an A2A task."""
         if not get_task_status:
-            raise HTTPException(
-                status_code=501, detail="Task status lookup not configured"
-            )
+            raise HTTPException(status_code=501, detail="Task status lookup not configured")
         try:
             return await get_task_status(task_id)
         except Exception:
             logger.exception("A2A task status lookup failed for %s", task_id)
-            raise HTTPException(
-                status_code=502, detail="Internal status lookup error"
-            ) from None
+            raise HTTPException(status_code=502, detail="Internal status lookup error") from None
 
     @router.post("/tasks/sendSubscribe")
     async def send_subscribe(req: TaskRequest) -> StreamingResponse:
@@ -98,9 +92,7 @@ def create_a2a_router(
             task_id = await dispatch_task(req)
         except Exception:
             logger.exception("A2A subscribe dispatch failed")
-            raise HTTPException(
-                status_code=502, detail="Internal dispatch error"
-            ) from None
+            raise HTTPException(status_code=502, detail="Internal dispatch error") from None
 
         async def event_stream() -> AsyncGenerator[str, None]:
             yield f"data: {json.dumps({'task_id': task_id, 'status': 'pending'})}\n\n"
@@ -113,19 +105,17 @@ def create_a2a_router(
                         if resp.status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
                             return
                     except Exception:
-                        logger.debug(
-                            "SSE poll error for task %s", task_id, exc_info=True
-                        )
+                        logger.debug("SSE poll error for task %s", task_id, exc_info=True)
             # Timeout after 5 minutes of polling
-            timeout_payload = json.dumps({
-                "task_id": task_id,
-                "status": "failed",
-                "error": "SSE poll timeout",
-            })
+            timeout_payload = json.dumps(
+                {
+                    "task_id": task_id,
+                    "status": "failed",
+                    "error": "SSE poll timeout",
+                }
+            )
             yield f"data: {timeout_payload}\n\n"
 
-        return StreamingResponse(
-            event_stream(), media_type="text/event-stream"
-        )
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     return router

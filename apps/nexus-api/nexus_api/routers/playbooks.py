@@ -9,16 +9,11 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ..config import get_settings
-from ..database import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/playbooks", tags=["playbooks"])
@@ -26,12 +21,17 @@ router = APIRouter(prefix="/playbooks", tags=["playbooks"])
 
 # ── Schemas ──────────────────────────────────────────────────────────
 
+
 class PlaybookCreate(BaseModel):
     name: str = Field(..., max_length=100)
     trigger_event: str = Field(..., max_length=200, description="Event key (e.g., 'crm:hot_lead')")
-    allowed_actions: list[str] = Field(..., description="ActionCategory values allowed without HITL")
+    allowed_actions: list[str] = Field(
+        ..., description="ActionCategory values allowed without HITL"
+    )
     token_budget: int = Field(50, ge=1, le=10000, description="Max compute tokens per execution")
-    financial_cap_cents: int = Field(0, ge=0, le=100000, description="Max USD cents exposure per execution")
+    financial_cap_cents: int = Field(
+        0, ge=0, le=100000, description="Max USD cents exposure per execution"
+    )
     require_approval: bool = Field(False, description="If True, playbook still requires HITL")
     enabled: bool = Field(True)
 
@@ -132,11 +132,12 @@ for _seed in _SEED_PLAYBOOKS:
         "id": _id,
         **_seed,
         "org_id": "madfam-default",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
 # ── Endpoints ────────────────────────────────────────────────────────
+
 
 @router.get("", response_model=list[PlaybookResponse])
 async def list_playbooks():
@@ -152,7 +153,7 @@ async def create_playbook(body: PlaybookCreate):
         "id": playbook_id,
         **body.model_dump(),
         "org_id": "madfam-default",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
     _playbooks[playbook_id] = playbook
     logger.info("Playbook created: %s (%s)", body.name, playbook_id)

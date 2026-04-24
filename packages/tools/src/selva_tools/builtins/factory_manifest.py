@@ -63,9 +63,7 @@ def _validate(manifest: dict[str, Any]) -> list[str]:
         if key not in manifest:
             errors.append(f"missing required key: {key!r}")
     name = manifest.get("name")
-    if name is not None and not (
-        isinstance(name, str) and 1 <= len(name) <= 128
-    ):
+    if name is not None and not (isinstance(name, str) and 1 <= len(name) <= 128):
         errors.append("name must be a non-empty string under 128 chars")
     version = manifest.get("version")
     if version is not None and not isinstance(version, str):
@@ -85,9 +83,7 @@ def _validate(manifest: dict[str, Any]) -> list[str]:
         "mixed",
         "other",
     ):
-        errors.append(
-            f"language {lang!r} not in python|typescript|javascript|go|rust|mixed|other"
-        )
+        errors.append(f"language {lang!r} not in python|typescript|javascript|go|rust|mixed|other")
     return errors
 
 

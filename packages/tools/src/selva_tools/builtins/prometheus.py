@@ -152,10 +152,7 @@ class PromQueryRangeTool(BaseTool):
             total_points = sum(len(r.get("values") or []) for r in result)
             return ToolResult(
                 success=True,
-                output=(
-                    f"Range query returned {len(result)} series / "
-                    f"{total_points} points."
-                ),
+                output=(f"Range query returned {len(result)} series / {total_points} points."),
                 data={
                     "resultType": (body.get("data") or {}).get("resultType"),
                     "result": result,
@@ -226,10 +223,7 @@ class PromAlertsActiveTool(BaseTool):
                 severities[sev] = severities.get(sev, 0) + 1
             return ToolResult(
                 success=True,
-                output=(
-                    f"{len(alerts)} active alert(s); "
-                    f"by severity: {severities or 'none'}"
-                ),
+                output=(f"{len(alerts)} active alert(s); by severity: {severities or 'none'}"),
                 data={"alerts": alerts, "by_severity": severities},
             )
         except Exception as e:
@@ -274,9 +268,7 @@ class PromSilenceCreateTool(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         matchers = kwargs["matchers"]
         if not isinstance(matchers, list) or not matchers:
-            return ToolResult(
-                success=False, error="matchers must be a non-empty list."
-            )
+            return ToolResult(success=False, error="matchers must be a non-empty list.")
         now = datetime.now(UTC)
         ends = now + timedelta(minutes=int(kwargs["duration_minutes"]))
         payload = {
@@ -305,10 +297,7 @@ class PromSilenceCreateTool(BaseTool):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
-                output=(
-                    f"Silence created; expires "
-                    f"{ends.isoformat().replace('+00:00', 'Z')}."
-                ),
+                output=(f"Silence created; expires {ends.isoformat().replace('+00:00', 'Z')}."),
                 data={
                     "silenceID": body.get("silenceID"),
                     "endsAt": payload["endsAt"],

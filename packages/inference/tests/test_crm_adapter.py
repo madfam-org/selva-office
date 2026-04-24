@@ -30,9 +30,11 @@ class TestPhyneCRMAdapter:
     @pytest.mark.asyncio
     async def test_list_contacts(self) -> None:
         mock_client = AsyncMock()
-        mock_client.get.return_value = _mock_response([
-            {"id": "c1", "name": "Alice", "email": "alice@example.com"},
-        ])
+        mock_client.get.return_value = _mock_response(
+            [
+                {"id": "c1", "name": "Alice", "email": "alice@example.com"},
+            ]
+        )
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
@@ -128,9 +130,7 @@ class TestPhyneCRMAdapter:
 
     @pytest.mark.asyncio
     async def test_timeout_configuration(self) -> None:
-        adapter = PhyneCRMAdapter(
-            base_url="http://crm:3000", token="t", timeout=5.0
-        )
+        adapter = PhyneCRMAdapter(base_url="http://crm:3000", token="t", timeout=5.0)
         assert adapter.timeout == 5.0
 
     @pytest.mark.asyncio

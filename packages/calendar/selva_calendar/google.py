@@ -78,9 +78,7 @@ class GoogleCalendarAdapter:
                     meeting_url=item.get("hangoutLink"),
                     organizer=item.get("organizer", {}).get("email", ""),
                     attendees=[
-                        a.get("email", "")
-                        for a in item.get("attendees", [])
-                        if a.get("email")
+                        a.get("email", "") for a in item.get("attendees", []) if a.get("email")
                     ],
                     provider=CalendarProvider.GOOGLE,
                 )

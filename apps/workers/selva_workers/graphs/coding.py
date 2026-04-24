@@ -63,11 +63,13 @@ def plan(state: CodingState) -> CodingState:
         experience_ctx = ""
         try:
             agent_id = state.get("agent_id", "unknown")
-            experience_ctx = _run_async(build_experience_context(
-                agent_id=agent_id,
-                agent_role="coder",
-                task_description=task_description.strip(),
-            ))
+            experience_ctx = _run_async(
+                build_experience_context(
+                    agent_id=agent_id,
+                    agent_role="coder",
+                    task_description=task_description.strip(),
+                )
+            )
         except Exception:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
@@ -75,16 +77,21 @@ def plan(state: CodingState) -> CodingState:
         repo_path = state.get("repo_path")
         locale = state.get("locale", "en")
         system_prompt = build_plan_prompt(
-            task_description.strip(), repo_path=repo_path, skill_ctx=skill_ctx,
-            experience_ctx=experience_ctx, locale=locale,
+            task_description.strip(),
+            repo_path=repo_path,
+            skill_ctx=skill_ctx,
+            experience_ctx=experience_ctx,
+            locale=locale,
         )
-        llm_response = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": task_description.strip()}],
-            system_prompt=system_prompt,
-            task_type="planning",
-            response_format={"type": "json_object"},
-        ))
+        llm_response = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": task_description.strip()}],
+                system_prompt=system_prompt,
+                task_type="planning",
+                response_format={"type": "json_object"},
+            )
+        )
         plan_output = _json.loads(llm_response)
         if not isinstance(plan_output.get("steps"), list):
             raise ValueError("Invalid plan format")
@@ -174,7 +181,8 @@ def implement(state: CodingState) -> CodingState:
         llm_available = True
         plan_msg = next(
             (
-                m for m in reversed(messages)
+                m
+                for m in reversed(messages)
                 if "plan" in (getattr(m, "additional_kwargs", None) or {})
             ),
             None,
@@ -207,13 +215,15 @@ def implement(state: CodingState) -> CodingState:
                     f"Original request: Implement step {iteration}: {current_step}"
                 )
 
-            raw = _run_async(call_llm(
-                router,
-                messages=[{"role": "user", "content": user_content}],
-                system_prompt=system_prompt,
-                task_type="coding",
-                response_format={"type": "json_object"},
-            ))
+            raw = _run_async(
+                call_llm(
+                    router,
+                    messages=[{"role": "user", "content": user_content}],
+                    system_prompt=system_prompt,
+                    task_type="coding",
+                    response_format={"type": "json_object"},
+                )
+            )
 
             try:
                 parsed = _json.loads(raw)
@@ -225,7 +235,9 @@ def implement(state: CodingState) -> CodingState:
                 last_error = str(exc)
                 logger.warning(
                     "LLM returned invalid JSON (attempt %d/%d): %s",
-                    attempt + 1, 1 + max_retries, last_error,
+                    attempt + 1,
+                    1 + max_retries,
+                    last_error,
                 )
         else:
             # All retries exhausted — fail the node
@@ -250,7 +262,10 @@ def implement(state: CodingState) -> CodingState:
 
     # Write files to worktree from LLM output or placeholder.
     files_written = _write_files_to_worktree(
-        worktree_path, code_output, state, placeholder_ok=not llm_available,
+        worktree_path,
+        code_output,
+        state,
+        placeholder_ok=not llm_available,
     )
 
     summary = code_output[:500] if code_output else f"Implementation iteration {iteration}"
@@ -428,15 +443,19 @@ def review(state: CodingState) -> CodingState:
         skill_ctx = state.get("agent_system_prompt", "")
         locale = state.get("locale", "en")
         system_prompt = build_review_prompt(
-            changes_text, skill_ctx=skill_ctx, locale=locale,
+            changes_text,
+            skill_ctx=skill_ctx,
+            locale=locale,
         )
-        review_text = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": f"Review these changes:\n{changes_text}"}],
-            system_prompt=system_prompt,
-            task_type="review",
-            response_format={"type": "json_object"},
-        ))
+        review_text = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": f"Review these changes:\n{changes_text}"}],
+                system_prompt=system_prompt,
+                task_type="review",
+                response_format={"type": "json_object"},
+            )
+        )
         review_summary = _json.loads(review_text)
     except Exception:
         review_summary = {
@@ -448,8 +467,7 @@ def review(state: CodingState) -> CodingState:
     reviewed = review_summary.get("changes_reviewed", 0)
     issues = review_summary.get("issues_found", 0)
     review_message = AIMessage(
-        content=f"Code review complete: {reviewed} change sets reviewed, "
-        f"{issues} issues found.",
+        content=f"Code review complete: {reviewed} change sets reviewed, {issues} issues found.",
         additional_kwargs={"action_category": "file_read", "review": review_summary},
     )
 
@@ -496,9 +514,13 @@ def push_gate(state: CodingState) -> CodingState:
 
                 settings = _get_worker_settings()
                 git_tool = GitTool()
-                _run_async(git_tool.configure_identity(
-                    worktree_path, settings.git_author_name, settings.git_author_email,
-                ))
+                _run_async(
+                    git_tool.configure_identity(
+                        worktree_path,
+                        settings.git_author_name,
+                        settings.git_author_email,
+                    )
+                )
                 commit_msg = f"autoswarm: {state.get('description', 'agent changes')[:200]}"
                 commit_result = _run_async(git_tool.commit(worktree_path, commit_msg))
                 if commit_result.return_code == 0:
@@ -512,7 +534,8 @@ def push_gate(state: CodingState) -> CodingState:
                         _create_pr_after_push(git_tool, worktree_path, branch, state)
                 else:
                     logger.warning(
-                        "Git commit failed (no changes?): %s", commit_result.stderr,
+                        "Git commit failed (no changes?): %s",
+                        commit_result.stderr,
                     )
             except Exception:
                 logger.warning("Failed to commit/push", exc_info=True)
@@ -582,7 +605,11 @@ def _create_pr_after_push(
         )
         pr_result = _run_async(
             git_tool.create_pr(
-                worktree_path, branch, title, body, token=settings.github_token,
+                worktree_path,
+                branch,
+                title,
+                body,
+                token=settings.github_token,
             )
         )
         if pr_result.return_code == 0:
@@ -640,11 +667,13 @@ def build_coding_graph() -> StateGraph:
     graph.set_entry_point("plan")
     graph.add_edge("plan", "implement")
     graph.add_conditional_edges(
-        "implement", _route_after_implement,
+        "implement",
+        _route_after_implement,
         {"test": "test", END: END},
     )
     graph.add_conditional_edges(
-        "test", _route_after_test,
+        "test",
+        _route_after_test,
         {"review": "review", "implement": "implement"},
     )
     graph.add_edge("review", "push_gate")

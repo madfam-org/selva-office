@@ -2,6 +2,7 @@
 Track B4: process_registry — background process management.
 Mirrors Hermes' tools/process_registry.py.
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,8 +21,7 @@ _PROCESSES: dict[str, dict] = {}
 
 def _collect_zombies() -> None:
     """Reap terminated processes from the registry."""
-    dead = [name for name, info in _PROCESSES.items()
-            if info["proc"].poll() is not None]
+    dead = [name for name, info in _PROCESSES.items() if info["proc"].poll() is not None]
     for name in dead:
         del _PROCESSES[name]
 
@@ -47,8 +47,11 @@ class StartBackgroundProcessTool(BaseTool):
         cwd: str | None = kwargs.get("cwd")
         try:
             proc = subprocess.Popen(
-                command, shell=True, cwd=cwd,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                command,
+                shell=True,
+                cwd=cwd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
             _PROCESSES[name] = {"proc": proc, "command": command, "started_at": time.time()}
@@ -72,17 +75,20 @@ class ListBackgroundProcessesTool(BaseTool):
         processes = []
         for name, info in _PROCESSES.items():
             rc = info["proc"].poll()
-            processes.append({
-                "name": name,
-                "pid": info["proc"].pid,
-                "command": info["command"],
-                "status": "running" if rc is None else f"exited({rc})",
-                "runtime_s": round(time.time() - info["started_at"]),
-            })
+            processes.append(
+                {
+                    "name": name,
+                    "pid": info["proc"].pid,
+                    "command": info["command"],
+                    "status": "running" if rc is None else f"exited({rc})",
+                    "runtime_s": round(time.time() - info["started_at"]),
+                }
+            )
         if not processes:
             return ToolResult(output="No background processes running.", data={"processes": []})
-        lines = [f"{p['name']} (pid={p['pid']}) [{p['status']}] — {p['command'][:60]}"
-                 for p in processes]
+        lines = [
+            f"{p['name']} (pid={p['pid']}) [{p['status']}] — {p['command'][:60]}" for p in processes
+        ]
         return ToolResult(output="\n".join(lines), data={"processes": processes})
 
 

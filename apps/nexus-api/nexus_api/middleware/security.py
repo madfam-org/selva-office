@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 org_id_var: ContextVar[str] = ContextVar("org_id", default="default")
 
+
 class TenantRLSMiddleware(BaseHTTPMiddleware):
     """Extracts org_id from JWT payload to set up context for PostgreSQL RLS.
 
@@ -29,6 +30,7 @@ class TenantRLSMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         finally:
             org_id_var.reset(token_ctx)
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Adds recommended security headers to every response.
@@ -97,13 +99,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=63072000; includeSubDomains"
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         response.headers["X-XSS-Protection"] = "0"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = (
-            "camera=(self), microphone=(self), geolocation=()"
-        )
+        response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=()"
         response.headers["Content-Security-Policy"] = self._csp
         return response

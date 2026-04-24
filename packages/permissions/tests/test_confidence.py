@@ -27,7 +27,6 @@ from selva_permissions import (
     reversibility_cap,
 )
 
-
 # -- Beta posterior updates ---------------------------------------------------
 
 
@@ -71,13 +70,9 @@ class TestApplyDecision:
 
     def test_downstream_revert_does_not_bump_observed(self) -> None:
         """Reverts refer to an already-counted approval."""
-        after_approve = apply_decision(
-            INITIAL_BUCKET_STATE, DecisionOutcome.APPROVED_CLEAN
-        )
+        after_approve = apply_decision(INITIAL_BUCKET_STATE, DecisionOutcome.APPROVED_CLEAN)
         assert after_approve.n_observed == 1
-        after_revert = apply_decision(
-            after_approve, DecisionOutcome.DOWNSTREAM_REVERTED
-        )
+        after_revert = apply_decision(after_approve, DecisionOutcome.DOWNSTREAM_REVERTED)
         assert after_revert.n_observed == 1  # unchanged
         assert after_revert.n_reverted == 1
         assert after_revert.beta_beta == pytest.approx(3.0)  # β += 2.0
@@ -97,11 +92,7 @@ class TestApplyDecision:
         """80% clean, 20% rejected over 100 decisions → mean ~ 0.80."""
         s = INITIAL_BUCKET_STATE
         for i in range(100):
-            outcome = (
-                DecisionOutcome.APPROVED_CLEAN
-                if i % 5 != 0
-                else DecisionOutcome.REJECTED
-            )
+            outcome = DecisionOutcome.APPROVED_CLEAN if i % 5 != 0 else DecisionOutcome.REJECTED
             s = apply_decision(s, outcome)
         assert s.n_observed == 100
         assert s.n_approved_clean == 80
@@ -153,9 +144,7 @@ class TestContextSignature:
             "agent_role": "heraldo",
             "body_length": 450,
         }
-        assert compute_signature("email_send", ctx) == compute_signature(
-            "email_send", ctx
-        )
+        assert compute_signature("email_send", ctx) == compute_signature("email_send", ctx)
 
     def test_different_templates_produce_different_signatures(self) -> None:
         a = compute_signature(
@@ -202,19 +191,13 @@ class TestContextSignature:
             "recipient_email": "alice@example.com",
             "agent_role": "heraldo",
         }
-        short = compute_signature(
-            "email_send", {**base_ctx, "body_length": 100}
-        )
-        xlong = compute_signature(
-            "email_send", {**base_ctx, "body_length": 6000}
-        )
+        short = compute_signature("email_send", {**base_ctx, "body_length": 100})
+        xlong = compute_signature("email_send", {**base_ctx, "body_length": 6000})
         assert short != xlong
 
     def test_deploy_signature_includes_migration_flag(self) -> None:
         base = {"repo": "nexus-api", "environment": "production"}
-        without = compute_signature(
-            "deploy", {**base, "changed_paths": ["src/api.py"]}
-        )
+        without = compute_signature("deploy", {**base, "changed_paths": ["src/api.py"]})
         with_mig = compute_signature(
             "deploy",
             {
@@ -227,18 +210,12 @@ class TestContextSignature:
 
     def test_deploy_tests_only_buckets_together(self) -> None:
         base = {"repo": "nexus-api", "environment": "production"}
-        a = compute_signature(
-            "deploy", {**base, "changed_paths": ["tests/test_foo.py"]}
-        )
-        b = compute_signature(
-            "deploy", {**base, "changed_paths": ["tests/test_bar.py"]}
-        )
+        a = compute_signature("deploy", {**base, "changed_paths": ["tests/test_foo.py"]})
+        b = compute_signature("deploy", {**base, "changed_paths": ["tests/test_bar.py"]})
         assert a == b
 
     def test_unknown_category_uses_generic_features(self) -> None:
-        sig = compute_signature(
-            "totally_new_action", {"agent_role": "some_agent"}
-        )
+        sig = compute_signature("totally_new_action", {"agent_role": "some_agent"})
         assert isinstance(sig, str)
         assert len(sig) == 32  # 32 hex chars = 128-bit truncated sha256
 
@@ -437,22 +414,17 @@ class TestDemoteIfIdle:
 class TestForcedAskSample:
     def test_ask_tier_never_samples(self) -> None:
         for i in range(100):
-            assert not forced_ask_sample(
-                ConfidenceTier.ASK, "bk", str(i).encode()
-            )
+            assert not forced_ask_sample(ConfidenceTier.ASK, "bk", str(i).encode())
 
     def test_ask_quiet_never_samples(self) -> None:
         # FORCED_SAMPLING_RATE is 0 for ASK_QUIET — UI already shows everything.
         for i in range(100):
-            assert not forced_ask_sample(
-                ConfidenceTier.ASK_QUIET, "bk", str(i).encode()
-            )
+            assert not forced_ask_sample(ConfidenceTier.ASK_QUIET, "bk", str(i).encode())
 
     def test_allow_samples_near_configured_rate(self) -> None:
         rate = FORCED_SAMPLING_RATE[ConfidenceTier.ALLOW]
         hits = sum(
-            forced_ask_sample(ConfidenceTier.ALLOW, "bk", str(i).encode())
-            for i in range(2000)
+            forced_ask_sample(ConfidenceTier.ALLOW, "bk", str(i).encode()) for i in range(2000)
         )
         empirical = hits / 2000
         # 2000 trials at p=0.05 — 95% CI ≈ ±0.01. Generous ±0.02.
@@ -466,12 +438,10 @@ class TestForcedAskSample:
     def test_different_buckets_resolve_independently(self) -> None:
         # Very small chance of collision by design — just confirm it CAN differ.
         bucket_a = [
-            forced_ask_sample(ConfidenceTier.ALLOW, "bucket-a", str(i).encode())
-            for i in range(100)
+            forced_ask_sample(ConfidenceTier.ALLOW, "bucket-a", str(i).encode()) for i in range(100)
         ]
         bucket_b = [
-            forced_ask_sample(ConfidenceTier.ALLOW, "bucket-b", str(i).encode())
-            for i in range(100)
+            forced_ask_sample(ConfidenceTier.ALLOW, "bucket-b", str(i).encode()) for i in range(100)
         ]
         assert bucket_a != bucket_b
 

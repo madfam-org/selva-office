@@ -61,8 +61,8 @@ def analyze(state: ProjectState) -> ProjectState:
                     "3. Riesgos y estrategias de mitigacion\n"
                     "4. Metricas de exito\n\n"
                     f"Objetivo: {goal}\n\n"
-                    "Responda en JSON: {\"constraints\": [...], \"resources\": [...], "
-                    "\"risks\": [...], \"metrics\": [...]}"
+                    'Responda en JSON: {"constraints": [...], "resources": [...], '
+                    '"risks": [...], "metrics": [...]}'
                 )
             else:
                 prompt = (
@@ -73,8 +73,8 @@ def analyze(state: ProjectState) -> ProjectState:
                     "3. Risks and mitigation strategies\n"
                     "4. Success metrics\n\n"
                     f"Goal: {goal}\n\n"
-                    "Respond in JSON: {\"constraints\": [...], \"resources\": [...], "
-                    "\"risks\": [...], \"metrics\": [...]}"
+                    'Respond in JSON: {"constraints": [...], "resources": [...], '
+                    '"risks": [...], "metrics": [...]}'
                 )
             return await call_llm(
                 router,
@@ -82,12 +82,14 @@ def analyze(state: ProjectState) -> ProjectState:
                 task_type="planning",
             )
         except Exception as exc:
-            return json.dumps({
-                "constraints": ["LLM unavailable"],
-                "resources": ["10 MADFAM agents"],
-                "risks": [str(exc)],
-                "metrics": ["task completion rate"],
-            })
+            return json.dumps(
+                {
+                    "constraints": ["LLM unavailable"],
+                    "resources": ["10 MADFAM agents"],
+                    "risks": [str(exc)],
+                    "metrics": ["task completion rate"],
+                }
+            )
 
     analysis = _run_async(_analyze())
     return {
@@ -118,40 +120,44 @@ def decompose(state: ProjectState) -> ProjectState:
                     "Descomponga este objetivo en 3-7 hitos secuenciales.\n"
                     "Cada hito debe ser alcanzable en 1-5 dias.\n\n"
                     f"Objetivo: {goal}\n\n"
-                    "Responda en arreglo JSON: [{\"title\": str, \"description\": str, "
-                    "\"graph_type\": str (coding|research|crm|review|deployment), "
-                    "\"required_skills\": [str], \"estimated_days\": int}]"
+                    'Responda en arreglo JSON: [{"title": str, "description": str, '
+                    '"graph_type": str (coding|research|crm|review|deployment), '
+                    '"required_skills": [str], "estimated_days": int}]'
                 )
             else:
                 prompt = (
                     "Decompose this goal into 3-7 sequential milestones.\n"
                     "Each milestone should be achievable in 1-5 days.\n\n"
                     f"Goal: {goal}\n\n"
-                    "Respond in JSON array: [{\"title\": str, \"description\": str, "
-                    "\"graph_type\": str (coding|research|crm|review|deployment), "
-                    "\"required_skills\": [str], \"estimated_days\": int}]"
+                    'Respond in JSON array: [{"title": str, "description": str, '
+                    '"graph_type": str (coding|research|crm|review|deployment), '
+                    '"required_skills": [str], "estimated_days": int}]'
                 )
             resp = await call_llm(
                 router,
                 messages=[{"role": "user", "content": prompt}],
                 task_type="planning",
             )
-            fallback = [{
-                "title": "Execute goal",
-                "description": goal,
-                "graph_type": "research",
-                "required_skills": ["research"],
-                "estimated_days": 3,
-            }]
+            fallback = [
+                {
+                    "title": "Execute goal",
+                    "description": goal,
+                    "graph_type": "research",
+                    "required_skills": ["research"],
+                    "estimated_days": 3,
+                }
+            ]
             return json.loads(resp) if resp.strip().startswith("[") else fallback
         except Exception:
-            return [{
-                "title": "Execute goal",
-                "description": goal,
-                "graph_type": "research",
-                "required_skills": ["research"],
-                "estimated_days": 3,
-            }]
+            return [
+                {
+                    "title": "Execute goal",
+                    "description": goal,
+                    "graph_type": "research",
+                    "required_skills": ["research"],
+                    "estimated_days": 3,
+                }
+            ]
 
     milestones = _run_async(_decompose())
     return {
@@ -187,13 +193,14 @@ def dispatch_batch(state: ProjectState) -> ProjectState:
             return {"milestone": current, "task_id": "local-sim", "status": "simulated"}
 
         import httpx
+
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{api_url}/api/v1/swarms/dispatch",
                 headers={"Authorization": f"Bearer {api_token}"},
                 json={
                     "description": (
-                        f"[Project M{current+1}] "
+                        f"[Project M{current + 1}] "
                         f"{milestone.get('title', '')}: "
                         f"{milestone.get('description', '')}"
                     ),
@@ -209,8 +216,10 @@ def dispatch_batch(state: ProjectState) -> ProjectState:
                 task_id = resp.json().get("task", {}).get("id", "")
                 return {"milestone": current, "task_id": task_id, "status": "dispatched"}
             return {
-                "milestone": current, "task_id": "",
-                "status": "failed", "error": resp.text[:200],
+                "milestone": current,
+                "task_id": "",
+                "status": "failed",
+                "error": resp.text[:200],
             }
 
     result = _run_async(_dispatch())
@@ -219,7 +228,7 @@ def dispatch_batch(state: ProjectState) -> ProjectState:
         "dispatched_tasks": [*dispatched, result],
         "messages": [
             *messages,
-            AIMessage(content=f"Milestone {current+1} dispatched: {milestone.get('title', '')}"),
+            AIMessage(content=f"Milestone {current + 1} dispatched: {milestone.get('title', '')}"),
         ],
         "status": "dispatched",
     }
@@ -244,7 +253,7 @@ def monitor(state: ProjectState) -> ProjectState:
             "current_milestone": current + 1,
             "messages": [
                 *messages,
-                AIMessage(content=f"Milestone {current+1} completed (simulated)"),
+                AIMessage(content=f"Milestone {current + 1} completed (simulated)"),
             ],
             "status": "milestone_complete",
         }
@@ -255,7 +264,7 @@ def monitor(state: ProjectState) -> ProjectState:
         **state,
         "completed_tasks": [*completed, {**latest, "status": "completed"}],
         "current_milestone": current + 1,
-        "messages": [*messages, AIMessage(content=f"Milestone {current+1} complete")],
+        "messages": [*messages, AIMessage(content=f"Milestone {current + 1} complete")],
         "status": "milestone_complete",
     }
 
@@ -277,7 +286,7 @@ def report(state: ProjectState) -> ProjectState:
     )
     for i, m in enumerate(milestones):
         status = "✅" if i < len(completed) else "⏳"
-        summary += f"{status} {i+1}. {m.get('title', '')}\n"
+        summary += f"{status} {i + 1}. {m.get('title', '')}\n"
 
     return {
         **state,
@@ -313,7 +322,8 @@ def build_project_graph() -> StateGraph:
     graph.add_edge("decompose", "dispatch_batch")
     graph.add_edge("dispatch_batch", "monitor")
     graph.add_conditional_edges(
-        "monitor", should_continue,
+        "monitor",
+        should_continue,
         {"dispatch_batch": "dispatch_batch", "report": "report"},
     )
     graph.add_edge("report", END)

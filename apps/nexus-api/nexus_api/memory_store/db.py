@@ -38,18 +38,16 @@ CREATE TRIGGER IF NOT EXISTS transcripts_fts_delete AFTER DELETE ON transcripts 
 END;
 """
 
+
 class EdgeMemoryDB:
     """
     SQLite-backed state persistence for the AutoSwarm conversational hive mind.
     Utilizes WAL mode and FTS5 for sub-millisecond semantic transcript retrieval.
     """
+
     def __init__(self, db_path: str = "autoswarm_state.db"):
         self.db_path = db_path
-        self._conn = sqlite3.connect(
-            self.db_path,
-            check_same_thread=False,
-            isolation_level=None
-        )
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False, isolation_level=None)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
@@ -98,19 +96,20 @@ class EdgeMemoryDB:
                 "INSERT INTO conversation_episodes"
                 " (id, run_id, agent_role, started_at)"
                 " VALUES (?, ?, ?, ?)",
-                (episode_id, run_id, agent_role, time.time())
+                (episode_id, run_id, agent_role, time.time()),
             )
         else:
-            episode_id = row['id']
+            episode_id = row["id"]
 
         self._conn.execute(
             "INSERT INTO transcripts (episode_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
-            (episode_id, role, content, time.time())
+            (episode_id, role, content, time.time()),
         )
 
     def close(self):
         if self._conn:
             self._conn.close()
+
 
 # Singleton
 memory_store = EdgeMemoryDB()

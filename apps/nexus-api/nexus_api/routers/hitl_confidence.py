@@ -157,9 +157,7 @@ async def _load_bucket_state(
     db: AsyncSession, bucket_key: str
 ) -> tuple[HitlConfidence | None, BucketState]:
     """Return (row, state). Row is None when the bucket is new."""
-    result = await db.execute(
-        select(HitlConfidence).where(HitlConfidence.bucket_key == bucket_key)
-    )
+    result = await db.execute(select(HitlConfidence).where(HitlConfidence.bucket_key == bucket_key))
     row = result.scalar_one_or_none()
     if row is None:
         return None, INITIAL_BUCKET_STATE
@@ -350,9 +348,7 @@ async def list_confidence(
                 n_reverted=r.n_reverted,
                 confidence=r.confidence,
                 tier=r.tier,
-                last_decision_at=r.last_decision_at.isoformat()
-                if r.last_decision_at
-                else None,
+                last_decision_at=r.last_decision_at.isoformat() if r.last_decision_at else None,
             )
             for r in rows
         ],

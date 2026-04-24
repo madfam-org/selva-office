@@ -83,11 +83,13 @@ _POSTERIOR_UPDATE: dict[DecisionOutcome, tuple[float, float]] = {
 # emails/DMs to outside parties). These are hard-capped at ASK_QUIET — a
 # bucket *never* promotes past that for these categories even with thousands
 # of clean approvals.
-HIGH_REVERSIBILITY_COST_CATEGORIES: frozenset[str] = frozenset({
-    "deploy",
-    "spend",
-    "external_communication",
-})
+HIGH_REVERSIBILITY_COST_CATEGORIES: frozenset[str] = frozenset(
+    {
+        "deploy",
+        "spend",
+        "external_communication",
+    }
+)
 
 # Per-category explicit overrides; anything not listed defaults to
 # ConfidenceTier.ALLOW (the full ladder).

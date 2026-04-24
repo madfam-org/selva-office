@@ -69,9 +69,7 @@ class K8sGetPodsTool(BaseTool):
         ns = kwargs["namespace"]
         label = kwargs.get("label_selector") or ""
         try:
-            resp = core.list_namespaced_pod(
-                namespace=ns, label_selector=label, timeout_seconds=15
-            )
+            resp = core.list_namespaced_pod(namespace=ns, label_selector=label, timeout_seconds=15)
             pods = []
             for p in resp.items:
                 container_statuses = p.status.container_statuses or []
@@ -217,9 +215,7 @@ class K8sGetEventsTool(BaseTool):
         limit = kwargs.get("limit", 50)
         try:
             field_sel = "type=Warning" if kwargs.get("warning_only") else ""
-            resp = core.list_namespaced_event(
-                namespace=ns, field_selector=field_sel, limit=limit
-            )
+            resp = core.list_namespaced_event(namespace=ns, field_selector=field_sel, limit=limit)
             events = [
                 {
                     "type": e.type,
@@ -278,9 +274,7 @@ class K8sGetReplicasetsTool(BaseTool):
         ns = kwargs["namespace"]
         label = kwargs.get("label_selector") or ""
         try:
-            resp = apps.list_namespaced_replica_set(
-                namespace=ns, label_selector=label
-            )
+            resp = apps.list_namespaced_replica_set(namespace=ns, label_selector=label)
             rss = [
                 {
                     "name": r.metadata.name,

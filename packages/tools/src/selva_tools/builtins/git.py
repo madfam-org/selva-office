@@ -164,7 +164,7 @@ class GitCreatePRTool(BaseTool):
     """
 
     name = "git_create_pr"
-    description = "Create a pull request with safety checks (protected branch, conventional commit title, PR template, CODEOWNERS reviewers)"
+    description = "Create a pull request with safety checks (protected branch, conventional commit title, PR template, CODEOWNERS reviewers)"  # noqa: E501
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -172,11 +172,11 @@ class GitCreatePRTool(BaseTool):
             "properties": {
                 "title": {
                     "type": "string",
-                    "description": "PR title. Warning emitted if not conventional-commit shaped (feat/fix/... prefix).",
+                    "description": "PR title. Warning emitted if not conventional-commit shaped (feat/fix/... prefix).",  # noqa: E501
                 },
                 "body": {
                     "type": "string",
-                    "description": "PR body markdown. If empty, the repo's PR template is used when available.",
+                    "description": "PR body markdown. If empty, the repo's PR template is used when available.",  # noqa: E501
                     "default": "",
                 },
                 "base": {
@@ -188,7 +188,7 @@ class GitCreatePRTool(BaseTool):
                 "reviewers": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Explicit reviewer logins. Merged with CODEOWNERS auto-detection.",
+                    "description": "Explicit reviewer logins. Merged with CODEOWNERS auto-detection.",  # noqa: E501
                     "default": [],
                 },
                 "repo_path": {"type": "string", "default": "."},

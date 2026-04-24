@@ -9,6 +9,7 @@ and exposes the 3-level progressive disclosure API used by Hermes Agent:
   Level 1: get_skill_full(name)   → full SKILL.md content
   Level 2: get_skill_reference(name, ref_path) → specific reference file
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,6 +25,7 @@ _FRONTMATTER_SEP = "---"
 @dataclass
 class SkillDocument:
     """Parsed representation of a SKILL.md skill."""
+
     name: str
     description: str
     version: str = "1.0.0"
@@ -86,6 +88,7 @@ class SkillMDRegistry:
 
     def __init__(self, skills_dir: str | None = None) -> None:
         import os
+
         self._skills_dir = Path(
             skills_dir or os.environ.get("AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills")
         )

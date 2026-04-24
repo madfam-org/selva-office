@@ -23,15 +23,11 @@ class TestGetPlatformOrgId:
     def test_unset_returns_none(self) -> None:
         assert get_platform_org_id() is None
 
-    def test_empty_string_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_empty_string_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(PLATFORM_ORG_ID_ENV, "")
         assert get_platform_org_id() is None
 
-    def test_whitespace_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_whitespace_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(PLATFORM_ORG_ID_ENV, "  \t ")
         assert get_platform_org_id() is None
 
@@ -47,27 +43,19 @@ class TestResolveAudience:
         assert resolve_audience("some-customer") is Audience.TENANT
         assert resolve_audience(None) is Audience.TENANT
 
-    def test_matching_org_is_platform(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_matching_org_is_platform(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(PLATFORM_ORG_ID_ENV, "madfam-internal")
         assert resolve_audience("madfam-internal") is Audience.PLATFORM
 
-    def test_non_matching_org_is_tenant(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_non_matching_org_is_tenant(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(PLATFORM_ORG_ID_ENV, "madfam-internal")
         assert resolve_audience("some-customer") is Audience.TENANT
 
-    def test_none_org_id_is_tenant(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_none_org_id_is_tenant(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(PLATFORM_ORG_ID_ENV, "madfam-internal")
         assert resolve_audience(None) is Audience.TENANT
 
-    def test_empty_org_id_is_tenant(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_empty_org_id_is_tenant(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(PLATFORM_ORG_ID_ENV, "madfam-internal")
         assert resolve_audience("") is Audience.TENANT
 

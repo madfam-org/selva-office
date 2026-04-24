@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 
 from ..probe import ProbeContext, ProbeStep, StageResult, StageStatus
@@ -66,10 +67,8 @@ class CrmHotLeadStep(ProbeStep):
             )
 
         body = {}
-        try:
+        with contextlib.suppress(Exception):
             body = resp.json()
-        except Exception:
-            pass
         lead_id = body.get("lead_id") or body.get("id")
         if not lead_id:
             return StageResult(

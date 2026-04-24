@@ -5,6 +5,7 @@ Persists user-defined schedules in Postgres so Celery Beat can
 dynamically fire recurring AutoSwarm actions (ACP runs, skill refinement,
 memory compaction, etc.) without any dashboard interaction.
 """
+
 from __future__ import annotations
 
 import enum

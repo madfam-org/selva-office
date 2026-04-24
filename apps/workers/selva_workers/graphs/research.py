@@ -37,9 +37,7 @@ def formulate_query(state: ResearchState) -> ResearchState:
     search query.  Falls back to raw concatenation when unavailable.
     """
     messages = state.get("messages", [])
-    raw_text = " ".join(
-        msg.content for msg in messages if hasattr(msg, "content") and msg.content
-    )
+    raw_text = " ".join(msg.content for msg in messages if hasattr(msg, "content") and msg.content)
 
     try:
         from ..inference import call_llm, get_model_router
@@ -52,11 +50,13 @@ def formulate_query(state: ResearchState) -> ResearchState:
             from ..prompts import build_experience_context
 
             agent_id = state.get("agent_id", "unknown")
-            experience_ctx = _run_async(build_experience_context(
-                agent_id=agent_id,
-                agent_role="researcher",
-                task_description=raw_text.strip(),
-            ))
+            experience_ctx = _run_async(
+                build_experience_context(
+                    agent_id=agent_id,
+                    agent_role="researcher",
+                    task_description=raw_text.strip(),
+                )
+            )
         except Exception:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
@@ -71,12 +71,14 @@ def formulate_query(state: ResearchState) -> ResearchState:
             base_prompt = "Rewrite this into an optimal search query. Return only the query."
         parts = [p for p in [skill_ctx, experience_ctx, base_prompt] if p]
         system_prompt = "\n\n".join(parts)
-        refined_query = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": raw_text.strip()}],
-            system_prompt=system_prompt,
-            task_type="research",
-        ))
+        refined_query = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": raw_text.strip()}],
+                system_prompt=system_prompt,
+                task_type="research",
+            )
+        )
     except Exception:
         refined_query = raw_text.strip() or state.get("query", "")
 
@@ -189,17 +191,16 @@ def synthesize(state: ResearchState) -> ResearchState:
                 "en un analisis coherente."
             )
         else:
-            base_prompt = (
-                "You are a research analyst. Synthesize sources "
-                "into a coherent analysis."
-            )
+            base_prompt = "You are a research analyst. Synthesize sources into a coherent analysis."
         system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
-        synthesis_text = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": prompt}],
-            system_prompt=system_prompt,
-            task_type="research",
-        ))
+        synthesis_text = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": prompt}],
+                system_prompt=system_prompt,
+                task_type="research",
+            )
+        )
     except Exception:
         synthesis_text = (
             f"Research synthesis for query: {query[:200]}\n\n"
@@ -239,35 +240,32 @@ def format_report(state: ResearchState) -> ResearchState:
         locale = state.get("locale", "en")
         if locale == "es-MX":
             base_prompt = (
-                "Formatee la sintesis de investigacion en un reporte estructurado "
-                "con secciones."
+                "Formatee la sintesis de investigacion en un reporte estructurado con secciones."
             )
             user_content = f"Formatee esto como un reporte:\n{synthesis}"
         else:
             base_prompt = "Format the research synthesis into a structured report with sections."
             user_content = f"Format this into a report:\n{synthesis}"
         system_prompt = f"{skill_ctx}\n\n{base_prompt}" if skill_ctx else base_prompt
-        formatted = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": user_content}],
-            system_prompt=system_prompt,
-            task_type="research",
-        ))
+        formatted = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": user_content}],
+                system_prompt=system_prompt,
+                task_type="research",
+            )
+        )
         report_sections = {
             "executive_summary": formatted[:500],
             "detailed_findings": formatted,
-            "sources": [
-                {"title": s.get("title", ""), "url": s.get("url", "")} for s in sources
-            ],
+            "sources": [{"title": s.get("title", ""), "url": s.get("url", "")} for s in sources],
             "source_count": len(sources),
         }
     except Exception:
         report_sections = {
             "executive_summary": synthesis[:500] if synthesis else "No synthesis available.",
             "detailed_findings": synthesis,
-            "sources": [
-                {"title": s.get("title", ""), "url": s.get("url", "")} for s in sources
-            ],
+            "sources": [{"title": s.get("title", ""), "url": s.get("url", "")} for s in sources],
             "source_count": len(sources),
         }
 

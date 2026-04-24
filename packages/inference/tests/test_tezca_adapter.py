@@ -159,9 +159,7 @@ class TestTezcaAdapter:
             return_value=client,
         ):
             adapter = TezcaAdapter(base_url="http://tezca:3040", token="t")
-            result = await adapter.check_compliance(
-                "laboral", context={"rfc": "XAXX010101000"}
-            )
+            result = await adapter.check_compliance("laboral", context={"rfc": "XAXX010101000"})
 
         assert isinstance(result, ComplianceCheck)
         assert result.domain == "laboral"
@@ -218,9 +216,7 @@ class TestTezcaAdapter:
             "madfam_inference.adapters.tezca.httpx.AsyncClient",
             return_value=client,
         ):
-            adapter = TezcaAdapter(
-                base_url="http://tezca:3040", token="my-secret-token"
-            )
+            adapter = TezcaAdapter(base_url="http://tezca:3040", token="my-secret-token")
             await adapter.search_laws("test")
 
         call_kwargs = client.get.call_args

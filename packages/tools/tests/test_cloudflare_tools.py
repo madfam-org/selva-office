@@ -15,7 +15,6 @@ from selva_tools.builtins.cloudflare import (
     get_cloudflare_tools,
 )
 
-
 # -- Registry + metadata ------------------------------------------------------
 
 
@@ -45,18 +44,20 @@ class TestRegistry:
 class TestCredentialCheck:
     @pytest.mark.asyncio
     async def test_missing_token_fails_every_tool(self) -> None:
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", ""
-        ), patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"):
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", ""),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+        ):
             r = await CloudflareCreateZoneTool().execute(domain="x.com")
             assert r.success is False
             assert "CLOUDFLARE_API_TOKEN" in (r.error or "")
 
     @pytest.mark.asyncio
     async def test_missing_account_id_fails_zone_create(self) -> None:
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", ""):
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", ""),
+        ):
             r = await CloudflareCreateZoneTool().execute(domain="x.com")
             assert r.success is False
             assert "CLOUDFLARE_ACCOUNT_ID" in (r.error or "")
@@ -78,13 +79,13 @@ class TestCreateZone:
             },
             "errors": [],
         }
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request",
-            new=AsyncMock(return_value=mock_body),
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch(
+                "selva_tools.builtins.cloudflare._request",
+                new=AsyncMock(return_value=mock_body),
+            ),
         ):
             r = await CloudflareCreateZoneTool().execute(domain="example.com")
             assert r.success is True
@@ -100,13 +101,13 @@ class TestCreateZone:
             "success": False,
             "errors": [{"message": "domain already exists"}],
         }
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request",
-            new=AsyncMock(return_value=mock_body),
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch(
+                "selva_tools.builtins.cloudflare._request",
+                new=AsyncMock(return_value=mock_body),
+            ),
         ):
             r = await CloudflareCreateZoneTool().execute(domain="dup.com")
             assert r.success is False
@@ -137,13 +138,13 @@ class TestListZones:
             ],
             "errors": [],
         }
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request",
-            new=AsyncMock(return_value=mock_body),
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch(
+                "selva_tools.builtins.cloudflare._request",
+                new=AsyncMock(return_value=mock_body),
+            ),
         ):
             r = await CloudflareListZonesTool().execute()
             assert r.success is True
@@ -172,12 +173,10 @@ class TestCreateDnsRecord:
                 "errors": [],
             }
 
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request", new=fake_request
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare._request", new=fake_request),
         ):
             r = await CloudflareCreateDnsRecordTool().execute(
                 zone_id="z",
@@ -207,12 +206,10 @@ class TestCreateRedirectRule:
                 "errors": [],
             }
 
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request", new=fake_request
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare._request", new=fake_request),
         ):
             r = await CloudflareCreateRedirectRuleTool().execute(
                 zone_id="z",
@@ -222,15 +219,9 @@ class TestCreateRedirectRule:
             assert r.success is True
             assert captured["path"] == "zones/z/pagerules"
             # Target pattern: "*old.example/*" matches apex + subdomains + paths
-            assert (
-                captured["json"]["targets"][0]["constraint"]["value"]
-                == "*old.example/*"
-            )
+            assert captured["json"]["targets"][0]["constraint"]["value"] == "*old.example/*"
             # Forwarding substitutes $2 for the captured path
-            assert (
-                captured["json"]["actions"][0]["value"]["url"]
-                == "https://new.example/$2"
-            )
+            assert captured["json"]["actions"][0]["value"]["url"] == "https://new.example/$2"
             assert captured["json"]["actions"][0]["value"]["status_code"] == 301
 
     @pytest.mark.asyncio
@@ -245,12 +236,10 @@ class TestCreateRedirectRule:
                 "errors": [],
             }
 
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request", new=fake_request
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare._request", new=fake_request),
         ):
             await CloudflareCreateRedirectRuleTool().execute(
                 zone_id="z",
@@ -258,10 +247,7 @@ class TestCreateRedirectRule:
                 target="https://new.example/",
             )
             # No double slash — we strip trailing / from target before appending $2.
-            assert (
-                captured["json"]["actions"][0]["value"]["url"]
-                == "https://new.example/$2"
-            )
+            assert captured["json"]["actions"][0]["value"]["url"] == "https://new.example/$2"
 
     @pytest.mark.asyncio
     async def test_custom_status_code_302(self) -> None:
@@ -275,12 +261,10 @@ class TestCreateRedirectRule:
                 "errors": [],
             }
 
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request", new=fake_request
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare._request", new=fake_request),
         ):
             await CloudflareCreateRedirectRuleTool().execute(
                 zone_id="z",
@@ -302,13 +286,13 @@ class TestListPageRules:
             "result": [{"id": "pr-1", "priority": 1, "status": "active"}],
             "errors": [],
         }
-        with patch(
-            "selva_tools.builtins.cloudflare.CF_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare._request",
-            new=AsyncMock(return_value=mock_body),
+        with (
+            patch("selva_tools.builtins.cloudflare.CF_TOKEN", "tok"),
+            patch("selva_tools.builtins.cloudflare.CF_ACCOUNT_ID", "acc"),
+            patch(
+                "selva_tools.builtins.cloudflare._request",
+                new=AsyncMock(return_value=mock_body),
+            ),
         ):
             r = await CloudflareListPageRulesTool().execute(zone_id="z")
             assert r.success is True

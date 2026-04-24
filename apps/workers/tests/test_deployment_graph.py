@@ -43,10 +43,12 @@ class TestValidateNode:
     def test_missing_service_returns_error(self) -> None:
         from selva_workers.graphs.deployment import validate
 
-        result = validate({
-            "messages": [],
-            "service": "",
-        })
+        result = validate(
+            {
+                "messages": [],
+                "service": "",
+            }
+        )
 
         assert result["status"] == "error"
 
@@ -63,12 +65,14 @@ class TestValidateNode:
             mock_result.level = PermissionLevel.ALLOW
             mock_check.return_value = mock_result
 
-            result = validate({
-                "messages": [],
-                "service": "web-api",
-                "environment": "staging",
-                "image_tag": "v1.0",
-            })
+            result = validate(
+                {
+                    "messages": [],
+                    "service": "web-api",
+                    "environment": "staging",
+                    "image_tag": "v1.0",
+                }
+            )
 
         assert result["status"] == "validated"
 
@@ -85,10 +89,12 @@ class TestValidateNode:
             mock_result.level = PermissionLevel.DENY
             mock_check.return_value = mock_result
 
-            result = validate({
-                "messages": [],
-                "service": "web-api",
-            })
+            result = validate(
+                {
+                    "messages": [],
+                    "service": "web-api",
+                }
+            )
 
         assert result["status"] == "blocked"
 
@@ -103,13 +109,15 @@ class TestDeployGateNode:
             "selva_workers.graphs.deployment.interrupt",
             return_value={"approved": True},
         ):
-            result = deploy_gate({
-                "messages": [],
-                "service": "web-api",
-                "environment": "staging",
-                "image_tag": "v1.0",
-                "status": "validated",
-            })
+            result = deploy_gate(
+                {
+                    "messages": [],
+                    "service": "web-api",
+                    "environment": "staging",
+                    "image_tag": "v1.0",
+                    "status": "validated",
+                }
+            )
 
         assert result["status"] == "approved"
 
@@ -120,11 +128,13 @@ class TestDeployGateNode:
             "selva_workers.graphs.deployment.interrupt",
             return_value={"approved": False, "feedback": "Not ready"},
         ):
-            result = deploy_gate({
-                "messages": [],
-                "service": "web-api",
-                "status": "validated",
-            })
+            result = deploy_gate(
+                {
+                    "messages": [],
+                    "service": "web-api",
+                    "status": "validated",
+                }
+            )
 
         assert result["status"] == "denied"
 
@@ -147,11 +157,13 @@ class TestDeployNode:
     def test_skips_if_denied(self) -> None:
         from selva_workers.graphs.deployment import deploy
 
-        result = deploy({
-            "messages": [],
-            "service": "web-api",
-            "status": "denied",
-        })
+        result = deploy(
+            {
+                "messages": [],
+                "service": "web-api",
+                "status": "denied",
+            }
+        )
 
         assert result["status"] == "denied"
 
@@ -162,22 +174,26 @@ class TestMonitorNode:
     def test_skips_if_no_deploy_id(self) -> None:
         from selva_workers.graphs.deployment import monitor
 
-        result = monitor({
-            "messages": [],
-            "deploy_id": "",
-            "status": "completed",
-        })
+        result = monitor(
+            {
+                "messages": [],
+                "deploy_id": "",
+                "status": "completed",
+            }
+        )
 
         assert result["status"] == "completed"
 
     def test_skips_if_error_status(self) -> None:
         from selva_workers.graphs.deployment import monitor
 
-        result = monitor({
-            "messages": [],
-            "deploy_id": "dep-123",
-            "status": "error",
-        })
+        result = monitor(
+            {
+                "messages": [],
+                "deploy_id": "dep-123",
+                "status": "error",
+            }
+        )
 
         assert result["status"] == "error"
 

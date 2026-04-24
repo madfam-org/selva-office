@@ -82,9 +82,7 @@ class LokiQueryRangeTool(BaseTool):
             "direction": kwargs.get("direction", "backward"),
         }
         try:
-            status, body = await _loki_request(
-                "/loki/api/v1/query_range", params=params
-            )
+            status, body = await _loki_request("/loki/api/v1/query_range", params=params)
             if status != 200 or not isinstance(body, dict) or body.get("status") != "success":
                 return ToolResult(success=False, error=_err(status, body))
             result = (body.get("data") or {}).get("result") or []
@@ -106,10 +104,7 @@ class LokiQueryRangeTool(BaseTool):
                 )
             return ToolResult(
                 success=True,
-                output=(
-                    f"Loki query returned {len(streams)} stream(s) / "
-                    f"{line_count} line(s)."
-                ),
+                output=(f"Loki query returned {len(streams)} stream(s) / {line_count} line(s)."),
                 data={
                     "streams": streams,
                     "stream_count": len(streams),
@@ -150,9 +145,7 @@ class LokiLabelsTool(BaseTool):
         if kwargs.get("end"):
             params["end"] = kwargs["end"]
         try:
-            status, body = await _loki_request(
-                "/loki/api/v1/labels", params=params or None
-            )
+            status, body = await _loki_request("/loki/api/v1/labels", params=params or None)
             if status != 200 or not isinstance(body, dict) or body.get("status") != "success":
                 return ToolResult(success=False, error=_err(status, body))
             labels = body.get("data") or []

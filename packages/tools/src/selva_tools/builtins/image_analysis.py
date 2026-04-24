@@ -36,9 +36,7 @@ class ImageAnalysisTool(BaseTool):
                 },
                 "mime_type": {
                     "type": "string",
-                    "description": (
-                        "MIME type of the image (e.g., image/png, image/jpeg)"
-                    ),
+                    "description": ("MIME type of the image (e.g., image/png, image/jpeg)"),
                     "default": "image/png",
                 },
                 "prompt": {
@@ -70,16 +68,20 @@ class ImageAnalysisTool(BaseTool):
             {"type": "text", "content": prompt},
         ]
         if image_base64:
-            content_blocks.append({
-                "type": "image_base64",
-                "content": image_base64,
-                "mime_type": mime_type,
-            })
+            content_blocks.append(
+                {
+                    "type": "image_base64",
+                    "content": image_base64,
+                    "mime_type": mime_type,
+                }
+            )
         elif image_url:
-            content_blocks.append({
-                "type": "image_url",
-                "content": image_url,
-            })
+            content_blocks.append(
+                {
+                    "type": "image_url",
+                    "content": image_url,
+                }
+            )
 
         # Return the constructed message -- the caller (worker graph node)
         # sends this through the inference router.

@@ -8,6 +8,7 @@ returns success without hitting the mail provider.
 
 from __future__ import annotations
 
+import contextlib
 import time
 
 from ..probe import ProbeContext, ProbeStep, StageResult, StageStatus
@@ -72,10 +73,8 @@ class EmailSendStep(ProbeStep):
             )
 
         body = {}
-        try:
+        with contextlib.suppress(Exception):
             body = resp.json()
-        except Exception:
-            pass
 
         # Contract checks — even in dry-run we want to see these:
         missing_contract = []

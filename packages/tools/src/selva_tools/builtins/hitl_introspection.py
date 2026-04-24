@@ -54,9 +54,7 @@ async def _get(path: str, params: dict[str, Any] | None = None) -> tuple[int, An
     if not headers:
         return 401, {"error": "WORKER_API_TOKEN not configured"}
     async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(
-            f"{_api_base()}{path}", headers=headers, params=params
-        )
+        resp = await client.get(f"{_api_base()}{path}", headers=headers, params=params)
         try:
             body = resp.json()
         except Exception:
@@ -107,18 +105,12 @@ class HitlGetMyBucketStateTool(BaseTool):
                 },
             )
             if status != 200 or not isinstance(body, dict):
-                msg = (
-                    body.get("detail") if isinstance(body, dict) else str(body)
-                )
+                msg = body.get("detail") if isinstance(body, dict) else str(body)
                 return ToolResult(
                     success=False,
                     error=f"hitl confidence read failed: HTTP {status}: {msg}",
                 )
-            matches = [
-                b
-                for b in (body.get("buckets") or [])
-                if b.get("agent_id") == agent_id
-            ]
+            matches = [b for b in (body.get("buckets") or []) if b.get("agent_id") == agent_id]
             if not matches:
                 return ToolResult(
                     success=True,
@@ -177,13 +169,9 @@ class HitlGetEffectiveTierTool(BaseTool):
         try:
             bucket_key = str(kwargs["bucket_key"])
             nonce = kwargs.get("decision_nonce")
-            status, body = await _get(
-                "/api/v1/hitl/confidence", params={"limit": 500}
-            )
+            status, body = await _get("/api/v1/hitl/confidence", params={"limit": 500})
             if status != 200 or not isinstance(body, dict):
-                msg = (
-                    body.get("detail") if isinstance(body, dict) else str(body)
-                )
+                msg = body.get("detail") if isinstance(body, dict) else str(body)
                 return ToolResult(
                     success=False,
                     error=f"hitl confidence read failed: HTTP {status}: {msg}",
@@ -259,13 +247,9 @@ class HitlRecentDecisionsTool(BaseTool):
                 "action_category": str(kwargs["action_category"]),
                 "limit": int(kwargs.get("limit", 50)),
             }
-            status, body = await _get(
-                "/api/v1/hitl/decisions", params=params
-            )
+            status, body = await _get("/api/v1/hitl/decisions", params=params)
             if status != 200 or not isinstance(body, dict):
-                msg = (
-                    body.get("detail") if isinstance(body, dict) else str(body)
-                )
+                msg = body.get("detail") if isinstance(body, dict) else str(body)
                 return ToolResult(
                     success=False,
                     error=f"hitl decisions read failed: HTTP {status}: {msg}",
@@ -310,13 +294,9 @@ class HitlWhyAskedTool(BaseTool):
         try:
             decision_id = str(kwargs["decision_id"])
             # Fetch recent decisions and scan for the id.
-            status, body = await _get(
-                "/api/v1/hitl/decisions", params={"limit": 500}
-            )
+            status, body = await _get("/api/v1/hitl/decisions", params={"limit": 500})
             if status != 200 or not isinstance(body, dict):
-                msg = (
-                    body.get("detail") if isinstance(body, dict) else str(body)
-                )
+                msg = body.get("detail") if isinstance(body, dict) else str(body)
                 return ToolResult(
                     success=False,
                     error=f"hitl decisions read failed: HTTP {status}: {msg}",
@@ -333,9 +313,7 @@ class HitlWhyAskedTool(BaseTool):
                 )
             bucket_key = decision.get("bucket_key")
             # Now fetch the bucket state.
-            b_status, b_body = await _get(
-                "/api/v1/hitl/confidence", params={"limit": 500}
-            )
+            b_status, b_body = await _get("/api/v1/hitl/confidence", params={"limit": 500})
             bucket = None
             if b_status == 200 and isinstance(b_body, dict):
                 for b in b_body.get("buckets") or []:
@@ -358,30 +336,19 @@ class HitlWhyAskedTool(BaseTool):
             return ToolResult(success=False, error=str(e))
 
 
-def _build_narrative(
-    decision: dict[str, Any], bucket: dict[str, Any] | None
-) -> str:
+def _build_narrative(decision: dict[str, Any], bucket: dict[str, Any] | None) -> str:
     """Assemble a one-line 'why asked' narrative from decision+bucket."""
     # Sprint 2 promotion threshold from selva_permissions default.
     promotion_min_observed = 10
     lcb_threshold = 0.70
     if bucket is None:
-        return (
-            f"first-observation: no prior rows for bucket "
-            f"{decision.get('bucket_key')}"
-        )
+        return f"first-observation: no prior rows for bucket {decision.get('bucket_key')}"
     n_observed = int(bucket.get("n_observed", 0))
     if n_observed < promotion_min_observed:
-        return (
-            f"sample-limited: {n_observed}/{promotion_min_observed} "
-            f"required observations"
-        )
+        return f"sample-limited: {n_observed}/{promotion_min_observed} required observations"
     confidence = float(bucket.get("confidence", 0.0))
     if confidence < lcb_threshold:
-        return (
-            f"LCB {confidence:.2f} below {lcb_threshold:.2f} threshold "
-            f"(n={n_observed})"
-        )
+        return f"LCB {confidence:.2f} below {lcb_threshold:.2f} threshold (n={n_observed})"
     return (
         f"tier={bucket.get('tier')} n={n_observed} "
         f"confidence={confidence:.2f} — check locked_until if ASK is unexpected"

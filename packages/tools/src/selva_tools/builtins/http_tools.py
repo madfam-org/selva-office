@@ -58,9 +58,7 @@ def _validate_url(url: str) -> str:
         ip = ipaddress.ip_address(sockaddr[0])
         for network in _BLOCKED_NETWORKS:
             if ip in network:
-                raise ValueError(
-                    f"Hostname resolves to a private/reserved IP address: {hostname}"
-                )
+                raise ValueError(f"Hostname resolves to a private/reserved IP address: {hostname}")
 
     return url
 
@@ -270,9 +268,7 @@ class WebhookSendTool(BaseTool):
         body_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
         if secret:
-            signature = hmac.new(
-                secret.encode("utf-8"), body_bytes, hashlib.sha256
-            ).hexdigest()
+            signature = hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256).hexdigest()
             headers["X-Signature"] = f"sha256={signature}"
 
         try:

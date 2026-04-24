@@ -324,9 +324,7 @@ class TestRFCValidation:
             "nexus_api.routers.tenants._validate_rfc_with_karafiel",
             side_effect=_mock_validate_karafiel,
         ):
-            resp = await _create_tenant(
-                client, auth_headers, rfc="XAXX010101000"
-            )
+            resp = await _create_tenant(client, auth_headers, rfc="XAXX010101000")
             assert resp.status_code == 400
             assert "Karafiel" in resp.json()["detail"]
 
@@ -436,9 +434,7 @@ class TestBranding:
         assert data["brand_primary_color"] == "#1a2b3c"
 
         # Verify via GET
-        get_resp = await client.get(
-            f"{_TENANTS_URL}/me/branding", headers=auth_headers
-        )
+        get_resp = await client.get(f"{_TENANTS_URL}/me/branding", headers=auth_headers)
         assert get_resp.status_code == 200
         assert get_resp.json()["brand_name"] == "MADFAM Hub"
 

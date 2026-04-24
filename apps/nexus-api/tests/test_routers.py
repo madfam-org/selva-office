@@ -179,9 +179,7 @@ class TestCreateApproval:
         assert body["payload"] == {}
         assert body["diff"] is None
 
-    async def test_create_approval_invalid_agent_id(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_create_approval_invalid_agent_id(self, client: httpx.AsyncClient) -> None:
         """An invalid agent_id UUID returns 400."""
         payload = {
             "agent_id": "not-a-uuid",
@@ -204,9 +202,7 @@ class TestCreateApproval:
         resp = await client.post("/api/v1/approvals/", json=payload)
         assert resp.status_code == 422
 
-    async def test_create_approval_missing_required_fields(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_create_approval_missing_required_fields(self, client: httpx.AsyncClient) -> None:
         """Omitting required fields returns 422."""
         resp = await client.post("/api/v1/approvals/", json={})
         assert resp.status_code == 422
@@ -266,18 +262,14 @@ class TestListApprovals:
             },
         )
         approval_id = create_resp.json()["id"]
-        await client.post(
-            f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers
-        )
+        await client.post(f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers)
 
         # The pending list should be empty now.
         resp = await client.get("/api/v1/approvals/", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json() == []
 
-    async def test_list_approvals_requires_auth(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_list_approvals_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Listing pending approvals requires authentication."""
         resp = await client.get("/api/v1/approvals/")
         assert resp.status_code in (401, 403)
@@ -400,14 +392,10 @@ class TestApproveRequest:
         approval_id = create_resp.json()["id"]
 
         # First approval succeeds.
-        await client.post(
-            f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers
-        )
+        await client.post(f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers)
 
         # Second approval returns conflict.
-        resp = await client.post(
-            f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers
-        )
+        resp = await client.post(f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers)
         assert resp.status_code == 409
 
     async def test_approve_nonexistent_request(
@@ -417,9 +405,7 @@ class TestApproveRequest:
     ) -> None:
         """Approving a non-existent request returns 404."""
         fake_id = str(uuid.uuid4())
-        resp = await client.post(
-            f"/api/v1/approvals/{fake_id}/approve", headers=auth_headers
-        )
+        resp = await client.post(f"/api/v1/approvals/{fake_id}/approve", headers=auth_headers)
         assert resp.status_code == 404
 
     async def test_approve_requires_auth(
@@ -490,13 +476,9 @@ class TestDenyRequest:
             },
         )
         approval_id = create_resp.json()["id"]
-        await client.post(
-            f"/api/v1/approvals/{approval_id}/deny", headers=auth_headers
-        )
+        await client.post(f"/api/v1/approvals/{approval_id}/deny", headers=auth_headers)
 
-        resp = await client.post(
-            f"/api/v1/approvals/{approval_id}/deny", headers=auth_headers
-        )
+        resp = await client.post(f"/api/v1/approvals/{approval_id}/deny", headers=auth_headers)
         assert resp.status_code == 409
 
     async def test_deny_requires_auth(
@@ -534,13 +516,9 @@ class TestDenyRequest:
             },
         )
         approval_id = create_resp.json()["id"]
-        await client.post(
-            f"/api/v1/approvals/{approval_id}/deny", headers=auth_headers
-        )
+        await client.post(f"/api/v1/approvals/{approval_id}/deny", headers=auth_headers)
 
-        resp = await client.post(
-            f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers
-        )
+        resp = await client.post(f"/api/v1/approvals/{approval_id}/approve", headers=auth_headers)
         assert resp.status_code == 409
 
 
@@ -572,9 +550,7 @@ class TestSkillsList:
         self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Filtering by tier=core returns only core skills."""
-        resp = await client.get(
-            "/api/v1/skills/", params={"tier": "core"}, headers=auth_headers
-        )
+        resp = await client.get("/api/v1/skills/", params={"tier": "core"}, headers=auth_headers)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -603,14 +579,10 @@ class TestCommunitySkillsToggle:
         self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Enabling community skills returns 204 and status flips to true."""
-        resp = await client.post(
-            "/api/v1/skills/community/enable", headers=auth_headers
-        )
+        resp = await client.post("/api/v1/skills/community/enable", headers=auth_headers)
         assert resp.status_code == 204
 
-        status_resp = await client.get(
-            "/api/v1/skills/community/status", headers=auth_headers
-        )
+        status_resp = await client.get("/api/v1/skills/community/status", headers=auth_headers)
         assert status_resp.json()["enabled"] is True
 
     async def test_disable_community(
@@ -618,33 +590,23 @@ class TestCommunitySkillsToggle:
     ) -> None:
         """Disabling community skills returns 204 and status flips to false."""
         await client.post("/api/v1/skills/community/enable", headers=auth_headers)
-        resp = await client.post(
-            "/api/v1/skills/community/disable", headers=auth_headers
-        )
+        resp = await client.post("/api/v1/skills/community/disable", headers=auth_headers)
         assert resp.status_code == 204
 
-        status_resp = await client.get(
-            "/api/v1/skills/community/status", headers=auth_headers
-        )
+        status_resp = await client.get("/api/v1/skills/community/status", headers=auth_headers)
         assert status_resp.json()["enabled"] is False
 
-    async def test_community_enable_requires_auth(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_community_enable_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Enabling community skills requires authentication."""
         resp = await client.post("/api/v1/skills/community/enable")
         assert resp.status_code in (401, 403)
 
-    async def test_community_disable_requires_auth(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_community_disable_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Disabling community skills requires authentication."""
         resp = await client.post("/api/v1/skills/community/disable")
         assert resp.status_code in (401, 403)
 
-    async def test_community_status_requires_auth(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_community_status_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Community status endpoint requires authentication."""
         resp = await client.get("/api/v1/skills/community/status")
         assert resp.status_code in (401, 403)

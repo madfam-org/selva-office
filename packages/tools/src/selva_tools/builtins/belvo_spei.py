@@ -66,9 +66,7 @@ async def _request(
 ) -> tuple[int, dict[str, Any] | list[Any] | str]:
     url = f"{_base_url()}{path}"
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.request(
-            method, url, auth=_auth(), json=json_body, params=params
-        )
+        resp = await client.request(method, url, auth=_auth(), json=json_body, params=params)
         try:
             body = resp.json()
         except Exception:
@@ -82,12 +80,7 @@ def _err(status: int, body: Any) -> str:
         first = body[0]
         return first.get("message") or first.get("detail") or str(first)
     if isinstance(body, dict):
-        return (
-            body.get("detail")
-            or body.get("message")
-            or body.get("error")
-            or str(body)
-        )
+        return body.get("detail") or body.get("message") or body.get("error") or str(body)
     return f"HTTP {status}: {body}"
 
 
@@ -178,9 +171,7 @@ class SpeiTransferInitiateTool(BaseTool):
             "currency": "MXN",
         }
         try:
-            status, body = await _request(
-                "POST", "/payments/transfers/", json_body=payload
-            )
+            status, body = await _request("POST", "/payments/transfers/", json_body=payload)
             if status >= 400 or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
@@ -234,9 +225,7 @@ class SpeiTransferStatusTool(BaseTool):
             return ToolResult(success=False, error=err)
         tid = kwargs["transaction_id"]
         try:
-            status, body = await _request(
-                "GET", f"/payments/transfers/{tid}/"
-            )
+            status, body = await _request("GET", f"/payments/transfers/{tid}/")
             if status >= 400 or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
@@ -303,16 +292,13 @@ class SpeiBeneficiaryCreateTool(BaseTool):
         if kwargs.get("rfc"):
             payload["rfc"] = kwargs["rfc"]
         try:
-            status, body = await _request(
-                "POST", "/payments/beneficiaries/", json_body=payload
-            )
+            status, body = await _request("POST", "/payments/beneficiaries/", json_body=payload)
             if status >= 400 or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
                 output=(
-                    f"Beneficiary recorded: id={body.get('id')} "
-                    f"clabe={clabe} name={kwargs['name']}"
+                    f"Beneficiary recorded: id={body.get('id')} clabe={clabe} name={kwargs['name']}"
                 ),
                 data={
                     "beneficiary_id": body.get("id"),
@@ -356,9 +342,7 @@ class SpeiAccountBalanceTool(BaseTool):
             return ToolResult(success=False, error=err)
         link_id = kwargs["account_link_id"]
         try:
-            status, body = await _request(
-                "GET", "/api/accounts/", params={"link": link_id}
-            )
+            status, body = await _request("GET", "/api/accounts/", params={"link": link_id})
             if status >= 400:
                 return ToolResult(success=False, error=_err(status, body))
             # Accounts endpoint can return a list or paged dict depending on
@@ -390,10 +374,7 @@ class SpeiAccountBalanceTool(BaseTool):
                     currencies.add(acct["currency"])
             return ToolResult(
                 success=True,
-                output=(
-                    f"Link {link_id}: current={current:.2f} "
-                    f"available={available:.2f} MXN"
-                ),
+                output=(f"Link {link_id}: current={current:.2f} available={available:.2f} MXN"),
                 data={
                     "account_link_id": link_id,
                     "current": round(current, 2),
@@ -445,9 +426,7 @@ class SpeiTransactionListTool(BaseTool):
             "page_size": min(int(kwargs.get("limit", 100)), 1000),
         }
         try:
-            status, body = await _request(
-                "GET", "/api/transactions/", params=params
-            )
+            status, body = await _request("GET", "/api/transactions/", params=params)
             if status >= 400:
                 return ToolResult(success=False, error=_err(status, body))
             if isinstance(body, dict) and "results" in body:

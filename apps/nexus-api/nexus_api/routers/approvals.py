@@ -96,9 +96,7 @@ async def _get_request_or_404(request_id: str, db: AsyncSession) -> ApprovalRequ
     try:
         uid = uuid.UUID(request_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID") from exc
 
     result = await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == uid))
     approval_req = result.scalar_one_or_none()
@@ -157,7 +155,8 @@ async def _respond_to_request(
         )
     except Exception:
         logging.getLogger(__name__).debug(
-            "Failed to emit approval event", exc_info=True,
+            "Failed to emit approval event",
+            exc_info=True,
         )
 
     return response_data
@@ -180,9 +179,7 @@ async def list_pending_approvals(
     base_stmt = select(ApprovalRequest).where(ApprovalRequest.status == "pending")
 
     # Total count
-    count_result = await db.execute(
-        select(func.count()).select_from(base_stmt.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
     total = count_result.scalar_one()
 
     # Paginated results
@@ -264,7 +261,10 @@ async def approve_request(
     """Approve a pending request (the Tactician presses 'A')."""
     feedback = body.feedback if body else None
     result = await _respond_to_request(
-        request_id, "approved", feedback, db,
+        request_id,
+        "approved",
+        feedback,
+        db,
         responded_by=user.get("sub"),
     )
 
@@ -272,10 +272,14 @@ async def approve_request(
     try:
         from nexus_api.analytics import track
 
-        track(str(user.get("sub", "")), "selva_approval_responded", {
-            "action": "approved",
-            "task_id": result.id,
-        })
+        track(
+            str(user.get("sub", "")),
+            "selva_approval_responded",
+            {
+                "action": "approved",
+                "task_id": result.id,
+            },
+        )
     except Exception:
         pass
 
@@ -296,7 +300,10 @@ async def deny_request(
     """Deny a pending request with optional feedback (the Tactician presses 'B')."""
     feedback = body.feedback if body else None
     result = await _respond_to_request(
-        request_id, "denied", feedback, db,
+        request_id,
+        "denied",
+        feedback,
+        db,
         responded_by=user.get("sub"),
     )
 
@@ -304,10 +311,14 @@ async def deny_request(
     try:
         from nexus_api.analytics import track
 
-        track(str(user.get("sub", "")), "selva_approval_responded", {
-            "action": "denied",
-            "task_id": result.id,
-        })
+        track(
+            str(user.get("sub", "")),
+            "selva_approval_responded",
+            {
+                "action": "denied",
+                "task_id": result.id,
+            },
+        )
     except Exception:
         pass
 
@@ -404,17 +415,17 @@ async def _handle_wave(wave_data: dict[str, Any]) -> None:
             await session.flush()
             await session.refresh(task)
 
-            task_msg = json.dumps({
-                "task_id": str(task.id),
-                "graph_type": graph_type,
-                "description": task.description,
-                "payload": payload,
-                "assigned_agent_ids": [],
-            })
+            task_msg = json.dumps(
+                {
+                    "task_id": str(task.id),
+                    "graph_type": graph_type,
+                    "description": task.description,
+                    "payload": payload,
+                    "assigned_agent_ids": [],
+                }
+            )
             try:
-                await pool.execute_with_retry(
-                    "xadd", "autoswarm:task-stream", {"data": task_msg}
-                )
+                await pool.execute_with_retry("xadd", "autoswarm:task-stream", {"data": task_msg})
             except Exception:
                 _wave_logger.warning("Redis unavailable for wave task %s", task.id)
             created += 1
@@ -422,9 +433,11 @@ async def _handle_wave(wave_data: dict[str, Any]) -> None:
         await session.commit()
 
     if created > 0:
-        await manager.broadcast({
-            "type": "wave_incoming",
-            "source": source,
-            "task_count": created,
-        })
+        await manager.broadcast(
+            {
+                "type": "wave_incoming",
+                "source": source,
+                "task_count": created,
+            }
+        )
         _wave_logger.info("Wave from %s: created %d tasks", source, created)

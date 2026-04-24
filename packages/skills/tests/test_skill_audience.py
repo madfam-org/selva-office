@@ -54,20 +54,14 @@ class TestRegistryFilter:
 
     def test_tenant_audience_hides_platform_skills(self) -> None:
         reg = get_skill_registry()
-        tenant_visible = {
-            s.name for s in reg.list_skills(audience=SkillAudience.TENANT)
-        }
+        tenant_visible = {s.name for s in reg.list_skills(audience=SkillAudience.TENANT)}
         leaked = tenant_visible & PLATFORM_SKILLS
-        assert not leaked, (
-            f"Platform skills visible to tenant audience: {leaked}"
-        )
+        assert not leaked, f"Platform skills visible to tenant audience: {leaked}"
 
     def test_platform_audience_sees_all_skills(self) -> None:
         reg = get_skill_registry()
         all_names = {s.name for s in reg.list_skills()}
-        platform_names = {
-            s.name for s in reg.list_skills(audience=SkillAudience.PLATFORM)
-        }
+        platform_names = {s.name for s in reg.list_skills(audience=SkillAudience.PLATFORM)}
         assert all_names == platform_names
 
 

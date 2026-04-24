@@ -51,15 +51,11 @@ def _check_credentials() -> str | None:
     return None
 
 
-async def _request(
-    method: str, path: str, json: dict[str, Any] | None = None
-) -> dict[str, Any]:
+async def _request(method: str, path: str, json: dict[str, Any] | None = None) -> dict[str, Any]:
     """Make a request to the Cloudflare API and return the parsed body."""
     url = f"{CF_API_BASE}/{path.lstrip('/')}"
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.request(
-            method, url, headers=_auth_headers(), json=json
-        )
+        resp = await client.request(method, url, headers=_auth_headers(), json=json)
         return resp.json()
 
 
@@ -121,16 +117,13 @@ class CloudflareCreateZoneTool(BaseTool):
                 },
             )
             if not body.get("success"):
-                return ToolResult(
-                    success=False, error=f"cloudflare: {_fmt_errors(body)}"
-                )
+                return ToolResult(success=False, error=f"cloudflare: {_fmt_errors(body)}")
             result = body.get("result") or {}
             ns = result.get("name_servers") or []
             return ToolResult(
                 success=True,
                 output=(
-                    f"Zone created: {domain} ({result.get('id')}). "
-                    f"Assigned NS: {', '.join(ns)}"
+                    f"Zone created: {domain} ({result.get('id')}). Assigned NS: {', '.join(ns)}"
                 ),
                 data={
                     "zone_id": result.get("id"),
@@ -182,9 +175,7 @@ class CloudflareListZonesTool(BaseTool):
         try:
             body = await _request("GET", path)
             if not body.get("success"):
-                return ToolResult(
-                    success=False, error=f"cloudflare: {_fmt_errors(body)}"
-                )
+                return ToolResult(success=False, error=f"cloudflare: {_fmt_errors(body)}")
             zones = body.get("result") or []
             summary = [
                 {
@@ -231,8 +222,7 @@ class CloudflareCreateDnsRecordTool(BaseTool):
                 },
                 "name": {
                     "type": "string",
-                    "description": "Record name (e.g. 'www' or '@' for apex "
-                    "or '*' for wildcard).",
+                    "description": "Record name (e.g. 'www' or '@' for apex or '*' for wildcard).",
                 },
                 "content": {"type": "string", "description": "Record value."},
                 "proxied": {
@@ -265,13 +255,9 @@ class CloudflareCreateDnsRecordTool(BaseTool):
         if kwargs.get("priority") is not None:
             payload["priority"] = kwargs["priority"]
         try:
-            body = await _request(
-                "POST", f"zones/{zone_id}/dns_records", json=payload
-            )
+            body = await _request("POST", f"zones/{zone_id}/dns_records", json=payload)
             if not body.get("success"):
-                return ToolResult(
-                    success=False, error=f"cloudflare: {_fmt_errors(body)}"
-                )
+                return ToolResult(success=False, error=f"cloudflare: {_fmt_errors(body)}")
             result = body.get("result") or {}
             return ToolResult(
                 success=True,
@@ -313,9 +299,7 @@ class CloudflareListDnsRecordsTool(BaseTool):
         try:
             body = await _request("GET", f"zones/{zone_id}/dns_records?per_page=100")
             if not body.get("success"):
-                return ToolResult(
-                    success=False, error=f"cloudflare: {_fmt_errors(body)}"
-                )
+                return ToolResult(success=False, error=f"cloudflare: {_fmt_errors(body)}")
             records = body.get("result") or []
             return ToolResult(
                 success=True,
@@ -410,20 +394,13 @@ class CloudflareCreateRedirectRuleTool(BaseTool):
             "status": "active",
         }
         try:
-            body = await _request(
-                "POST", f"zones/{zone_id}/pagerules", json=payload
-            )
+            body = await _request("POST", f"zones/{zone_id}/pagerules", json=payload)
             if not body.get("success"):
-                return ToolResult(
-                    success=False, error=f"cloudflare: {_fmt_errors(body)}"
-                )
+                return ToolResult(success=False, error=f"cloudflare: {_fmt_errors(body)}")
             result = body.get("result") or {}
             return ToolResult(
                 success=True,
-                output=(
-                    f"Page Rule created: *{domain}/* → {target}/$2 "
-                    f"({status})"
-                ),
+                output=(f"Page Rule created: *{domain}/* → {target}/$2 ({status})"),
                 data={
                     "rule_id": result.get("id"),
                     "priority": result.get("priority"),
@@ -456,9 +433,7 @@ class CloudflareListPageRulesTool(BaseTool):
         try:
             body = await _request("GET", f"zones/{zone_id}/pagerules")
             if not body.get("success"):
-                return ToolResult(
-                    success=False, error=f"cloudflare: {_fmt_errors(body)}"
-                )
+                return ToolResult(success=False, error=f"cloudflare: {_fmt_errors(body)}")
             rules = body.get("result") or []
             return ToolResult(
                 success=True,

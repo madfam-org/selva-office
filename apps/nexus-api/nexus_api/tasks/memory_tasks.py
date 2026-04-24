@@ -5,6 +5,7 @@ Periodically reads old FTS5 transcript rows, invokes madfam_inference to
 produce a compressed structured summary, and replaces the verbose rows with
 the distilled version — mirroring Hermes Agent's memory compression loop.
 """
+
 from __future__ import annotations
 
 import logging
@@ -87,6 +88,7 @@ async def compact_memory(retention_days: int = 30) -> dict:
     try:
         from madfam_inference import get_default_router  # type: ignore[attr-defined]
         from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
+
         router = get_default_router()
         llm_available = True
     except Exception:
@@ -102,10 +104,12 @@ async def compact_memory(retention_days: int = 30) -> dict:
         if llm_available:
             try:
                 request = InferenceRequest(
-                    messages=[{
-                        "role": "user",
-                        "content": SUMMARIZE_PROMPT.format(transcript=raw[:4000]),
-                    }],
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": SUMMARIZE_PROMPT.format(transcript=raw[:4000]),
+                        }
+                    ],
                     system_prompt="You are a concise technical summarizer. Output plain text only.",
                     policy=RoutingPolicy(
                         sensitivity=Sensitivity.CONFIDENTIAL,

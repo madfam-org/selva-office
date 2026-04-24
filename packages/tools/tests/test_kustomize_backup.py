@@ -19,7 +19,6 @@ from selva_tools.builtins.kustomize import (
     get_kustomize_tools,
 )
 
-
 # -- Kustomize --------------------------------------------------------------
 
 
@@ -185,7 +184,7 @@ class TestBackupTrigger:
 class TestBackupInfo:
     @pytest.mark.asyncio
     async def test_parses_json_output(self) -> None:
-        sample = """[{"name":"main","db":[{"id":1}],"backup":[{"label":"20260418-0200F"},{"label":"20260418-0800D"}]}]"""
+        sample = """[{"name":"main","db":[{"id":1}],"backup":[{"label":"20260418-0200F"},{"label":"20260418-0800D"}]}]"""  # noqa: E501
         with patch(
             "selva_tools.builtins.backup_ops._exec_in_pgbackrest",
             new=AsyncMock(return_value=(True, sample)),

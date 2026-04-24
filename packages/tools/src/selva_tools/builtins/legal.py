@@ -21,8 +21,7 @@ class ContractGenerateTool(BaseTool):
                 "contract_type": {
                     "type": "string",
                     "description": (
-                        "Contract type: nda, prestacion_servicios, "
-                        "compraventa, arrendamiento"
+                        "Contract type: nda, prestacion_servicios, compraventa, arrendamiento"
                     ),
                     "enum": [
                         "nda",
@@ -66,9 +65,7 @@ class ContractGenerateTool(BaseTool):
         locale: str = kwargs.get("locale", "es-MX")
 
         if not contract_type or not parties:
-            return ToolResult(
-                success=False, error="contract_type and parties are required"
-            )
+            return ToolResult(success=False, error="contract_type and parties are required")
 
         adapter = KarafielAdapter()
         try:
@@ -159,9 +156,7 @@ class REPSECheckTool(BaseTool):
 
 class LawSearchTool(BaseTool):
     name = "law_search"
-    description = (
-        "Search Mexican laws and regulations via the Tezca legal intelligence API"
-    )
+    description = "Search Mexican laws and regulations via the Tezca legal intelligence API"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -199,9 +194,7 @@ class LawSearchTool(BaseTool):
                 data={"articles": [], "count": 0},
             )
 
-        summaries = [
-            f"{a.ley} Art. {a.articulo}: {a.titulo}" for a in articles
-        ]
+        summaries = [f"{a.ley} Art. {a.articulo}: {a.titulo}" for a in articles]
         return ToolResult(
             success=True,
             output=f"Found {len(articles)} article(s):\n" + "\n".join(summaries),
@@ -256,9 +249,7 @@ class ComplianceCheckTool(BaseTool):
         result = await adapter.check_compliance(domain=domain, context=context)
 
         status_label = "compliant" if result.compliant else "non-compliant"
-        issues_text = (
-            f" Issues: {', '.join(result.issues)}" if result.issues else ""
-        )
+        issues_text = f" Issues: {', '.join(result.issues)}" if result.issues else ""
         return ToolResult(
             success=True,
             output=f"Compliance check ({domain}): {status_label}.{issues_text}",

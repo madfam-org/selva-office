@@ -43,10 +43,10 @@ logger = logging.getLogger(__name__)
 # Event names for the attribution funnel. Centralised here so downstream
 # repos (phyne-crm, dhanam) can import the same constants once this
 # module is re-exported via a shared package.
-EVENT_LEAD_CAPTURED = "lead.captured"        # emitted by phyne-crm
-EVENT_LEAD_QUALIFIED = "lead.qualified"      # emitted here
-EVENT_PLAYBOOK_SENT = "playbook.sent"        # emitted here
-EVENT_CHECKOUT_COMPLETED = "checkout.completed"    # emitted by dhanam
+EVENT_LEAD_CAPTURED = "lead.captured"  # emitted by phyne-crm
+EVENT_LEAD_QUALIFIED = "lead.qualified"  # emitted here
+EVENT_PLAYBOOK_SENT = "playbook.sent"  # emitted here
+EVENT_CHECKOUT_COMPLETED = "checkout.completed"  # emitted by dhanam
 EVENT_SUBSCRIPTION_CREATED = "subscription.created"  # emitted by dhanam
 
 

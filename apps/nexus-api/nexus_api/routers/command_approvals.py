@@ -8,6 +8,7 @@ Also emits HITL-confidence decisions (Sprint 1 — observe only): every
 approve/deny here becomes a row in ``hitl_decisions`` so the confidence
 dashboard can grow statistics without any change in enforcement.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -40,6 +41,7 @@ router = APIRouter(prefix="/command-approvals", tags=["Command Approvals"])
 # Schemas
 # ---------------------------------------------------------------------------
 
+
 class ApprovalRequestResponse(BaseModel):
     id: str
     run_id: str
@@ -57,6 +59,7 @@ class ApprovalRequestResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/pending", response_model=list[ApprovalRequestResponse])
 async def list_pending(
@@ -96,6 +99,7 @@ async def deny_command(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 async def _resolve(
     request_id: str, approved: bool, user: CurrentUser, db: AsyncSession
 ) -> ApprovalRequestResponse:
@@ -131,6 +135,7 @@ async def _resolve(
 
     # Notify the in-process approval store
     from selva_tools.approval import resolve_approval
+
     resolve_approval(request_id, approved, resolved_by=user.sub)
 
     logger.info("Approval %s %s by %s", request_id, req.status, user.sub)
@@ -160,9 +165,8 @@ async def _record_confidence_decision(
         requested = request.requested_at
         if requested.tzinfo is None:
             # Defensive: older rows may have naive timestamps.
-            from datetime import timezone
 
-            requested = requested.replace(tzinfo=timezone.utc)
+            requested = requested.replace(tzinfo=UTC)
         latency_ms = int((decided_at - requested).total_seconds() * 1000)
 
     action_category = "infrastructure_exec"  # command-approvals gate dangerous commands
@@ -178,13 +182,9 @@ async def _record_confidence_decision(
         context_signature=signature,
     )
     _, state = await _load_bucket_state(db, bucket_key)
-    outcome = (
-        DecisionOutcome.APPROVED_CLEAN if approved else DecisionOutcome.REJECTED
-    )
+    outcome = DecisionOutcome.APPROVED_CLEAN if approved else DecisionOutcome.REJECTED
     next_state = apply_decision(state, outcome)
-    payload_hash = hashlib.sha256(
-        (request.command or "").encode("utf-8")
-    ).hexdigest()
+    payload_hash = hashlib.sha256((request.command or "").encode("utf-8")).hexdigest()
     await _persist_decision_and_bucket(
         db,
         agent_id=request.run_id,

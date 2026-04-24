@@ -17,9 +17,8 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import UTC, datetime
-from typing import Any
-
 from functools import lru_cache
+from typing import Any
 
 from sqlalchemy import and_, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker

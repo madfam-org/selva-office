@@ -44,7 +44,10 @@ async def test_create_pr_passes_token_via_env():
     git_tool.bash.execute = mock_execute
 
     await git_tool.create_pr(
-        "/tmp/repo", "feature/test", "Test PR", "Test body",
+        "/tmp/repo",
+        "feature/test",
+        "Test PR",
+        "Test body",
         token="ghp_test_token_123",
     )
 
@@ -69,7 +72,10 @@ async def test_create_pr_without_token():
     git_tool.bash.execute = mock_execute
 
     await git_tool.create_pr(
-        "/tmp/repo", "feature/test", "Test PR", "Test body",
+        "/tmp/repo",
+        "feature/test",
+        "Test PR",
+        "Test body",
     )
 
     # No GH_TOKEN should be in env

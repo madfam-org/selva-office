@@ -140,9 +140,7 @@ class TestClassifyAndEvaluate:
 
     def test_full_flow_with_custom_engine(self, classifier: ActionClassifier) -> None:
         """A custom PermissionEngine with overrides should be honoured."""
-        engine = PermissionEngine(
-            overrides={ActionCategory.BASH_EXECUTE: PermissionLevel.ALLOW}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.BASH_EXECUTE: PermissionLevel.ALLOW})
         result = classifier.classify_and_evaluate("bash", engine=engine)
         assert result.action_category == ActionCategory.BASH_EXECUTE
         assert result.level == PermissionLevel.ALLOW
@@ -156,9 +154,7 @@ class TestClassifyAndEvaluate:
         # API_CALL is ALLOW by default
         assert result.level == PermissionLevel.ALLOW
 
-    def test_full_flow_deploy_requires_approval(
-        self, classifier: ActionClassifier
-    ) -> None:
+    def test_full_flow_deploy_requires_approval(self, classifier: ActionClassifier) -> None:
         result = classifier.classify_and_evaluate("deploy")
         assert result.action_category == ActionCategory.DEPLOY
         assert result.level == PermissionLevel.ASK

@@ -42,9 +42,7 @@ class InvoiceRequest(BaseModel):
         default=None, description="Override emisor RFC (defaults to org config)"
     )
     customer_email: str | None = Field(default=None, description="Email for invoice delivery")
-    customer_phone: str | None = Field(
-        default=None, description="Phone for WhatsApp delivery"
-    )
+    customer_phone: str | None = Field(default=None, description="Phone for WhatsApp delivery")
 
 
 class InvoiceDispatchResponse(BaseModel):

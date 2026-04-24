@@ -10,7 +10,7 @@ import pytest
 
 from selva_skills.refiner import RefinerMetrics, SkillRefiner
 
-VALID_SKILL = textwrap.dedent('''\
+VALID_SKILL = textwrap.dedent("""\
     SKILL_SCHEMA_VERSION = "agentskills/v1"
     SKILL_VERSION = "1.0.0"
     SKILL_AUTHOR = "autoswarm-qa-oracle"
@@ -20,9 +20,9 @@ VALID_SKILL = textwrap.dedent('''\
 
     def SKILL_ENTRYPOINT(*args, **kwargs):
         return "ok"
-''')
+""")
 
-BROKEN_SKILL = textwrap.dedent('''\
+BROKEN_SKILL = textwrap.dedent("""\
     SKILL_SCHEMA_VERSION = "agentskills/v1"
     SKILL_VERSION = "1.0.0"
     SKILL_AUTHOR = "autoswarm-qa-oracle"
@@ -32,7 +32,7 @@ BROKEN_SKILL = textwrap.dedent('''\
 
     def SKILL_ENTRYPOINT(*args, **kwargs):
         raise RuntimeError("intentional failure")
-''')
+""")
 
 
 @pytest.fixture()
@@ -78,13 +78,11 @@ class TestIterativeRefinement:
         assert call_count == 2
         # The file should now contain the valid code
         final_code = (skills_dir / "retry_skill.py").read_text()
-        assert "return \"ok\"" in final_code
+        assert 'return "ok"' in final_code
         # Metrics should reflect 2 iterations used
         assert refiner._metrics.total_iterations == 2
 
-    def test_iterative_refinement_gives_up_after_max_iterations(
-        self, skills_dir: Path
-    ) -> None:
+    def test_iterative_refinement_gives_up_after_max_iterations(self, skills_dir: Path) -> None:
         """When all iterations fail sandbox validation, return 'failed' and restore original."""
         _write(skills_dir, "hopeless_skill", BROKEN_SKILL)
         refiner = SkillRefiner(skills_dir=str(skills_dir), max_iterations=3)

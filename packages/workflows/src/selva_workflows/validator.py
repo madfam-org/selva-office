@@ -49,9 +49,7 @@ class WorkflowValidator:
 
         return result
 
-    def _check_unique_ids(
-        self, nodes: list[NodeDefinition], result: ValidationResult
-    ) -> None:
+    def _check_unique_ids(self, nodes: list[NodeDefinition], result: ValidationResult) -> None:
         seen: set[str] = set()
         for node in nodes:
             if node.id in seen:
@@ -129,9 +127,7 @@ class WorkflowValidator:
                     )
                 )
 
-    def _check_cycles(
-        self, workflow: WorkflowDefinition, result: ValidationResult
-    ) -> None:
+    def _check_cycles(self, workflow: WorkflowDefinition, result: ValidationResult) -> None:
         """Detect cycles using DFS. Loop counter nodes are allowed to form cycles."""
         adjacency: dict[str, list[str]] = defaultdict(list)
         for edge in workflow.edges:
@@ -139,8 +135,7 @@ class WorkflowValidator:
 
         # Build set of loop counter / batch node IDs (cycles involving these are allowed)
         loop_nodes = {
-            n.id for n in workflow.nodes
-            if n.type in (NodeType.LOOP_COUNTER, NodeType.BATCH)
+            n.id for n in workflow.nodes if n.type in (NodeType.LOOP_COUNTER, NodeType.BATCH)
         }
 
         white, gray, black = 0, 1, 2

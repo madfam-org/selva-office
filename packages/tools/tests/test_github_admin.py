@@ -140,16 +140,12 @@ class _FakeGithubServer:
             if (org, slug) not in self.memberships:
                 return httpx.Response(404, json={"message": "Not Found"})
             filtered = [
-                {"login": e["login"]}
-                for e in self.memberships[(org, slug)]
-                if e["role"] == role
+                {"login": e["login"]} for e in self.memberships[(org, slug)] if e["role"] == role
             ]
             return httpx.Response(200, json=filtered)
 
         # PUT /orgs/{org}/teams/{team}/memberships/{username}
-        m = re.fullmatch(
-            r"/orgs/([^/]+)/teams/([^/]+)/memberships/([^/]+)", path
-        )
+        m = re.fullmatch(r"/orgs/([^/]+)/teams/([^/]+)/memberships/([^/]+)", path)
         if m and method == "PUT":
             org, slug, username = m.group(1), m.group(2), m.group(3)
             body = json.loads(request.content)
@@ -161,23 +157,17 @@ class _FakeGithubServer:
                 existing["role"] = role
             else:
                 members.append({"login": username, "role": role})
-            return httpx.Response(
-                200, json={"url": path, "role": role, "state": "active"}
-            )
+            return httpx.Response(200, json={"url": path, "role": role, "state": "active"})
 
         # DELETE /orgs/{org}/teams/{team}/memberships/{username}
         if m and method == "DELETE":
             org, slug, username = m.group(1), m.group(2), m.group(3)
             members = self.memberships.setdefault((org, slug), [])
-            self.memberships[(org, slug)] = [
-                e for e in members if e["login"] != username
-            ]
+            self.memberships[(org, slug)] = [e for e in members if e["login"] != username]
             return httpx.Response(204)
 
         # PUT /repos/{org}/{repo}/branches/{branch}/protection
-        m = re.fullmatch(
-            r"/repos/([^/]+)/([^/]+)/branches/([^/]+)/protection", path
-        )
+        m = re.fullmatch(r"/repos/([^/]+)/([^/]+)/branches/([^/]+)/protection", path)
         if m and method == "PUT":
             if self.next_branch_protection_status is not None:
                 status = self.next_branch_protection_status
@@ -190,9 +180,7 @@ class _FakeGithubServer:
                 200,
                 json={
                     "url": f"https://api.github.com{path}",
-                    "required_pull_request_reviews": rules.get(
-                        "required_pull_request_reviews"
-                    ),
+                    "required_pull_request_reviews": rules.get("required_pull_request_reviews"),
                 },
             )
 
@@ -246,12 +234,8 @@ def wire(
             },
         )
 
-    monkeypatch.setattr(
-        gh_admin_mod, "_read_github_pat", fake_read_pat, raising=True
-    )
-    monkeypatch.setattr(
-        gh_admin_mod, "_build_client", fake_build_client, raising=True
-    )
+    monkeypatch.setattr(gh_admin_mod, "_read_github_pat", fake_read_pat, raising=True)
+    monkeypatch.setattr(gh_admin_mod, "_build_client", fake_build_client, raising=True)
     monkeypatch.setattr(
         gh_admin_mod,
         "_audit_record",
@@ -298,8 +282,7 @@ async def test_create_team_asks_on_new_slug(
     gh = wire["gh"]
     assert ("GET", "/orgs/madfam-org/teams/platform") in gh.calls
     assert not any(
-        method == "POST" and path == "/orgs/madfam-org/teams"
-        for method, path in gh.calls
+        method == "POST" and path == "/orgs/madfam-org/teams" for method, path in gh.calls
     )
 
     # Exactly one pending_approval audit row.
@@ -339,9 +322,7 @@ async def test_create_team_idempotent_on_existing_slug(
     assert result.data["team_slug"] == "platform"
 
     # Never POSTed -- idempotency hit.
-    assert not any(
-        method == "POST" for method, _ in wire["gh"].calls
-    )
+    assert not any(method == "POST" for method, _ in wire["gh"].calls)
     # Audit row written with status=applied (no-op is still a successful outcome).
     rows = wire["spy"]["rows"]
     assert len(rows) == 1
@@ -416,9 +397,7 @@ async def test_create_team_missing_pat(
     monkeypatch: pytest.MonkeyPatch,
     audit_spy: dict[str, Any],
 ) -> None:
-    monkeypatch.setattr(
-        gh_admin_mod, "_read_github_pat", lambda: None, raising=True
-    )
+    monkeypatch.setattr(gh_admin_mod, "_read_github_pat", lambda: None, raising=True)
     monkeypatch.setattr(
         gh_admin_mod,
         "_audit_record",
@@ -592,10 +571,7 @@ async def test_set_branch_protection_always_ask_dual(
     assert result.data["status"] == "pending_approval"
     assert result.data["hitl_level"] == "ask_dual"
     # API never called yet -- ASK_DUAL holds.
-    assert not any(
-        method == "PUT" and "branches" in path
-        for method, path in wire["gh"].calls
-    )
+    assert not any(method == "PUT" and "branches" in path for method, path in wire["gh"].calls)
     rows = wire["spy"]["rows"]
     assert len(rows) == 1
     assert rows[0]["status"] == "pending_approval"
@@ -652,18 +628,12 @@ async def test_audit_team_membership_returns_live_list(
     # Install a minimal nexus_api.audit.github_admin_audit stub.
     nexus_audit_mod = _types.ModuleType("nexus_api.audit.github_admin_audit")
     nexus_audit_mod.last_team_membership_row = fake_last_row  # type: ignore[attr-defined]
-    monkeypatch.setitem(
-        sys.modules, "nexus_api.audit.github_admin_audit", nexus_audit_mod
-    )
+    monkeypatch.setitem(sys.modules, "nexus_api.audit.github_admin_audit", nexus_audit_mod)
     # Also install the parent packages if absent -- don't collide with real.
     if "nexus_api" not in sys.modules:
-        monkeypatch.setitem(
-            sys.modules, "nexus_api", _types.ModuleType("nexus_api")
-        )
+        monkeypatch.setitem(sys.modules, "nexus_api", _types.ModuleType("nexus_api"))
     if "nexus_api.audit" not in sys.modules:
-        monkeypatch.setitem(
-            sys.modules, "nexus_api.audit", _types.ModuleType("nexus_api.audit")
-        )
+        monkeypatch.setitem(sys.modules, "nexus_api.audit", _types.ModuleType("nexus_api.audit"))
 
     tool = GithubAdminAuditTeamMembershipTool()
     result = await tool.execute(org="madfam-org", team_slug="platform")
@@ -737,9 +707,7 @@ async def test_pat_never_appears_in_audit_or_result(
             rationale="enable admin enforcement on main branch of karafiel",
         )
     )
-    results.append(
-        await t_audit.execute(org="madfam-org", team_slug="platform")
-    )
+    results.append(await t_audit.execute(org="madfam-org", team_slug="platform"))
 
     # PAT must not appear anywhere.
     for r in results:
@@ -834,12 +802,8 @@ def _strip_strings_and_comments(source: str) -> str:
     no_comments = re.sub(r"#[^\n]*", "", source)
     no_triple = re.sub(r'"""[\s\S]*?"""', '""', no_comments)
     no_triple = re.sub(r"'''[\s\S]*?'''", "''", no_triple)
-    no_strings = re.sub(
-        r'(?:rb|br|r|b|f|rf|fr)?"(?:\\.|[^"\\\n])*"', '""', no_triple
-    )
-    no_strings = re.sub(
-        r"(?:rb|br|r|b|f|rf|fr)?'(?:\\.|[^'\\\n])*'", "''", no_strings
-    )
+    no_strings = re.sub(r'(?:rb|br|r|b|f|rf|fr)?"(?:\\.|[^"\\\n])*"', '""', no_triple)
+    no_strings = re.sub(r"(?:rb|br|r|b|f|rf|fr)?'(?:\\.|[^'\\\n])*'", "''", no_strings)
     return no_strings
 
 

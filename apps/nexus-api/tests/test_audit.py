@@ -31,9 +31,7 @@ class TestExtractResourceInfo:
         assert resource_id == uid
 
     def test_nested_resource(self) -> None:
-        resource_type, resource_id = _extract_resource_info(
-            "/api/v1/swarms/dispatch"
-        )
+        resource_type, resource_id = _extract_resource_info("/api/v1/swarms/dispatch")
         assert resource_type == "swarms"
         assert resource_id is None
 
@@ -93,9 +91,7 @@ async def test_audit_log_model_creation(
     db_session.add(entry)
     await db_session.commit()
 
-    result = await db_session.execute(
-        select(AuditLog).where(AuditLog.org_id == "test-org")
-    )
+    result = await db_session.execute(select(AuditLog).where(AuditLog.org_id == "test-org"))
     logs = result.scalars().all()
     assert len(logs) == 1
     assert logs[0].action == "POST"

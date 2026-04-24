@@ -53,9 +53,7 @@ class ToolSandbox:
                 stderr=asyncio.subprocess.PIPE,
                 cwd=work_cwd,
             )
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             return {
                 "stdout": stdout.decode(errors="replace"),
                 "stderr": stderr.decode(errors="replace"),

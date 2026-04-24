@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 
 from ..probe import ProbeContext, ProbeStep, StageResult, StageStatus
@@ -72,10 +73,8 @@ class DraftStep(ProbeStep):
             )
 
         body = {}
-        try:
+        with contextlib.suppress(Exception):
             body = resp.json()
-        except Exception:
-            pass
         draft = (body.get("draft") or "").strip()
         if not draft:
             return StageResult(

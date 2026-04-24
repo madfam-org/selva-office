@@ -33,9 +33,7 @@ router = APIRouter(tags=["tenants"], dependencies=[Depends(get_current_user)])
 # ---------------------------------------------------------------------------
 
 # Mexican RFC: 3-4 letter prefix + 6-digit date + 2-3 alphanumeric check
-_RFC_PATTERN = re.compile(
-    r"^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{2,3}$"
-)
+_RFC_PATTERN = re.compile(r"^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{2,3}$")
 
 
 def _validate_rfc_format(rfc: str) -> bool:
@@ -108,9 +106,7 @@ class TenantCreate(BaseModel):
     razon_social: str | None = Field(
         default=None, max_length=500, description="Legal business name"
     )
-    regimen_fiscal: str | None = Field(
-        default=None, max_length=10, description="SAT regime code"
-    )
+    regimen_fiscal: str | None = Field(default=None, max_length=10, description="SAT regime code")
     locale: str = Field(default="es-MX", max_length=10)
     timezone: str = Field(default="America/Mexico_City", max_length=50)
     currency: str = Field(default="MXN", max_length=3)
@@ -216,9 +212,7 @@ def _to_response(config: TenantConfig) -> TenantResponse:
 
 async def _get_tenant_config(db: AsyncSession, org_id: str) -> TenantConfig:
     """Load TenantConfig for an org, raising 404 if not found."""
-    result = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == org_id)
-    )
+    result = await db.execute(select(TenantConfig).where(TenantConfig.org_id == org_id))
     config = result.scalar_one_or_none()
     if config is None:
         raise HTTPException(
@@ -228,13 +222,9 @@ async def _get_tenant_config(db: AsyncSession, org_id: str) -> TenantConfig:
     return config
 
 
-async def _get_tenant_config_or_none(
-    db: AsyncSession, org_id: str
-) -> TenantConfig | None:
+async def _get_tenant_config_or_none(db: AsyncSession, org_id: str) -> TenantConfig | None:
     """Load TenantConfig for an org, returning None if not found."""
-    result = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == org_id)
-    )
+    result = await db.execute(select(TenantConfig).where(TenantConfig.org_id == org_id))
     return result.scalar_one_or_none()
 
 
@@ -252,9 +242,7 @@ async def _count_tasks_today(db: AsyncSession, org_id: str) -> int:
 
 async def _count_agents(db: AsyncSession, org_id: str) -> int:
     """Count total agents for a given org."""
-    result = await db.execute(
-        select(func.count(Agent.id)).where(Agent.org_id == org_id)
-    )
+    result = await db.execute(select(func.count(Agent.id)).where(Agent.org_id == org_id))
     return result.scalar_one()
 
 
@@ -328,9 +316,7 @@ async def create_tenant(
     org_id = user.get("org_id") or str(uuid.uuid4())
 
     # Check for existing tenant config
-    existing = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == org_id)
-    )
+    existing = await db.execute(select(TenantConfig).where(TenantConfig.org_id == org_id))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -393,9 +379,7 @@ async def get_my_tenant(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> TenantResponse:
     """Get the current user's tenant config."""
-    result = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == tenant.org_id)
-    )
+    result = await db.execute(select(TenantConfig).where(TenantConfig.org_id == tenant.org_id))
     config = result.scalar_one_or_none()
     if config is None:
         raise HTTPException(
@@ -420,9 +404,7 @@ async def update_my_tenant(
     Business identity fields (rfc, razon_social, regimen_fiscal) are
     immutable after creation to ensure audit trail integrity.
     """
-    result = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == tenant.org_id)
-    )
+    result = await db.execute(select(TenantConfig).where(TenantConfig.org_id == tenant.org_id))
     config = result.scalar_one_or_none()
     if config is None:
         raise HTTPException(
@@ -451,9 +433,7 @@ async def tenant_usage(
     the configured limits from TenantConfig.
     """
     # Load tenant config (defaults if not provisioned)
-    result = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == tenant.org_id)
-    )
+    result = await db.execute(select(TenantConfig).where(TenantConfig.org_id == tenant.org_id))
     config = result.scalar_one_or_none()
     agent_limit = config.max_agents if config else 10
     task_daily_limit = config.max_daily_tasks if config else 100

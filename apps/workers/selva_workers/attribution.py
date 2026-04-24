@@ -54,7 +54,9 @@ def _track(distinct_id: str, event: str, properties: dict[str, Any]) -> None:
     if _client is None:
         logger.info(
             "[attribution] distinct_id=%s event=%s props=%s",
-            distinct_id, event, properties,
+            distinct_id,
+            event,
+            properties,
         )
         return
     try:

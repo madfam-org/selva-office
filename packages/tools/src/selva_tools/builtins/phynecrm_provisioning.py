@@ -225,9 +225,7 @@ class PhynecrmTenantConfigGetTool(BaseTool):
             url = f"/api/trpc/tenants.config?input={input_enc}"
             # Use raw GET for tRPC query
             async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.get(
-                    f"{PHYNE_CRM_URL.rstrip('/')}{url}", headers=_headers()
-                )
+                resp = await client.get(f"{PHYNE_CRM_URL.rstrip('/')}{url}", headers=_headers())
                 status = resp.status_code
                 body = resp.json()
             if not _ok(status):

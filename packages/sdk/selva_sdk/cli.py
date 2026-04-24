@@ -111,9 +111,7 @@ def tasks_wait(task_id: str, timeout: float, poll_interval: float) -> None:
     """Wait for a task to reach a terminal status."""
     client = _get_client()
     try:
-        task = client.wait_for_task(
-            task_id, poll_interval=poll_interval, timeout=timeout
-        )
+        task = client.wait_for_task(task_id, poll_interval=poll_interval, timeout=timeout)
         click.echo(json.dumps(task.model_dump(), indent=2))
     except AutoSwarmError as exc:
         click.echo(f"Error: {exc}", err=True)

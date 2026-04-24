@@ -1,6 +1,7 @@
 """
 Gap 6: Trajectories REST router — ShareGPT format exports.
 """
+
 from __future__ import annotations
 
 import io
@@ -34,6 +35,7 @@ class BatchExportRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("", response_model=list[str])
 async def list_trajectories(

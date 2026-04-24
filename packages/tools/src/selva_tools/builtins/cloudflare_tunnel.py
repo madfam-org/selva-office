@@ -98,9 +98,7 @@ class CfTunnelListTool(BaseTool):
             params.append(f"name={kwargs['name_contains']}")
         qs = "?" + "&".join(params) if params else ""
         try:
-            body = await _request(
-                "GET", f"accounts/{CF_ACCOUNT_ID}/cfd_tunnel{qs}"
-            )
+            body = await _request("GET", f"accounts/{CF_ACCOUNT_ID}/cfd_tunnel{qs}")
             if not body.get("success"):
                 return ToolResult(success=False, error=_fmt_err(body))
             tunnels = body.get("result") or []
@@ -165,6 +163,7 @@ class CfTunnelCreateTool(BaseTool):
         if err:
             return ToolResult(success=False, error=err)
         import base64
+
         sec = kwargs.get("tunnel_secret")
         if not sec:
             sec = base64.b64encode(secrets.token_bytes(32)).decode()
@@ -174,17 +173,13 @@ class CfTunnelCreateTool(BaseTool):
             "config_src": kwargs.get("config_src", "cloudflare"),
         }
         try:
-            body = await _request(
-                "POST", f"accounts/{CF_ACCOUNT_ID}/cfd_tunnel", json_body=payload
-            )
+            body = await _request("POST", f"accounts/{CF_ACCOUNT_ID}/cfd_tunnel", json_body=payload)
             if not body.get("success"):
                 return ToolResult(success=False, error=_fmt_err(body))
             result = body.get("result") or {}
             return ToolResult(
                 success=True,
-                output=(
-                    f"Tunnel created: {result.get('name')} ({result.get('id')})."
-                ),
+                output=(f"Tunnel created: {result.get('name')} ({result.get('id')})."),
                 data={
                     "tunnel_id": result.get("id"),
                     "name": result.get("name"),

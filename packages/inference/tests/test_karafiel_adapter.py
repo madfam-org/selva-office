@@ -41,13 +41,16 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_validate_rfc_success(self) -> None:
-        client = _mock_client("post", {
-            "valid": True,
-            "rfc": "XAXX010101000",
-            "type": "moral",
-            "name": "Empresa SA de CV",
-            "status": "activo",
-        })
+        client = _mock_client(
+            "post",
+            {
+                "valid": True,
+                "rfc": "XAXX010101000",
+                "type": "moral",
+                "name": "Empresa SA de CV",
+                "status": "activo",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -83,12 +86,15 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_generate_cfdi(self) -> None:
-        client = _mock_client("post", {
-            "uuid": "abc-123-def",
-            "xml": "<cfdi>...</cfdi>",
-            "total": "1160.00",
-            "status": "generated",
-        })
+        client = _mock_client(
+            "post",
+            {
+                "uuid": "abc-123-def",
+                "xml": "<cfdi>...</cfdi>",
+                "total": "1160.00",
+                "status": "generated",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -107,12 +113,15 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_stamp_cfdi(self) -> None:
-        client = _mock_client("post", {
-            "folio_fiscal": "FF-001",
-            "fecha_timbrado": "2026-04-14T10:00:00",
-            "timbre_xml": "<timbre>...</timbre>",
-            "status": "stamped",
-        })
+        client = _mock_client(
+            "post",
+            {
+                "folio_fiscal": "FF-001",
+                "fecha_timbrado": "2026-04-14T10:00:00",
+                "timbre_xml": "<timbre>...</timbre>",
+                "status": "stamped",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -126,11 +135,14 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_get_cfdi_status(self) -> None:
-        client = _mock_client("get", {
-            "uuid": "abc-123-def",
-            "estado": "Vigente",
-            "fecha_cancelacion": None,
-        })
+        client = _mock_client(
+            "get",
+            {
+                "uuid": "abc-123-def",
+                "estado": "Vigente",
+                "fecha_cancelacion": None,
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -145,13 +157,16 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_compute_isr(self) -> None:
-        client = _mock_client("post", {
-            "tax_type": "isr",
-            "base_amount": "50000.00",
-            "tax_amount": "8500.00",
-            "rate": "0.17",
-            "details": {"bracket": 4},
-        })
+        client = _mock_client(
+            "post",
+            {
+                "tax_type": "isr",
+                "base_amount": "50000.00",
+                "tax_amount": "8500.00",
+                "rate": "0.17",
+                "details": {"bracket": 4},
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -166,13 +181,16 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_compute_iva(self) -> None:
-        client = _mock_client("post", {
-            "tax_type": "iva",
-            "base_amount": "10000.00",
-            "tax_amount": "1600.00",
-            "rate": "0.16",
-            "details": {},
-        })
+        client = _mock_client(
+            "post",
+            {
+                "tax_type": "iva",
+                "base_amount": "10000.00",
+                "tax_amount": "1600.00",
+                "rate": "0.16",
+                "details": {},
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -187,13 +205,16 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_check_blacklist(self) -> None:
-        client = _mock_client("post", {
-            "rfc": "MALR800101AAA",
-            "listed": True,
-            "article_69b": True,
-            "definitive": False,
-            "details": {"date_listed": "2025-06-01"},
-        })
+        client = _mock_client(
+            "post",
+            {
+                "rfc": "MALR800101AAA",
+                "listed": True,
+                "article_69b": True,
+                "definitive": False,
+                "details": {"date_listed": "2025-06-01"},
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -209,13 +230,16 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_get_constancia(self) -> None:
-        client = _mock_client("get", {
-            "rfc": "XAXX010101000",
-            "situacion": "Activo",
-            "regimen_fiscal": "601 - General de Ley Personas Morales",
-            "domicilio_fiscal": "CDMX",
-            "fecha_consulta": "2026-04-14",
-        })
+        client = _mock_client(
+            "get",
+            {
+                "rfc": "XAXX010101000",
+                "situacion": "Activo",
+                "regimen_fiscal": "601 - General de Ley Personas Morales",
+                "domicilio_fiscal": "CDMX",
+                "fecha_consulta": "2026-04-14",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -249,12 +273,15 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_generate_complemento_pago(self) -> None:
-        client = _mock_client("post", {
-            "uuid": "comp-pago-uuid-001",
-            "xml": "<cfdi:complemento>...</cfdi:complemento>",
-            "total": "5000.00",
-            "status": "generated",
-        })
+        client = _mock_client(
+            "post",
+            {
+                "uuid": "comp-pago-uuid-001",
+                "xml": "<cfdi:complemento>...</cfdi:complemento>",
+                "total": "5000.00",
+                "status": "generated",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -295,12 +322,15 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_generate_nom035_survey(self) -> None:
-        client = _mock_client("post", {
-            "org_id": "org-123",
-            "survey_type": "general",
-            "status": "generated",
-            "data": {"questions": 72, "categories": 5},
-        })
+        client = _mock_client(
+            "post",
+            {
+                "org_id": "org-123",
+                "survey_type": "general",
+                "status": "generated",
+                "data": {"questions": 72, "categories": 5},
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -334,12 +364,15 @@ class TestKarafielAdapter:
 
     @pytest.mark.asyncio
     async def test_generate_nom035_report(self) -> None:
-        client = _mock_client("post", {
-            "org_id": "org-123",
-            "survey_type": "",
-            "status": "completed",
-            "data": {"risk_level": "medio", "recommendations": 3},
-        })
+        client = _mock_client(
+            "post",
+            {
+                "org_id": "org-123",
+                "survey_type": "",
+                "status": "completed",
+                "data": {"risk_level": "medio", "recommendations": 3},
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
@@ -382,9 +415,7 @@ class TestKarafielAdapter:
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
             return_value=client,
         ):
-            adapter = KarafielAdapter(
-                base_url="http://karafiel:3050", token="my-secret-token"
-            )
+            adapter = KarafielAdapter(base_url="http://karafiel:3050", token="my-secret-token")
             await adapter.validate_rfc("X")
 
         call_kwargs = client.post.call_args

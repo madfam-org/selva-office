@@ -43,7 +43,8 @@ class TestWorkflowSerializer:
             ],
             edges=[
                 EdgeDefinition(
-                    source="check", target="yes",
+                    source="check",
+                    target="yes",
                     condition=TriggerCondition(keyword="approved"),
                 ),
                 EdgeDefinition(source="check", target="no"),

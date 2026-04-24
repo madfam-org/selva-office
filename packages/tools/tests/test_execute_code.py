@@ -12,12 +12,14 @@ async def test_execute_python_basic():
     assert result.success is True
     assert "hello world" in result.output
 
+
 @pytest.mark.asyncio
 async def test_execute_bash_basic():
     tool = ExecuteCodeTool()
     result = await tool.execute(code="echo 'hi from bash'", language="bash")
     assert result.success is True
     assert "hi from bash" in result.output
+
 
 @pytest.mark.asyncio
 async def test_execute_code_block_dangerous():
@@ -29,6 +31,7 @@ async def test_execute_code_block_dangerous():
     assert result.success is False
     assert "Execution blocked" in result.error
 
+
 @pytest.mark.asyncio
 async def test_execute_timeout():
     tool = ExecuteCodeTool()
@@ -36,6 +39,7 @@ async def test_execute_timeout():
     result = await tool.execute(code="import time; time.sleep(2)", timeout=0.1)
     assert result.success is False
     assert "timed out" in result.error
+
 
 @pytest.mark.asyncio
 async def test_output_truncation():

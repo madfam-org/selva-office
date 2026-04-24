@@ -21,7 +21,6 @@ from selva_tools.cli.pricing_intel_weekly import (
     main,
 )
 
-
 _SAMPLE_CATALOG = """
 products:
   acme:
@@ -77,9 +76,7 @@ def _fresh_audit(catalog_path: str) -> tuple[dict, dict]:
 
 
 class TestFormatReport:
-    def test_clean_catalog_reports_no_findings_and_is_not_dirty(
-        self, tmp_path: Path
-    ) -> None:
+    def test_clean_catalog_reports_no_findings_and_is_not_dirty(self, tmp_path: Path) -> None:
         p = tmp_path / "catalog.yaml"
         p.write_text(_CLEAN_CATALOG)
         tier_gaps, promo_stacks = _fresh_audit(str(p))
@@ -121,9 +118,7 @@ class TestFormatReport:
                 }
             ]
         }
-        report, is_dirty = _format_report(
-            tier_gaps, promo_stacks, "http://example/catalog"
-        )
+        report, is_dirty = _format_report(tier_gaps, promo_stacks, "http://example/catalog")
         assert is_dirty is True
         assert "Margin risk" in report
         assert "widget" in report
@@ -143,9 +138,12 @@ class TestParser:
         assert args.fail_on_risk is False
 
     def test_custom_catalog_url(self) -> None:
-        args = _build_parser().parse_args([
-            "--catalog-url", "file:///tmp/catalog.yaml",
-        ])
+        args = _build_parser().parse_args(
+            [
+                "--catalog-url",
+                "file:///tmp/catalog.yaml",
+            ]
+        )
         assert args.catalog_url == "file:///tmp/catalog.yaml"
 
     def test_fail_on_risk_flag(self) -> None:
@@ -169,17 +167,13 @@ class TestMainExitCodes:
         rc = main(["--catalog-url", str(p), "--fail-on-risk"])
         assert rc == 0
 
-    def test_dirty_catalog_with_fail_flag_exits_one(
-        self, tmp_path: Path
-    ) -> None:
+    def test_dirty_catalog_with_fail_flag_exits_one(self, tmp_path: Path) -> None:
         p = tmp_path / "catalog.yaml"
         p.write_text(_SAMPLE_CATALOG)
         rc = main(["--catalog-url", str(p), "--fail-on-risk"])
         assert rc == 1
 
-    def test_dirty_catalog_without_fail_flag_still_exits_zero(
-        self, tmp_path: Path
-    ) -> None:
+    def test_dirty_catalog_without_fail_flag_still_exits_zero(self, tmp_path: Path) -> None:
         # Without --fail-on-risk, dirty findings don't change exit code.
         # The K8s Job stays green; operators see findings via logs only.
         p = tmp_path / "catalog.yaml"

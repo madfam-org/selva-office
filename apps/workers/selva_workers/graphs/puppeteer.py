@@ -55,11 +55,13 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
             from selva_workers.prompts import build_experience_context
 
             agent_id = state.get("agent_id", "unknown")
-            experience_suffix = _run_async(build_experience_context(
-                agent_id=agent_id,
-                agent_role="planner",
-                task_description=description,
-            ))
+            experience_suffix = _run_async(
+                build_experience_context(
+                    agent_id=agent_id,
+                    agent_role="planner",
+                    task_description=description,
+                )
+            )
         except Exception:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
@@ -74,9 +76,7 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
             call_llm(
                 router,
                 messages=[{"role": "user", "content": prompt}],
-                system_prompt=(
-                    "You are a task decomposition assistant. Return valid JSON only."
-                ),
+                system_prompt=("You are a task decomposition assistant. Return valid JSON only."),
                 task_type="planning",
             )
         )
@@ -84,9 +84,7 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
         try:
             subtasks = json_mod.loads(response)
             if isinstance(subtasks, list) and len(subtasks) > 0:
-                decompose_msg = AIMessage(
-                    content=f"Decomposed into {len(subtasks)} subtasks"
-                )
+                decompose_msg = AIMessage(content=f"Decomposed into {len(subtasks)} subtasks")
                 return {
                     **state,
                     "messages": [*messages, decompose_msg],
@@ -100,9 +98,7 @@ def decompose(state: PuppeteerState) -> PuppeteerState:
 
     # Fallback: single subtask
     subtasks = [{"description": description, "type": "general"}]
-    decompose_msg = AIMessage(
-        content=f"Created {len(subtasks)} subtask(s) from description"
-    )
+    decompose_msg = AIMessage(content=f"Created {len(subtasks)} subtask(s) from description")
     return {
         **state,
         "messages": [*messages, decompose_msg],
@@ -134,9 +130,7 @@ def assign(state: PuppeteerState) -> PuppeteerState:
         candidates = [agent_id] if agent_id != "unknown" else []
 
         selected = orchestrator.select_agents(len(subtasks), candidates or None)
-        assign_msg = AIMessage(
-            content=f"Assigned {len(selected)} agents via Thompson Sampling"
-        )
+        assign_msg = AIMessage(content=f"Assigned {len(selected)} agents via Thompson Sampling")
         return {
             **state,
             "messages": [*messages, assign_msg],
@@ -148,9 +142,7 @@ def assign(state: PuppeteerState) -> PuppeteerState:
 
     # Fallback: assign the primary agent to all subtasks
     agent_id = state.get("agent_id", "unknown")
-    assign_msg = AIMessage(
-        content=f"Assigned agent {agent_id} to all {len(subtasks)} subtasks"
-    )
+    assign_msg = AIMessage(content=f"Assigned agent {agent_id} to all {len(subtasks)} subtasks")
     return {
         **state,
         "messages": [*messages, assign_msg],
@@ -184,13 +176,10 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
         api_url = os.environ.get("NEXUS_API_URL", "")
         api_token = os.environ.get("WORKER_API_TOKEN", "dev-bypass")
         use_dispatch = (
-            bool(api_url)
-            and os.environ.get("PUPPETEER_DISPATCH_SUBTASKS", "false") == "true"
+            bool(api_url) and os.environ.get("PUPPETEER_DISPATCH_SUBTASKS", "false") == "true"
         )
 
-        async def _dispatch_subtask(
-            subtask: dict[str, Any], index: int
-        ) -> dict[str, Any]:
+        async def _dispatch_subtask(subtask: dict[str, Any], index: int) -> dict[str, Any]:
             """Dispatch subtask as independent SwarmTask via API."""
             async with semaphore:
                 try:
@@ -204,9 +193,9 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
                                 "graph_type": subtask.get("graph_type", "fast_coding"),
                                 "required_skills": subtask.get("required_skills", ["coding"]),
                                 "metadata": {
-                            "parent_task": state.get("task_id"),
-                            "subtask_index": index,
-                        },
+                                    "parent_task": state.get("task_id"),
+                                    "subtask_index": index,
+                                },
                             },
                         )
                         if resp.status_code not in (200, 201):
@@ -245,9 +234,7 @@ def execute_parallel(state: PuppeteerState) -> PuppeteerState:
                         "success": False,
                     }
 
-        async def _run_subtask_locally(
-            subtask: dict[str, Any], index: int
-        ) -> dict[str, Any]:
+        async def _run_subtask_locally(subtask: dict[str, Any], index: int) -> dict[str, Any]:
             """Execute subtask in-process via LLM."""
             async with semaphore:
                 try:
@@ -319,15 +306,14 @@ def aggregate(state: PuppeteerState) -> PuppeteerState:
         results_text = "\n".join(
             f"Subtask {r['index']}: {r.get('result', 'no result')}" for r in results
         )
-        prompt = (
-            "Aggregate these subtask results into a coherent summary:\n\n"
-            f"{results_text}"
+        prompt = f"Aggregate these subtask results into a coherent summary:\n\n{results_text}"
+        response = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": prompt}],
+                task_type="planning",
+            )
         )
-        response = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": prompt}],
-            task_type="planning",
-        ))
 
         aggregated: dict[str, Any] = {
             "summary": response,
@@ -360,9 +346,7 @@ def feedback(state: PuppeteerState) -> PuppeteerState:
     selected_agents = state.get("selected_agents", [])
 
     # Calculate reward based on success rate
-    success_rate = (
-        sum(1 for r in results if r.get("success")) / len(results) if results else 0.0
-    )
+    success_rate = sum(1 for r in results if r.get("success")) / len(results) if results else 0.0
 
     # Update bandit
     try:
@@ -380,9 +364,7 @@ def feedback(state: PuppeteerState) -> PuppeteerState:
             )
         )
     except Exception:
-        feedback_msg = AIMessage(
-            content=f"Feedback recorded: {success_rate:.0%} success rate"
-        )
+        feedback_msg = AIMessage(content=f"Feedback recorded: {success_rate:.0%} success rate")
 
     return {
         **state,

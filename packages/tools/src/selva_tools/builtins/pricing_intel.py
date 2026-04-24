@@ -156,8 +156,7 @@ def _load_catalog_from_url(url: str) -> dict[str, Any]:
             "website": p.get("websiteUrl") or p.get("website"),
             "tiers": tiers,
             "credit_costs": {
-                c.get("operation"): c.get("credits")
-                for c in (p.get("creditCosts") or [])
+                c.get("operation"): c.get("credits") for c in (p.get("creditCosts") or [])
             },
         }
     return {"products": products, "coupons": data.get("coupons") or {}}
@@ -211,8 +210,7 @@ class CatalogLoadTool(BaseTool):
         products = list((catalog.get("products") or {}).keys())
         coupons = list((catalog.get("coupons") or {}).keys())
         tier_count = sum(
-            len(p.get("tiers") or {})
-            for p in (catalog.get("products") or {}).values()
+            len(p.get("tiers") or {}) for p in (catalog.get("products") or {}).values()
         )
         return ToolResult(
             success=True,
@@ -233,9 +231,7 @@ class CatalogLoadTool(BaseTool):
 # -- Tool 2: catalog_tier_gap_audit -------------------------------------------
 
 
-def audit_tier_gaps(
-    catalog: dict[str, Any], *, currency: str = "MXN"
-) -> list[TierGapFinding]:
+def audit_tier_gaps(catalog: dict[str, Any], *, currency: str = "MXN") -> list[TierGapFinding]:
     """For each product, score the jump between consecutive tiers.
 
     Heuristics (tuned for SaaS ladders):
@@ -250,7 +246,7 @@ def audit_tier_gaps(
         # Only consider tiers with a list monthly price in the target currency.
         priced = [t for t in tiers if t.monthly(currency)]
         priced.sort(key=lambda t: t.monthly(currency) or 0)
-        for a, b in zip(priced, priced[1:]):
+        for a, b in zip(priced, priced[1:], strict=False):
             a_m, b_m = a.monthly(currency) or 0, b.monthly(currency) or 0
             if not a_m:
                 continue
@@ -538,13 +534,8 @@ class CompetitorPriceLookupTool(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         url: str = kwargs.get("url") or ""
         if not url.startswith(("http://", "https://")):
-            return ToolResult(
-                success=False, error="url must start with http(s)://"
-            )
-        ua = (
-            kwargs.get("user_agent")
-            or "Selva pricing-intel bot (contact: ops@madfam.io)"
-        )
+            return ToolResult(success=False, error="url must start with http(s)://")
+        ua = kwargs.get("user_agent") or "Selva pricing-intel bot (contact: ops@madfam.io)"
         try:
             async with httpx.AsyncClient(
                 timeout=15.0, follow_redirects=True, headers={"User-Agent": ua}

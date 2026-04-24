@@ -4,6 +4,7 @@ Schedules router — Gap 3: Cron Scheduler Integration.
 Provides CRUD endpoints for user-defined recurring schedules that Celery Beat
 executes unattended, mirroring Hermes Agent's natural-language cron capability.
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,9 +26,11 @@ router = APIRouter(prefix="/schedules", tags=["Schedules"])
 # Schemas
 # ---------------------------------------------------------------------------
 
+
 class ScheduleCreate(BaseModel):
     cron_expr: str = Field(
-        ..., example="0 9 * * 1",
+        ...,
+        example="0 9 * * 1",
         description="Standard 5-field crontab expression",
     )
     action: ScheduledAction
@@ -54,6 +57,7 @@ class ScheduleResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.post("/", response_model=ScheduleResponse, status_code=status.HTTP_201_CREATED)
 async def create_schedule(
     body: ScheduleCreate,
@@ -76,7 +80,10 @@ async def create_schedule(
     await db.refresh(schedule)
     logger.info(
         "Schedule %s created by user %s: %s @ %s",
-        schedule.id, user.sub, schedule.action, schedule.cron_expr,
+        schedule.id,
+        user.sub,
+        schedule.action,
+        schedule.cron_expr,
     )
     return _to_response(schedule)
 
@@ -88,6 +95,7 @@ async def list_schedules(
 ) -> list[ScheduleResponse]:
     """Return all schedules owned by the authenticated user."""
     from sqlalchemy import select
+
     result = await db.execute(
         select(Schedule).where(Schedule.user_id == user.sub).order_by(Schedule.created_at.desc())
     )
@@ -114,6 +122,7 @@ async def cancel_schedule(
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def _to_response(s: Schedule) -> ScheduleResponse:
     return ScheduleResponse(

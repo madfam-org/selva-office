@@ -1,6 +1,7 @@
 """
 E2E tests — Gap 4: SKILL.md Progressive Disclosure Format
 """
+
 from pathlib import Path
 
 SAMPLE_SKILL_MD = """---
@@ -49,6 +50,7 @@ class TestSkillMDRegistry:
         """SKILL.md in the skills dir is loaded into the registry."""
         self._build_skill_dir(tmp_path)
         from selva_skills.skill_md import SkillMDRegistry
+
         registry = SkillMDRegistry(skills_dir=str(tmp_path))
         registry.load_md_skills()
         assert "deploy-k8s" in registry.get_all_md_skills()
@@ -57,6 +59,7 @@ class TestSkillMDRegistry:
         """Level 0: list_skills_compact() returns only name, description, category."""
         self._build_skill_dir(tmp_path)
         from selva_skills.skill_md import SkillMDRegistry
+
         registry = SkillMDRegistry(skills_dir=str(tmp_path))
         registry.load_md_skills()
         compact = registry.list_skills_compact()
@@ -70,6 +73,7 @@ class TestSkillMDRegistry:
         """Level 1: get_skill_full() returns full SKILL.md content."""
         self._build_skill_dir(tmp_path)
         from selva_skills.skill_md import SkillMDRegistry
+
         registry = SkillMDRegistry(skills_dir=str(tmp_path))
         registry.load_md_skills()
         content = registry.get_skill_full("deploy-k8s")
@@ -81,6 +85,7 @@ class TestSkillMDRegistry:
         """Level 2: get_skill_reference() returns specific reference file."""
         self._build_skill_dir(tmp_path)
         from selva_skills.skill_md import SkillMDRegistry
+
         registry = SkillMDRegistry(skills_dir=str(tmp_path))
         registry.load_md_skills()
         ref = registry.get_skill_reference("deploy-k8s", "k8s-api.md")
@@ -90,6 +95,7 @@ class TestSkillMDRegistry:
     def test_missing_skill_returns_none(self, tmp_path):
         """get_skill_full() returns None for unknown skill names."""
         from selva_skills.skill_md import SkillMDRegistry
+
         registry = SkillMDRegistry(skills_dir=str(tmp_path))
         registry.load_md_skills()
         assert registry.get_skill_full("nonexistent-skill") is None
@@ -106,6 +112,7 @@ class TestSkillMDRegistry:
         import json
 
         from selva_skills.skill_md import SkillMDRegistry
+
         registry = SkillMDRegistry(skills_dir=str(tmp_path))
         registry.load_md_skills()
         compact = registry.list_skills_compact()

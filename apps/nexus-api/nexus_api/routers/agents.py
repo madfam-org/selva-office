@@ -155,9 +155,7 @@ async def list_agents(
         base_stmt = base_stmt.where(Agent.department_id == dept_uid)
 
     # Total count
-    count_result = await db.execute(
-        select(func.count()).select_from(base_stmt.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
     total = count_result.scalar_one()
 
     # Paginated results

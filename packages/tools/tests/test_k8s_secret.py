@@ -71,9 +71,7 @@ def mock_v1() -> MagicMock:
     v1.create_namespaced_secret = MagicMock(return_value=MagicMock())
     # read_namespaced_secret is used for idempotency; default to 404
     # (secret absent), which forces the tool to rely on the audit log.
-    v1.read_namespaced_secret = MagicMock(
-        side_effect=ApiException(status=404, reason="Not Found")
-    )
+    v1.read_namespaced_secret = MagicMock(side_effect=ApiException(status=404, reason="Not Found"))
     return v1
 
 
@@ -103,9 +101,7 @@ def wired_tool(
 ) -> KubernetesSecretWriteTool:
     """A fully wired tool: no real k8s, no real DB, no real config load."""
     # Stub the k8s config loader (no ~/.kube/config read).
-    monkeypatch.setattr(
-        k8s_secret_mod, "_load_k8s_config", lambda: None, raising=True
-    )
+    monkeypatch.setattr(k8s_secret_mod, "_load_k8s_config", lambda: None, raising=True)
     # The tool does a lazy ``from kubernetes import client`` inside
     # ``_apply_secret`` and ``_get_current_sha``, then calls
     # ``client.CoreV1Api()``. Patching the class on the already-imported
@@ -256,9 +252,7 @@ async def test_staging_cluster_with_prod_namespace_rejected(
     ``autoswarm-office`` is the one documented exception (Selva's own
     namespace). We pick ``karafiel`` (prod-shaped) to exercise the guard.
     """
-    result = await wired_tool.execute(
-        **_base_args(cluster="madfam-staging", namespace="karafiel")
-    )
+    result = await wired_tool.execute(**_base_args(cluster="madfam-staging", namespace="karafiel"))
 
     assert result.success is False
     assert "misroute" in (result.error or "").lower()
@@ -578,12 +572,8 @@ def _strip_strings_and_comments(source: str) -> str:
     no_triple = re.sub(r'"""[\s\S]*?"""', '""', no_comments)
     no_triple = re.sub(r"'''[\s\S]*?'''", "''", no_triple)
     # Remove single-line strings (including f-strings).
-    no_strings = re.sub(
-        r'(?:rb|br|r|b|f|rf|fr)?"(?:\\.|[^"\\\n])*"', '""', no_triple
-    )
-    no_strings = re.sub(
-        r"(?:rb|br|r|b|f|rf|fr)?'(?:\\.|[^'\\\n])*'", "''", no_strings
-    )
+    no_strings = re.sub(r'(?:rb|br|r|b|f|rf|fr)?"(?:\\.|[^"\\\n])*"', '""', no_triple)
+    no_strings = re.sub(r"(?:rb|br|r|b|f|rf|fr)?'(?:\\.|[^'\\\n])*'", "''", no_strings)
     return no_strings
 
 

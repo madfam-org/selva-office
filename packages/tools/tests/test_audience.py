@@ -174,17 +174,13 @@ class TestRegistryFilter:
         assert "fake_platform_mutate" in names
         assert "fake_default" in names
 
-    def test_list_tools_tenant_audience_hides_platform(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_list_tools_tenant_audience_hides_platform(self, registry: ToolRegistry) -> None:
         names = registry.list_tools(audience=Audience.TENANT)
         assert "fake_tenant_read" in names
         assert "fake_default" in names
         assert "fake_platform_mutate" not in names
 
-    def test_list_tools_platform_audience_sees_all(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_list_tools_platform_audience_sees_all(self, registry: ToolRegistry) -> None:
         names = registry.list_tools(audience=Audience.PLATFORM)
         assert set(names) == {
             "fake_tenant_read",
@@ -192,9 +188,7 @@ class TestRegistryFilter:
             "fake_default",
         }
 
-    def test_get_specs_unfiltered_returns_all(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_get_specs_unfiltered_returns_all(self, registry: ToolRegistry) -> None:
         specs = registry.get_specs()
         names = {s["function"]["name"] for s in specs}
         assert names == {
@@ -203,16 +197,12 @@ class TestRegistryFilter:
             "fake_default",
         }
 
-    def test_get_specs_tenant_audience_hides_platform(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_get_specs_tenant_audience_hides_platform(self, registry: ToolRegistry) -> None:
         specs = registry.get_specs(audience=Audience.TENANT)
         names = {s["function"]["name"] for s in specs}
         assert names == {"fake_tenant_read", "fake_default"}
 
-    def test_get_specs_platform_audience_sees_all(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_get_specs_platform_audience_sees_all(self, registry: ToolRegistry) -> None:
         specs = registry.get_specs(audience=Audience.PLATFORM)
         names = {s["function"]["name"] for s in specs}
         assert names == {
@@ -221,9 +211,7 @@ class TestRegistryFilter:
             "fake_default",
         }
 
-    def test_get_specs_named_list_still_audience_filtered(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_get_specs_named_list_still_audience_filtered(self, registry: ToolRegistry) -> None:
         # Even when the caller names the platform tool explicitly, the
         # audience filter drops it for a tenant swarm.
         specs = registry.get_specs(
@@ -233,13 +221,9 @@ class TestRegistryFilter:
         names = {s["function"]["name"] for s in specs}
         assert names == {"fake_tenant_read"}
 
-    def test_get_specs_backward_compat_no_audience_arg(
-        self, registry: ToolRegistry
-    ) -> None:
+    def test_get_specs_backward_compat_no_audience_arg(self, registry: ToolRegistry) -> None:
         # Existing callers that don't pass audience get every tool
         # (same behavior as before this PR).
-        specs = registry.get_specs(
-            tool_names=["fake_tenant_read", "fake_platform_mutate"]
-        )
+        specs = registry.get_specs(tool_names=["fake_tenant_read", "fake_platform_mutate"])
         names = {s["function"]["name"] for s in specs}
         assert names == {"fake_tenant_read", "fake_platform_mutate"}

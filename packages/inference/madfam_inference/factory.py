@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
 
 from .base import InferenceProvider
 from .org_config import OrgConfig, load_org_config
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 def _resolve_api_key(env_name: str) -> str | None:
     import os
+
     return os.environ.get(env_name)
 
 

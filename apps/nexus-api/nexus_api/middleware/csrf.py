@@ -35,17 +35,17 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if request.method in _STATE_CHANGING_METHODS and not any(
             request.url.path.startswith(p) for p in _EXEMPT_PREFIXES
         ):
-                # Bearer-token-authenticated requests are not vulnerable to CSRF
-                # (the token cannot be sent by a cross-origin form/script).
-                auth_header = request.headers.get("authorization", "")
-                if not auth_header.lower().startswith("bearer "):
-                    cookie_token = request.cookies.get("csrf-token")
-                    header_token = request.headers.get("x-csrf-token")
-                    if not cookie_token or not header_token or cookie_token != header_token:
-                        return JSONResponse(
-                            status_code=403,
-                            content={"detail": "CSRF token missing or invalid"},
-                        )
+            # Bearer-token-authenticated requests are not vulnerable to CSRF
+            # (the token cannot be sent by a cross-origin form/script).
+            auth_header = request.headers.get("authorization", "")
+            if not auth_header.lower().startswith("bearer "):
+                cookie_token = request.cookies.get("csrf-token")
+                header_token = request.headers.get("x-csrf-token")
+                if not cookie_token or not header_token or cookie_token != header_token:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "CSRF token missing or invalid"},
+                    )
 
         response = await call_next(request)
 

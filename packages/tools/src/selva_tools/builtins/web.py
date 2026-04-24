@@ -49,9 +49,7 @@ class WebSearchTool(BaseTool):
                 resp.raise_for_status()
                 data = resp.json()
                 results = data.get("results", [])
-                output = "\n".join(
-                    f"- {r.get('title', '')}: {r.get('url', '')}" for r in results
-                )
+                output = "\n".join(f"- {r.get('title', '')}: {r.get('url', '')}" for r in results)
                 return ToolResult(output=output, data={"results": results})
         except Exception as exc:
             return ToolResult(success=False, error=str(exc))

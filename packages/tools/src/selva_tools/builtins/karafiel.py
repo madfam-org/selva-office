@@ -207,9 +207,7 @@ class BlacklistCheckTool(BaseTool):
 
 class ConstanciaFiscalTool(BaseTool):
     name = "constancia_fiscal"
-    description = (
-        "Look up Constancia de Situacion Fiscal for an RFC via Karafiel SAT portal"
-    )
+    description = "Look up Constancia de Situacion Fiscal for an RFC via Karafiel SAT portal"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -236,8 +234,7 @@ class ConstanciaFiscalTool(BaseTool):
         return ToolResult(
             success=success,
             output=(
-                f"RFC {result.rfc}: situacion={result.situacion}, "
-                f"regimen={result.regimen_fiscal}"
+                f"RFC {result.rfc}: situacion={result.situacion}, regimen={result.regimen_fiscal}"
             ),
             data=result.model_dump(),
         )
@@ -245,9 +242,7 @@ class ConstanciaFiscalTool(BaseTool):
 
 class ComplementoPagoTool(BaseTool):
     name = "complemento_pago"
-    description = (
-        "Generate Complemento de Pagos CFDI for partial payments via Karafiel"
-    )
+    description = "Generate Complemento de Pagos CFDI for partial payments via Karafiel"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -307,9 +302,7 @@ class ComplementoPagoTool(BaseTool):
 
 class NOM035SurveyTool(BaseTool):
     name = "nom035_survey"
-    description = (
-        "Generate NOM-035 psychosocial risk survey via Karafiel compliance module"
-    )
+    description = "Generate NOM-035 psychosocial risk survey via Karafiel compliance module"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {

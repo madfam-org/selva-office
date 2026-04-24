@@ -38,17 +38,11 @@ class TestCreateCheckpointer:
         with (
             patch(
                 "selva_workers.checkpointer.get_settings",
-                return_value=MagicMock(
-                    database_url="postgresql+asyncpg://user:pass@localhost/db"
-                ),
+                return_value=MagicMock(database_url="postgresql+asyncpg://user:pass@localhost/db"),
             ),
             patch.dict(
                 "sys.modules",
-                {
-                    "langgraph.checkpoint.postgres": MagicMock(
-                        PostgresSaver=mock_saver_cls
-                    )
-                },
+                {"langgraph.checkpoint.postgres": MagicMock(PostgresSaver=mock_saver_cls)},
             ),
         ):
             from selva_workers.checkpointer import create_checkpointer
@@ -64,9 +58,7 @@ class TestCreateCheckpointer:
         with (
             patch(
                 "selva_workers.checkpointer.get_settings",
-                return_value=MagicMock(
-                    database_url="postgresql+asyncpg://user:pass@localhost/db"
-                ),
+                return_value=MagicMock(database_url="postgresql+asyncpg://user:pass@localhost/db"),
             ),
             patch.dict(
                 "sys.modules",

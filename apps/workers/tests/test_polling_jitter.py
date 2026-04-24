@@ -42,13 +42,9 @@ async def test_polling_jitter_varies_interval():
 
     with patch("asyncio.sleep", side_effect=mock_sleep):
         # Force polling path by making Redis fail
-        with patch.object(
-            handler, "_wait_via_redis", side_effect=ConnectionError("no redis")
-        ):
+        with patch.object(handler, "_wait_via_redis", side_effect=ConnectionError("no redis")):
             with pytest.raises(TimeoutError, match="test exit"):
-                await handler.wait_for_approval(
-                    "req-1", timeout=10, poll_interval=0.5
-                )
+                await handler.wait_for_approval("req-1", timeout=10, poll_interval=0.5)
 
     # Verify jitter: not all intervals should be exactly the same
     assert len(sleep_durations) >= 3

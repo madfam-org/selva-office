@@ -67,9 +67,7 @@ class TestPromQuery:
     async def test_prom_returns_error_status(self) -> None:
         with patch(
             "selva_tools.builtins.prometheus._prom_request",
-            new=AsyncMock(
-                return_value=(400, {"status": "error", "error": "bad query"})
-            ),
+            new=AsyncMock(return_value=(400, {"status": "error", "error": "bad query"})),
         ):
             r = await PromQueryTool().execute(query="invalid[")
             assert r.success is False
@@ -102,9 +100,7 @@ class TestPromQueryRange:
             "selva_tools.builtins.prometheus._prom_request",
             new=AsyncMock(return_value=(200, body)),
         ):
-            r = await PromQueryRangeTool().execute(
-                query="up", start="0", end="10", step="1s"
-            )
+            r = await PromQueryRangeTool().execute(query="up", start="0", end="10", step="1s")
             assert r.success is True
             assert r.data["series_count"] == 2
             assert r.data["point_count"] == 5
@@ -192,9 +188,7 @@ class TestSilenceCreate:
 
     @pytest.mark.asyncio
     async def test_empty_matchers_rejected(self) -> None:
-        r = await PromSilenceCreateTool().execute(
-            matchers=[], duration_minutes=10, comment="x"
-        )
+        r = await PromSilenceCreateTool().execute(matchers=[], duration_minutes=10, comment="x")
         assert r.success is False
         assert "matchers" in (r.error or "")
 

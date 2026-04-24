@@ -74,9 +74,7 @@ class TestInitTracing:
         # Verify TracerProvider was instantiated
         mock_tracer_provider_cls.assert_called_once()
         # Verify exporter was created with insecure=True for http
-        mock_exporter_cls.assert_called_once_with(
-            endpoint="http://localhost:4317", insecure=True
-        )
+        mock_exporter_cls.assert_called_once_with(endpoint="http://localhost:4317", insecure=True)
         # Verify set_tracer_provider was called
         mock_trace_module.set_tracer_provider.assert_called_once()
 

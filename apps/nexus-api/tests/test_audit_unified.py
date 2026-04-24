@@ -15,7 +15,7 @@ Covers:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -30,7 +30,6 @@ from nexus_api.models import (
     SecretAuditLog,
     WebhookAuditLog,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture helpers — build minimal valid rows for each Selva ledger
@@ -186,9 +185,7 @@ def _override_user(roles: list[str], sub: str = "test-user") -> Any:
 
 
 @pytest.mark.asyncio
-async def test_unified_empty(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_unified_empty(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """With no rows seeded, the endpoint returns empty events and no cursor."""
     resp = await client.get("/api/v1/audit/unified/", headers=auth_headers)
     assert resp.status_code == 200
@@ -204,7 +201,7 @@ async def test_unified_merges_all_sources(
     db_session: AsyncSession,
 ) -> None:
     """All four ledgers should appear in timestamp-DESC order."""
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     await _seed_all(db_session, base)
 
     resp = await client.get("/api/v1/audit/unified/", headers=auth_headers)
@@ -235,7 +232,7 @@ async def test_unified_source_filter(
     db_session: AsyncSession,
 ) -> None:
     """The ``source`` query param limits the query set."""
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     await _seed_all(db_session, base)
 
     resp = await client.get(
@@ -253,9 +250,7 @@ async def test_unified_rejects_unknown_source(
     client: httpx.AsyncClient, auth_headers: dict[str, str]
 ) -> None:
     """A source name not in the four Selva ledgers returns 400."""
-    resp = await client.get(
-        "/api/v1/audit/unified/?source=bogus", headers=auth_headers
-    )
+    resp = await client.get("/api/v1/audit/unified/?source=bogus", headers=auth_headers)
     assert resp.status_code == 400
     assert "Unknown source" in resp.json()["detail"]
 
@@ -267,7 +262,7 @@ async def test_unified_since_until(
     db_session: AsyncSession,
 ) -> None:
     """``since`` / ``until`` are inclusive bounds on ``created_at``."""
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     await _seed_all(db_session, base)
 
     # Narrow to just the middle two rows (github at +10m, config at +20m).
@@ -294,12 +289,10 @@ async def test_unified_cursor_pagination(
     db_session: AsyncSession,
 ) -> None:
     """Cursor drives strictly-older continuation, no duplicates across pages."""
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     await _seed_all(db_session, base)
 
-    resp1 = await client.get(
-        "/api/v1/audit/unified/?limit=2", headers=auth_headers
-    )
+    resp1 = await client.get("/api/v1/audit/unified/?limit=2", headers=auth_headers)
     assert resp1.status_code == 200
     page1 = resp1.json()
     assert len(page1["events"]) == 2
@@ -327,18 +320,16 @@ async def test_unified_actor_filter(
     db_session: AsyncSession,
 ) -> None:
     """``actor`` filters the merged stream by ``actor_user_sub`` across ledgers."""
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     # Alice appears in secret + config; Bob only in github.
     db_session.add(_secret_row(created_at=base, actor_user_sub="user-alice"))
     db_session.add(_github_row(created_at=base + timedelta(minutes=5), actor_user_sub="user-bob"))
-    db_session.add(_configmap_row(
-        created_at=base + timedelta(minutes=10), actor_user_sub="user-alice"
-    ))
+    db_session.add(
+        _configmap_row(created_at=base + timedelta(minutes=10), actor_user_sub="user-alice")
+    )
     await db_session.commit()
 
-    resp = await client.get(
-        "/api/v1/audit/unified/?actor=user-alice", headers=auth_headers
-    )
+    resp = await client.get("/api/v1/audit/unified/?actor=user-alice", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     actors = {e["actor"] for e in data["events"]}
@@ -356,7 +347,7 @@ async def test_unified_non_admin_is_forced_to_own_sub(
     Dev-auth-bypass returns the ``admin`` role, so we override the
     ``get_current_user`` dependency here to simulate a plain user JWT.
     """
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     db_session.add(_secret_row(created_at=base, actor_user_sub="user-alice"))
     db_session.add(_github_row(created_at=base, actor_user_sub="user-bob"))
     await db_session.commit()
@@ -384,7 +375,7 @@ async def test_unified_admin_sees_all_actors(
     db_session: AsyncSession,
 ) -> None:
     """Admin callers can query across actors without restriction."""
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     db_session.add(_secret_row(created_at=base, actor_user_sub="user-alice"))
     db_session.add(_github_row(created_at=base, actor_user_sub="user-bob"))
     await db_session.commit()
@@ -412,14 +403,10 @@ async def test_unified_outcome_maps_status(
     db_session: AsyncSession,
 ) -> None:
     """Status strings collapse to the canonical outcome triad."""
-    base = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 4, 1, 12, 0, tzinfo=UTC)
     db_session.add(_secret_row(created_at=base, status="applied"))
-    db_session.add(_github_row(
-        created_at=base + timedelta(minutes=1), status="denied"
-    ))
-    db_session.add(_configmap_row(
-        created_at=base + timedelta(minutes=2), status="failed"
-    ))
+    db_session.add(_github_row(created_at=base + timedelta(minutes=1), status="denied"))
+    db_session.add(_configmap_row(created_at=base + timedelta(minutes=2), status="failed"))
     await db_session.commit()
 
     resp = await client.get("/api/v1/audit/unified/", headers=auth_headers)
@@ -435,7 +422,5 @@ async def test_unified_rejects_bad_cursor(
     client: httpx.AsyncClient, auth_headers: dict[str, str]
 ) -> None:
     """Malformed cursor strings return 400, not 500."""
-    resp = await client.get(
-        "/api/v1/audit/unified/?cursor=not-a-date", headers=auth_headers
-    )
+    resp = await client.get("/api/v1/audit/unified/?cursor=not-a-date", headers=auth_headers)
     assert resp.status_code == 400

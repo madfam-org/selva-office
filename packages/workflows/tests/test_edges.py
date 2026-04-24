@@ -54,7 +54,8 @@ class TestBuildConditionalRouter:
     def test_matches_first_condition(self) -> None:
         edges = [
             EdgeDefinition(
-                source="a", target="yes",
+                source="a",
+                target="yes",
                 condition=TriggerCondition(keyword="approved"),
             ),
             EdgeDefinition(source="a", target="no"),
@@ -66,7 +67,8 @@ class TestBuildConditionalRouter:
     def test_falls_back_to_default(self) -> None:
         edges = [
             EdgeDefinition(
-                source="a", target="yes",
+                source="a",
+                target="yes",
                 condition=TriggerCondition(keyword="approved"),
             ),
             EdgeDefinition(source="a", target="no"),
@@ -78,7 +80,8 @@ class TestBuildConditionalRouter:
     def test_no_default_returns_end(self) -> None:
         edges = [
             EdgeDefinition(
-                source="a", target="yes",
+                source="a",
+                target="yes",
                 condition=TriggerCondition(keyword="approved"),
             ),
         ]

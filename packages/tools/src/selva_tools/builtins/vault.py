@@ -115,7 +115,6 @@ class VaultStoreTool(BaseTool):
                     },
                 )
                 resp.raise_for_status()
-                data = resp.json()
 
             # NEVER log the actual value
             logger.info("Vault: stored secret %s in namespace %s", key, ns)

@@ -181,9 +181,7 @@ def append_audit_row(
         ("previous_value_sha256_prefix", previous_value_sha256_prefix),
     ):
         if prefix is not None and len(prefix) != 8:
-            logger.error(
-                "invalid %s length=%d; refusing to record", label, len(prefix)
-            )
+            logger.error("invalid %s length=%d; refusing to record", label, len(prefix))
             return
 
     created_at = datetime.now(UTC).replace(microsecond=0)

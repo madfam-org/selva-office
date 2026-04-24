@@ -91,9 +91,7 @@ class TestMemoryManager:
         assert store.agent_id == "agent-1"
 
     @pytest.mark.asyncio
-    async def test_store_and_retrieve_context(
-        self, embedder: EmbeddingProvider
-    ) -> None:
+    async def test_store_and_retrieve_context(self, embedder: EmbeddingProvider) -> None:
         manager = MemoryManager(embedding_provider=embedder)
         await manager.store_memory("agent-1", "The deployment failed due to OOM")
         await manager.store_memory("agent-1", "Fixed by increasing memory limit to 4GB")
@@ -149,7 +147,5 @@ class TestExperienceStore:
                 score=0.2,
             )
         )
-        results = await store.search_similar(
-            "database migration issue", min_score=0.5
-        )
+        results = await store.search_similar("database migration issue", min_score=0.5)
         assert len(results) == 0

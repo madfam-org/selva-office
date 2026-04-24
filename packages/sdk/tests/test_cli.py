@@ -44,9 +44,7 @@ def _mock_client() -> MagicMock:
     mock.list_agents.return_value = AGENTS
     mock.get_task.return_value = TASK
     mock.wait_for_task.return_value = TASK._replace() if hasattr(TASK, "_replace") else TASK
-    mock.wait_for_task.return_value = TaskResponse(
-        **{**TASK.model_dump(), "status": "completed"}
-    )
+    mock.wait_for_task.return_value = TaskResponse(**{**TASK.model_dump(), "status": "completed"})
     mock.close.return_value = None
     return mock
 

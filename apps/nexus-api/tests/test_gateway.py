@@ -69,9 +69,7 @@ class TestGitHubWebhookSignature:
         settings.github_webhook_secret = secret
 
         body = json.dumps({"action": "opened"}).encode()
-        sig = "sha256=" + hmac.new(
-            secret.encode(), body, hashlib.sha256
-        ).hexdigest()
+        sig = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
 
         try:
             resp = await client.post(
@@ -86,9 +84,7 @@ class TestGitHubWebhookSignature:
         finally:
             settings.github_webhook_secret = original_secret
 
-    async def test_skips_verification_when_no_secret(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_skips_verification_when_no_secret(self, client: httpx.AsyncClient) -> None:
         """When no webhook secret is configured, any payload is accepted."""
         from nexus_api.config import get_settings
 
@@ -122,9 +118,7 @@ def _make_mock_pool(
 class TestGitHubWebhookEvents:
     """Tests for event type handling and task creation."""
 
-    async def test_ignored_event_returns_ignored(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_ignored_event_returns_ignored(self, client: httpx.AsyncClient) -> None:
         """Unknown event type returns ignored status."""
         body = json.dumps({"action": "completed"}).encode()
         resp = await client.post(

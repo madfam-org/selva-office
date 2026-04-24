@@ -23,9 +23,7 @@ class PedimentoLookupTool(BaseTool):
             "properties": {
                 "numero": {
                     "type": "string",
-                    "description": (
-                        "Pedimento number (e.g. '26 48 3180 6001234')"
-                    ),
+                    "description": ("Pedimento number (e.g. '26 48 3180 6001234')"),
                 },
             },
             "required": ["numero"],
@@ -59,8 +57,7 @@ class PedimentoLookupTool(BaseTool):
 class CarrierTrackingTool(BaseTool):
     name = "carrier_tracking"
     description = (
-        "Track shipment status with Mexican carriers "
-        "(Estafeta, FedEx MX, DHL, PaqueteExpress)"
+        "Track shipment status with Mexican carriers (Estafeta, FedEx MX, DHL, PaqueteExpress)"
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -85,15 +82,12 @@ class CarrierTrackingTool(BaseTool):
         tracking_number: str = kwargs.get("tracking_number", "").strip()
 
         if not carrier or not tracking_number:
-            return ToolResult(
-                success=False, error="carrier and tracking_number are required"
-            )
+            return ToolResult(success=False, error="carrier and tracking_number are required")
 
         if carrier not in _VALID_CARRIERS:
             return ToolResult(
                 success=False,
-                error=f"Unsupported carrier '{carrier}'. "
-                f"Valid: {', '.join(_VALID_CARRIERS)}",
+                error=f"Unsupported carrier '{carrier}'. Valid: {', '.join(_VALID_CARRIERS)}",
             )
 
         # Check if the carrier API key is configured
@@ -118,8 +112,7 @@ class CarrierTrackingTool(BaseTool):
                     "tracking_number": tracking_number,
                     "status": "tracking_service_not_configured",
                     "message": (
-                        f"Set {api_key_var} environment variable to enable "
-                        f"{carrier} tracking."
+                        f"Set {api_key_var} environment variable to enable {carrier} tracking."
                     ),
                 },
             )
@@ -142,9 +135,7 @@ class CarrierTrackingTool(BaseTool):
 
 class InventoryCheckTool(BaseTool):
     name = "inventory_check"
-    description = (
-        "Check inventory levels (via Dhanam or PravaraMES if configured)"
-    )
+    description = "Check inventory levels (via Dhanam or PravaraMES if configured)"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {

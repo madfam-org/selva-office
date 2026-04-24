@@ -91,9 +91,7 @@ def verify_signature(entry: WebhookAuditLog) -> bool:
         target_url_sha256_prefix=entry.target_url_sha256_prefix,
         events_registered=entry.events_registered,
         linked_secret_audit_id=(
-            str(entry.linked_secret_audit_id)
-            if entry.linked_secret_audit_id
-            else None
+            str(entry.linked_secret_audit_id) if entry.linked_secret_audit_id else None
         ),
         resulting_secret_name=entry.resulting_secret_name,
         approval_request_id=str(entry.approval_request_id),
@@ -198,9 +196,7 @@ def append_audit_row(
             target_url_sha256_prefix=target_url_sha256_prefix,
             events_registered=events_registered,
             linked_secret_audit_id=(
-                _uuid.UUID(linked_secret_audit_id)
-                if linked_secret_audit_id
-                else None
+                _uuid.UUID(linked_secret_audit_id) if linked_secret_audit_id else None
             ),
             resulting_secret_name=resulting_secret_name,
             approval_chain=approval_chain or [],

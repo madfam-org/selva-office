@@ -81,9 +81,7 @@ class OllamaProvider(InferenceProvider):
             formatted.append(new_msg)
         return formatted
 
-    def _build_body(
-        self, request: InferenceRequest, *, stream: bool = False
-    ) -> dict[str, Any]:
+    def _build_body(self, request: InferenceRequest, *, stream: bool = False) -> dict[str, Any]:
         messages: list[dict[str, Any]] = []
         if request.system_prompt:
             messages.append({"role": "system", "content": request.system_prompt})
@@ -137,11 +135,14 @@ class OllamaProvider(InferenceProvider):
     async def stream(self, request: InferenceRequest) -> AsyncIterator[str]:
         body = self._build_body(request, stream=True)
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
-            "POST",
-            f"{self._base_url}/api/chat",
-            json=body,
-        ) as resp:
+        async with (
+            httpx.AsyncClient(timeout=self._timeout) as client,
+            client.stream(
+                "POST",
+                f"{self._base_url}/api/chat",
+                json=body,
+            ) as resp,
+        ):
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.strip():

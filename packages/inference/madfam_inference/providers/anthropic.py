@@ -60,10 +60,12 @@ class AnthropicProvider(InferenceProvider):
             content = msg.get("content")
             if isinstance(content, str) or content is None:
                 text = content or ""
-                formatted.append({
-                    **msg,
-                    "content": [{"type": "text", "text": text}],
-                })
+                formatted.append(
+                    {
+                        **msg,
+                        "content": [{"type": "text", "text": text}],
+                    }
+                )
                 continue
 
             # content is a list of blocks
@@ -74,22 +76,26 @@ class AnthropicProvider(InferenceProvider):
                     anthropic_blocks.append({"type": "text", "text": block["content"]})
                 elif block_type == "image_base64":
                     mime = block.get("mime_type", "image/png")
-                    anthropic_blocks.append({
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": mime,
-                            "data": block["content"],
-                        },
-                    })
+                    anthropic_blocks.append(
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime,
+                                "data": block["content"],
+                            },
+                        }
+                    )
                 elif block_type == "image_url":
-                    anthropic_blocks.append({
-                        "type": "image",
-                        "source": {
-                            "type": "url",
-                            "url": block["content"],
-                        },
-                    })
+                    anthropic_blocks.append(
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "url",
+                                "url": block["content"],
+                            },
+                        }
+                    )
                 else:
                     if "content" in block:
                         anthropic_blocks.append({"type": "text", "text": block["content"]})
@@ -150,17 +156,20 @@ class AnthropicProvider(InferenceProvider):
     async def stream(self, request: InferenceRequest) -> AsyncIterator[str]:
         body = self._build_body(request, stream=True)
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
-            "POST",
-            f"{self._base_url}/messages",
-            headers=self._headers(),
-            json=body,
-        ) as resp:
+        async with (
+            httpx.AsyncClient(timeout=self._timeout) as client,
+            client.stream(
+                "POST",
+                f"{self._base_url}/messages",
+                headers=self._headers(),
+                json=body,
+            ) as resp,
+        ):
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):
                     continue
-                payload = line[len("data: "):]
+                payload = line[len("data: ") :]
                 if payload.strip() == "[DONE]":
                     break
                 # Parse SSE event - Anthropic sends content_block_delta events

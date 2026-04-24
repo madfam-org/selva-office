@@ -86,9 +86,7 @@ def process_pedimento(state: OperationsState) -> OperationsState:
             result = _run_async(tool.execute(numero=numero))
             pedimento_data = result.data
         except Exception:
-            logger.warning(
-                "Pedimento lookup failed for %s", numero, exc_info=True
-            )
+            logger.warning("Pedimento lookup failed for %s", numero, exc_info=True)
 
     ped_message = AIMessage(
         content=(
@@ -132,19 +130,17 @@ def track_shipments(state: OperationsState) -> OperationsState:
             from selva_tools.builtins.operations import CarrierTrackingTool
 
             tool = CarrierTrackingTool()
-            result = _run_async(
-                tool.execute(carrier=carrier, tracking_number=number)
-            )
+            result = _run_async(tool.execute(carrier=carrier, tracking_number=number))
             tracking_results.append(result.data)
         except Exception:
-            logger.warning(
-                "Carrier tracking failed for %s/%s", carrier, number, exc_info=True
+            logger.warning("Carrier tracking failed for %s/%s", carrier, number, exc_info=True)
+            tracking_results.append(
+                {
+                    "carrier": carrier,
+                    "tracking_number": number,
+                    "status": "error",
+                }
             )
-            tracking_results.append({
-                "carrier": carrier,
-                "tracking_number": number,
-                "status": "error",
-            })
 
     track_message = AIMessage(
         content=f"Tracked {len(tracking_results)} shipment(s).",

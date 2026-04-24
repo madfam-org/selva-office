@@ -48,11 +48,13 @@ def _inject_utm(url: str, campaign: str = "", source: str = "selva", medium: str
         return url
     parsed = urlparse(url)
     params = parse_qs(parsed.query)
-    params.update({
-        "utm_source": [source],
-        "utm_medium": [medium],
-        "utm_campaign": [campaign or "agent_outreach"],
-    })
+    params.update(
+        {
+            "utm_source": [source],
+            "utm_medium": [medium],
+            "utm_campaign": [campaign or "agent_outreach"],
+        }
+    )
     new_query = urlencode({k: v[0] for k, v in params.items()})
     return urlunparse(parsed._replace(query=new_query))
 
@@ -78,15 +80,19 @@ def _build_madfam_email_html(
           </td>
         </tr>'''
 
-    product_line = f' — {product_name}' if product_name else ''
+    product_line = f" — {product_name}" if product_name else ""
 
     # Convert plain text paragraphs to HTML if not already HTML
-    if '<' not in body_text:
-        body_html = ''.join(f'<p style="margin:0 0 16px">{p.strip()}</p>' for p in body_text.split('\n\n') if p.strip())
+    if "<" not in body_text:
+        body_html = "".join(
+            f'<p style="margin:0 0 16px">{p.strip()}</p>'
+            for p in body_text.split("\n\n")
+            if p.strip()
+        )
     else:
         body_html = body_text
 
-    return f'''<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#f0f0f5;font-family:Arial,sans-serif">
@@ -109,7 +115,7 @@ def _build_madfam_email_html(
       <tr>
         <td style="padding:20px 24px;background-color:#f5f5f5;text-align:center;font-family:Arial,sans-serif">
           <p style="font-size:12px;color:#888888;margin:0">By Innovaciones MADFAM S.A.S. de C.V. · Cuernavaca, Morelos, Mexico · <a href="https://madfam.io" style="color:#888888">madfam.io</a></p>
-          <p style="font-size:11px;color:#aaaaaa;margin:8px 0 0"><a href="https://madfam.io/unsubscribe?email={quote(to_email, safe='@')}" style="color:#aaaaaa">Cancelar suscripción</a></p>
+          <p style="font-size:11px;color:#aaaaaa;margin:8px 0 0"><a href="https://madfam.io/unsubscribe?email={quote(to_email, safe="@")}" style="color:#aaaaaa">Cancelar suscripción</a></p>
         </td>
       </tr>
     </table>
@@ -117,7 +123,7 @@ def _build_madfam_email_html(
   </td></tr>
 </table>
 </body>
-</html>'''
+</html>"""
 
 
 class SendMarketingEmailTool(BaseTool):
@@ -252,11 +258,14 @@ class SendMarketingEmailTool(BaseTool):
         cta_text = kwargs.get("cta_text", "Comienza ahora")
         product_name = kwargs.get("product_name", "")
         if template == "madfam" and "<!DOCTYPE" not in body_html and "<html" not in body_html:
-            body_html = _build_madfam_email_html(body_html, cta_url, cta_text, product_name, to_email=to_email)
+            body_html = _build_madfam_email_html(
+                body_html, cta_url, cta_text, product_name, to_email=to_email
+            )
 
         # Inject UTM into any links in the HTML body
         # Simple approach: find href="..." and append UTM params
         import re
+
         def _add_utm_to_link(match: re.Match) -> str:
             url = match.group(1)
             if url.startswith("mailto:") or url.startswith("#"):
@@ -278,7 +287,7 @@ class SendMarketingEmailTool(BaseTool):
                     payload["reply_to"] = reply_to
                 # CAN-SPAM / LFPDPPP: List-Unsubscribe header
                 payload["headers"] = {
-                    "List-Unsubscribe": f"<https://madfam.io/unsubscribe?email={quote(to_email, safe='@')}>",
+                    "List-Unsubscribe": f"<https://madfam.io/unsubscribe?email={quote(to_email, safe='@')}>",  # noqa: E501
                 }
 
                 resp = await client.post(
@@ -299,14 +308,19 @@ class SendMarketingEmailTool(BaseTool):
             # user authenticates via Janua/Dhanam).
             try:
                 from nexus_api.analytics import track
+
                 lead_id = kwargs.get("lead_id") or ""
                 distinct_id = lead_id or to_email
-                track(distinct_id, "marketing_email_sent", {
-                    "subject": subject,
-                    "utm_campaign": utm_campaign,
-                    "agent_tool": "send_marketing_email",
-                    "lead_id": lead_id,
-                })
+                track(
+                    distinct_id,
+                    "marketing_email_sent",
+                    {
+                        "subject": subject,
+                        "utm_campaign": utm_campaign,
+                        "agent_tool": "send_marketing_email",
+                        "lead_id": lead_id,
+                    },
+                )
             except Exception:
                 pass
 
@@ -314,10 +328,18 @@ class SendMarketingEmailTool(BaseTool):
             logger.info("Marketing email sent: to=%s subject=%s id=%s", to_email, subject, email_id)
             try:
                 from ..service_tracking import emit_service_usage
-                emit_service_usage("resend", "marketing_email_sent", 1, {
-                    "to": to_email, "subject": subject, "email_id": email_id,
-                    "utm_campaign": utm_campaign,
-                })
+
+                emit_service_usage(
+                    "resend",
+                    "marketing_email_sent",
+                    1,
+                    {
+                        "to": to_email,
+                        "subject": subject,
+                        "email_id": email_id,
+                        "utm_campaign": utm_campaign,
+                    },
+                )
             except Exception:
                 pass
 

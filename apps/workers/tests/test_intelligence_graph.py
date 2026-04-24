@@ -48,10 +48,12 @@ class TestScanDOFNode:
             new_callable=AsyncMock,
             side_effect=RuntimeError("Connection refused"),
         ):
-            result = scan_dof({
-                "messages": [],
-                "description": "reforma fiscal RESICO",
-            })
+            result = scan_dof(
+                {
+                    "messages": [],
+                    "description": "reforma fiscal RESICO",
+                }
+            )
 
         assert result["status"] == "scanning_dof"
         assert result["dof_results"] == []
@@ -71,10 +73,12 @@ class TestScanDOFNode:
             new_callable=AsyncMock,
             return_value=mock_entries,
         ):
-            result = scan_dof({
-                "messages": [],
-                "description": "reforma fiscal",
-            })
+            result = scan_dof(
+                {
+                    "messages": [],
+                    "description": "reforma fiscal",
+                }
+            )
 
         assert result["status"] == "scanning_dof"
         assert len(result["dof_results"]) == 2
@@ -89,10 +93,12 @@ class TestScanDOFNode:
             new_callable=AsyncMock,
             return_value=[],
         ) as mock_search:
-            scan_dof({
-                "messages": [],
-                "description": "",
-            })
+            scan_dof(
+                {
+                    "messages": [],
+                    "description": "",
+                }
+            )
 
         # Should have called with a default query
         call_args = mock_search.call_args
@@ -105,30 +111,35 @@ class TestFetchEconomicDataNode:
 
     def test_fetch_economic_data_success(self) -> None:
         """When Dhanam responds, all indicators are aggregated."""
-        from selva_workers.graphs.intelligence import fetch_economic_data
         from madfam_inference.adapters.dhanam import EconomicIndicator, ExchangeRate
+        from selva_workers.graphs.intelligence import fetch_economic_data
 
-        with patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_exchange_rate",
-            new_callable=AsyncMock,
-            return_value=ExchangeRate(date="14/04/2026", rate="17.05", currency_pair="USD/MXN"),
-        ), patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_tiie",
-            new_callable=AsyncMock,
-            return_value=EconomicIndicator(
-                series_id="SF43783", name="TIIE 28", date="14/04/2026", value="11.25"
+        with (
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_exchange_rate",
+                new_callable=AsyncMock,
+                return_value=ExchangeRate(date="14/04/2026", rate="17.05", currency_pair="USD/MXN"),
             ),
-        ), patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_inflation",
-            new_callable=AsyncMock,
-            return_value=EconomicIndicator(
-                series_id="SP74665", name="INPC", date="14/04/2026", value="4.21"
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_tiie",
+                new_callable=AsyncMock,
+                return_value=EconomicIndicator(
+                    series_id="SF43783", name="TIIE 28", date="14/04/2026", value="11.25"
+                ),
             ),
-        ), patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_uma",
-            new_callable=AsyncMock,
-            return_value=EconomicIndicator(
-                series_id="SP74668", name="UMA", date="14/04/2026", value="113.14"
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_inflation",
+                new_callable=AsyncMock,
+                return_value=EconomicIndicator(
+                    series_id="SP74665", name="INPC", date="14/04/2026", value="4.21"
+                ),
+            ),
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_uma",
+                new_callable=AsyncMock,
+                return_value=EconomicIndicator(
+                    series_id="SP74668", name="UMA", date="14/04/2026", value="113.14"
+                ),
             ),
         ):
             result = fetch_economic_data({"messages": []})
@@ -144,27 +155,32 @@ class TestFetchEconomicDataNode:
 
     def test_fetch_economic_data_partial_failure(self) -> None:
         """If one indicator fails, others still succeed."""
-        from selva_workers.graphs.intelligence import fetch_economic_data
         from madfam_inference.adapters.dhanam import EconomicIndicator, ExchangeRate
+        from selva_workers.graphs.intelligence import fetch_economic_data
 
-        with patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_exchange_rate",
-            new_callable=AsyncMock,
-            return_value=ExchangeRate(date="14/04/2026", rate="17.05", currency_pair="USD/MXN"),
-        ), patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_tiie",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("Timeout"),
-        ), patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_inflation",
-            new_callable=AsyncMock,
-            return_value=EconomicIndicator(
-                series_id="SP74665", name="INPC", date="14/04/2026", value="4.21"
+        with (
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_exchange_rate",
+                new_callable=AsyncMock,
+                return_value=ExchangeRate(date="14/04/2026", rate="17.05", currency_pair="USD/MXN"),
             ),
-        ), patch(
-            "madfam_inference.adapters.dhanam.DhanamAdapter.get_uma",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("Timeout"),
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_tiie",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("Timeout"),
+            ),
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_inflation",
+                new_callable=AsyncMock,
+                return_value=EconomicIndicator(
+                    series_id="SP74665", name="INPC", date="14/04/2026", value="4.21"
+                ),
+            ),
+            patch(
+                "madfam_inference.adapters.dhanam.DhanamAdapter.get_uma",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("Timeout"),
+            ),
         ):
             result = fetch_economic_data({"messages": []})
 
@@ -187,14 +203,16 @@ class TestGenerateBriefingNode:
             "selva_workers.inference.get_model_router",
             side_effect=RuntimeError("no providers"),
         ):
-            result = generate_briefing({
-                "messages": [],
-                "dof_results": [{"title": "Reforma Fiscal", "date": "2026-04-10"}],
-                "economic_indicators": {
-                    "exchange_rate": {"rate": "17.05", "currency_pair": "USD/MXN"},
-                    "inflation": {"value": "4.21"},
-                },
-            })
+            result = generate_briefing(
+                {
+                    "messages": [],
+                    "dof_results": [{"title": "Reforma Fiscal", "date": "2026-04-10"}],
+                    "economic_indicators": {
+                        "exchange_rate": {"rate": "17.05", "currency_pair": "USD/MXN"},
+                        "inflation": {"value": "4.21"},
+                    },
+                }
+            )
 
         assert result["status"] == "briefing_generated"
         assert result["briefing_text"]
@@ -217,11 +235,13 @@ class TestGenerateBriefingNode:
                 return_value="Buenos dias. Hoy el tipo de cambio FIX es $17.05 MXN/USD.",
             ),
         ):
-            result = generate_briefing({
-                "messages": [],
-                "dof_results": [],
-                "economic_indicators": {},
-            })
+            result = generate_briefing(
+                {
+                    "messages": [],
+                    "dof_results": [],
+                    "economic_indicators": {},
+                }
+            )
 
         assert result["status"] == "briefing_generated"
         assert "17.05" in result["briefing_text"]
@@ -234,11 +254,13 @@ class TestGenerateBriefingNode:
             "selva_workers.inference.get_model_router",
             side_effect=RuntimeError("no providers"),
         ):
-            result = generate_briefing({
-                "messages": [],
-                "dof_results": [],
-                "economic_indicators": {},
-            })
+            result = generate_briefing(
+                {
+                    "messages": [],
+                    "dof_results": [],
+                    "economic_indicators": {},
+                }
+            )
 
         assert result["status"] == "briefing_generated"
         assert result["briefing_text"]
@@ -257,12 +279,14 @@ class TestNotifyTeamNode:
             new_callable=AsyncMock,
             return_value="/tmp/autoswarm-artifacts/ab/cd/abcd1234",
         ):
-            result = notify_team({
-                "messages": [],
-                "briefing_text": "Briefing de prueba",
-                "dof_results": [{"title": "Entry"}],
-                "economic_indicators": {"exchange_rate": {"rate": "17.05"}},
-            })
+            result = notify_team(
+                {
+                    "messages": [],
+                    "briefing_text": "Briefing de prueba",
+                    "dof_results": [{"title": "Entry"}],
+                    "economic_indicators": {"exchange_rate": {"rate": "17.05"}},
+                }
+            )
 
         assert result["status"] == "completed"
         assert result["result"] is not None
@@ -280,12 +304,14 @@ class TestNotifyTeamNode:
             new_callable=AsyncMock,
             side_effect=RuntimeError("Storage error"),
         ):
-            result = notify_team({
-                "messages": [],
-                "briefing_text": "Briefing de prueba",
-                "dof_results": [],
-                "economic_indicators": {},
-            })
+            result = notify_team(
+                {
+                    "messages": [],
+                    "briefing_text": "Briefing de prueba",
+                    "dof_results": [],
+                    "economic_indicators": {},
+                }
+            )
 
         assert result["status"] == "completed"
         assert result["result"]["delivery_channels"] == []

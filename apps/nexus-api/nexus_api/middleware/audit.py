@@ -96,9 +96,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
     to avoid impacting request latency.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
 
         # Only audit state-changing methods with successful responses.

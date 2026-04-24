@@ -74,10 +74,7 @@ class CallExternalAgentTool(BaseTool):
             resp = await client.send_task(agent_url, task_req, token=token)
 
             return ToolResult(
-                output=(
-                    f"Task sent to {card.name}: task_id={resp.task_id}, "
-                    f"status={resp.status}"
-                ),
+                output=(f"Task sent to {card.name}: task_id={resp.task_id}, status={resp.status}"),
                 data={
                     "task_id": resp.task_id,
                     "status": resp.status,

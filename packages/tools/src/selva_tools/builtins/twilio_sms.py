@@ -291,10 +291,7 @@ class SmsStatusTool(BaseTool):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
-                output=(
-                    f"{sid}: {body.get('status')} "
-                    f"(error_code={body.get('error_code')})"
-                ),
+                output=(f"{sid}: {body.get('status')} (error_code={body.get('error_code')})"),
                 data={
                     "sid": body.get("sid"),
                     "status": body.get("status"),
@@ -333,8 +330,7 @@ class SmsListMessagesTool(BaseTool):
                 "from_": {"type": "string"},
                 "date_after": {
                     "type": "string",
-                    "description": "ISO date (YYYY-MM-DD). Twilio interprets "
-                    "as DateSent>=.",
+                    "description": "ISO date (YYYY-MM-DD). Twilio interprets as DateSent>=.",
                 },
                 "limit": {"type": "integer", "default": 50, "maximum": 1000},
             },

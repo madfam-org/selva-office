@@ -21,8 +21,15 @@ class TestTaskType:
 
     def test_all_values(self) -> None:
         expected = {
-            "planning", "coding", "fast_coding", "review", "research",
-            "crm", "support", "vision", "embedding",
+            "planning",
+            "coding",
+            "fast_coding",
+            "review",
+            "research",
+            "crm",
+            "support",
+            "vision",
+            "embedding",
         }
         assert {t.value for t in TaskType} == expected
 
@@ -138,8 +145,10 @@ class TestModelAssignment:
 
     def test_custom_values(self) -> None:
         ma = ModelAssignment(
-            provider="deepinfra", model="llama-70b",
-            max_tokens=8192, temperature=0.3,
+            provider="deepinfra",
+            model="llama-70b",
+            max_tokens=8192,
+            temperature=0.3,
         )
         assert ma.provider == "deepinfra"
         assert ma.model == "llama-70b"
@@ -167,6 +176,7 @@ class TestProviderConfig:
         )
         with patch.dict("os.environ", {"SILICONFLOW_API_KEY": "sk-test-123"}):
             import os
+
             assert os.environ.get(pc.api_key_env) == "sk-test-123"
 
 

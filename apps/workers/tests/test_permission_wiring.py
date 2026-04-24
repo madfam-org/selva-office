@@ -47,7 +47,8 @@ class TestCheckPermission:
             return_value=mock_registry,
         ):
             result = check_permission(
-                {"agent_skill_ids": ["skill-1"]}, "file_write",
+                {"agent_skill_ids": ["skill-1"]},
+                "file_write",
             )
 
         assert result.level == PermissionLevel.ALLOW
@@ -70,10 +71,12 @@ class TestImplementPermissionCheck:
             "selva_workers.graphs.coding.check_permission",
             return_value=mock_result,
         ):
-            result = implement({
-                "messages": [],
-                "iteration": 0,
-            })
+            result = implement(
+                {
+                    "messages": [],
+                    "iteration": 0,
+                }
+            )
 
         assert result["status"] == "blocked"
 
@@ -91,13 +94,17 @@ class TestImplementPermissionCheck:
             "selva_workers.graphs.coding.check_permission",
             return_value=mock_result,
         ):
-            result = implement({
-                "messages": [AIMessage(
-                    content="Plan ready",
-                    additional_kwargs={"plan": {"steps": ["step1"]}},
-                )],
-                "iteration": 0,
-            })
+            result = implement(
+                {
+                    "messages": [
+                        AIMessage(
+                            content="Plan ready",
+                            additional_kwargs={"plan": {"steps": ["step1"]}},
+                        )
+                    ],
+                    "iteration": 0,
+                }
+            )
 
         assert result["status"] == "implementing"
 
@@ -119,12 +126,14 @@ class TestCRMPermissionCheck:
             "selva_workers.graphs.base.check_permission",
             return_value=mock_result,
         ):
-            result = send({
-                "messages": [],
-                "status": "approved",
-                "recipient": "test@example.com",
-                "crm_action": "email",
-            })
+            result = send(
+                {
+                    "messages": [],
+                    "status": "approved",
+                    "recipient": "test@example.com",
+                    "crm_action": "email",
+                }
+            )
 
         assert result["status"] == "blocked"
 
@@ -142,12 +151,14 @@ class TestCRMPermissionCheck:
             "selva_workers.graphs.base.check_permission",
             return_value=mock_result,
         ):
-            result = send({
-                "messages": [],
-                "status": "approved",
-                "recipient": "test@example.com",
-                "crm_action": "email",
-                "task_id": "t1",
-            })
+            result = send(
+                {
+                    "messages": [],
+                    "status": "approved",
+                    "recipient": "test@example.com",
+                    "crm_action": "email",
+                    "task_id": "t1",
+                }
+            )
 
         assert result["status"] == "completed"

@@ -37,25 +37,23 @@ class TestRegistry:
 class TestDumpCredentials:
     @pytest.mark.asyncio
     async def test_missing_r2_endpoint_returns_error(self) -> None:
-        with patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", ""), patch(
-            "selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"
-        ), patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"):
-            r = await DbDumpToR2Tool().execute(
-                database="selva_prod", bucket="backups"
-            )
+        with (
+            patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", ""),
+            patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"),
+            patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"),
+        ):
+            r = await DbDumpToR2Tool().execute(database="selva_prod", bucket="backups")
             assert r.success is False
             assert "R2_ENDPOINT" in (r.error or "")
 
     @pytest.mark.asyncio
     async def test_missing_key_returns_error(self) -> None:
-        with patch(
-            "selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"
-        ), patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", ""), patch(
-            "selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"
+        with (
+            patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"),
+            patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", ""),
+            patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"),
         ):
-            r = await DbDumpToR2Tool().execute(
-                database="selva_prod", bucket="backups"
-            )
+            r = await DbDumpToR2Tool().execute(database="selva_prod", bucket="backups")
             assert r.success is False
             assert "R2_ACCESS_KEY_ID" in (r.error or "")
 
@@ -63,16 +61,12 @@ class TestDumpCredentials:
 class TestIdentValidation:
     @pytest.mark.asyncio
     async def test_rejects_dangerous_db_name(self) -> None:
-        with patch(
-            "selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"
+        with (
+            patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"),
+            patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"),
+            patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"),
         ):
-            r = await DbDumpToR2Tool().execute(
-                database="selva; DROP TABLE x", bucket="b"
-            )
+            r = await DbDumpToR2Tool().execute(database="selva; DROP TABLE x", bucket="b")
             assert r.success is False
             assert "database" in (r.error or "")
 
@@ -90,18 +84,13 @@ class TestDumpToR2:
             captured["namespace"] = namespace
             return True, "upload: s3://backups/dumps/selva_prod-20260418T000000Z.sql.gz"
 
-        with patch(
-            "selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake
+        with (
+            patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"),
+            patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"),
+            patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"),
+            patch("selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake),
         ):
-            r = await DbDumpToR2Tool().execute(
-                database="selva_prod", bucket="backups"
-            )
+            r = await DbDumpToR2Tool().execute(database="selva_prod", bucket="backups")
             assert r.success is True
             assert "pg_dump" in captured["cmd"]
             assert "gzip" in captured["cmd"]
@@ -114,18 +103,13 @@ class TestDumpToR2:
         async def fake(shell_cmd, namespace="data", timeout=600):
             return False, "no postgres pod"
 
-        with patch(
-            "selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake
+        with (
+            patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"),
+            patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"),
+            patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"),
+            patch("selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake),
         ):
-            r = await DbDumpToR2Tool().execute(
-                database="selva_prod", bucket="backups"
-            )
+            r = await DbDumpToR2Tool().execute(database="selva_prod", bucket="backups")
             assert r.success is False
             assert "no postgres pod" in (r.error or "")
 
@@ -142,14 +126,11 @@ class TestRestoreFromR2:
             captured["cmd"] = shell_cmd
             return True, "COPY 1000"
 
-        with patch(
-            "selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake
+        with (
+            patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"),
+            patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"),
+            patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"),
+            patch("selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake),
         ):
             r = await DbRestoreFromR2Tool().execute(
                 bucket="backups",
@@ -170,14 +151,11 @@ class TestRestoreFromR2:
             captured["cmd"] = shell_cmd
             return True, ""
 
-        with patch(
-            "selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"
-        ), patch(
-            "selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake
+        with (
+            patch("selva_tools.builtins.db_lifecycle.R2_ENDPOINT", "https://x.r2"),
+            patch("selva_tools.builtins.db_lifecycle.R2_ACCESS_KEY_ID", "k"),
+            patch("selva_tools.builtins.db_lifecycle.R2_SECRET_ACCESS_KEY", "s"),
+            patch("selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake),
         ):
             await DbRestoreFromR2Tool().execute(
                 bucket="backups",
@@ -199,9 +177,7 @@ class TestMaskAndCopy:
             captured["cmd"] = shell_cmd
             return True, "UPDATE 500"
 
-        with patch(
-            "selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake
-        ):
+        with patch("selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake):
             r = await DbMaskAndCopyTool().execute(
                 source_db="selva_prod",
                 target_db="selva_staging",
@@ -218,9 +194,7 @@ class TestMaskAndCopy:
 
     @pytest.mark.asyncio
     async def test_empty_rules_rejected(self) -> None:
-        r = await DbMaskAndCopyTool().execute(
-            source_db="a", target_db="b", table_mask_rules={}
-        )
+        r = await DbMaskAndCopyTool().execute(source_db="a", target_db="b", table_mask_rules={})
         assert r.success is False
 
     @pytest.mark.asyncio
@@ -240,17 +214,13 @@ class TestSizeReport:
     @pytest.mark.asyncio
     async def test_parses_pipe_separated_output(self) -> None:
         sample = (
-            "public|users|10000|8388608\n"
-            "public|tasks|5000|4194304\n"
-            "public|events|250000|20971520\n"
+            "public|users|10000|8388608\npublic|tasks|5000|4194304\npublic|events|250000|20971520\n"
         )
 
         async def fake(shell_cmd, namespace="data", timeout=120):
             return True, sample
 
-        with patch(
-            "selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake
-        ):
+        with patch("selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake):
             r = await DbSizeReportTool().execute(database="selva_prod")
             assert r.success is True
             assert r.data["table_count"] == 3
@@ -262,9 +232,7 @@ class TestSizeReport:
         async def fake(shell_cmd, namespace="data", timeout=120):
             return False, "psql: FATAL: database does not exist"
 
-        with patch(
-            "selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake
-        ):
+        with patch("selva_tools.builtins.db_lifecycle._exec_in_postgres", new=fake):
             r = await DbSizeReportTool().execute(database="nonexistent")
             assert r.success is False
             assert "does not exist" in (r.error or "")

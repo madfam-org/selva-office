@@ -228,17 +228,13 @@ class TestPlatformToolRegistry:
                 continue  # If the tool was removed, that's a separate concern.
             if tool.audience is not Audience.TENANT:
                 mistagged.append((name, tool.audience))
-        assert not mistagged, (
-            f"Tenant-audience tools wrongly promoted to PLATFORM: {mistagged}"
-        )
+        assert not mistagged, f"Tenant-audience tools wrongly promoted to PLATFORM: {mistagged}"
 
     def test_tenant_filter_hides_all_platform_tools(self, registry) -> None:
         """From a tenant swarm's perspective, no PLATFORM tool is visible."""
         visible_to_tenant = set(registry.list_tools(audience=Audience.TENANT))
         leaked = visible_to_tenant & PLATFORM_TOOL_NAMES
-        assert not leaked, (
-            f"Platform tools visible to tenant audience (filter bug): {leaked}"
-        )
+        assert not leaked, f"Platform tools visible to tenant audience (filter bug): {leaked}"
 
     def test_platform_audience_sees_platform_and_tenant(self, registry) -> None:
         """Platform audience is a superset — sees both buckets."""

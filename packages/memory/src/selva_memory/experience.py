@@ -105,16 +105,12 @@ class ExperienceStore:
         experiences.sort(key=lambda x: x[0], reverse=True)
         return [e for _, e in experiences[:top_k]]
 
-    async def get_shortcuts(
-        self, task_description: str, threshold: float = 0.8
-    ) -> list[str]:
+    async def get_shortcuts(self, task_description: str, threshold: float = 0.8) -> list[str]:
         """Get high-confidence approach shortcuts for a task.
 
         Returns approach strings from experiences with score >= threshold.
         """
-        experiences = await self.search_similar(
-            task_description, top_k=3, min_score=threshold
-        )
+        experiences = await self.search_similar(task_description, top_k=3, min_score=threshold)
         return [e.approach for e in experiences if e.approach]
 
     @property

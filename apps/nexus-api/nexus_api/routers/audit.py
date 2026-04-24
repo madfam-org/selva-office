@@ -175,22 +175,33 @@ async def export_audit_logs(
     # Generate CSV
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "id", "org_id", "user_id", "action", "resource_type",
-        "resource_id", "ip_address", "created_at", "details",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "org_id",
+            "user_id",
+            "action",
+            "resource_type",
+            "resource_id",
+            "ip_address",
+            "created_at",
+            "details",
+        ]
+    )
     for log in logs:
-        writer.writerow([
-            str(log.id),
-            log.org_id,
-            log.user_id,
-            log.action,
-            log.resource_type,
-            log.resource_id or "",
-            log.ip_address or "",
-            log.created_at.isoformat(),
-            str(log.details or ""),
-        ])
+        writer.writerow(
+            [
+                str(log.id),
+                log.org_id,
+                log.user_id,
+                log.action,
+                log.resource_type,
+                log.resource_id or "",
+                log.ip_address or "",
+                log.created_at.isoformat(),
+                str(log.details or ""),
+            ]
+        )
 
     output.seek(0)
     return StreamingResponse(

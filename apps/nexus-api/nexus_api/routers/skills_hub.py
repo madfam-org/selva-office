@@ -2,6 +2,7 @@
 Track D1: Skills Hub REST router
 Exposes agentskills.io browse/search/install endpoints.
 """
+
 from __future__ import annotations
 
 import logging
@@ -15,7 +16,8 @@ from ..auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(
-    prefix="/skills/hub", tags=["Skills Hub"],
+    prefix="/skills/hub",
+    tags=["Skills Hub"],
     dependencies=[Depends(get_current_user)],
 )
 
@@ -58,8 +60,10 @@ async def search_hub(q: str) -> list[HubSkillResponse]:
 async def install_skill(body: InstallRequest) -> dict:
     """Download and install a skill from agentskills.io."""
     import os
+
     target_dir = body.target_dir or os.environ.get(
-        "AUTOSWARM_SKILLS_DIR", "/var/lib/autoswarm/skills",
+        "AUTOSWARM_SKILLS_DIR",
+        "/var/lib/autoswarm/skills",
     )
     client = SkillsHubClient()
     try:
@@ -68,5 +72,6 @@ async def install_skill(body: InstallRequest) -> dict:
     except Exception as exc:
         logger.error("Skill install failed: %s", exc)
         raise HTTPException(
-            status_code=500, detail=f"Install failed: {exc}",
+            status_code=500,
+            detail=f"Install failed: {exc}",
         ) from exc

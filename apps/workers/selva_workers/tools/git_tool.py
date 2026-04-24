@@ -33,9 +33,7 @@ class GitTool:
 
     async def checkout_branch(self, repo_path: str, branch_name: str) -> BashResult:
         """Check out (or create) a branch in *repo_path*."""
-        result = await self.bash.execute(
-            f"git -C {repo_path} checkout -B {branch_name}"
-        )
+        result = await self.bash.execute(f"git -C {repo_path} checkout -B {branch_name}")
         if not result.success:
             logger.warning("Branch checkout failed: %s", result.stderr)
         return result
@@ -48,9 +46,7 @@ class GitTool:
 
         # Escape the commit message for shell safety.
         safe_message = message.replace("'", "'\\''")
-        return await self.bash.execute(
-            f"git -C {repo_path} commit -m '{safe_message}'"
-        )
+        return await self.bash.execute(f"git -C {repo_path} commit -m '{safe_message}'")
 
     async def configure_identity(
         self,
@@ -85,7 +81,11 @@ class GitTool:
         )
 
     async def push(
-        self, repo_path: str, branch_name: str, *, token: str | None = None,
+        self,
+        repo_path: str,
+        branch_name: str,
+        *,
+        token: str | None = None,
     ) -> BashResult:
         """Push a branch to the remote.
 
@@ -111,9 +111,7 @@ class GitTool:
         logger.info(
             "Executing git push for branch '%s' in %s (approval assumed)", branch_name, repo_path
         )
-        return await self.bash.execute(
-            f"git -C {repo_path} push -u origin {branch_name}"
-        )
+        return await self.bash.execute(f"git -C {repo_path} push -u origin {branch_name}")
 
     async def create_pr(
         self,
@@ -150,21 +148,18 @@ class GitTool:
         safe_title = title.replace("'", "'\\''")
         safe_body = body.replace("'", "'\\''")
         # Resolve OWNER/REPO from the git remote (works regardless of gh version).
-        remote = await self.bash.execute(
-            f"git -C {repo_path} remote get-url origin"
-        )
+        remote = await self.bash.execute(f"git -C {repo_path} remote get-url origin")
         repo_slug = ""
         if remote.success:
             url = remote.stdout.strip()
             # Handle both HTTPS (github.com/OWNER/REPO.git) and SSH (git@github.com:OWNER/REPO.git)
             for prefix in ("https://github.com/", "git@github.com:"):
                 if url.startswith(prefix):
-                    repo_slug = url[len(prefix):].removesuffix(".git")
+                    repo_slug = url[len(prefix) :].removesuffix(".git")
                     break
         repo_flag = f"--repo {repo_slug}" if repo_slug else ""
         cmd = (
-            f"gh pr create {repo_flag} --head {branch} "
-            f"--title '{safe_title}' --body '{safe_body}'"
+            f"gh pr create {repo_flag} --head {branch} --title '{safe_title}' --body '{safe_body}'"
         )
         env = {"GH_TOKEN": token} if token else None
         return await self.bash.execute(cmd, env=env)
@@ -224,9 +219,7 @@ class GitTool:
 
         if wt.exists():
             # Use git worktree remove for a clean teardown.
-            result = await self.bash.execute(
-                f"git worktree remove --force {worktree_path}"
-            )
+            result = await self.bash.execute(f"git worktree remove --force {worktree_path}")
             if not result.success:
                 # Fallback: Python-level removal (bypasses BashTool blocklist).
                 shutil.rmtree(worktree_path, ignore_errors=True)

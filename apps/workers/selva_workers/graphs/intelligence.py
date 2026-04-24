@@ -187,9 +187,7 @@ def generate_briefing(state: IntelligenceState) -> IntelligenceState:
         router = get_model_router()
 
         skill_ctx = state.get("agent_system_prompt", "")
-        system_prompt = (
-            f"{skill_ctx}\n\n" if skill_ctx else ""
-        ) + (
+        system_prompt = (f"{skill_ctx}\n\n" if skill_ctx else "") + (
             "Eres un analista de inteligencia de mercado. "
             "Genera un briefing ejecutivo matutino en espanol, conciso y profesional. "
             "Formato amigable para WhatsApp: parrafos cortos, viñetas, emojis minimos. "
@@ -197,12 +195,14 @@ def generate_briefing(state: IntelligenceState) -> IntelligenceState:
             "inflacion, y recomendaciones de accion si aplican."
         )
 
-        briefing_text = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": context}],
-            system_prompt=system_prompt,
-            task_type="research",
-        ))
+        briefing_text = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": context}],
+                system_prompt=system_prompt,
+                task_type="research",
+            )
+        )
     except Exception:
         # Structured fallback when no LLM available
         briefing_text = (

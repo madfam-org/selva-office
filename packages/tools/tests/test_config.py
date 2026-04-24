@@ -450,9 +450,7 @@ def test_load_k8s_config_raises_auth_error_when_nothing_mounted(
 ) -> None:
     """No SA token + no kubeconfig => _K8sAuthError (not a kubectl fallthrough)."""
     # Pretend nothing is available.
-    monkeypatch.setattr(
-        "os.path.exists", lambda p: False, raising=True
-    )
+    monkeypatch.setattr("os.path.exists", lambda p: False, raising=True)
     monkeypatch.setenv("KUBECONFIG", "")
     # Expand user returns a path that also doesn't exist (above).
     with pytest.raises(_K8sAuthError):
@@ -475,9 +473,7 @@ async def test_read_403_surfaces_auth_error_and_writes_failed_audit(
     result = await wired["read"].execute(**_base_read_args())
 
     assert result.success is False
-    assert "rbac" in (result.error or "").lower() or "auth" in (
-        result.error or ""
-    ).lower()
+    assert "rbac" in (result.error or "").lower() or "auth" in (result.error or "").lower()
     assert len(wired["audit"]["rows"]) == 1
     assert wired["audit"]["rows"][0]["status"] == "failed"
     assert wired["audit"]["rows"][0]["error_message"]
@@ -557,9 +553,7 @@ async def test_unknown_namespace_rejected(wired: dict[str, Any]) -> None:
     assert "kube-system" not in ALLOWED_NAMESPACES
     result = await wired["set"].execute(**_base_set_args(namespace="kube-system"))
     assert result.success is False
-    assert "allow-list" in (result.error or "") or "allow_list" in (
-        result.error or ""
-    )
+    assert "allow-list" in (result.error or "") or "allow_list" in (result.error or "")
 
 
 @pytest.mark.asyncio
@@ -629,9 +623,7 @@ async def test_create_if_missing_false_refuses_to_conjure(
     wired["v1"].read_namespaced_config_map.side_effect = ApiException(
         status=404, reason="Not Found"
     )
-    result = await wired["set"].execute(
-        **_base_set_args(configmap_name="ghost-config")
-    )
+    result = await wired["set"].execute(**_base_set_args(configmap_name="ghost-config"))
     assert result.success is False
     assert "does not exist" in (result.error or "")
 

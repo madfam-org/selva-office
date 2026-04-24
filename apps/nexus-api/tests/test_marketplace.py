@@ -87,9 +87,7 @@ async def _create_rating(
 
 
 @pytest.mark.asyncio()
-async def test_list_skills_empty(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_list_skills_empty(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Listing skills on an empty marketplace returns an empty list."""
     resp = await client.get("/api/v1/marketplace/skills", headers=auth_headers)
     assert resp.status_code == 200
@@ -131,9 +129,7 @@ async def test_get_skill_found(
     entry = await _create_entry(db_session, name="detail-skill")
     await db_session.commit()
 
-    resp = await client.get(
-        f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers
-    )
+    resp = await client.get(f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "detail-skill"
@@ -144,13 +140,9 @@ async def test_get_skill_found(
 
 
 @pytest.mark.asyncio()
-async def test_get_skill_not_found(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_get_skill_not_found(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Getting a non-existent skill returns 404."""
-    resp = await client.get(
-        f"/api/v1/marketplace/skills/{uuid.uuid4()}", headers=auth_headers
-    )
+    resp = await client.get(f"/api/v1/marketplace/skills/{uuid.uuid4()}", headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -160,9 +152,7 @@ async def test_get_skill_not_found(
 
 
 @pytest.mark.asyncio()
-async def test_publish_skill_valid(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_publish_skill_valid(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Publishing a skill with valid YAML succeeds."""
     payload = {
         "name": "my-new-skill",
@@ -172,9 +162,7 @@ async def test_publish_skill_valid(
         "category": "productivity",
         "tags": ["automation", "coding"],
     }
-    resp = await client.post(
-        "/api/v1/marketplace/skills", json=payload, headers=auth_headers
-    )
+    resp = await client.post("/api/v1/marketplace/skills", json=payload, headers=auth_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "my-new-skill"
@@ -195,9 +183,7 @@ async def test_publish_skill_invalid_yaml(
         "description": "Invalid content",
         "yaml_content": INVALID_YAML_CONTENT,
     }
-    resp = await client.post(
-        "/api/v1/marketplace/skills", json=payload, headers=auth_headers
-    )
+    resp = await client.post("/api/v1/marketplace/skills", json=payload, headers=auth_headers)
     assert resp.status_code == 422
 
 
@@ -317,13 +303,9 @@ async def test_install_skill_success(
     await db_session.commit()
 
     # Redirect install directory to tmp_path to avoid polluting the real tree
-    monkeypatch.setattr(
-        "nexus_api.routers.marketplace._COMMUNITY_SKILLS_DIR", tmp_path
-    )
+    monkeypatch.setattr("nexus_api.routers.marketplace._COMMUNITY_SKILLS_DIR", tmp_path)
 
-    resp = await client.post(
-        f"/api/v1/marketplace/skills/{entry.id}/install", headers=auth_headers
-    )
+    resp = await client.post(f"/api/v1/marketplace/skills/{entry.id}/install", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["installed"] is True
@@ -347,19 +329,13 @@ async def test_install_skill_increments_downloads(
     entry = await _create_entry(db_session, downloads=5)
     await db_session.commit()
 
-    monkeypatch.setattr(
-        "nexus_api.routers.marketplace._COMMUNITY_SKILLS_DIR", tmp_path
-    )
+    monkeypatch.setattr("nexus_api.routers.marketplace._COMMUNITY_SKILLS_DIR", tmp_path)
 
-    resp = await client.post(
-        f"/api/v1/marketplace/skills/{entry.id}/install", headers=auth_headers
-    )
+    resp = await client.post(f"/api/v1/marketplace/skills/{entry.id}/install", headers=auth_headers)
     assert resp.status_code == 200
 
     # Verify downloads incremented by re-fetching
-    get_resp = await client.get(
-        f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers
-    )
+    get_resp = await client.get(f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers)
     assert get_resp.status_code == 200
     assert get_resp.json()["downloads"] == 6
 
@@ -379,16 +355,12 @@ async def test_delete_skill_author(
     entry = await _create_entry(db_session, author="dev@autoswarm.local")
     await db_session.commit()
 
-    resp = await client.delete(
-        f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers
-    )
+    resp = await client.delete(f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["deleted"] is True
 
     # Verify it's gone
-    get_resp = await client.get(
-        f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers
-    )
+    get_resp = await client.get(f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers)
     assert get_resp.status_code == 404
 
 
@@ -402,9 +374,7 @@ async def test_delete_skill_non_author_forbidden(
     entry = await _create_entry(db_session, author="other@example.com")
     await db_session.commit()
 
-    resp = await client.delete(
-        f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers
-    )
+    resp = await client.delete(f"/api/v1/marketplace/skills/{entry.id}", headers=auth_headers)
     assert resp.status_code == 403
 
 
@@ -413,9 +383,7 @@ async def test_delete_skill_not_found(
     client: httpx.AsyncClient, auth_headers: dict[str, str]
 ) -> None:
     """Deleting a non-existent skill returns 404."""
-    resp = await client.delete(
-        f"/api/v1/marketplace/skills/{uuid.uuid4()}", headers=auth_headers
-    )
+    resp = await client.delete(f"/api/v1/marketplace/skills/{uuid.uuid4()}", headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -435,9 +403,7 @@ async def test_search_filter(
     await _create_entry(db_session, name="beta-skill")
     await db_session.commit()
 
-    resp = await client.get(
-        "/api/v1/marketplace/skills?search=alpha", headers=auth_headers
-    )
+    resp = await client.get("/api/v1/marketplace/skills?search=alpha", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
@@ -485,9 +451,7 @@ async def test_sort_by_downloads(
     await _create_entry(db_session, name="high-dl", downloads=100)
     await db_session.commit()
 
-    resp = await client.get(
-        "/api/v1/marketplace/skills?sort_by=downloads", headers=auth_headers
-    )
+    resp = await client.get("/api/v1/marketplace/skills?sort_by=downloads", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["entries"][0]["name"] == "high-dl"
@@ -505,9 +469,7 @@ async def test_sort_by_newest(
     await _create_entry(db_session, name="second-skill")
     await db_session.commit()
 
-    resp = await client.get(
-        "/api/v1/marketplace/skills?sort_by=newest", headers=auth_headers
-    )
+    resp = await client.get("/api/v1/marketplace/skills?sort_by=newest", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     # Both exist; newest ordering is default so just verify success
@@ -527,9 +489,7 @@ async def test_sort_by_rating(
     await _create_rating(db_session, e2.id, user_id="u2", rating=5)
     await db_session.commit()
 
-    resp = await client.get(
-        "/api/v1/marketplace/skills?sort_by=rating", headers=auth_headers
-    )
+    resp = await client.get("/api/v1/marketplace/skills?sort_by=rating", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["entries"][0]["name"] == "high-rated"

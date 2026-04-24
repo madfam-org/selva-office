@@ -83,18 +83,24 @@ async def test_coding_pipeline_mock_llm_succeeds(tmp_path):
     wt = tmp_path / "wt"
     wt.mkdir()
 
-    valid_plan = json.dumps({
-        "description": "test",
-        "steps": ["Write main.py"],
-    })
-    valid_code = json.dumps({
-        "files": [{"path": "main.py", "content": "print('hello')"}],
-    })
-    valid_review = json.dumps({
-        "changes_reviewed": 1,
-        "issues_found": 0,
-        "recommendation": "approve",
-    })
+    valid_plan = json.dumps(
+        {
+            "description": "test",
+            "steps": ["Write main.py"],
+        }
+    )
+    valid_code = json.dumps(
+        {
+            "files": [{"path": "main.py", "content": "print('hello')"}],
+        }
+    )
+    valid_review = json.dumps(
+        {
+            "changes_reviewed": 1,
+            "issues_found": 0,
+            "recommendation": "approve",
+        }
+    )
 
     call_idx = {"n": 0}
 
@@ -155,14 +161,18 @@ async def test_coding_pipeline_timeout(tmp_path):
         patch.object(worker_mod, "_publish_agent_status", new_callable=AsyncMock),
         patch.object(worker_mod, "_emit_event", new_callable=AsyncMock),
         patch.object(
-            worker_mod, "_fetch_agent_skills",
-            new_callable=AsyncMock, return_value=[],
+            worker_mod,
+            "_fetch_agent_skills",
+            new_callable=AsyncMock,
+            return_value=[],
         ),
         patch.object(worker_mod, "get_redis_pool", return_value=MagicMock()),
         patch("selva_observability.bind_task_context"),
         patch("selva_observability.clear_context"),
         patch.object(
-            worker_mod, "run_graph_with_interrupts", side_effect=slow_graph,
+            worker_mod,
+            "run_graph_with_interrupts",
+            side_effect=slow_graph,
         ),
         patch.object(worker_mod, "get_task_timeout", return_value=0.1),
     ):

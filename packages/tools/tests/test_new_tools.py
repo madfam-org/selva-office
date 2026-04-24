@@ -40,6 +40,7 @@ from selva_tools.builtins.http_tools import (
 # Total tool count
 # ---------------------------------------------------------------------------
 
+
 def test_tool_count_at_least_53() -> None:
     """39 existing + 14 new = 53 minimum (may be higher with A2A tool)."""
     tools = get_builtin_tools()
@@ -50,22 +51,26 @@ def test_tool_count_at_least_53() -> None:
 # Registration: each new tool name must appear in get_builtin_tools()
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("name", [
-    "send_email",
-    "read_email",
-    "create_calendar_event",
-    "list_calendar_events",
-    "sql_query",
-    "sql_write",
-    "database_schema",
-    "http_request",
-    "graphql_query",
-    "webhook_send",
-    "generate_pdf",
-    "parse_pdf",
-    "markdown_to_html",
-    "generate_chart",
-])
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "send_email",
+        "read_email",
+        "create_calendar_event",
+        "list_calendar_events",
+        "sql_query",
+        "sql_write",
+        "database_schema",
+        "http_request",
+        "graphql_query",
+        "webhook_send",
+        "generate_pdf",
+        "parse_pdf",
+        "markdown_to_html",
+        "generate_chart",
+    ],
+)
 def test_tool_registered(name: str) -> None:
     tools = {t.name: t for t in get_builtin_tools()}
     assert name in tools, f"Tool '{name}' not found in get_builtin_tools()"
@@ -135,6 +140,7 @@ def test_tool_openai_spec(tool_cls: type) -> None:
 # SSRF validation tests (http_tools._validate_url)
 # ---------------------------------------------------------------------------
 
+
 class TestSSRFValidation:
     def test_valid_public_url(self) -> None:
         from selva_tools.builtins.http_tools import _validate_url
@@ -171,6 +177,7 @@ class TestSSRFValidation:
 # ---------------------------------------------------------------------------
 # SQL security tests (database_tools query validation)
 # ---------------------------------------------------------------------------
+
 
 class TestSQLSecurity:
     @pytest.mark.asyncio
@@ -217,6 +224,7 @@ class TestSQLSecurity:
 # Document tools basic tests
 # ---------------------------------------------------------------------------
 
+
 class TestMarkdownToHTML:
     @pytest.mark.asyncio
     async def test_empty_markdown(self) -> None:
@@ -236,6 +244,7 @@ class TestMarkdownToHTML:
 # Email tool placeholder test
 # ---------------------------------------------------------------------------
 
+
 class TestReadEmail:
     @pytest.mark.asyncio
     async def test_read_email_not_configured(self) -> None:
@@ -248,6 +257,7 @@ class TestReadEmail:
 # ---------------------------------------------------------------------------
 # Page range parser test (document_tools helper)
 # ---------------------------------------------------------------------------
+
 
 class TestPageRangeParser:
     def test_single_page(self) -> None:

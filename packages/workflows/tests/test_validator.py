@@ -146,11 +146,13 @@ class TestWorkflowValidator:
             ],
             edges=[
                 EdgeDefinition(
-                    source="a", target="b",
+                    source="a",
+                    target="b",
                     condition=TriggerCondition(keyword="yes"),
                 ),
                 EdgeDefinition(
-                    source="a", target="c",
+                    source="a",
+                    target="c",
                     condition=TriggerCondition(keyword="no"),
                 ),
             ],

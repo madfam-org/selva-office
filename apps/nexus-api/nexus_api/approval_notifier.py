@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 async def notify_approval_decision(
-    request_id: str, decision: str, feedback: str | None = None,
+    request_id: str,
+    decision: str,
+    feedback: str | None = None,
 ) -> None:
     """Publish an approval decision to the Redis channel for the request.
 
@@ -19,11 +21,13 @@ async def notify_approval_decision(
     push notifications instead of polling.
     """
     channel = f"autoswarm:approval:{request_id}"
-    message = json.dumps({
-        "request_id": request_id,
-        "result": decision,
-        "feedback": feedback,
-    })
+    message = json.dumps(
+        {
+            "request_id": request_id,
+            "result": decision,
+            "feedback": feedback,
+        }
+    )
 
     try:
         pool = get_redis_pool()

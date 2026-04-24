@@ -47,18 +47,20 @@ class TestCRMSendAttributionThreading:
                 side_effect=lambda lead_id, **kw: posthog_calls.append((lead_id, kw)),
             ),
         ):
-            result = crm_graph.send({
-                "messages": [],
-                "task_id": "task-attr-1",
-                "recipient": "lupita@acme.mx",
-                "contact_email": "lupita@acme.mx",
-                "contact_name": "Lupita",
-                "crm_action": "email",
-                "draft_content": "<p>Hola Lupita!</p>",
-                "lead_id": "lead-attr-abc",
-                "utm_campaign": "hot_lead_auto",
-                "playbook": {"name": "Lead Response", "require_approval": False},
-            })
+            result = crm_graph.send(
+                {
+                    "messages": [],
+                    "task_id": "task-attr-1",
+                    "recipient": "lupita@acme.mx",
+                    "contact_email": "lupita@acme.mx",
+                    "contact_name": "Lupita",
+                    "crm_action": "email",
+                    "draft_content": "<p>Hola Lupita!</p>",
+                    "lead_id": "lead-attr-abc",
+                    "utm_campaign": "hot_lead_auto",
+                    "playbook": {"name": "Lead Response", "require_approval": False},
+                }
+            )
 
         assert result["status"] == "completed"
         assert result["result"]["email_sent"] is True
@@ -103,17 +105,19 @@ class TestCRMSendAttributionThreading:
                 side_effect=lambda lead_id, **kw: posthog_calls.append((lead_id, kw)),
             ),
         ):
-            result = crm_graph.send({
-                "messages": [],
-                "task_id": "task-no-attr",
-                "recipient": "u@x.com",
-                "contact_email": "u@x.com",
-                "contact_name": "U",
-                "crm_action": "email",
-                "draft_content": "<p>hi</p>",
-                "playbook": {"name": "Lead Response", "require_approval": False},
-                # No lead_id
-            })
+            result = crm_graph.send(
+                {
+                    "messages": [],
+                    "task_id": "task-no-attr",
+                    "recipient": "u@x.com",
+                    "contact_email": "u@x.com",
+                    "contact_name": "U",
+                    "crm_action": "email",
+                    "draft_content": "<p>hi</p>",
+                    "playbook": {"name": "Lead Response", "require_approval": False},
+                    # No lead_id
+                }
+            )
 
         assert result["status"] == "completed"
         assert posthog_calls == []

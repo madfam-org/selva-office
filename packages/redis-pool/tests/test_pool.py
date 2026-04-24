@@ -160,15 +160,11 @@ class TestExecuteWithRetry:
     async def test_retries_on_connection_error(self) -> None:
         pool = RedisPool(url="redis://fake:6379")
         mock_client = AsyncMock()
-        mock_client.set = AsyncMock(
-            side_effect=[aioredis.ConnectionError("fail"), "OK"]
-        )
+        mock_client.set = AsyncMock(side_effect=[aioredis.ConnectionError("fail"), "OK"])
         pool._client = mock_client
         pool._pool = MagicMock()
 
-        result = await pool.execute_with_retry(
-            "set", "k", "v", max_retries=2, base_delay=0.001
-        )
+        result = await pool.execute_with_retry("set", "k", "v", max_retries=2, base_delay=0.001)
         assert result == "OK"
         assert mock_client.set.call_count == 2
 
@@ -176,16 +172,12 @@ class TestExecuteWithRetry:
     async def test_raises_after_max_retries(self) -> None:
         pool = RedisPool(url="redis://fake:6379")
         mock_client = AsyncMock()
-        mock_client.get = AsyncMock(
-            side_effect=aioredis.ConnectionError("persistent")
-        )
+        mock_client.get = AsyncMock(side_effect=aioredis.ConnectionError("persistent"))
         pool._client = mock_client
         pool._pool = MagicMock()
 
         with pytest.raises(aioredis.ConnectionError, match="persistent"):
-            await pool.execute_with_retry(
-                "get", "key", max_retries=1, base_delay=0.001
-            )
+            await pool.execute_with_retry("get", "key", max_retries=1, base_delay=0.001)
 
 
 class TestClose:

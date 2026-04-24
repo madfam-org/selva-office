@@ -7,7 +7,6 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-
 # ---------- pure helper tests ----------
 
 
@@ -112,27 +111,31 @@ class TestDeployPreflightTool:
     async def test_all_checks_pass_returns_ready(self, tmp_path) -> None:
         from selva_tools.builtins.deploy_preflight import DeployPreflightTool
 
-        rendered = yaml.dump({
-            "apiVersion": "apps/v1",
-            "kind": "Deployment",
-            "metadata": {"name": "api"},
-            "spec": {
-                "template": {
-                    "spec": {
-                        "imagePullSecrets": [{"name": "ghcr-creds"}],
-                        "containers": [{
-                            "name": "api",
-                            "image": "ghcr.io/madfam/api@sha256:abc123",
-                            "resources": {
-                                "requests": {"cpu": "100m", "memory": "128Mi"},
-                                "limits": {"cpu": "1000m", "memory": "1Gi"},
-                            },
-                            "securityContext": {"privileged": False},
-                        }],
+        rendered = yaml.dump(
+            {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {"name": "api"},
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "imagePullSecrets": [{"name": "ghcr-creds"}],
+                            "containers": [
+                                {
+                                    "name": "api",
+                                    "image": "ghcr.io/madfam/api@sha256:abc123",
+                                    "resources": {
+                                        "requests": {"cpu": "100m", "memory": "128Mi"},
+                                        "limits": {"cpu": "1000m", "memory": "1Gi"},
+                                    },
+                                    "securityContext": {"privileged": False},
+                                }
+                            ],
+                        },
                     },
                 },
-            },
-        })
+            }
+        )
 
         async def run(self, command, *, timeout=30.0, cwd=None):
             return {
@@ -157,21 +160,25 @@ class TestDeployPreflightTool:
         from selva_tools.builtins.deploy_preflight import DeployPreflightTool
 
         # Bad: :latest tag AND no resource requests AND no privileged field.
-        rendered = yaml.dump({
-            "apiVersion": "apps/v1",
-            "kind": "Deployment",
-            "metadata": {"name": "bad"},
-            "spec": {
-                "template": {
-                    "spec": {
-                        "containers": [{
-                            "name": "bad",
-                            "image": "nginx:latest",
-                        }],
+        rendered = yaml.dump(
+            {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {"name": "bad"},
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "bad",
+                                    "image": "nginx:latest",
+                                }
+                            ],
+                        },
                     },
                 },
-            },
-        })
+            }
+        )
 
         async def run(self, command, *, timeout=30.0, cwd=None):
             return {
@@ -198,25 +205,29 @@ class TestDeployPreflightTool:
     async def test_cronjob_containers_are_also_checked(self, tmp_path) -> None:
         from selva_tools.builtins.deploy_preflight import DeployPreflightTool
 
-        rendered = yaml.dump({
-            "apiVersion": "batch/v1",
-            "kind": "CronJob",
-            "metadata": {"name": "nightly"},
-            "spec": {
-                "jobTemplate": {
-                    "spec": {
-                        "template": {
-                            "spec": {
-                                "containers": [{
-                                    "name": "job",
-                                    "image": "nginx:latest",  # bad
-                                }],
+        rendered = yaml.dump(
+            {
+                "apiVersion": "batch/v1",
+                "kind": "CronJob",
+                "metadata": {"name": "nightly"},
+                "spec": {
+                    "jobTemplate": {
+                        "spec": {
+                            "template": {
+                                "spec": {
+                                    "containers": [
+                                        {
+                                            "name": "job",
+                                            "image": "nginx:latest",  # bad
+                                        }
+                                    ],
+                                },
                             },
                         },
                     },
                 },
-            },
-        })
+            }
+        )
 
         async def run(self, command, *, timeout=30.0, cwd=None):
             return {
@@ -234,32 +245,36 @@ class TestDeployPreflightTool:
 
         assert result.data["verdict"] == "blocked"
         # At least one finding should reference the CronJob, not be empty.
-        assert any("CronJob/nightly" == f["resource"] for f in result.data["findings"])
+        assert any(f["resource"] == "CronJob/nightly" for f in result.data["findings"])
 
     @pytest.mark.asyncio
     async def test_advisory_checks_opt_in_with_all(self, tmp_path) -> None:
         from selva_tools.builtins.deploy_preflight import DeployPreflightTool
 
         # Good image, but missing limits and imagePullSecrets (both advisory).
-        rendered = yaml.dump({
-            "apiVersion": "apps/v1",
-            "kind": "Deployment",
-            "metadata": {"name": "api"},
-            "spec": {
-                "template": {
-                    "spec": {
-                        "containers": [{
-                            "name": "api",
-                            "image": "ghcr.io/madfam/api@sha256:abc",
-                            "resources": {
-                                "requests": {"cpu": "100m", "memory": "128Mi"},
-                            },
-                            "securityContext": {"privileged": False},
-                        }],
+        rendered = yaml.dump(
+            {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {"name": "api"},
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "api",
+                                    "image": "ghcr.io/madfam/api@sha256:abc",
+                                    "resources": {
+                                        "requests": {"cpu": "100m", "memory": "128Mi"},
+                                    },
+                                    "securityContext": {"privileged": False},
+                                }
+                            ],
+                        },
                     },
                 },
-            },
-        })
+            }
+        )
 
         async def run(self, command, *, timeout=30.0, cwd=None):
             return {
@@ -297,21 +312,25 @@ class TestDeployPreflightTool:
         from selva_tools.builtins.deploy_preflight import DeployPreflightTool
 
         # `privileged` is missing, image is bad — but only digest-pin runs.
-        rendered = yaml.dump({
-            "apiVersion": "apps/v1",
-            "kind": "Deployment",
-            "metadata": {"name": "api"},
-            "spec": {
-                "template": {
-                    "spec": {
-                        "containers": [{
-                            "name": "api",
-                            "image": "nginx:latest",
-                        }],
+        rendered = yaml.dump(
+            {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {"name": "api"},
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "api",
+                                    "image": "nginx:latest",
+                                }
+                            ],
+                        },
                     },
                 },
-            },
-        })
+            }
+        )
 
         async def run(self, command, *, timeout=30.0, cwd=None):
             return {
@@ -341,35 +360,45 @@ class TestDeployPreflightTool:
         from selva_tools.builtins.deploy_preflight import DeployPreflightTool
 
         rendered_parts = [
-            yaml.dump({
-                "apiVersion": "v1",
-                "kind": "Service",
-                "metadata": {"name": "api"},
-                "spec": {"ports": [{"port": 80}]},
-            }),
-            yaml.dump({
-                "apiVersion": "v1",
-                "kind": "ConfigMap",
-                "metadata": {"name": "cfg"},
-                "data": {"FOO": "bar"},
-            }),
-            yaml.dump({
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-                "metadata": {"name": "api"},
-                "spec": {
-                    "template": {
-                        "spec": {
-                            "containers": [{
-                                "name": "api",
-                                "image": "ghcr.io/madfam/api@sha256:abc",
-                                "resources": {"requests": {"cpu": "100m", "memory": "64Mi"}},
-                                "securityContext": {"privileged": False},
-                            }],
+            yaml.dump(
+                {
+                    "apiVersion": "v1",
+                    "kind": "Service",
+                    "metadata": {"name": "api"},
+                    "spec": {"ports": [{"port": 80}]},
+                }
+            ),
+            yaml.dump(
+                {
+                    "apiVersion": "v1",
+                    "kind": "ConfigMap",
+                    "metadata": {"name": "cfg"},
+                    "data": {"FOO": "bar"},
+                }
+            ),
+            yaml.dump(
+                {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "metadata": {"name": "api"},
+                    "spec": {
+                        "template": {
+                            "spec": {
+                                "containers": [
+                                    {
+                                        "name": "api",
+                                        "image": "ghcr.io/madfam/api@sha256:abc",
+                                        "resources": {
+                                            "requests": {"cpu": "100m", "memory": "64Mi"}
+                                        },
+                                        "securityContext": {"privileged": False},
+                                    }
+                                ],
+                            },
                         },
                     },
-                },
-            }),
+                }
+            ),
         ]
         rendered = "---\n".join(rendered_parts)
 

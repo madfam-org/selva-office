@@ -37,18 +37,14 @@ class Department(Base):
 
     __tablename__ = "departments"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     max_agents: Mapped[int] = mapped_column(Integer, default=5)
     position_x: Mapped[int] = mapped_column(Integer, default=0)
     position_y: Mapped[int] = mapped_column(Integer, default=0)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
@@ -64,9 +60,7 @@ class Agent(Base):
 
     __tablename__ = "agents"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="coder")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="idle")
@@ -74,14 +68,10 @@ class Agent(Base):
     department_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True
     )
-    current_task_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    current_task_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     skill_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     synergy_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     # Performance tracking (migration 0013)
     tasks_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     tasks_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -105,9 +95,7 @@ class ApprovalRequest(Base):
 
     __tablename__ = "approval_requests"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     agent_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("agents.id"), nullable=False
     )
@@ -120,13 +108,9 @@ class ApprovalRequest(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     responded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    responded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     agent: Mapped[Agent] = relationship("Agent", lazy="selectin")
 
@@ -136,21 +120,15 @@ class SwarmTask(Base):
 
     __tablename__ = "swarm_tasks"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     graph_type: Mapped[str] = mapped_column(String(50), nullable=False, default="sequential")
     assigned_agent_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Queue tracking (migration 0004)
     stream_message_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -168,16 +146,12 @@ class Workflow(Base):
 
     __tablename__ = "workflows"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0.0")
     description: Mapped[str] = mapped_column(Text, default="")
     yaml_content: Mapped[str] = mapped_column(Text, nullable=False)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
@@ -189,9 +163,7 @@ class Artifact(Base):
 
     __tablename__ = "artifacts"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     task_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("swarm_tasks.id", ondelete="SET NULL"), nullable=True
     )
@@ -202,9 +174,7 @@ class Artifact(Base):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
@@ -213,9 +183,7 @@ class ComputeTokenLedger(Base):
 
     __tablename__ = "compute_token_ledger"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     agent_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -226,9 +194,7 @@ class ComputeTokenLedger(Base):
     )
     provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
     model: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
@@ -237,9 +203,7 @@ class SkillMarketplaceEntry(Base):
 
     __tablename__ = "skill_marketplace_entries"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -250,9 +214,7 @@ class SkillMarketplaceEntry(Base):
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     downloads: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
@@ -270,13 +232,9 @@ class SkillRating(Base):
     """A user rating and optional review for a marketplace skill entry."""
 
     __tablename__ = "skill_ratings"
-    __table_args__ = (
-        UniqueConstraint("entry_id", "user_id", name="uq_skill_rating_entry_user"),
-    )
+    __table_args__ = (UniqueConstraint("entry_id", "user_id", name="uq_skill_rating_entry_user"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     entry_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("skill_marketplace_entries.id", ondelete="CASCADE"),
@@ -285,9 +243,7 @@ class SkillRating(Base):
     user_id: Mapped[str] = mapped_column(String(255), nullable=False)
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     review: Mapped[str | None] = mapped_column(Text, nullable=True)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     entry: Mapped[SkillMarketplaceEntry] = relationship(
@@ -300,16 +256,12 @@ class CalendarConnection(Base):
 
     __tablename__ = "calendar_connections"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     access_token: Mapped[str] = mapped_column(Text, nullable=False)
     refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
@@ -321,15 +273,11 @@ class Map(Base):
 
     __tablename__ = "maps"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     tmj_content: Mapped[str] = mapped_column(Text, nullable=False)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
@@ -340,13 +288,9 @@ class TaskEvent(Base):
     """INSERT-only event record for full-stack task observability."""
 
     __tablename__ = "task_events"
-    __table_args__ = (
-        Index("ix_task_events_task_created", "task_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_task_events_task_created", "task_id", "created_at"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     task_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("swarm_tasks.id", ondelete="SET NULL"),
@@ -370,9 +314,7 @@ class TaskEvent(Base):
     token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
@@ -381,17 +323,13 @@ class ChatMessage(Base):
 
     __tablename__ = "chat_messages"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     room_id: Mapped[str] = mapped_column(String(100), nullable=False)
     sender_session_id: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     sender_name: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="default", index=True
-    )
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, default="default", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
@@ -414,9 +352,7 @@ class CommandApprovalRequest(Base):
 
     __tablename__ = "command_approval_requests"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     run_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     command: Mapped[str] = mapped_column(Text, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
@@ -441,9 +377,7 @@ class Schedule(Base):
 
     __tablename__ = "schedules"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     cron_expr: Mapped[str] = mapped_column(String(100), nullable=False)
     action: Mapped[ScheduledAction] = mapped_column(Enum(ScheduledAction), nullable=False)
@@ -469,12 +403,8 @@ class TenantConfig(Base):
 
     __tablename__ = "tenant_configs"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
-    org_id: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
+    org_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
 
     # Business identity
     rfc: Mapped[str | None] = mapped_column(String(13), nullable=True)
@@ -483,9 +413,7 @@ class TenantConfig(Base):
 
     # Localization
     locale: Mapped[str] = mapped_column(String(10), nullable=False, default="es-MX")
-    timezone: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="America/Mexico_City"
-    )
+    timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="America/Mexico_City")
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="MXN")
 
     # Ecosystem integration references
@@ -495,9 +423,7 @@ class TenantConfig(Base):
 
     # Feature flags
     cfdi_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    intelligence_enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    intelligence_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Resource limits
     max_agents: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
@@ -538,27 +464,17 @@ class AuditLog(Base):
     """
 
     __tablename__ = "audit_logs"
-    __table_args__ = (
-        Index("ix_audit_logs_org_created", "org_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_audit_logs_org_created", "org_id", "created_at"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
-    org_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
+    org_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    action: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # POST, PUT, PATCH, DELETE
+    action: Mapped[str] = mapped_column(String(20), nullable=False)  # POST, PUT, PATCH, DELETE
     resource_type: Mapped[str] = mapped_column(String(100), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 # ---------------------------------------------------------------------------
@@ -580,9 +496,7 @@ class ConsentLedger(Base):
         Index("ix_consent_ledger_user", "user_sub"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     org_id: Mapped[str] = mapped_column(String(255), nullable=False)
     user_sub: Mapped[str] = mapped_column(String(255), nullable=False)
     user_email: Mapped[str] = mapped_column(String(320), nullable=False)
@@ -628,17 +542,13 @@ class SecretAuditLog(Base):
         Index("ix_secret_audit_approval", "approval_request_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
 
     # -- Actors ---------------------------------------------------------
-    agent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # -- Target ---------------------------------------------------------
@@ -652,27 +562,19 @@ class SecretAuditLog(Base):
     # Exactly 8 hex chars. RFC 0005 §"Audit trail" — enough for
     # rotation correlation, not a brute-forceable fingerprint.
     value_sha256_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
-    predecessor_sha256_prefix: Mapped[str | None] = mapped_column(
-        String(8), nullable=True
-    )
+    predecessor_sha256_prefix: Mapped[str | None] = mapped_column(String(8), nullable=True)
     source: Mapped[str] = mapped_column(String(32), nullable=False)
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
 
     # -- Approval chain ------------------------------------------------
-    approval_request_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
-    )
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     # JSON: [{"user_sub": "...", "approved_at": "ISO-8601"}, ...]
-    approval_chain: Mapped[list[dict]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    approval_chain: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
 
     # -- Lifecycle -----------------------------------------------------
     status: Mapped[str] = mapped_column(String(24), nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     # -- Tamper-evidence hash -----------------------------------------
     # Same shape as ``ConsentLedger.signature_sha256``: a SHA-256 over
@@ -713,17 +615,13 @@ class GithubAdminAuditLog(Base):
         Index("ix_github_admin_audit_operation", "operation", "created_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
 
     # -- Actors ---------------------------------------------------------
-    agent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # -- Operation + target ----------------------------------------------
@@ -742,27 +640,19 @@ class GithubAdminAuditLog(Base):
     # ``request_body`` is the full tool input (no PAT -- contract).
     # ``response_summary`` is a structured diff of what the apply step did.
     request_body: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    response_summary: Mapped[dict] = mapped_column(
-        JSON, nullable=False, default=dict
-    )
+    response_summary: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # -- Approval chain --------------------------------------------------
-    approval_request_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
-    )
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     # JSON: [{"user_sub": "...", "approved_at": "ISO-8601"}, ...]
-    approval_chain: Mapped[list[dict]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    approval_chain: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
 
     # -- Lifecycle -------------------------------------------------------
     status: Mapped[str] = mapped_column(String(24), nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     # -- Tamper-evidence -------------------------------------------------
     # SHA-256 over the row's identifying fields. See
@@ -807,17 +697,13 @@ class ConfigmapAuditLog(Base):
         Index("ix_configmap_audit_approval", "approval_request_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
 
     # -- Actors ---------------------------------------------------------
-    agent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Opaque correlation id set by the caller (tool or API). Lets ops
     # correlate an audit row to a specific worker task / HTTP request
@@ -836,14 +722,10 @@ class ConfigmapAuditLog(Base):
     operation: Mapped[str] = mapped_column(String(16), nullable=False)
     # Exactly 8 hex chars when present. Nullable for read/list/delete
     # operations. NEVER the raw value.
-    value_sha256_prefix: Mapped[str | None] = mapped_column(
-        String(8), nullable=True
-    )
+    value_sha256_prefix: Mapped[str | None] = mapped_column(String(8), nullable=True)
     # Predecessor value hash prefix — lets forensics reconstruct a
     # before/after diff for any key flip without plaintext on either side.
-    previous_value_sha256_prefix: Mapped[str | None] = mapped_column(
-        String(8), nullable=True
-    )
+    previous_value_sha256_prefix: Mapped[str | None] = mapped_column(String(8), nullable=True)
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
 
     # -- HITL enforcement snapshot -------------------------------------
@@ -853,20 +735,14 @@ class ConfigmapAuditLog(Base):
     hitl_level: Mapped[str] = mapped_column(String(16), nullable=False)
 
     # -- Approval chain ------------------------------------------------
-    approval_request_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
-    )
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     # JSON: [{"user_sub": "...", "approved_at": "ISO-8601"}, ...]
-    approval_chain: Mapped[list[dict]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    approval_chain: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
 
     # -- Lifecycle -----------------------------------------------------
     status: Mapped[str] = mapped_column(String(24), nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    rollback_of_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     # -- Tamper-evidence -----------------------------------------------
     # SHA-256 over the row's identifying fields. See
@@ -910,17 +786,13 @@ class WebhookAuditLog(Base):
         Index("ix_webhook_audit_webhook_id", "provider", "webhook_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
 
     # -- Actors ---------------------------------------------------------
-    agent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     actor_user_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # -- Target ---------------------------------------------------------
@@ -933,14 +805,10 @@ class WebhookAuditLog(Base):
     webhook_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # First 8 hex chars of SHA-256(endpoint_url). Never the raw URL —
     # webhook URLs often embed tokens in their paths.
-    target_url_sha256_prefix: Mapped[str | None] = mapped_column(
-        String(8), nullable=True
-    )
+    target_url_sha256_prefix: Mapped[str | None] = mapped_column(String(8), nullable=True)
     # Events registered on create/rotate (JSON array of strings). NULL
     # for non-Stripe providers and non-create actions.
-    events_registered: Mapped[list[str] | None] = mapped_column(
-        JSON, nullable=True
-    )
+    events_registered: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
     # -- Linked secret write (RFC 0005 chain) --------------------------
     # FK into ``secret_audit_log.id``. Populated whenever the provider
@@ -953,17 +821,11 @@ class WebhookAuditLog(Base):
     # Human-readable pointer to the resulting K8s Secret for operators
     # (e.g. "karafiel/karafiel-secrets:STRIPE_WEBHOOK_SECRET"). This is
     # a REFERENCE — NOT the secret value. Safe to surface in UIs.
-    resulting_secret_name: Mapped[str | None] = mapped_column(
-        String(512), nullable=True
-    )
+    resulting_secret_name: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     # -- Approval chain ------------------------------------------------
-    approval_request_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
-    )
-    approval_chain: Mapped[list[dict]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    approval_request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    approval_chain: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
 
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -1032,9 +894,7 @@ class HitlDecision(Base):
         Index("ix_hitl_decisions_agent_cat", "agent_id", "action_category"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_new_uuid
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_new_uuid)
     decided_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -1046,9 +906,7 @@ class HitlDecision(Base):
     action_category: Mapped[str] = mapped_column(String(50), nullable=False)
     org_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     context_signature: Mapped[str] = mapped_column(String(64), nullable=False)
-    context_signature_version: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1
-    )
+    context_signature_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     approver_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     outcome: Mapped[HitlOutcome] = mapped_column(Enum(HitlOutcome), nullable=False)
@@ -1080,24 +938,18 @@ class HitlConfidence(Base):
     """
 
     __tablename__ = "hitl_confidence"
-    __table_args__ = (
-        Index("ix_hitl_confidence_agent_cat", "agent_id", "action_category"),
-    )
+    __table_args__ = (Index("ix_hitl_confidence_agent_cat", "agent_id", "action_category"),)
 
     bucket_key: Mapped[str] = mapped_column(String(64), primary_key=True)
     agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     action_category: Mapped[str] = mapped_column(String(50), nullable=False)
     org_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     context_signature: Mapped[str] = mapped_column(String(64), nullable=False)
-    context_signature_version: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1
-    )
+    context_signature_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     n_observed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     n_approved_clean: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    n_approved_modified: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
+    n_approved_modified: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     n_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     n_timeout: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     n_reverted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -1119,9 +971,7 @@ class HitlConfidence(Base):
     # When a revert/complaint fires we set `locked_until` and refuse to
     # promote past the current tier until the lock clears. Sprint 1 never
     # writes this field — kept on the model so Sprint 2 can use it.
-    locked_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_decision_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -1142,29 +992,15 @@ class TenantIdentity(Base):
 
     __tablename__ = "tenant_identities"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    canonical_id: Mapped[str] = mapped_column(
-        String(128), nullable=False, unique=True, index=True
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    canonical_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
     legal_name: Mapped[str] = mapped_column(String(512), nullable=False)
-    primary_contact_email: Mapped[str | None] = mapped_column(
-        String(320), nullable=True
-    )
+    primary_contact_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
 
-    janua_org_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True, index=True
-    )
-    dhanam_space_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True, index=True
-    )
-    phynecrm_tenant_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True, index=True
-    )
-    karafiel_org_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True, index=True
-    )
+    janua_org_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    dhanam_space_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    phynecrm_tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    karafiel_org_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
 
     resend_domain_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     cloudflare_zone_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)

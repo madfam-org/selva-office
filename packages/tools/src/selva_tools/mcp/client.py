@@ -38,9 +38,7 @@ class McpToolAdapter(BaseTool):
             if isinstance(result, dict):
                 content = result.get("content", "")
                 if isinstance(content, list):
-                    text_parts = [
-                        c.get("text", "") for c in content if c.get("type") == "text"
-                    ]
+                    text_parts = [c.get("text", "") for c in content if c.get("type") == "text"]
                     return ToolResult(output="\n".join(text_parts), data=result)
                 return ToolResult(output=str(content), data=result)
             return ToolResult(output=str(result))
@@ -89,21 +87,27 @@ class StdioMcpTransport(McpTransport):
         )
 
         # Send initialize request
-        return await self._send_request("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "autoswarm", "version": "0.1.0"},
-        })
+        return await self._send_request(
+            "initialize",
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "autoswarm", "version": "0.1.0"},
+            },
+        )
 
     async def list_tools(self) -> list[dict[str, Any]]:
         result = await self._send_request("tools/list", {})
         return result.get("tools", [])
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        return await self._send_request("tools/call", {
-            "name": name,
-            "arguments": arguments,
-        })
+        return await self._send_request(
+            "tools/call",
+            {
+                "name": name,
+                "arguments": arguments,
+            },
+        )
 
     async def close(self) -> None:
         if self._process:

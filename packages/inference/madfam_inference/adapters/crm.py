@@ -94,9 +94,7 @@ class PhyneCRMAdapter:
         return []
 
     async def move_lead_stage(self, lead_id: str, stage_id: str) -> PhyneLead:
-        data = await self._mutate(
-            "leads.moveToStage", {"id": lead_id, "stageId": stage_id}
-        )
+        data = await self._mutate("leads.moveToStage", {"id": lead_id, "stageId": stage_id})
         return PhyneLead(**data)
 
     # -- Activity operations --------------------------------------------------
@@ -123,14 +121,10 @@ class PhyneCRMAdapter:
         return PhyneActivity(**data)
 
     async def complete_activity(self, activity_id: str) -> PhyneActivity:
-        data = await self._mutate(
-            "activities.complete", {"id": activity_id}
-        )
+        data = await self._mutate("activities.complete", {"id": activity_id})
         return PhyneActivity(**data)
 
-    async def list_activities(
-        self, entity_type: str, entity_id: str
-    ) -> list[PhyneActivity]:
+    async def list_activities(self, entity_type: str, entity_id: str) -> list[PhyneActivity]:
         data = await self._get(
             "activities.listForEntity",
             {"type": entity_type, "id": entity_id},
@@ -142,17 +136,13 @@ class PhyneCRMAdapter:
     # -- Unified profile ------------------------------------------------------
 
     async def get_unified_profile(self, contact_id: str) -> PhyneUnifiedProfile:
-        data = await self._get(
-            "unifiedProfile.getProfile", {"contactId": contact_id}
-        )
+        data = await self._get("unifiedProfile.getProfile", {"contactId": contact_id})
         return PhyneUnifiedProfile(**data)
 
     # -- Lead scoring ---------------------------------------------------------
 
     async def compute_lead_score(self, lead_id: str) -> PhyneLeadScore:
-        data = await self._get(
-            "leadScoring.compute", {"leadId": lead_id}
-        )
+        data = await self._get("leadScoring.compute", {"leadId": lead_id})
         return PhyneLeadScore(**data)
 
     # -- Dashboard ------------------------------------------------------------

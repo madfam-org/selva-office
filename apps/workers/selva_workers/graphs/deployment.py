@@ -151,11 +151,13 @@ def deploy(state: DeploymentState) -> DeploymentState:
             os.environ.setdefault("ENCLII_DEPLOY_TOKEN", settings.enclii_deploy_token)
 
         tool = DeployTool()
-        result = _run_async(tool.execute(
-            service=service,
-            environment=environment,
-            image_tag=image_tag,
-        ))
+        result = _run_async(
+            tool.execute(
+                service=service,
+                environment=environment,
+                image_tag=image_tag,
+            )
+        )
 
         if result.success:
             deploy_id = result.data.get("deploy_id", "")

@@ -168,11 +168,13 @@ def generate_cotizacion(state: SalesState) -> SalesState:
         try:
             from ..prompts import build_experience_context
 
-            experience_ctx = _run_async(build_experience_context(
-                agent_id=state.get("agent_id", "unknown"),
-                agent_role="sales",
-                task_description=state.get("description", ""),
-            ))
+            experience_ctx = _run_async(
+                build_experience_context(
+                    agent_id=state.get("agent_id", "unknown"),
+                    agent_role="sales",
+                    task_description=state.get("description", ""),
+                )
+            )
         except Exception:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
@@ -210,12 +212,14 @@ def generate_cotizacion(state: SalesState) -> SalesState:
 
         import json as _json
 
-        raw = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": user_content}],
-            system_prompt=system_prompt,
-            task_type="crm",
-        ))
+        raw = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": user_content}],
+                system_prompt=system_prompt,
+                task_type="crm",
+            )
+        )
         try:
             cotizacion = _json.loads(raw) if isinstance(raw, str) else raw
         except (ValueError, TypeError):
@@ -225,14 +229,16 @@ def generate_cotizacion(state: SalesState) -> SalesState:
 
     if cotizacion is None:
         # Fallback template cotizacion.
-        subtotal = sum(
-            float(item.get("price", 0)) * float(item.get("quantity", 1))
-            for item in line_items
-        ) if line_items else 0.0
+        subtotal = (
+            sum(float(item.get("price", 0)) * float(item.get("quantity", 1)) for item in line_items)
+            if line_items
+            else 0.0
+        )
         iva = round(subtotal * 0.16, 2)
         total = round(subtotal + iva, 2)
         cotizacion = {
-            "items": line_items or [
+            "items": line_items
+            or [
                 {"description": "Servicio profesional", "quantity": 1, "price": 0},
             ],
             "subtotal": subtotal,
@@ -384,10 +390,7 @@ def send_cotizacion(state: SalesState) -> SalesState:
         logger.debug("PhyneCRM activity logging skipped")
 
     send_msg = AIMessage(
-        content=(
-            f"Cotizacion sent to {customer_name} via {notification_channel}. "
-            f"Total: {total}."
-        ),
+        content=(f"Cotizacion sent to {customer_name} via {notification_channel}. Total: {total}."),
         additional_kwargs={
             "action_category": "crm_update",
             "notification_channel": notification_channel,
@@ -443,10 +446,7 @@ def convert_to_pedido(state: SalesState) -> SalesState:
         logger.debug("PhyneCRM pipeline update skipped")
 
     pedido_msg = AIMessage(
-        content=(
-            f"Pedido created for {pedido['customer_name']}: "
-            f"total={pedido['total']}."
-        ),
+        content=(f"Pedido created for {pedido['customer_name']}: total={pedido['total']}."),
         additional_kwargs={
             "action_category": "crm_update",
             "pedido": pedido,
@@ -480,11 +480,13 @@ def dispatch_billing(state: SalesState) -> SalesState:
     conceptos = []
     for item in items:
         if isinstance(item, dict):
-            conceptos.append({
-                "descripcion": item.get("description", item.get("descripcion", "")),
-                "valor_unitario": item.get("price", item.get("valor_unitario", 0)),
-                "cantidad": item.get("quantity", item.get("cantidad", 1)),
-            })
+            conceptos.append(
+                {
+                    "descripcion": item.get("description", item.get("descripcion", "")),
+                    "valor_unitario": item.get("price", item.get("valor_unitario", 0)),
+                    "cantidad": item.get("quantity", item.get("cantidad", 1)),
+                }
+            )
 
     receptor_rfc = (lead_data.get("rfc", "") if lead_data else "") or (
         pedido.get("rfc", "") if pedido else ""
@@ -501,26 +503,28 @@ def dispatch_billing(state: SalesState) -> SalesState:
         import uuid
 
         child_task_id = str(uuid.uuid4())
-        _run_async(fire_and_forget_request(
-            "POST",
-            f"{nexus_url}/api/v1/swarms/dispatch",
-            json={
-                "description": (
-                    f"Facturacion: pedido para "
-                    f"{pedido.get('customer_name', 'N/A') if pedido else 'N/A'}"
-                ),
-                "graph_type": "billing",
-                "payload": {
-                    "emisor_rfc": os.environ.get("MADFAM_EMISOR_RFC", ""),
-                    "receptor_rfc": receptor_rfc,
-                    "conceptos": conceptos,
-                    "customer_phone": state.get("customer_phone"),
-                    "customer_email": state.get("customer_email"),
+        _run_async(
+            fire_and_forget_request(
+                "POST",
+                f"{nexus_url}/api/v1/swarms/dispatch",
+                json={
+                    "description": (
+                        f"Facturacion: pedido para "
+                        f"{pedido.get('customer_name', 'N/A') if pedido else 'N/A'}"
+                    ),
+                    "graph_type": "billing",
+                    "payload": {
+                        "emisor_rfc": os.environ.get("MADFAM_EMISOR_RFC", ""),
+                        "receptor_rfc": receptor_rfc,
+                        "conceptos": conceptos,
+                        "customer_phone": state.get("customer_phone"),
+                        "customer_email": state.get("customer_email"),
+                    },
                 },
-            },
-            headers=get_worker_auth_headers(),
-            timeout=5.0,
-        ))
+                headers=get_worker_auth_headers(),
+                timeout=5.0,
+            )
+        )
         billing_task_id = child_task_id
     except Exception:
         logger.debug("Failed to dispatch billing task; flagging for manual invoice")

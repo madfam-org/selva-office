@@ -2,6 +2,7 @@
 Tests for the Hermes integration environment variables registered in Settings.
 Verifies default values, type expectations, and that the new keys are present.
 """
+
 from __future__ import annotations
 
 from nexus_api.config import Settings

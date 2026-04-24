@@ -144,6 +144,7 @@ class TestInitSentry:
         with patch.dict("sys.modules", {"sentry_sdk": None}):
             # Simulating ImportError by making import fail
             import builtins
+
             real_import = builtins.__import__
 
             def mock_import(name: str, *args: object, **kwargs: object) -> object:

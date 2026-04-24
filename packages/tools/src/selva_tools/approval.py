@@ -5,6 +5,7 @@ Mirrors Hermes Agent's tools/approval.py design.
 Provides pre-execution pattern matching and an async HITL approval gate
 for destructive shell or Python commands dispatched inside ACP runs.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -69,14 +70,13 @@ _RAW_PATTERNS = [
     r"disown\b",
 ]
 
-DANGEROUS_PATTERNS: list[re.Pattern] = [
-    re.compile(p, re.IGNORECASE) for p in _RAW_PATTERNS
-]
+DANGEROUS_PATTERNS: list[re.Pattern] = [re.compile(p, re.IGNORECASE) for p in _RAW_PATTERNS]
 
 
 # ---------------------------------------------------------------------------
 # Core detection
 # ---------------------------------------------------------------------------
+
 
 def is_dangerous(command: str) -> tuple[bool, str]:
     """
@@ -95,6 +95,7 @@ def is_dangerous(command: str) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 # Approval result
 # ---------------------------------------------------------------------------
+
 
 class ApprovalStatus(StrEnum):
     PENDING = "pending"
@@ -144,6 +145,7 @@ async def request_approval(
     If AUTO_APPROVE=true is set, immediately approve without blocking.
     """
     from nexus_api.config import get_settings
+
     settings = get_settings()
 
     # CI / auto-approve bypass
@@ -186,14 +188,13 @@ async def request_approval(
     _PENDING.pop(request_id, None)
     logger.warning(
         "Approval request %s expired after %ss — command DENIED (fail-closed).",
-        request_id, timeout_s,
+        request_id,
+        timeout_s,
     )
     return result
 
 
-async def _persist_and_broadcast(
-    request_id: str, run_id: str, command: str, reason: str
-) -> None:
+async def _persist_and_broadcast(request_id: str, run_id: str, command: str, reason: str) -> None:
     """Persist approval request to Postgres and broadcast to Redis pub/sub."""
     try:
         from datetime import datetime
@@ -220,13 +221,18 @@ async def _persist_and_broadcast(
         import json
 
         from nexus_api.redis_pool import get_redis
+
         redis = await get_redis()
         await redis.publish(
             "autoswarm:approval_requests",
-            json.dumps({
-                "id": request_id, "run_id": run_id,
-                "command": command[:200], "reason": reason,
-            }),
+            json.dumps(
+                {
+                    "id": request_id,
+                    "run_id": run_id,
+                    "command": command[:200],
+                    "reason": reason,
+                }
+            ),
         )
     except Exception as exc:
         logger.warning("Could not broadcast approval request via Redis: %s", exc)

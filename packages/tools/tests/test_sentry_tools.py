@@ -39,8 +39,9 @@ class TestRegistry:
 class TestCredsAbsence:
     @pytest.mark.asyncio
     async def test_list_without_token_returns_error(self) -> None:
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", ""), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", ""),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
         ):
             r = await SentryIssueListTool().execute(project_slug="fortuna")
             assert r.success is False
@@ -48,8 +49,9 @@ class TestCredsAbsence:
 
     @pytest.mark.asyncio
     async def test_get_without_org_returns_error(self) -> None:
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", ""
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", ""),
         ):
             r = await SentryIssueGetTool().execute(issue_id="1")
             assert r.success is False
@@ -84,9 +86,11 @@ class TestIssueList:
             captured["params"] = params
             return 200, body
 
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch("selva_tools.builtins.sentry._request", new=fake):
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch("selva_tools.builtins.sentry._request", new=fake),
+        ):
             r = await SentryIssueListTool().execute(
                 project_slug="fortuna", status="unresolved", query="level:error"
             )
@@ -101,9 +105,11 @@ class TestIssueList:
         async def fake(method, path, params=None, json_body=None):
             return 401, {"detail": "authentication failed"}
 
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch("selva_tools.builtins.sentry._request", new=fake):
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch("selva_tools.builtins.sentry._request", new=fake),
+        ):
             r = await SentryIssueListTool().execute(project_slug="fortuna")
             assert r.success is False
             assert "authentication" in (r.error or "")
@@ -133,11 +139,13 @@ class TestIssueGet:
             "stats": {"24h": [[1, 0]]},
             "metadata": {"type": "TimeoutError"},
         }
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch(
-            "selva_tools.builtins.sentry._request",
-            new=AsyncMock(return_value=(200, body)),
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch(
+                "selva_tools.builtins.sentry._request",
+                new=AsyncMock(return_value=(200, body)),
+            ),
         ):
             r = await SentryIssueGetTool().execute(issue_id="42")
             assert r.success is True
@@ -164,12 +172,12 @@ class TestIssueUpdate:
                 "assignedTo": None,
             }
 
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch("selva_tools.builtins.sentry._request", new=fake):
-            r = await SentryIssueUpdateTool().execute(
-                issue_id="42", status="resolved"
-            )
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch("selva_tools.builtins.sentry._request", new=fake),
+        ):
+            r = await SentryIssueUpdateTool().execute(issue_id="42", status="resolved")
             assert r.success is True
             assert captured["method"] == "PUT"
             assert captured["json_body"] == {"status": "resolved"}
@@ -177,8 +185,9 @@ class TestIssueUpdate:
 
     @pytest.mark.asyncio
     async def test_update_without_fields_errors(self) -> None:
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
         ):
             r = await SentryIssueUpdateTool().execute(issue_id="42")
             assert r.success is False
@@ -201,11 +210,13 @@ class TestEventList:
                 "tags": [{"key": "env", "value": "prod"}],
             }
         ]
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch(
-            "selva_tools.builtins.sentry._request",
-            new=AsyncMock(return_value=(200, body)),
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch(
+                "selva_tools.builtins.sentry._request",
+                new=AsyncMock(return_value=(200, body)),
+            ),
         ):
             r = await SentryEventListForIssueTool().execute(issue_id="42")
             assert r.success is True
@@ -214,11 +225,13 @@ class TestEventList:
 
     @pytest.mark.asyncio
     async def test_events_error(self) -> None:
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch(
-            "selva_tools.builtins.sentry._request",
-            new=AsyncMock(return_value=(404, {"detail": "not found"})),
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch(
+                "selva_tools.builtins.sentry._request",
+                new=AsyncMock(return_value=(404, {"detail": "not found"})),
+            ),
         ):
             r = await SentryEventListForIssueTool().execute(issue_id="42")
             assert r.success is False
@@ -263,9 +276,11 @@ class TestBreadcrumbs:
             assert path.endswith("/events/latest/")
             return 200, body
 
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch("selva_tools.builtins.sentry._request", new=fake):
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch("selva_tools.builtins.sentry._request", new=fake),
+        ):
             r = await SentryBreadcrumbsGetTool().execute(issue_id="42")
             assert r.success is True
             assert r.data["breadcrumb_count"] == 2
@@ -279,8 +294,10 @@ class TestBreadcrumbs:
             captured["path"] = path
             return 200, {"eventID": "eX", "entries": []}
 
-        with patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"), patch(
-            "selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"
-        ), patch("selva_tools.builtins.sentry._request", new=fake):
+        with (
+            patch("selva_tools.builtins.sentry.SENTRY_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.sentry.SENTRY_ORG_SLUG", "madfam"),
+            patch("selva_tools.builtins.sentry._request", new=fake),
+        ):
             await SentryBreadcrumbsGetTool().execute(issue_id="42", event_id="eX")
             assert captured["path"].endswith("/events/eX/")

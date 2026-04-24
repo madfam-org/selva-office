@@ -14,7 +14,6 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
 
 from nexus_api.attribution import (
     EVENT_LEAD_QUALIFIED,
@@ -23,7 +22,6 @@ from nexus_api.attribution import (
     emit_lead_qualified,
     extract_lead_id,
 )
-
 
 # ---------------------------------------------------------------------------
 # extract_lead_id

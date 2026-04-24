@@ -72,17 +72,13 @@ class TestDenyPermission:
     """Test DENY level behaviour via override."""
 
     def test_deny_override_blocks_action(self) -> None:
-        engine = PermissionEngine(
-            overrides={ActionCategory.FILE_READ: PermissionLevel.DENY}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.FILE_READ: PermissionLevel.DENY})
         result = engine.evaluate(ActionCategory.FILE_READ)
         assert result.level == PermissionLevel.DENY
         assert result.requires_approval is False
 
     def test_deny_reason_mentions_denied(self) -> None:
-        engine = PermissionEngine(
-            overrides={ActionCategory.BASH_EXECUTE: PermissionLevel.DENY}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.BASH_EXECUTE: PermissionLevel.DENY})
         result = engine.evaluate(ActionCategory.BASH_EXECUTE)
         assert "denied" in result.reason.lower()
 
@@ -102,9 +98,7 @@ class TestShouldInterrupt:
         assert engine.should_interrupt(ActionCategory.FILE_READ) is False
 
     def test_should_interrupt_false_for_deny(self) -> None:
-        engine = PermissionEngine(
-            overrides={ActionCategory.DEPLOY: PermissionLevel.DENY}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.DEPLOY: PermissionLevel.DENY})
         assert engine.should_interrupt(ActionCategory.DEPLOY) is False
 
     def test_should_interrupt_reflects_update(self, engine: PermissionEngine) -> None:
@@ -119,16 +113,12 @@ class TestCustomOverrides:
     """Verify that constructor overrides take effect."""
 
     def test_override_allow_to_deny(self) -> None:
-        engine = PermissionEngine(
-            overrides={ActionCategory.API_CALL: PermissionLevel.DENY}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.API_CALL: PermissionLevel.DENY})
         result = engine.evaluate(ActionCategory.API_CALL)
         assert result.level == PermissionLevel.DENY
 
     def test_override_ask_to_allow(self) -> None:
-        engine = PermissionEngine(
-            overrides={ActionCategory.FILE_WRITE: PermissionLevel.ALLOW}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.FILE_WRITE: PermissionLevel.ALLOW})
         result = engine.evaluate(ActionCategory.FILE_WRITE)
         assert result.level == PermissionLevel.ALLOW
         assert result.requires_approval is False
@@ -146,9 +136,7 @@ class TestCustomOverrides:
         assert engine.evaluate(ActionCategory.EMAIL_SEND).level == PermissionLevel.ALLOW
 
     def test_overrides_dont_affect_unrelated_categories(self) -> None:
-        engine = PermissionEngine(
-            overrides={ActionCategory.DEPLOY: PermissionLevel.DENY}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.DEPLOY: PermissionLevel.DENY})
         # FILE_READ should still be ALLOW (default)
         assert engine.evaluate(ActionCategory.FILE_READ).level == PermissionLevel.ALLOW
 

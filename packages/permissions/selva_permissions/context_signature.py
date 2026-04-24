@@ -22,7 +22,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 SIGNATURE_VERSION: int = 1
 
@@ -76,9 +77,7 @@ def _glob_bucket(paths: list[str] | None) -> str:
         return "none"
     joined = " ".join(paths).lower()
     has_migration = "migrations/" in joined or "alembic/" in joined
-    has_prod_code = any(
-        not p.startswith(("tests/", "test/", "docs/")) for p in paths
-    )
+    has_prod_code = any(not p.startswith(("tests/", "test/", "docs/")) for p in paths)
     has_tests_only = all(p.startswith(("tests/", "test/")) for p in paths)
     if has_migration:
         return "migration"

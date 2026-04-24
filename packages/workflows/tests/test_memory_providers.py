@@ -21,9 +21,11 @@ async def test_memory_provider_factory():
     # For now check if it tries to instantiate Redis
     assert isinstance(provider, RedisMemoryProvider)
 
+
 @pytest.mark.asyncio
 async def test_sqlite_provider_mocked():
     from unittest.mock import MagicMock
+
     provider = SQLiteMemoryProvider()
     provider._db = MagicMock()
 

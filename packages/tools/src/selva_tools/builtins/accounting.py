@@ -28,15 +28,13 @@ class ISRCalculatorTool(BaseTool):
                     "type": "string",
                     "enum": ["monthly", "annual"],
                     "description": (
-                        "Tax period (monthly for provisional, "
-                        "annual for declaracion anual)"
+                        "Tax period (monthly for provisional, annual for declaracion anual)"
                     ),
                 },
                 "regime": {
                     "type": "string",
                     "description": (
-                        "Fiscal regime code "
-                        "(pf=persona fisica, pm=persona moral, resico)"
+                        "Fiscal regime code (pf=persona fisica, pm=persona moral, resico)"
                     ),
                     "default": "pf",
                 },
@@ -55,16 +53,11 @@ class ISRCalculatorTool(BaseTool):
         regime = kwargs.get("regime", "pf")
 
         adapter = KarafielAdapter()
-        result = await adapter.compute_isr(
-            income=float(income), period=period, regime=regime
-        )
+        result = await adapter.compute_isr(income=float(income), period=period, regime=regime)
         has_error = bool(result.details.get("error"))
         return ToolResult(
             success=not has_error,
-            output=(
-                f"ISR: base={result.base_amount}, tax={result.tax_amount}, "
-                f"rate={result.rate}"
-            ),
+            output=(f"ISR: base={result.base_amount}, tax={result.tax_amount}, rate={result.rate}"),
             data=result.model_dump(),
             error=result.details.get("error") if has_error else None,
         )
@@ -118,10 +111,7 @@ class IVACalculatorTool(BaseTool):
         has_error = bool(result.details.get("error"))
         return ToolResult(
             success=not has_error,
-            output=(
-                f"IVA: base={result.base_amount}, tax={result.tax_amount}, "
-                f"rate={result.rate}"
-            ),
+            output=(f"IVA: base={result.base_amount}, tax={result.tax_amount}, rate={result.rate}"),
             data=result.model_dump(),
             error=result.details.get("error") if has_error else None,
         )
@@ -170,11 +160,7 @@ class BankReconciliationTool(BaseTool):
             year, month = period.split("-")
             since = f"{year}-{month}-01"
             m = int(month)
-            until = (
-                f"{int(year) + 1}-01-01"
-                if m == 12
-                else f"{year}-{m + 1:02d}-01"
-            )
+            until = f"{int(year) + 1}-01-01" if m == 12 else f"{year}-{m + 1:02d}-01"
         except ValueError:
             return ToolResult(
                 success=False,
@@ -216,7 +202,8 @@ class BankReconciliationTool(BaseTool):
             for idx in list(unmatched_cfdi_indices):
                 cfdi = cfdis[idx]
                 if cfdi.get("total") == txn_amount and (
-                    not txn_rfc or cfdi.get("receptor_rfc") == txn_rfc
+                    not txn_rfc
+                    or cfdi.get("receptor_rfc") == txn_rfc
                     or cfdi.get("emisor_rfc") == txn_rfc
                 ):
                     matched.append({"bank_txn": txn, "cfdi": cfdi})
@@ -324,8 +311,7 @@ class DeclarationPrepTool(BaseTool):
         return ToolResult(
             success=not has_error,
             output=(
-                f"Declaration {result.declaration_type} for {result.period}: "
-                f"status={result.status}"
+                f"Declaration {result.declaration_type} for {result.period}: status={result.status}"
             ),
             data=result.model_dump(),
             error=result.status if has_error else None,

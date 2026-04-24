@@ -61,9 +61,7 @@ class TestWebSearchProvider:
             assert results == []
 
     def test_result_format(self) -> None:
-        result = SearchResult(
-            title="Test", url="https://example.com", snippet="A snippet"
-        )
+        result = SearchResult(title="Test", url="https://example.com", snippet="A snippet")
         assert result.title == "Test"
         assert result.url == "https://example.com"
         assert result.snippet == "A snippet"
@@ -75,10 +73,12 @@ class TestWebSearchProvider:
         from selva_workers.graphs.research import search
 
         with patch.dict("os.environ", {"SEARCH_API_KEY": ""}, clear=False):
-            result = search({
-                "messages": [AIMessage(content="query formulated")],
-                "query": "test search",
-            })
+            result = search(
+                {
+                    "messages": [AIMessage(content="query formulated")],
+                    "query": "test search",
+                }
+            )
 
         assert len(result["sources"]) == 2
         assert result["sources"][0]["url"] == "https://example.com/result-1"

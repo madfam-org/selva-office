@@ -108,7 +108,10 @@ class TestAgentStatsEndpoint:
 
     @pytest.mark.asyncio
     async def test_response_includes_performance_fields(
-        self, client, auth_headers, _seed_agent,
+        self,
+        client,
+        auth_headers,
+        _seed_agent,
     ) -> None:
         """GET /agents/{id} should include the new performance fields."""
         agent_id = _seed_agent

@@ -45,7 +45,7 @@ import hashlib
 import logging
 import os
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import httpx
@@ -77,9 +77,7 @@ ALLOWED_MEMBERSHIP_ROLES = frozenset({"member", "maintainer"})
 # Filesystem mount for the PAT when the tool runs inside the cluster.
 # The secret-reader helper in secret_reader.py prefers this path; the
 # env var is only consulted as a fallback (local dev, CI).
-GITHUB_ADMIN_PAT_PATH_DEFAULT = (
-    "/var/run/secrets/selva-github-admin-token/token"
-)
+GITHUB_ADMIN_PAT_PATH_DEFAULT = "/var/run/secrets/selva-github-admin-token/token"
 
 # GitHub API base. Parameterised so tests can point at a mock server.
 GITHUB_API_BASE = os.environ.get("GITHUB_API_BASE", "https://api.github.com")
@@ -89,7 +87,7 @@ GITHUB_API_BASE = os.environ.get("GITHUB_API_BASE", "https://api.github.com")
 HTTP_TIMEOUT_SECONDS = 15.0
 
 
-class GithubAdminOperation(str, Enum):
+class GithubAdminOperation(StrEnum):
     """Operation taxonomy -- must match the CHECK constraint in migration 0020."""
 
     CREATE_TEAM = "create_team"
@@ -120,9 +118,7 @@ def _read_github_pat() -> str | None:
     surface a missing-secret error to the operator. The PAT NEVER leaves
     this module in raw form; only the prefix is ever exposed.
     """
-    pat_path = os.environ.get(
-        "GITHUB_ADMIN_PAT_PATH", GITHUB_ADMIN_PAT_PATH_DEFAULT
-    )
+    pat_path = os.environ.get("GITHUB_ADMIN_PAT_PATH", GITHUB_ADMIN_PAT_PATH_DEFAULT)
     if os.path.exists(pat_path):
         try:
             with open(pat_path, encoding="utf-8") as fp:
@@ -130,9 +126,7 @@ def _read_github_pat() -> str | None:
                 if token:
                     return token
         except OSError:
-            logger.warning(
-                "github_admin PAT path exists but unreadable: %s", pat_path
-            )
+            logger.warning("github_admin PAT path exists but unreadable: %s", pat_path)
     env_token = os.environ.get("GITHUB_ADMIN_PAT")
     if env_token:
         return env_token.strip()
@@ -205,9 +199,7 @@ def _resolve_hitl_level(operation: GithubAdminOperation, *, removing: bool) -> s
     else:  # pragma: no cover — defensive
         level = PermissionLevel.ASK
 
-    engine = PermissionEngine(
-        overrides={ActionCategory.GITHUB_ADMIN: level}
-    )
+    engine = PermissionEngine(overrides={ActionCategory.GITHUB_ADMIN: level})
     result = engine.evaluate(ActionCategory.GITHUB_ADMIN)
     return result.level.value
 
@@ -283,9 +275,7 @@ def _create_team(
     return resp.json()
 
 
-def _list_team_members(
-    client: httpx.Client, org: str, team_slug: str
-) -> list[dict[str, Any]]:
+def _list_team_members(client: httpx.Client, org: str, team_slug: str) -> list[dict[str, Any]]:
     """GET /orgs/{org}/teams/{team_slug}/members with role classification.
 
     Paginated -- iterates ``per_page=100``. For v0.1 we assume teams
@@ -338,9 +328,7 @@ def _remove_team_membership(
     client: httpx.Client, org: str, team_slug: str, *, username: str
 ) -> None:
     """DELETE /orgs/{org}/teams/{team_slug}/memberships/{username}."""
-    resp = client.delete(
-        f"/orgs/{org}/teams/{team_slug}/memberships/{username}"
-    )
+    resp = client.delete(f"/orgs/{org}/teams/{team_slug}/memberships/{username}")
     # 404 on remove is fine -- user wasn't a member anyway.
     if resp.status_code == 404:
         return
@@ -402,9 +390,7 @@ def _audit_record(
             append_audit_row,
         )
     except Exception:  # pragma: no cover — missing dep is dev-only
-        logger.debug(
-            "nexus_api.audit.github_admin_audit unavailable; skipping DB write"
-        )
+        logger.debug("nexus_api.audit.github_admin_audit unavailable; skipping DB write")
         return
     try:
         append_audit_row(
@@ -444,7 +430,7 @@ def _scrub_request_body(body: dict[str, Any]) -> dict[str, Any]:
     a future caller slips a ``token`` / ``password`` / ``secret`` field
     in, we redact at the audit boundary.
     """
-    SENSITIVE_KEYS = {
+    sensitive_keys = {
         "token",
         "password",
         "secret",
@@ -454,16 +440,14 @@ def _scrub_request_body(body: dict[str, Any]) -> dict[str, Any]:
     }
     redacted: dict[str, Any] = {}
     for k, v in body.items():
-        if k.lower() in SENSITIVE_KEYS and isinstance(v, str):
+        if k.lower() in sensitive_keys and isinstance(v, str):
             redacted[k] = f"redacted:sha256:{_sha256_full(v)[:8]}"
         else:
             redacted[k] = v
     return redacted
 
 
-def _missing_pat_result(
-    approval_request_id: str, operation: str
-) -> ToolResult:
+def _missing_pat_result(approval_request_id: str, operation: str) -> ToolResult:
     """Consistent missing-PAT error surface -- no value content."""
     return ToolResult(
         success=False,
@@ -614,8 +598,7 @@ class GithubAdminCreateTeamTool(BaseTool):
         )
 
         logger.info(
-            "github_admin create_team requested org=%s slug=%s token_prefix=%s "
-            "approval_id=%s",
+            "github_admin create_team requested org=%s slug=%s token_prefix=%s approval_id=%s",
             org,
             team_slug,
             token_prefix,
@@ -693,9 +676,7 @@ class GithubAdminCreateTeamTool(BaseTool):
             )
 
         # --- HITL gate (ASK) ---
-        hitl_level = _resolve_hitl_level(
-            GithubAdminOperation.CREATE_TEAM, removing=False
-        )
+        hitl_level = _resolve_hitl_level(GithubAdminOperation.CREATE_TEAM, removing=False)
         if hitl_level in ("ask", "ask_dual"):
             _audit_record(
                 approval_request_id=approval_request_id,
@@ -737,9 +718,7 @@ class GithubAdminCreateTeamTool(BaseTool):
                     team_name=team_name,
                     description=description,
                     privacy=privacy,
-                    parent_team_id=(
-                        int(parent_team_id) if parent_team_id is not None else None
-                    ),
+                    parent_team_id=(int(parent_team_id) if parent_team_id is not None else None),
                 )
         except _GithubApiError as exc:
             msg = str(exc)
@@ -892,9 +871,7 @@ class GithubAdminSetTeamMembershipTool(BaseTool):
         if err := _validate_slug(team_slug, field="team_slug"):
             return ToolResult(success=False, error=err)
         if not isinstance(members_raw, list):
-            return ToolResult(
-                success=False, error="members must be a list of GitHub usernames"
-            )
+            return ToolResult(success=False, error="members must be a list of GitHub usernames")
         if not isinstance(removed_raw, list):
             return ToolResult(
                 success=False,
@@ -906,9 +883,7 @@ class GithubAdminSetTeamMembershipTool(BaseTool):
                 error=f"role must be one of {sorted(ALLOWED_MEMBERSHIP_ROLES)}",
             )
         if not rationale or len(rationale) < 10:
-            return ToolResult(
-                success=False, error="rationale is required (>=10 chars)"
-            )
+            return ToolResult(success=False, error="rationale is required (>=10 chars)")
 
         members = [str(m).strip() for m in members_raw if str(m).strip()]
         removed = [str(m).strip() for m in removed_raw if str(m).strip()]
@@ -1014,14 +989,10 @@ class GithubAdminSetTeamMembershipTool(BaseTool):
         try:
             with _build_client(pat) as client:
                 for username in adds:
-                    _set_team_membership(
-                        client, org, team_slug, username=username, role=role
-                    )
+                    _set_team_membership(client, org, team_slug, username=username, role=role)
                     applied_adds.append(username)
                 for username in removes_desired:
-                    _remove_team_membership(
-                        client, org, team_slug, username=username
-                    )
+                    _remove_team_membership(client, org, team_slug, username=username)
                     applied_removes.append(username)
         except _GithubApiError as exc:
             msg = str(exc)
@@ -1162,13 +1133,9 @@ class GithubAdminSetBranchProtectionTool(BaseTool):
                 error="branch is required (<=255 chars, no whitespace)",
             )
         if not isinstance(rules, dict) or not rules:
-            return ToolResult(
-                success=False, error="rules must be a non-empty object"
-            )
+            return ToolResult(success=False, error="rules must be a non-empty object")
         if not rationale or len(rationale) < 10:
-            return ToolResult(
-                success=False, error="rationale is required (>=10 chars)"
-            )
+            return ToolResult(success=False, error="rationale is required (>=10 chars)")
 
         pat = _read_github_pat()
         if pat is None:
@@ -1185,9 +1152,7 @@ class GithubAdminSetBranchProtectionTool(BaseTool):
             }
         )
 
-        hitl_level = _resolve_hitl_level(
-            GithubAdminOperation.SET_BRANCH_PROTECTION, removing=False
-        )
+        hitl_level = _resolve_hitl_level(GithubAdminOperation.SET_BRANCH_PROTECTION, removing=False)
 
         # --- HITL gate: ASK_DUAL ---
         if hitl_level in ("ask", "ask_dual"):
@@ -1210,8 +1175,7 @@ class GithubAdminSetBranchProtectionTool(BaseTool):
             )
             return ToolResult(
                 output=(
-                    f"Branch protection for {org}/{repo}@{branch} pending "
-                    f"{hitl_level} approval."
+                    f"Branch protection for {org}/{repo}@{branch} pending {hitl_level} approval."
                 ),
                 data={
                     "approval_request_id": approval_request_id,
@@ -1226,9 +1190,7 @@ class GithubAdminSetBranchProtectionTool(BaseTool):
         # --- ALLOW path (test-only in Sprint 1 -- prod is always ASK_DUAL) ---
         try:
             with _build_client(pat) as client:
-                applied = _set_branch_protection(
-                    client, org, repo, branch, rules=rules
-                )
+                applied = _set_branch_protection(client, org, repo, branch, rules=rules)
         except _GithubApiError as exc:
             msg = str(exc)
             logger.error("github_admin branch protection apply failed: %s", msg)
@@ -1273,9 +1235,7 @@ class GithubAdminSetBranchProtectionTool(BaseTool):
             request_id=request_id if isinstance(request_id, str) else None,
         )
         return ToolResult(
-            output=(
-                f"Branch protection applied on {org}/{repo}@{branch}."
-            ),
+            output=(f"Branch protection applied on {org}/{repo}@{branch}."),
             data={
                 "approval_request_id": approval_request_id,
                 "status": "applied",
@@ -1400,7 +1360,7 @@ class GithubAdminAuditTeamMembershipTool(BaseTool):
                 "live": live_logins,
                 "added_on_github": sorted(live_set - exp_set),
                 "removed_on_github": sorted(exp_set - live_set),
-                "has_drift": bool((live_set ^ exp_set)),
+                "has_drift": bool(live_set ^ exp_set),
             }
         else:
             drift = {

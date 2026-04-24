@@ -62,8 +62,7 @@ class ACPQAOracleNode:
             from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
         except ImportError:
             logger.warning(
-                "[Phase IV] madfam_inference not available;"
-                " falling back to stub compilation.",
+                "[Phase IV] madfam_inference not available; falling back to stub compilation.",
             )
             return self._compile_skill_stub(run_id)
 
@@ -94,6 +93,7 @@ class ACPQAOracleNode:
             # ModelRouter requires registered providers; we attempt a direct
             # import of the pre-configured singleton if available.
             from madfam_inference import get_default_router  # type: ignore[attr-defined]
+
             router: ModelRouter = get_default_router()
             response = await router.complete(request)
             skill_code = response.content
@@ -147,6 +147,7 @@ class ACPQAOracleNode:
         # ----------------------------------------------------------------
         try:
             from selva_tools.approval import is_dangerous, request_approval
+
             dangerous, reason = is_dangerous(self.source_code)
             if dangerous:
                 logger.warning("[Phase IV] Dangerous pattern detected in source code: %s", reason)
@@ -156,14 +157,17 @@ class ACPQAOracleNode:
                         request_approval(self.source_code[:200], run_id=run_id, reason=reason)
                     )
                 except RuntimeError:
-                    approval = asyncio.run(request_approval(
-                        self.source_code[:200],
-                        run_id=run_id, reason=reason,
-                    ))
+                    approval = asyncio.run(
+                        request_approval(
+                            self.source_code[:200],
+                            run_id=run_id,
+                            reason=reason,
+                        )
+                    )
                 if not approval.approved:
                     logger.error(
-                        "[Phase IV] Dangerous command denied for run %s"
-                        " — aborting.", run_id,
+                        "[Phase IV] Dangerous command denied for run %s — aborting.",
+                        run_id,
                     )
                     return False
         except ImportError:
@@ -181,7 +185,9 @@ class ACPQAOracleNode:
                 if not tests_passed:
                     logger.warning(
                         "[Phase IV] Tests failed for run %s (rc=%d): %s",
-                        run_id, _result.return_code, _result.stderr[:500],
+                        run_id,
+                        _result.return_code,
+                        _result.stderr[:500],
                     )
             except ImportError:
                 logger.warning("[Phase IV] BashTool unavailable — skipping test execution.")

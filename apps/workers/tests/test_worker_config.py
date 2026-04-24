@@ -77,36 +77,28 @@ class TestWorkerInferenceKeyWarning:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             _make_settings()
-        inference_warnings = [
-            x for x in w if "No inference API keys configured" in str(x.message)
-        ]
+        inference_warnings = [x for x in w if "No inference API keys configured" in str(x.message)]
         assert len(inference_warnings) == 1
 
     def test_no_warning_with_anthropic_key(self) -> None:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             _make_settings(anthropic_api_key="sk-test")
-        inference_warnings = [
-            x for x in w if "No inference API keys configured" in str(x.message)
-        ]
+        inference_warnings = [x for x in w if "No inference API keys configured" in str(x.message)]
         assert len(inference_warnings) == 0
 
     def test_no_warning_with_openai_key(self) -> None:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             _make_settings(openai_api_key="sk-test")
-        inference_warnings = [
-            x for x in w if "No inference API keys configured" in str(x.message)
-        ]
+        inference_warnings = [x for x in w if "No inference API keys configured" in str(x.message)]
         assert len(inference_warnings) == 0
 
     def test_no_warning_with_groq_key(self) -> None:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             _make_settings(groq_api_key="gsk-test")
-        inference_warnings = [
-            x for x in w if "No inference API keys configured" in str(x.message)
-        ]
+        inference_warnings = [x for x in w if "No inference API keys configured" in str(x.message)]
         assert len(inference_warnings) == 0
 
 

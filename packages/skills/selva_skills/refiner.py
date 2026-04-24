@@ -14,6 +14,7 @@ Resolution order per skill:
    → Update SKILL_METADATA["last_validated"].
 3. If execution passes and metadata is fresh → skip.
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,9 +43,8 @@ class RefinerMetrics:
     def record_refinement(self, duration_ms: float) -> None:
         """Record a single refinement duration and update the running average."""
         self._refinement_durations.append(duration_ms)
-        self.avg_refinement_ms = (
-            sum(self._refinement_durations) / len(self._refinement_durations)
-        )
+        self.avg_refinement_ms = sum(self._refinement_durations) / len(self._refinement_durations)
+
 
 REFINE_PROMPT = """\
 You are an expert Python engineer. A Playbook Skill script has either failed execution \
@@ -204,9 +204,7 @@ class SkillRefiner:
                     ),
                 }
             ],
-            system_prompt=(
-                "You are a world-class Python engineer. Output only clean Python code."
-            ),
+            system_prompt=("You are a world-class Python engineer. Output only clean Python code."),
             policy=RoutingPolicy(
                 sensitivity=Sensitivity.CONFIDENTIAL,
                 task_type="code_generation",
@@ -237,9 +235,7 @@ class SkillRefiner:
             try:
                 refined_code = self._call_llm(original_code, current_failure)
             except Exception as exc:
-                logger.warning(
-                    "LLM refinement unavailable (%s); stamping last_validated.", exc
-                )
+                logger.warning("LLM refinement unavailable (%s); stamping last_validated.", exc)
                 # Fallback: update the last_validated timestamp so we don't hammer the LLM
                 refined_code = original_code.replace(
                     '"last_validated":',

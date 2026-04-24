@@ -120,9 +120,7 @@ class TestSynergyCalculator:
         effective = calculator.get_effective_multiplier([AgentRole.SUPPORT])
         assert effective == pytest.approx(2.0)
 
-    def test_get_effective_multiplier_returns_float(
-        self, calculator: SynergyCalculator
-    ) -> None:
+    def test_get_effective_multiplier_returns_float(self, calculator: SynergyCalculator) -> None:
         """Effective multiplier should always be a float."""
         result = calculator.get_effective_multiplier([AgentRole.PLANNER])
         assert isinstance(result, float)
@@ -147,25 +145,19 @@ class TestSkillBasedSynergies:
         assert "Research Pipeline" in synergy_names
         assert dict(active)["Research Pipeline"] == pytest.approx(1.2)
 
-    def test_skill_synergy_missing_one_skill(
-        self, calculator: SynergyCalculator
-    ) -> None:
+    def test_skill_synergy_missing_one_skill(self, calculator: SynergyCalculator) -> None:
         """Partial skill match should NOT activate skill-based synergy."""
         skills = ["coding", "code-review"]  # missing webapp-testing
         active = calculator.calculate([], agent_skills=skills)
         assert "Full Coverage" not in {name for name, _ in active}
 
-    def test_no_skills_does_not_break_role_synergies(
-        self, calculator: SynergyCalculator
-    ) -> None:
+    def test_no_skills_does_not_break_role_synergies(self, calculator: SynergyCalculator) -> None:
         """Calling calculate() without agent_skills still activates role synergies."""
         roles = [AgentRole.RESEARCHER, AgentRole.CODER]
         active = calculator.calculate(roles)
         assert "Surgical DevOps" in {name for name, _ in active}
 
-    def test_skill_and_role_synergies_stack(
-        self, calculator: SynergyCalculator
-    ) -> None:
+    def test_skill_and_role_synergies_stack(self, calculator: SynergyCalculator) -> None:
         """Role-based and skill-based synergies stack multiplicatively."""
         roles = [AgentRole.CODER, AgentRole.REVIEWER]
         skills = ["coding", "code-review", "webapp-testing"]

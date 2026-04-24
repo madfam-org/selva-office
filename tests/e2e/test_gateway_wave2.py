@@ -1,6 +1,7 @@
 """
 E2E tests — Gap 8: Gateway Wave 2 (WhatsApp, Matrix, Mattermost, Signal)
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,11 +10,19 @@ from httpx import AsyncClient
 
 def _make_whatsapp_payload(text: str, from_number: str = "+15551234567") -> dict:
     return {
-        "entry": [{
-            "changes": [{"value": {"messages": [
-                {"text": {"body": text}, "from": from_number},
-            ]}}],
-        }]
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "messages": [
+                                {"text": {"body": text}, "from": from_number},
+                            ]
+                        }
+                    }
+                ],
+            }
+        ]
     }
 
 
@@ -21,7 +30,8 @@ def _make_matrix_payload(text: str, sender: str = "@user:matrix.example.com") ->
     return {
         "events": [
             {
-                "type": "m.room.message", "sender": sender,
+                "type": "m.room.message",
+                "sender": sender,
                 "content": {"msgtype": "m.text", "body": text},
             }
         ]
@@ -68,7 +78,8 @@ class TestWhatsAppGateway:
                     mock_settings.return_value.whatsapp_access_token = ""  # Skip sig validation
                     mock_task.delay.return_value = MagicMock(id="task-wa-001")
                     response = await async_client.post(
-                        "/api/v1/gateway/whatsapp/webhook", json=payload,
+                        "/api/v1/gateway/whatsapp/webhook",
+                        json=payload,
                     )
         assert response.status_code == 200
         assert response.json()["action"] == "acp_triggered"
@@ -139,21 +150,32 @@ class TestMattermostGateway:
 class TestSignalGateway:
     @pytest.mark.asyncio
     async def test_whitelisted_source_triggers_acp(self, async_client: AsyncClient):
-        payload = {"envelope": {"source": "+15559998888", "dataMessage": {"message": "acp https://example.com"}}}
+        payload = {
+            "envelope": {
+                "source": "+15559998888",
+                "dataMessage": {"message": "acp https://example.com"},
+            }
+        }
         with patch("nexus_api.routers.gateway.get_settings") as mock_settings:
             with patch("nexus_api.routers.gateway.run_acp_workflow_task") as mock_task:
                 with patch("nexus_api.routers.gateway.memory_store"):
                     mock_settings.return_value.signal_allowed_numbers = "+15559998888"
                     mock_task.delay.return_value = MagicMock(id="task-sig-001")
                     response = await async_client.post(
-                        "/api/v1/gateway/signal/webhook", json=payload,
+                        "/api/v1/gateway/signal/webhook",
+                        json=payload,
                     )
         assert response.status_code == 200
         assert response.json()["action"] == "acp_triggered"
 
     @pytest.mark.asyncio
     async def test_non_whitelisted_source_rejected(self, async_client: AsyncClient):
-        payload = {"envelope": {"source": "+19990000000", "dataMessage": {"message": "acp https://example.com"}}}
+        payload = {
+            "envelope": {
+                "source": "+19990000000",
+                "dataMessage": {"message": "acp https://example.com"},
+            }
+        }
         with patch("nexus_api.routers.gateway.get_settings") as mock_settings:
             mock_settings.return_value.signal_allowed_numbers = "+15559998888"
             response = await async_client.post("/api/v1/gateway/signal/webhook", json=payload)

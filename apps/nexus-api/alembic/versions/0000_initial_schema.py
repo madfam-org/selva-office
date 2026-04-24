@@ -95,9 +95,7 @@ def upgrade() -> None:
         "swarm_tasks",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
         sa.Column("description", sa.Text(), nullable=False),
-        sa.Column(
-            "graph_type", sa.String(50), nullable=False, server_default="sequential"
-        ),
+        sa.Column("graph_type", sa.String(50), nullable=False, server_default="sequential"),
         sa.Column("assigned_agent_ids", sa.JSON(), nullable=False, server_default="[]"),
         sa.Column("payload", sa.JSON(), nullable=False, server_default="{}"),
         sa.Column("status", sa.String(50), nullable=False, server_default="pending"),

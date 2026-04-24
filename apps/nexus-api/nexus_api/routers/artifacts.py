@@ -63,9 +63,7 @@ async def list_artifacts(
         base_stmt = base_stmt.where(Artifact.task_id == uuid.UUID(task_id))
 
     # Total count
-    count_result = await db.execute(
-        select(func.count()).select_from(base_stmt.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
     total = count_result.scalar_one()
 
     # Paginated results
@@ -88,9 +86,7 @@ async def list_artifacts(
         )
         for a in rows
     ]
-    return ArtifactListResponse(
-        artifacts=items, total=total, limit=limit, offset=offset
-    )
+    return ArtifactListResponse(artifacts=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{artifact_id}", response_model=ArtifactResponse)

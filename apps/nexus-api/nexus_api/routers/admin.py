@@ -80,9 +80,7 @@ async def list_connected_users(
                     )
                 )
             except (json.JSONDecodeError, TypeError):
-                users.append(
-                    ConnectedUser(session_id=session_id, name="Unknown", status="online")
-                )
+                users.append(ConnectedUser(session_id=session_id, name="Unknown", status="online"))
         return users
     except Exception:
         logger.warning("Failed to fetch connected users from Redis")
@@ -102,9 +100,7 @@ async def kick_user(
 
         await client.publish(
             "autoswarm:admin-actions",
-            json.dumps(
-                {"action": "kick", "session_id": body.session_id, "reason": body.reason}
-            ),
+            json.dumps({"action": "kick", "session_id": body.session_id, "reason": body.reason}),
         )
         return {"status": "kick_published", "session_id": body.session_id}
     except Exception as exc:

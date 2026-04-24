@@ -10,6 +10,7 @@ profiler reads historical transcripts keyed by ``user_id`` and synthesizes a
 compact preference profile, which is then serialised into a system prompt
 fragment that any LangGraph node can prepend to its chain.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,9 +23,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 DEFAULT_PROFILE: dict[str, Any] = {
-    "verbosity": "concise",          # "concise" | "verbose"
-    "code_style": "pep8",            # "pep8" | "google" | "numpy"
-    "review_strictness": "moderate", # "lenient" | "moderate" | "strict"
+    "verbosity": "concise",  # "concise" | "verbose"
+    "code_style": "pep8",  # "pep8" | "google" | "numpy"
+    "review_strictness": "moderate",  # "lenient" | "moderate" | "strict"
     "preferred_language": "python",
     "defensive_assertions": True,
     "custom_notes": [],

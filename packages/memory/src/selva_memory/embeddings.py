@@ -153,7 +153,8 @@ class EmbeddingProvider:
         except Exception:
             logger.warning(
                 "OpenAI-compat embedding failed (base_url=%s); falling back to hash",
-                base_url, exc_info=True,
+                base_url,
+                exc_info=True,
             )
             return self._embed_hash(texts)
 
@@ -201,8 +202,10 @@ def get_embedding_provider(
                 from madfam_inference.org_config import load_org_config
 
                 org_config = load_org_config()
-                if org_config.embedding_provider != "openai" or \
-                   org_config.embedding_model != "text-embedding-3-small":
+                if (
+                    org_config.embedding_provider != "openai"
+                    or org_config.embedding_model != "text-embedding-3-small"
+                ):
                     provider_name = org_config.embedding_provider
                     model = org_config.embedding_model
                     # Resolve base_url from provider config

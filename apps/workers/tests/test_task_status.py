@@ -55,7 +55,10 @@ class TestUpdateTaskStatus:
             from selva_workers.task_status import update_task_status
 
             await update_task_status(
-                "http://test:4300", "task-1", "completed", {"output": "done"},
+                "http://test:4300",
+                "task-1",
+                "completed",
+                {"output": "done"},
             )
 
             call_kwargs = mock_ffr.call_args
@@ -76,7 +79,10 @@ class TestUpdateTaskStatus:
             from selva_workers.task_status import update_task_status
 
             await update_task_status(
-                "http://test:4300", "task-1", "failed", {"error": "boom"},
+                "http://test:4300",
+                "task-1",
+                "failed",
+                {"error": "boom"},
             )
 
             payload = mock_ffr.call_args.kwargs["json"]
@@ -142,7 +148,9 @@ class TestUpdateTaskStatus:
             from selva_workers.task_status import update_task_status
 
             await update_task_status(
-                "http://test:4300", "task-1", "running",
+                "http://test:4300",
+                "task-1",
+                "running",
                 started_at="2026-03-14T10:00:00+00:00",
             )
 
@@ -163,7 +171,9 @@ class TestUpdateTaskStatus:
             from selva_workers.task_status import update_task_status
 
             await update_task_status(
-                "http://test:4300", "task-1", "failed",
+                "http://test:4300",
+                "task-1",
+                "failed",
                 result={"error": "boom"},
                 error_message="boom",
             )

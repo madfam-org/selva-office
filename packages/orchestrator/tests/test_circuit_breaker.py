@@ -19,7 +19,6 @@ from selva_orchestrator.circuit_breaker import (
     FinancialCircuitBreaker,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -77,19 +76,25 @@ class TestCheck:
         assert await breaker.check("org-1", 100) is True
 
     @pytest.mark.asyncio()
-    async def test_check_at_limit(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_check_at_limit(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         """Exactly at limit = still allowed."""
         mock_redis.get = AsyncMock(return_value="4900")
         assert await breaker.check("org-1", 100) is True
 
     @pytest.mark.asyncio()
-    async def test_check_over_limit(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_check_over_limit(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         """Over limit = denied."""
         mock_redis.get = AsyncMock(return_value="4901")
         assert await breaker.check("org-1", 100) is False
 
     @pytest.mark.asyncio()
-    async def test_check_already_at_limit(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_check_already_at_limit(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         """Already at the daily limit = even 1 cent is denied."""
         mock_redis.get = AsyncMock(return_value="5000")
         assert await breaker.check("org-1", 1) is False
@@ -100,7 +105,9 @@ class TestCheck:
         assert await breaker.check("org-1", 5000) is True
 
     @pytest.mark.asyncio()
-    async def test_check_zero_amount(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_check_zero_amount(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         """Zero amount check is always within limit."""
         mock_redis.get = AsyncMock(return_value="5000")
         assert await breaker.check("org-1", 0) is True
@@ -115,7 +122,9 @@ class TestCheckFailSafe:
     """When Redis is unavailable, check() denies (fail-safe)."""
 
     @pytest.mark.asyncio()
-    async def test_redis_error_denies(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_redis_error_denies(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.get = AsyncMock(side_effect=ConnectionError("Redis down"))
         assert await breaker.check("org-1", 100) is False
 
@@ -129,7 +138,9 @@ class TestRecord:
     """record() atomically increments the counter and sets TTL."""
 
     @pytest.mark.asyncio()
-    async def test_record_returns_new_total(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_record_returns_new_total(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.incrby = AsyncMock(return_value=200)
         mock_redis.ttl = AsyncMock(return_value=3600)  # TTL already set
         total = await breaker.record("org-1", 200)
@@ -137,21 +148,27 @@ class TestRecord:
         mock_redis.incrby.assert_awaited_once()
 
     @pytest.mark.asyncio()
-    async def test_record_sets_ttl_on_first_write(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_record_sets_ttl_on_first_write(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.incrby = AsyncMock(return_value=100)
         mock_redis.ttl = AsyncMock(return_value=-1)  # No TTL = first write
         await breaker.record("org-1", 100)
         mock_redis.expire.assert_awaited_once()
 
     @pytest.mark.asyncio()
-    async def test_record_skips_ttl_when_already_set(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_record_skips_ttl_when_already_set(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.incrby = AsyncMock(return_value=300)
         mock_redis.ttl = AsyncMock(return_value=43200)  # 12h remaining
         await breaker.record("org-1", 100)
         mock_redis.expire.assert_not_awaited()
 
     @pytest.mark.asyncio()
-    async def test_record_redis_error_returns_zero(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_record_redis_error_returns_zero(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.incrby = AsyncMock(side_effect=ConnectionError("Redis down"))
         total = await breaker.record("org-1", 100)
         assert total == 0
@@ -183,7 +200,9 @@ class TestGetStatus:
         assert status["tripped"] is False
 
     @pytest.mark.asyncio()
-    async def test_status_partial_usage(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_status_partial_usage(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.get = AsyncMock(return_value="2000")
         status = await breaker.get_status("org-1")
         assert status["used_cents"] == 2000
@@ -191,14 +210,18 @@ class TestGetStatus:
         assert status["tripped"] is False
 
     @pytest.mark.asyncio()
-    async def test_status_tripped(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_status_tripped(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.get = AsyncMock(return_value="5000")
         status = await breaker.get_status("org-1")
         assert status["tripped"] is True
         assert status["remaining_cents"] == 0
 
     @pytest.mark.asyncio()
-    async def test_status_redis_error(self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock) -> None:
+    async def test_status_redis_error(
+        self, breaker: FinancialCircuitBreaker, mock_redis: MagicMock
+    ) -> None:
         mock_redis.get = AsyncMock(side_effect=ConnectionError("Redis down"))
         status = await breaker.get_status("org-1")
         assert status["tripped"] is True  # fail-safe

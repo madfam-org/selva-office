@@ -83,8 +83,7 @@ class DhanamAdapter:
         token: str | None = None,
     ) -> None:
         self._base_url = (
-            base_url
-            or os.environ.get("DHANAM_API_URL", "http://localhost:3060")
+            base_url or os.environ.get("DHANAM_API_URL", "http://localhost:3060")
         ).rstrip("/")
         self._token = token or os.environ.get("DHANAM_API_TOKEN", "")
 

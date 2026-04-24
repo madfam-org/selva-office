@@ -1,6 +1,7 @@
 """
 Tests for Gap 2: Memory LLM Summarization (MemoryCompactor).
 """
+
 from __future__ import annotations
 
 import time
@@ -11,6 +12,7 @@ import pytest
 @pytest.fixture()
 def fresh_db():
     from nexus_api.memory_store.db import EdgeMemoryDB
+
     db = EdgeMemoryDB(":memory:")
     yield db
     db.close()
@@ -80,7 +82,8 @@ def test_recent_runs_not_compacted(fresh_db, monkeypatch):
     _seed_old_run(fresh_db, "new-run-001", days_ago=1)
 
     mod = __import__(
-        "nexus_api.tasks.memory_tasks", fromlist=["_get_old_run_ids"],
+        "nexus_api.tasks.memory_tasks",
+        fromlist=["_get_old_run_ids"],
     )
     old_runs = mod._get_old_run_ids(fresh_db, before_days=30)
     assert "new-run-001" not in old_runs

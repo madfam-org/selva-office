@@ -91,9 +91,7 @@ async def check_budget(
     except Exception:
         logger.debug("Failed to fetch cached tier limit from Redis", exc_info=True)
 
-    today_start = datetime.now(UTC).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     result = await db.execute(
         select(func.coalesce(func.sum(ComputeTokenLedger.amount), 0)).where(
             ComputeTokenLedger.created_at >= today_start,

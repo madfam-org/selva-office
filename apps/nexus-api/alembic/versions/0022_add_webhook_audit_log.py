@@ -122,10 +122,7 @@ def upgrade() -> None:
             name="ck_webhook_audit_provider",
         ),
         sa.CheckConstraint(
-            (
-                "action IN ('create', 'list', 'delete', 'rotate', "
-                "'register_oidc_redirect')"
-            ),
+            ("action IN ('create', 'list', 'delete', 'rotate', 'register_oidc_redirect')"),
             name="ck_webhook_audit_action",
         ),
         sa.CheckConstraint(
@@ -136,10 +133,7 @@ def upgrade() -> None:
             name="ck_webhook_audit_status",
         ),
         sa.CheckConstraint(
-            (
-                "target_url_sha256_prefix IS NULL OR "
-                "char_length(target_url_sha256_prefix) = 8"
-            ),
+            ("target_url_sha256_prefix IS NULL OR char_length(target_url_sha256_prefix) = 8"),
             name="ck_webhook_audit_url_prefix_len",
         ),
         sa.ForeignKeyConstraint(

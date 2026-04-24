@@ -88,10 +88,7 @@ class SQLQueryTool(BaseTool):
                 async with engine.connect() as conn:
                     result = await conn.execute(text(query))
                     columns = list(result.keys())
-                    rows = [
-                        dict(zip(columns, row, strict=False))
-                        for row in result.fetchall()
-                    ]
+                    rows = [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
             finally:
                 await engine.dispose()
 

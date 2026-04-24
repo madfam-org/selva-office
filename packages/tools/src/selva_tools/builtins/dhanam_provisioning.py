@@ -160,17 +160,12 @@ class DhanamSubscriptionCreateTool(BaseTool):
         }
         sid = kwargs["space_id"]
         try:
-            status, body = await _request(
-                "POST", f"/spaces/{sid}/subscriptions", json_body=payload
-            )
+            status, body = await _request("POST", f"/spaces/{sid}/subscriptions", json_body=payload)
             if not _ok(status) or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
-                output=(
-                    f"Subscription created on space {sid}: "
-                    f"plan={body.get('plan_id')}"
-                ),
+                output=(f"Subscription created on space {sid}: plan={body.get('plan_id')}"),
                 data={
                     "subscription_id": body.get("id"),
                     "space_id": sid,
@@ -262,16 +257,13 @@ class DhanamCreditLedgerQueryTool(BaseTool):
         sid = kwargs["space_id"]
         period = kwargs.get("period", "current")
         try:
-            status, body = await _request(
-                "GET", f"/spaces/{sid}/credits/ledger?period={period}"
-            )
+            status, body = await _request("GET", f"/spaces/{sid}/credits/ledger?period={period}")
             if not _ok(status) or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
                 output=(
-                    f"credits_used={body.get('used_cents')} / "
-                    f"ceiling={body.get('ceiling_cents')}"
+                    f"credits_used={body.get('used_cents')} / ceiling={body.get('ceiling_cents')}"
                 ),
                 data=body,
             )

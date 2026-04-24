@@ -33,9 +33,7 @@ class TaskStreamProducer:
         """Add a task to the stream. Returns the stream message ID."""
         pool = get_redis_pool()
         raw = json.dumps(task_data)
-        msg_id = await pool.execute_with_retry(
-            "xadd", self._stream_key, {"data": raw}
-        )
+        msg_id = await pool.execute_with_retry("xadd", self._stream_key, {"data": raw})
         logger.info(
             "Enqueued task %s to stream (msg_id=%s)",
             task_data.get("task_id", "?"),
@@ -62,9 +60,7 @@ class TaskStreamConsumer:
         pool = get_redis_pool()
         client = await pool.client()
         try:
-            await client.xgroup_create(
-                self._stream_key, self._group_name, id="0", mkstream=True
-            )
+            await client.xgroup_create(self._stream_key, self._group_name, id="0", mkstream=True)
             logger.info(
                 "Created consumer group '%s' on '%s'",
                 self._group_name,
@@ -76,9 +72,7 @@ class TaskStreamConsumer:
             else:
                 raise
 
-    async def read(
-        self, count: int = 1, block: int = 5000
-    ) -> list[tuple[str, dict[str, Any]]]:
+    async def read(self, count: int = 1, block: int = 5000) -> list[tuple[str, dict[str, Any]]]:
         """Read pending messages from the stream.
 
         Returns list of (message_id, task_data) tuples.
@@ -109,13 +103,9 @@ class TaskStreamConsumer:
     async def ack(self, message_id: str) -> None:
         """Acknowledge a message as successfully processed."""
         pool = get_redis_pool()
-        await pool.execute_with_retry(
-            "xack", self._stream_key, self._group_name, message_id
-        )
+        await pool.execute_with_retry("xack", self._stream_key, self._group_name, message_id)
 
-    async def claim_stalled(
-        self, min_idle_time: int = 60000
-    ) -> list[tuple[str, dict[str, Any]]]:
+    async def claim_stalled(self, min_idle_time: int = 60000) -> list[tuple[str, dict[str, Any]]]:
         """Claim stalled messages from other consumers (crash recovery).
 
         Args:
@@ -165,9 +155,7 @@ class TaskStreamConsumer:
             pass
         return 0
 
-    async def move_to_dlq(
-        self, message_id: str, task_data: dict[str, Any], error: str
-    ) -> None:
+    async def move_to_dlq(self, message_id: str, task_data: dict[str, Any], error: str) -> None:
         """Move a failed message to the dead letter queue."""
         pool = get_redis_pool()
         dlq_data = json.dumps({**task_data, "error": error, "original_id": message_id})

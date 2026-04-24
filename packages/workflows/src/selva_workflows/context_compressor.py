@@ -8,6 +8,7 @@ the system prompt (turn 0) and the most recent N turns unchanged.
 Prevents context window overflows in long ACP runs without losing
 semantic continuity. Uses the configured LLM to summarize elided turns.
 """
+
 from __future__ import annotations
 
 import logging
@@ -82,9 +83,7 @@ class ContextCompressor:
         summary_text = await self._summarize(middle)
         summary_message = {
             "role": "assistant",
-            "content": (
-                f"[CONTEXT SUMMARY — {len(middle)} turns elided]\n\n{summary_text}"
-            ),
+            "content": (f"[CONTEXT SUMMARY — {len(middle)} turns elided]\n\n{summary_text}"),
         }
 
         compressed = head + [summary_message] + tail
@@ -100,8 +99,7 @@ class ContextCompressor:
     async def _summarize(self, messages: list[dict[str, Any]]) -> str:
         """Call the LLM to summarize the elided middle turns."""
         transcript = "\n".join(
-            f"{msg.get('role', 'unknown').upper()}: {_extract_text(msg)[:500]}"
-            for msg in messages
+            f"{msg.get('role', 'unknown').upper()}: {_extract_text(msg)[:500]}" for msg in messages
         )
         summarization_prompt = (
             "Summarize the following conversation turns in under 200 words. "
@@ -129,14 +127,15 @@ class ContextCompressor:
             return response.content
         except Exception as exc:
             logger.warning(
-                "ContextCompressor: LLM summarization failed (%s)"
-                " — using truncated transcript.", exc,
+                "ContextCompressor: LLM summarization failed (%s) — using truncated transcript.",
+                exc,
             )
             return transcript[:600] + "\n[... further context elided ...]"
 
     def compress_sync(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Synchronous wrapper for use inside sync node functions."""
         import asyncio
+
         try:
             return asyncio.run(self.compress(messages))
         except RuntimeError:

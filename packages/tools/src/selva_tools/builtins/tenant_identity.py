@@ -54,9 +54,7 @@ def _creds_check() -> str | None:
     return None
 
 
-async def _request(
-    method: str, path: str, json_body: dict[str, Any] | None = None
-):
+async def _request(method: str, path: str, json_body: dict[str, Any] | None = None):
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.request(
             method,
@@ -237,9 +235,7 @@ class TenantValidateConsistencyTool(BaseTool):
             return ToolResult(success=False, error=err)
         cid = kwargs["canonical_id"]
         try:
-            status, body = await _request(
-                "POST", f"/api/v1/tenant-identities/{cid}/validate"
-            )
+            status, body = await _request("POST", f"/api/v1/tenant-identities/{cid}/validate")
             if not _ok(status) or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             drifts = body.get("drifts") or []

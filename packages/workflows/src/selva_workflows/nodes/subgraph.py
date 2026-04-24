@@ -17,9 +17,7 @@ class SubgraphNodeHandler:
     receives the parent's state and returns its final state merged back.
     """
 
-    def __init__(
-        self, node: NodeDefinition, workflow_loader: Any = None
-    ) -> None:
+    def __init__(self, node: NodeDefinition, workflow_loader: Any = None) -> None:
         self.node = node
         self._loader = workflow_loader
 
@@ -42,13 +40,16 @@ class SubgraphNodeHandler:
                 except Exception:
                     logger.error(
                         "Failed to load subgraph '%s' for node '%s'",
-                        subgraph_id, node.id, exc_info=True,
+                        subgraph_id,
+                        node.id,
+                        exc_info=True,
                     )
 
             if sub_workflow is None:
                 logger.warning(
                     "Subgraph '%s' not found; node '%s' passing through",
-                    subgraph_id, node.id,
+                    subgraph_id,
+                    node.id,
                 )
                 return {**state, "current_node_id": node.id}
 

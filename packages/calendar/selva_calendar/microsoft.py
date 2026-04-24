@@ -71,9 +71,7 @@ class MicrosoftCalendarAdapter:
             end_dt = self._parse_graph_datetime(end_str, end_tz)
 
             meeting_url = item.get("onlineMeetingUrl") or None
-            organizer_email = (
-                item.get("organizer", {}).get("emailAddress", {}).get("address", "")
-            )
+            organizer_email = item.get("organizer", {}).get("emailAddress", {}).get("address", "")
             attendees = [
                 a.get("emailAddress", {}).get("address", "")
                 for a in item.get("attendees", [])

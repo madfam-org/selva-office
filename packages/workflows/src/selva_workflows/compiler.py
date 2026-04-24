@@ -91,6 +91,7 @@ class WorkflowCompiler:
         """Discover and load plugins (Gap 3)."""
         try:
             from selva_plugins.manager import PluginManager  # type: ignore
+
             plugin_dirs_str = os.environ.get("AUTOSWARM_PLUGIN_DIRS", "")
             extra_dirs = [d for d in plugin_dirs_str.split(":") if d]
             manager = PluginManager(extra_dirs=extra_dirs)
@@ -98,14 +99,17 @@ class WorkflowCompiler:
             if count:
                 self._plugin_tools = manager.get_all_tools()
                 phases = (
-                    "phase_i_analyst", "phase_ii_sanitizer",
-                    "phase_iii_clean_swarm", "phase_iv_qa_oracle",
+                    "phase_i_analyst",
+                    "phase_ii_sanitizer",
+                    "phase_iii_clean_swarm",
+                    "phase_iv_qa_oracle",
                 )
                 for phase in phases:
                     self._plugin_context[phase] = manager.get_context_addenda(phase)
                 logger.info(
                     "WorkflowCompiler: loaded %d plugin(s) with %d tools.",
-                    count, len(self._plugin_tools),
+                    count,
+                    len(self._plugin_tools),
                 )
         except ImportError:
             logger.debug("selva_plugins not installed — plugin discovery skipped.")
@@ -227,7 +231,9 @@ class WorkflowCompiler:
                         logger.warning(
                             "Multiple unconditional edges from '%s'; "
                             "only first target '%s' used (extra: '%s')",
-                            source_id, edges[0].target, extra_edge.target,
+                            source_id,
+                            edges[0].target,
+                            extra_edge.target,
                         )
 
         # Nodes without outgoing edges go to END
@@ -296,9 +302,7 @@ class WorkflowCompiler:
         return wrapped
 
 
-def _apply_context_policy(
-    state: dict, policy: ContextWindowPolicy, n: int
-) -> dict:
+def _apply_context_policy(state: dict, policy: ContextWindowPolicy, n: int) -> dict:
     """Apply a context window policy to trim messages in state."""
     messages = state.get("messages", [])
     if not messages:
@@ -312,6 +316,6 @@ def _apply_context_policy(
         # Keep first message (usually system) + last N-1
         if len(messages) <= n:
             return state
-        return {**state, "messages": [messages[0]] + messages[-(n - 1):]}
+        return {**state, "messages": [messages[0]] + messages[-(n - 1) :]}
 
     return state

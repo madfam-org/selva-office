@@ -66,20 +66,21 @@ class TestSubmitScrape:
 
     @pytest.mark.asyncio
     async def test_submit_scrape_success(self) -> None:
-        client = _mock_client("post", {
-            "job_id": "job-123",
-            "status": "queued",
-            "results": [],
-        })
+        client = _mock_client(
+            "post",
+            {
+                "job_id": "job-123",
+                "status": "queued",
+                "results": [],
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.crawler.httpx.AsyncClient",
             return_value=client,
         ):
             adapter = CrawlerAdapter(base_url="http://crawler:3070", token="t")
-            result = await adapter.submit_scrape(
-                "https://example.com", selectors={"title": "h1"}
-            )
+            result = await adapter.submit_scrape("https://example.com", selectors={"title": "h1"})
 
         assert isinstance(result, CrawlJob)
         assert result.job_id == "job-123"
@@ -110,11 +111,14 @@ class TestGetJobStatus:
 
     @pytest.mark.asyncio
     async def test_get_job_status_completed(self) -> None:
-        client = _mock_client("get", {
-            "job_id": "job-456",
-            "status": "completed",
-            "results": [{"title": "Page Title", "content": "text"}],
-        })
+        client = _mock_client(
+            "get",
+            {
+                "job_id": "job-456",
+                "status": "completed",
+                "results": [{"title": "Page Title", "content": "text"}],
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.crawler.httpx.AsyncClient",
@@ -172,10 +176,13 @@ class TestSearchDOF:
     @pytest.mark.asyncio
     async def test_search_dof_with_results_wrapper(self) -> None:
         """API may wrap results in a dict with 'results' key."""
-        client = _mock_client("post", {
-            "results": [{"title": "Entry 1"}],
-            "total": 1,
-        })
+        client = _mock_client(
+            "post",
+            {
+                "results": [{"title": "Entry 1"}],
+                "total": 1,
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.crawler.httpx.AsyncClient",

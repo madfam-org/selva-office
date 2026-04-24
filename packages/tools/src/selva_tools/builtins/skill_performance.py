@@ -178,8 +178,7 @@ class SkillRecordOutcomeTool(BaseTool):
             return ToolResult(
                 success=True,
                 output=(
-                    f"recorded {outcome} (reward={reward}) for skill={skill_id} "
-                    f"task={task_id}"
+                    f"recorded {outcome} (reward={reward}) for skill={skill_id} task={task_id}"
                 ),
                 data={
                     "skill_id": skill_id,
@@ -243,6 +242,7 @@ class SkillGetMetricsTool(BaseTool):
                 d = float(r.get("duration_ms") or 0)
                 if d > 0:
                     durations.append(d)
+
             def _rate(k: str) -> float:
                 return counts[k] / n if n else 0.0
 
@@ -267,8 +267,7 @@ class SkillGetMetricsTool(BaseTool):
             return ToolResult(
                 success=True,
                 output=(
-                    f"skill={skill_id} period={period} n={n} "
-                    f"success_rate={_rate('success'):.2f}"
+                    f"skill={skill_id} period={period} n={n} success_rate={_rate('success'):.2f}"
                 ),
                 data={
                     "skill_id": skill_id,

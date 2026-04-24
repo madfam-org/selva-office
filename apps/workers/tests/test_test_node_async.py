@@ -29,8 +29,7 @@ class TestTestNodeUsesRunAsync:
         fn = getattr(test, "__wrapped__", test)
         source = inspect.getsource(fn)
         assert "get_event_loop" not in source, (
-            "test() node still uses asyncio.get_event_loop() — "
-            "it should use _run_async() instead"
+            "test() node still uses asyncio.get_event_loop() — it should use _run_async() instead"
         )
         assert "_run_async" in source
 

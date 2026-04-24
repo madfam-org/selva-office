@@ -1,6 +1,7 @@
 """
 Tests — Next-Tier: Context Compression, Checkpoints, SOUL.md
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -10,6 +11,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Context Compressor
 # ---------------------------------------------------------------------------
+
 
 class TestContextCompressor:
     def _make_messages(self, n: int) -> list[dict]:
@@ -21,6 +23,7 @@ class TestContextCompressor:
     def test_no_compression_below_threshold(self):
         """Message list below threshold is returned unchanged."""
         from selva_workflows.context_compressor import ContextCompressor
+
         compressor = ContextCompressor(compress_threshold=20)
         messages = self._make_messages(10)
         result = compressor.compress_sync(messages)
@@ -38,13 +41,16 @@ class TestContextCompressor:
 
         with patch(
             "selva_workflows.context_compressor.get_default_router",
-            return_value=mock_router, create=True,
+            return_value=mock_router,
+            create=True,
         ):
             with patch("selva_workflows.context_compressor.InferenceRequest", create=True):
                 with patch("selva_workflows.context_compressor.RoutingPolicy", create=True):
                     with patch("selva_workflows.context_compressor.Sensitivity", create=True):
                         compressor = ContextCompressor(
-                            keep_head=2, keep_tail=3, compress_threshold=10,
+                            keep_head=2,
+                            keep_tail=3,
+                            compress_threshold=10,
                         )
                         messages = self._make_messages(15)
                         result = await compressor.compress(messages)
@@ -57,6 +63,7 @@ class TestContextCompressor:
     async def test_compression_preserves_system_head(self):
         """System prompt is always in the first position after compression."""
         from selva_workflows.context_compressor import ContextCompressor
+
         with patch(
             "selva_workflows.context_compressor.get_default_router",
             create=True,
@@ -68,7 +75,8 @@ class TestContextCompressor:
                 with patch("selva_workflows.context_compressor.RoutingPolicy", create=True):
                     with patch("selva_workflows.context_compressor.Sensitivity", create=True):
                         compressor = ContextCompressor(
-                            keep_head=2, keep_tail=3,
+                            keep_head=2,
+                            keep_tail=3,
                             compress_threshold=10,
                         )
                         messages = self._make_messages(15)
@@ -80,11 +88,13 @@ class TestContextCompressor:
 # Checkpoint Manager
 # ---------------------------------------------------------------------------
 
+
 class TestCheckpointManager:
     @pytest.mark.asyncio
     async def test_save_and_restore_in_memory(self):
         """Save and restore a state snapshot via in-memory fallback."""
         from nexus_api.checkpoints import CheckpointManager
+
         mgr = CheckpointManager(db=None)
         state = {"target_url": "https://example.com", "phase_data": {"prd": "Draft"}}
         await mgr.save("run-001", "phase_i", phase_index=1, state=state)
@@ -95,6 +105,7 @@ class TestCheckpointManager:
     async def test_restore_nonexistent_returns_none(self):
         """Restoring a non-existent checkpoint returns None."""
         from nexus_api.checkpoints import CheckpointManager
+
         mgr = CheckpointManager(db=None)
         result = await mgr.restore("nonexistent-run", "phase_i")
         assert result is None
@@ -104,10 +115,12 @@ class TestCheckpointManager:
 # SOUL.md Loader
 # ---------------------------------------------------------------------------
 
+
 class TestSoulLoader:
     def test_no_soul_file_returns_empty(self, tmp_path):
         """SoulLoader returns empty string when no SOUL.md is found."""
         from selva_workflows.soul import SoulLoader
+
         loader = SoulLoader()
         # Override paths to point to temp dir
         with patch("selva_workflows.soul._PROJECT_SOUL_PATH", tmp_path / "nonexistent.md"):
@@ -123,6 +136,7 @@ class TestSoulLoader:
         soul_path = tmp_path / "SOUL.md"
         soul_path.write_text("# AutoSwarm Agent\nYou are professional and precise.")
         from selva_workflows.soul import SoulLoader
+
         loader = SoulLoader()
         with patch("selva_workflows.soul._PROJECT_SOUL_PATH", soul_path):
             result = loader.load(force_reload=True)
@@ -133,6 +147,7 @@ class TestSoulLoader:
         soul_path = tmp_path / "SOUL.md"
         soul_path.write_text("word " * 50_000)
         from selva_workflows.soul import SoulLoader
+
         loader = SoulLoader()
         with patch("selva_workflows.soul._PROJECT_SOUL_PATH", soul_path):
             result = loader.load(force_reload=True)
@@ -143,6 +158,7 @@ class TestSoulLoader:
         soul_path = tmp_path / "SOUL.md"
         soul_path.write_text("You are precise and thoughtful.")
         from selva_workflows.soul import SoulLoader
+
         loader = SoulLoader()
         with patch("selva_workflows.soul._PROJECT_SOUL_PATH", soul_path):
             result = loader.format_for_prompt()

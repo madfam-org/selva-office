@@ -1,6 +1,7 @@
 """
 Skill and Memory Celery tasks — registered with Celery Beat for autonomous operation.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +21,7 @@ def refine_skills_task(self, force: bool = False) -> dict:
     logger.info("SkillRefiner beat task starting (force=%s).", force)
     try:
         from selva_skills.refiner import SkillRefiner
+
         refiner = SkillRefiner()
         results = refiner.refine_all()
         logger.info("SkillRefiner complete: %s", results)
@@ -38,6 +40,7 @@ def compact_memory_task(self, retention_days: int = 30) -> dict:
     logger.info("MemoryCompactor beat task starting (retention_days=%d).", retention_days)
     try:
         from nexus_api.tasks.memory_tasks import compact_memory
+
         result = asyncio.run(compact_memory(retention_days=retention_days))
         logger.info("MemoryCompactor complete: %s", result)
         return result

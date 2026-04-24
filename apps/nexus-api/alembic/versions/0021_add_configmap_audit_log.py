@@ -140,10 +140,7 @@ def upgrade() -> None:
             name="ck_configmap_audit_hitl_level",
         ),
         sa.CheckConstraint(
-            (
-                "value_sha256_prefix IS NULL OR "
-                "char_length(value_sha256_prefix) = 8"
-            ),
+            ("value_sha256_prefix IS NULL OR char_length(value_sha256_prefix) = 8"),
             name="ck_configmap_audit_sha_prefix_len",
         ),
         sa.CheckConstraint(

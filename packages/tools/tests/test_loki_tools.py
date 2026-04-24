@@ -69,13 +69,9 @@ class TestLokiQueryRange:
     async def test_error_bubbles_up(self) -> None:
         with patch(
             "selva_tools.builtins.loki._loki_request",
-            new=AsyncMock(
-                return_value=(400, {"status": "error", "message": "parse error"})
-            ),
+            new=AsyncMock(return_value=(400, {"status": "error", "message": "parse error"})),
         ):
-            r = await LokiQueryRangeTool().execute(
-                query="bad{query", start="0", end="1"
-            )
+            r = await LokiQueryRangeTool().execute(query="bad{query", start="0", end="1")
             assert r.success is False
             assert "parse error" in (r.error or "")
 

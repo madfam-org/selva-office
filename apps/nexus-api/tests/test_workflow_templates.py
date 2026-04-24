@@ -14,9 +14,7 @@ import pytest
 
 
 @pytest.mark.asyncio()
-async def test_list_templates(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_list_templates(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """GET /templates returns all 5 built-in templates."""
     resp = await client.get("/api/v1/workflows/templates", headers=auth_headers)
     assert resp.status_code == 200
@@ -141,9 +139,7 @@ async def test_create_from_template_not_found(
 
 
 @pytest.mark.asyncio()
-async def test_template_validation(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_template_validation(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """All built-in templates pass YAML validation."""
     list_resp = await client.get("/api/v1/workflows/templates", headers=auth_headers)
     templates = list_resp.json()

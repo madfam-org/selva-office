@@ -61,7 +61,9 @@ class MemoryStore:
         self._dim = dim
 
         # Read database url from env, fallback to default docker-compose url
-        db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://autoswarm:autoswarm@localhost:5432/autoswarm")
+        db_url = os.getenv(
+            "DATABASE_URL", "postgresql+asyncpg://autoswarm:autoswarm@localhost:5432/autoswarm"
+        )
         # Ensure driver is asyncpg
         if db_url.startswith("postgresql://"):
             db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
@@ -74,7 +76,7 @@ class MemoryStore:
     async def _init_db(self) -> None:
         async with self._engine.begin() as conn:
             # Check if pgvector extension is available, create if needed
-            await conn.execute(select(1)) # Just a ping
+            await conn.execute(select(1))  # Just a ping
             # Note: Extension creation requires superuser, assuming it's done via migration or root
             await conn.run_sync(Base.metadata.create_all)
 
@@ -92,7 +94,7 @@ class MemoryStore:
             text=text,
             metadata_=metadata or {},
             created_at=created_at,
-            embedding=vector
+            embedding=vector,
         )
 
         async with self._session_factory() as session:
@@ -122,11 +124,11 @@ class MemoryStore:
             # selects, so we need a tuple. Adjust to get distance:
             dist_col = MemoryEntryModel.embedding.cosine_distance(
                 query_vector,
-            ).label('distance')
+            ).label("distance")
             stmt_with_dist = (
                 select(MemoryEntryModel, dist_col)
                 .filter(MemoryEntryModel.agent_id == self.agent_id)
-                .order_by('distance')
+                .order_by("distance")
                 .limit(top_k)
             )
             result_dist = await session.execute(stmt_with_dist)
@@ -137,13 +139,15 @@ class MemoryStore:
                 # Convert cosine distance back to a similarity score if matched FAISS
                 meta["_similarity_score"] = 1.0 - float(distance)
 
-                results.append(MemoryEntry(
-                    id=row.id,
-                    text=row.text,
-                    metadata=meta,
-                    created_at=row.created_at,
-                    agent_id=row.agent_id,
-                ))
+                results.append(
+                    MemoryEntry(
+                        id=row.id,
+                        text=row.text,
+                        metadata=meta,
+                        created_at=row.created_at,
+                        agent_id=row.agent_id,
+                    )
+                )
 
             return results
 
@@ -166,17 +170,18 @@ class MemoryStore:
             entries = []
             for row in rows:
                 if filter_metadata and not all(
-                    row.metadata_.get(k) == v
-                    for k, v in filter_metadata.items()
+                    row.metadata_.get(k) == v for k, v in filter_metadata.items()
                 ):
                     continue
-                entries.append(MemoryEntry(
-                    id=row.id,
-                    text=row.text,
-                    metadata=row.metadata_,
-                    created_at=row.created_at,
-                    agent_id=row.agent_id,
-                ))
+                entries.append(
+                    MemoryEntry(
+                        id=row.id,
+                        text=row.text,
+                        metadata=row.metadata_,
+                        created_at=row.created_at,
+                        agent_id=row.agent_id,
+                    )
+                )
             return entries
 
     async def delete(self, entry_ids: list[str]) -> int:

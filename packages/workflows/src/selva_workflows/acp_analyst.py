@@ -44,12 +44,14 @@ class ACPAnalystNode:
         for name, srv in config.get("mcpServers", {}).items():
             cmd = json.dumps([srv["command"]] + srv.get("args", []))
             env_overrides = srv.get("env", {})
-            env_str = "{**_os.environ, " + ", ".join(
-                f'"{k}": _os.environ.get("{k}", "")' for k in env_overrides
-            ) + "}"
+            env_str = (
+                "{**_os.environ, "
+                + ", ".join(f'"{k}": _os.environ.get("{k}", "")' for k in env_overrides)
+                + "}"
+            )
             lines.append(
-                f'_mcp_procs.append(_sp.Popen({cmd}, env={env_str}, '
-                f'stdout=_sp.DEVNULL, stderr=_sp.DEVNULL))  # {name}'
+                f"_mcp_procs.append(_sp.Popen({cmd}, env={env_str}, "
+                f"stdout=_sp.DEVNULL, stderr=_sp.DEVNULL))  # {name}"
             )
         lines.append("import time; time.sleep(1)  # give servers a moment to start")
         return "\n".join(lines) + "\n"
@@ -77,6 +79,7 @@ class ACPAnalystNode:
             print(f"[Phase I] Browser extraction failed ({exc}) — falling back to requests")
             try:
                 import requests
+
                 resp = requests.get(
                     self.target_url,
                     timeout=10,
@@ -87,8 +90,7 @@ class ACPAnalystNode:
                 extracted_text = f"Error fetching: {req_exc}"
 
         prd = (
-            f"# PRD Draft for {self.target_url}\n\n"
-            f"## Extracted Context\n\n{extracted_text[:2000]}"
+            f"# PRD Draft for {self.target_url}\n\n## Extracted Context\n\n{extracted_text[:2000]}"
         )
 
         result = {

@@ -203,10 +203,7 @@ async def dlq_stats() -> dict[str, object]:
         # Return the 10 most recent DLQ entries.
         try:
             entries = await client.xrevrange("autoswarm:task-dlq", count=10)
-            result["recent"] = [
-                {"id": eid, "data": data}
-                for eid, data in entries
-            ]
+            result["recent"] = [{"id": eid, "data": data} for eid, data in entries]
         except Exception:
             logger.debug("Failed to fetch recent DLQ entries", exc_info=True)
             result["recent"] = []

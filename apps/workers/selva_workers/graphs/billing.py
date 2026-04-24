@@ -82,12 +82,8 @@ def fetch_context(state: BillingState) -> BillingState:
 
             crm = PhyneCRMAdapter(base_url=phyne_url, token=phyne_token)
             profile = _run_async(crm.get_unified_profile(receptor_rfc))
-            customer_phone = customer_phone or getattr(
-                profile.contact, "phone", None
-            )
-            customer_email = customer_email or getattr(
-                profile.contact, "email", None
-            )
+            customer_phone = customer_phone or getattr(profile.contact, "phone", None)
+            customer_email = customer_email or getattr(profile.contact, "email", None)
         else:
             raise RuntimeError("PHYNE_CRM_URL not set or receptor_rfc empty")
     except Exception:
@@ -224,9 +220,7 @@ def check_blacklist(state: BillingState) -> BillingState:
                     **state,
                     "messages": [*messages, block_msg],
                     "status": "blocked",
-                    "result": {
-                        "error": f"Receptor {receptor_rfc} is on Article 69-B blacklist"
-                    },
+                    "result": {"error": f"Receptor {receptor_rfc} is on Article 69-B blacklist"},
                 }
         else:
             raise RuntimeError("KARAFIEL_API_URL not set")
@@ -291,8 +285,8 @@ def generate_cfdi(state: BillingState) -> BillingState:
         cfdi_uuid = f"placeholder-{state.get('task_id', 'unknown')}"
         cfdi_xml = (
             f'<?xml version="1.0" encoding="UTF-8"?>'
-            f"<cfdi:Comprobante Version=\"4.0\" "
-            f'Rfc=\"{emisor_rfc}\" RfcReceptor=\"{receptor_rfc}\" />'
+            f'<cfdi:Comprobante Version="4.0" '
+            f'Rfc="{emisor_rfc}" RfcReceptor="{receptor_rfc}" />'
         )
 
     gen_msg = AIMessage(
@@ -357,9 +351,7 @@ def stamp_cfdi(state: BillingState) -> BillingState:
             break
         except Exception as exc:
             last_error = str(exc)
-            logger.warning(
-                "Stamp attempt %d/%d failed: %s", attempt + 1, max_attempts, exc
-            )
+            logger.warning("Stamp attempt %d/%d failed: %s", attempt + 1, max_attempts, exc)
 
     if stamp_result is None:
         # Placeholder when Karafiel is unavailable (dev/test).
@@ -428,9 +420,7 @@ def notify_customer(state: BillingState) -> BillingState:
             from selva_tools.builtins.whatsapp import WhatsAppTemplateTool
 
             wa_tool = WhatsAppTemplateTool()
-            customer_name = state.get("workflow_variables", {}).get(
-                "customer_name", "Cliente"
-            )
+            customer_name = state.get("workflow_variables", {}).get("customer_name", "Cliente")
             total_amount = state.get("workflow_variables", {}).get(
                 "total", state.get("stamp_result", {}).get("total", "")
             )
@@ -450,9 +440,7 @@ def notify_customer(state: BillingState) -> BillingState:
                 notification_channel = "whatsapp_template"
                 notification_detail = customer_phone
         except Exception:
-            logger.debug(
-                "WhatsApp template send failed, falling back", exc_info=True
-            )
+            logger.debug("WhatsApp template send failed, falling back", exc_info=True)
 
         # Legacy plain-text WhatsApp API fallback.
         if notification_channel == "none":
@@ -465,8 +453,7 @@ def notify_customer(state: BillingState) -> BillingState:
 
                     if locale == "es-MX":
                         wa_message = (
-                            f"Su factura CFDI {cfdi_uuid} ha sido generada "
-                            f"y timbrada exitosamente."
+                            f"Su factura CFDI {cfdi_uuid} ha sido generada y timbrada exitosamente."
                         )
                     else:
                         wa_message = (
@@ -486,9 +473,7 @@ def notify_customer(state: BillingState) -> BillingState:
                         notification_channel = "whatsapp"
                         notification_detail = customer_phone
                     else:
-                        raise RuntimeError(
-                            f"WhatsApp API returned {resp.status_code}"
-                        )
+                        raise RuntimeError(f"WhatsApp API returned {resp.status_code}")
                 else:
                     raise RuntimeError("WHATSAPP_API_URL not set")
             except Exception:

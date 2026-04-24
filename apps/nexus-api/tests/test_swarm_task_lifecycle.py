@@ -49,9 +49,7 @@ class TestDispatchWorkflowId:
         assert resp.status_code == 201
         task_id = uuid.UUID(resp.json()["id"])
 
-        result = await db_session.execute(
-            select(SwarmTask).where(SwarmTask.id == task_id)
-        )
+        result = await db_session.execute(select(SwarmTask).where(SwarmTask.id == task_id))
         task = result.scalar_one()
         assert task.workflow_id == wf.id
 
@@ -76,9 +74,7 @@ class TestDispatchWorkflowId:
         assert resp.status_code == 201
         task_id = uuid.UUID(resp.json()["id"])
 
-        result = await db_session.execute(
-            select(SwarmTask).where(SwarmTask.id == task_id)
-        )
+        result = await db_session.execute(select(SwarmTask).where(SwarmTask.id == task_id))
         task = result.scalar_one()
         assert task.workflow_id is None
 
@@ -117,9 +113,7 @@ class TestPatchTaskMetadata:
 
         from sqlalchemy import select
 
-        result = await db_session.execute(
-            select(SwarmTask).where(SwarmTask.id == task_id)
-        )
+        result = await db_session.execute(select(SwarmTask).where(SwarmTask.id == task_id))
         task = result.scalar_one()
         assert task.started_at is not None
 
@@ -154,9 +148,7 @@ class TestPatchTaskMetadata:
 
         from sqlalchemy import select
 
-        result = await db_session.execute(
-            select(SwarmTask).where(SwarmTask.id == task_id)
-        )
+        result = await db_session.execute(select(SwarmTask).where(SwarmTask.id == task_id))
         task = result.scalar_one()
         assert task.error_message == "Timed out after 300s"
         assert task.completed_at is not None  # failed sets completed_at
@@ -188,9 +180,7 @@ class TestPatchTaskMetadata:
 
         from sqlalchemy import select
 
-        result = await db_session.execute(
-            select(SwarmTask).where(SwarmTask.id == task_id)
-        )
+        result = await db_session.execute(select(SwarmTask).where(SwarmTask.id == task_id))
         task = result.scalar_one()
         assert task.started_at is None
         assert task.error_message is None
@@ -235,12 +225,8 @@ class TestDispatchAutoAssignment:
         db_session,  # type: ignore[no-untyped-def]
     ) -> None:
         """When both idle and working agents exist, idle is preferred."""
-        working_agent = Agent(
-            name="BusyBot", role="coder", status="working", org_id="dev-org"
-        )
-        idle_agent = Agent(
-            name="IdleBot", role="coder", status="idle", org_id="dev-org"
-        )
+        working_agent = Agent(name="BusyBot", role="coder", status="working", org_id="dev-org")
+        idle_agent = Agent(name="IdleBot", role="coder", status="idle", org_id="dev-org")
         db_session.add_all([working_agent, idle_agent])
         await db_session.flush()
         await db_session.refresh(working_agent)
@@ -268,9 +254,7 @@ class TestDispatchAutoAssignment:
         db_session,  # type: ignore[no-untyped-def]
     ) -> None:
         """When no idle agents exist, falls back to any agent in the org."""
-        working_agent = Agent(
-            name="OnlyBot", role="coder", status="working", org_id="dev-org"
-        )
+        working_agent = Agent(name="OnlyBot", role="coder", status="working", org_id="dev-org")
         db_session.add(working_agent)
         await db_session.flush()
         await db_session.refresh(working_agent)

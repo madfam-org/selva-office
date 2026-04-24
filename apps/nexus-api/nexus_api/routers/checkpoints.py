@@ -4,6 +4,7 @@ Next-Tier: Checkpoints REST router
 Exposes session checkpoint management so operators can inspect, rollback,
 and re-run ACP workflows from any phase boundary.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +37,7 @@ class CheckpointState(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/{run_id}", response_model=list[CheckpointListItem])
 async def list_checkpoints(
@@ -83,6 +85,7 @@ async def rollback_to_phase(
     # Re-queue the workflow from this phase
     try:
         from nexus_api.tasks.acp_tasks import run_acp_workflow_task  # type: ignore
+
         task = run_acp_workflow_task.delay(
             state.get("target_url", ""),
             resume_state=state,
@@ -93,5 +96,6 @@ async def rollback_to_phase(
     except Exception as exc:
         logger.error("Rollback re-queue failed: %s", exc)
         raise HTTPException(
-            status_code=500, detail=f"Rollback re-queue failed: {exc}",
+            status_code=500,
+            detail=f"Rollback re-queue failed: {exc}",
         ) from exc

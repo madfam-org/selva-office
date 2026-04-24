@@ -207,14 +207,10 @@ async def get_task_timeline(
     """Full execution timeline for a single task."""
     uid = _safe_uuid(task_id)
     if not uid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID")
 
     result = await db.execute(
-        select(TaskEvent)
-        .where(TaskEvent.task_id == uid)
-        .order_by(TaskEvent.created_at.asc())
+        select(TaskEvent).where(TaskEvent.task_id == uid).order_by(TaskEvent.created_at.asc())
     )
     events = result.scalars().all()
 
@@ -252,9 +248,7 @@ async def events_websocket(websocket: WebSocket) -> None:
     try:
         async with async_session_factory() as session:
             result = await session.execute(
-                select(TaskEvent)
-                .order_by(TaskEvent.created_at.desc())
-                .limit(50)
+                select(TaskEvent).order_by(TaskEvent.created_at.desc()).limit(50)
             )
             recent = result.scalars().all()
             batch = [_event_to_response(e).model_dump() for e in reversed(recent)]

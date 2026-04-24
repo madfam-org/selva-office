@@ -47,13 +47,15 @@ class TestFetchContext:
     def test_fetch_context_populates_state(self) -> None:
         from selva_workers.graphs.billing import fetch_context
 
-        result = fetch_context({
-            "messages": [],
-            "emisor_rfc": "XAXX010101000",
-            "receptor_rfc": "XEXX010101000",
-            "conceptos": [{"descripcion": "Servicio", "importe": 1000}],
-            "customer_email": "test@example.com",
-        })
+        result = fetch_context(
+            {
+                "messages": [],
+                "emisor_rfc": "XAXX010101000",
+                "receptor_rfc": "XEXX010101000",
+                "conceptos": [{"descripcion": "Servicio", "importe": 1000}],
+                "customer_email": "test@example.com",
+            }
+        )
 
         assert result["status"] == "fetching_context"
         assert result["emisor_rfc"] == "XAXX010101000"
@@ -66,14 +68,16 @@ class TestFetchContext:
     def test_fetch_context_reads_from_workflow_variables(self) -> None:
         from selva_workers.graphs.billing import fetch_context
 
-        result = fetch_context({
-            "messages": [],
-            "workflow_variables": {
-                "emisor_rfc": "FROM_VARS",
-                "receptor_rfc": "FROM_VARS_R",
-                "conceptos": [{"desc": "item"}],
-            },
-        })
+        result = fetch_context(
+            {
+                "messages": [],
+                "workflow_variables": {
+                    "emisor_rfc": "FROM_VARS",
+                    "receptor_rfc": "FROM_VARS_R",
+                    "conceptos": [{"desc": "item"}],
+                },
+            }
+        )
 
         assert result["emisor_rfc"] == "FROM_VARS"
         assert result["receptor_rfc"] == "FROM_VARS_R"
@@ -83,12 +87,14 @@ class TestFetchContext:
         """Without DHANAM or PHYNE env vars, falls back to state values."""
         from selva_workers.graphs.billing import fetch_context
 
-        result = fetch_context({
-            "messages": [],
-            "emisor_rfc": "AAA010101AAA",
-            "receptor_rfc": "BBB020202BBB",
-            "conceptos": [],
-        })
+        result = fetch_context(
+            {
+                "messages": [],
+                "emisor_rfc": "AAA010101AAA",
+                "receptor_rfc": "BBB020202BBB",
+                "conceptos": [],
+            }
+        )
 
         assert result["status"] == "fetching_context"
         assert result["emisor_rfc"] == "AAA010101AAA"
@@ -100,11 +106,13 @@ class TestValidateRfcs:
     def test_validate_rfcs_blocks_on_empty_emisor(self) -> None:
         from selva_workers.graphs.billing import validate_rfcs
 
-        result = validate_rfcs({
-            "messages": [],
-            "emisor_rfc": "",
-            "receptor_rfc": "XEXX010101000",
-        })
+        result = validate_rfcs(
+            {
+                "messages": [],
+                "emisor_rfc": "",
+                "receptor_rfc": "XEXX010101000",
+            }
+        )
 
         assert result["status"] == "error"
         assert "Missing" in result["result"]["error"]
@@ -112,11 +120,13 @@ class TestValidateRfcs:
     def test_validate_rfcs_blocks_on_empty_receptor(self) -> None:
         from selva_workers.graphs.billing import validate_rfcs
 
-        result = validate_rfcs({
-            "messages": [],
-            "emisor_rfc": "XAXX010101000",
-            "receptor_rfc": "",
-        })
+        result = validate_rfcs(
+            {
+                "messages": [],
+                "emisor_rfc": "XAXX010101000",
+                "receptor_rfc": "",
+            }
+        )
 
         assert result["status"] == "error"
 
@@ -124,11 +134,13 @@ class TestValidateRfcs:
         """Without KARAFIEL_API_URL, validation is skipped (passes)."""
         from selva_workers.graphs.billing import validate_rfcs
 
-        result = validate_rfcs({
-            "messages": [],
-            "emisor_rfc": "XAXX010101000",
-            "receptor_rfc": "XEXX010101000",
-        })
+        result = validate_rfcs(
+            {
+                "messages": [],
+                "emisor_rfc": "XAXX010101000",
+                "receptor_rfc": "XEXX010101000",
+            }
+        )
 
         assert result["status"] == "rfcs_validated"
         assert len(result["messages"]) == 1
@@ -150,11 +162,13 @@ class TestValidateRfcs:
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
             patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
-            result = validate_rfcs({
-                "messages": [],
-                "emisor_rfc": "INVALID",
-                "receptor_rfc": "XEXX010101000",
-            })
+            result = validate_rfcs(
+                {
+                    "messages": [],
+                    "emisor_rfc": "INVALID",
+                    "receptor_rfc": "XEXX010101000",
+                }
+            )
 
         assert result["status"] == "error"
         assert "Invalid emisor RFC" in result["result"]["error"]
@@ -166,10 +180,12 @@ class TestCheckBlacklist:
     def test_blacklist_passes_without_karafiel(self) -> None:
         from selva_workers.graphs.billing import check_blacklist
 
-        result = check_blacklist({
-            "messages": [],
-            "receptor_rfc": "XEXX010101000",
-        })
+        result = check_blacklist(
+            {
+                "messages": [],
+                "receptor_rfc": "XEXX010101000",
+            }
+        )
 
         assert result["status"] == "blacklist_clear"
         assert "not on the 69-B blacklist" in result["messages"][0].content
@@ -190,10 +206,12 @@ class TestCheckBlacklist:
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
             patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
-            result = check_blacklist({
-                "messages": [],
-                "receptor_rfc": "BLACKLISTED_RFC",
-            })
+            result = check_blacklist(
+                {
+                    "messages": [],
+                    "receptor_rfc": "BLACKLISTED_RFC",
+                }
+            )
 
         assert result["status"] == "blocked"
         assert "69-B" in result["messages"][0].content
@@ -214,10 +232,12 @@ class TestCheckBlacklist:
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
             patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
-            result = check_blacklist({
-                "messages": [],
-                "receptor_rfc": "CLEAN_RFC",
-            })
+            result = check_blacklist(
+                {
+                    "messages": [],
+                    "receptor_rfc": "CLEAN_RFC",
+                }
+            )
 
         assert result["status"] == "blacklist_clear"
 
@@ -229,13 +249,15 @@ class TestGenerateCfdi:
         """Without Karafiel, generates a placeholder XML."""
         from selva_workers.graphs.billing import generate_cfdi
 
-        result = generate_cfdi({
-            "messages": [],
-            "emisor_rfc": "XAXX010101000",
-            "receptor_rfc": "XEXX010101000",
-            "conceptos": [{"descripcion": "Test"}],
-            "task_id": "task-42",
-        })
+        result = generate_cfdi(
+            {
+                "messages": [],
+                "emisor_rfc": "XAXX010101000",
+                "receptor_rfc": "XEXX010101000",
+                "conceptos": [{"descripcion": "Test"}],
+                "task_id": "task-42",
+            }
+        )
 
         assert result["status"] == "cfdi_generated"
         assert result["cfdi_xml"] is not None
@@ -262,12 +284,14 @@ class TestGenerateCfdi:
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
             patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
-            result = generate_cfdi({
-                "messages": [],
-                "emisor_rfc": "XAXX010101000",
-                "receptor_rfc": "XEXX010101000",
-                "conceptos": [{"descripcion": "Service"}],
-            })
+            result = generate_cfdi(
+                {
+                    "messages": [],
+                    "emisor_rfc": "XAXX010101000",
+                    "receptor_rfc": "XEXX010101000",
+                    "conceptos": [{"descripcion": "Service"}],
+                }
+            )
 
         assert result["cfdi_xml"] == "<cfdi>real-xml</cfdi>"
         assert result["cfdi_uuid"] == "real-uuid-1234"
@@ -280,11 +304,13 @@ class TestStampCfdi:
         """Without Karafiel, returns a placeholder stamp result."""
         from selva_workers.graphs.billing import stamp_cfdi
 
-        result = stamp_cfdi({
-            "messages": [],
-            "cfdi_xml": "<cfdi>test</cfdi>",
-            "cfdi_uuid": "test-uuid",
-        })
+        result = stamp_cfdi(
+            {
+                "messages": [],
+                "cfdi_xml": "<cfdi>test</cfdi>",
+                "cfdi_uuid": "test-uuid",
+            }
+        )
 
         assert result["status"] == "stamped"
         assert result["stamp_result"] is not None
@@ -294,10 +320,12 @@ class TestStampCfdi:
     def test_stamp_cfdi_fails_without_xml(self) -> None:
         from selva_workers.graphs.billing import stamp_cfdi
 
-        result = stamp_cfdi({
-            "messages": [],
-            "cfdi_xml": None,
-        })
+        result = stamp_cfdi(
+            {
+                "messages": [],
+                "cfdi_xml": None,
+            }
+        )
 
         assert result["status"] == "error"
         assert "No cfdi_xml" in result["result"]["error"]
@@ -305,10 +333,12 @@ class TestStampCfdi:
     def test_stamp_cfdi_fails_with_empty_xml(self) -> None:
         from selva_workers.graphs.billing import stamp_cfdi
 
-        result = stamp_cfdi({
-            "messages": [],
-            "cfdi_xml": "",
-        })
+        result = stamp_cfdi(
+            {
+                "messages": [],
+                "cfdi_xml": "",
+            }
+        )
 
         assert result["status"] == "error"
 
@@ -331,11 +361,13 @@ class TestStampCfdi:
             patch.dict(sys.modules, {"madfam_inference.adapters.compliance": mock_module}),
             patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
-            result = stamp_cfdi({
-                "messages": [],
-                "cfdi_xml": "<cfdi>real</cfdi>",
-                "cfdi_uuid": "uuid-1",
-            })
+            result = stamp_cfdi(
+                {
+                    "messages": [],
+                    "cfdi_xml": "<cfdi>real</cfdi>",
+                    "cfdi_uuid": "uuid-1",
+                }
+            )
 
         assert result["status"] == "stamped"
         assert result["stamp_result"]["folio_fiscal"] == "ABC-123-DEF"
@@ -348,12 +380,14 @@ class TestNotifyCustomer:
         """Without contact info, defaults to log_only."""
         from selva_workers.graphs.billing import notify_customer
 
-        result = notify_customer({
-            "messages": [],
-            "cfdi_uuid": "uuid-test",
-            "receptor_rfc": "XEXX010101000",
-            "stamp_result": {"folio_fiscal": "F1"},
-        })
+        result = notify_customer(
+            {
+                "messages": [],
+                "cfdi_uuid": "uuid-test",
+                "receptor_rfc": "XEXX010101000",
+                "stamp_result": {"folio_fiscal": "F1"},
+            }
+        )
 
         assert result["status"] == "completed"
         assert result["result"]["notification_channel"] == "log_only"
@@ -364,13 +398,15 @@ class TestNotifyCustomer:
         from selva_workers.graphs.billing import notify_customer
 
         with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
-            result = notify_customer({
-                "messages": [],
-                "cfdi_uuid": "uuid-email",
-                "receptor_rfc": "RFC123",
-                "customer_email": "client@co.mx",
-                "stamp_result": {"folio_fiscal": "F2"},
-            })
+            result = notify_customer(
+                {
+                    "messages": [],
+                    "cfdi_uuid": "uuid-email",
+                    "receptor_rfc": "RFC123",
+                    "customer_email": "client@co.mx",
+                    "stamp_result": {"folio_fiscal": "F2"},
+                }
+            )
 
         assert result["status"] == "completed"
         assert result["result"]["notification_channel"] == "email"
@@ -380,14 +416,16 @@ class TestNotifyCustomer:
         from selva_workers.graphs.billing import notify_customer
 
         with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
-            result = notify_customer({
-                "messages": [],
-                "cfdi_uuid": "uuid-fallback",
-                "receptor_rfc": "RFC456",
-                "customer_phone": "+5215512345678",
-                "customer_email": "fallback@co.mx",
-                "stamp_result": {"folio_fiscal": "F3"},
-            })
+            result = notify_customer(
+                {
+                    "messages": [],
+                    "cfdi_uuid": "uuid-fallback",
+                    "receptor_rfc": "RFC456",
+                    "customer_phone": "+5215512345678",
+                    "customer_email": "fallback@co.mx",
+                    "stamp_result": {"folio_fiscal": "F3"},
+                }
+            )
 
         # WhatsApp not configured, falls back to email
         assert result["status"] == "completed"
@@ -396,12 +434,14 @@ class TestNotifyCustomer:
     def test_notify_customer_result_structure(self) -> None:
         from selva_workers.graphs.billing import notify_customer
 
-        result = notify_customer({
-            "messages": [],
-            "cfdi_uuid": "uuid-struct",
-            "receptor_rfc": "RFC_STRUCT",
-            "stamp_result": {"folio_fiscal": "FS"},
-        })
+        result = notify_customer(
+            {
+                "messages": [],
+                "cfdi_uuid": "uuid-struct",
+                "receptor_rfc": "RFC_STRUCT",
+                "stamp_result": {"folio_fiscal": "FS"},
+            }
+        )
 
         assert "cfdi_uuid" in result["result"]
         assert "stamp_result" in result["result"]

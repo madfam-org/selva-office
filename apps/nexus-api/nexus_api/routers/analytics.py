@@ -120,9 +120,9 @@ async def accounting_close_status(
         select(
             func.count().label("total"),
             func.count().filter(SwarmTask.status == "completed").label("completed"),
-            func.count().filter(
-                SwarmTask.status.in_(["queued", "pending", "running"])
-            ).label("pending"),
+            func.count()
+            .filter(SwarmTask.status.in_(["queued", "pending", "running"]))
+            .label("pending"),
             func.count().filter(SwarmTask.status == "failed").label("failed"),
             func.max(SwarmTask.completed_at).label("last_completed"),
         )
@@ -140,9 +140,7 @@ async def accounting_close_status(
         completed=row.completed,
         pending=row.pending,
         failed=row.failed,
-        last_completed_at=(
-            row.last_completed.isoformat() if row.last_completed else None
-        ),
+        last_completed_at=(row.last_completed.isoformat() if row.last_completed else None),
     )
 
 
@@ -186,9 +184,7 @@ async def intelligence_summary(
 
     return IntelligenceSummary(
         total_briefings=task_row.total,
-        last_briefing_at=(
-            task_row.last_completed.isoformat() if task_row.last_completed else None
-        ),
+        last_briefing_at=(task_row.last_completed.isoformat() if task_row.last_completed else None),
         dof_entries_scanned=event_count,  # Approximation from events
         indicators_fetched=event_count,
         period=period,

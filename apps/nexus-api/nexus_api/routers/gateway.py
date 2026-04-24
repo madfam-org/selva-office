@@ -51,9 +51,7 @@ def _validate_webhook_url(url: str) -> str:
     parsed = urllib.parse.urlparse(url)
 
     if parsed.scheme not in ("http", "https"):
-        raise HTTPException(
-            status_code=400, detail="Invalid URL: scheme must be http or https"
-        )
+        raise HTTPException(status_code=400, detail="Invalid URL: scheme must be http or https")
 
     hostname = parsed.hostname
     if not hostname:
@@ -89,6 +87,7 @@ def _verify_hmac(body: bytes, signature: str, secret: str) -> bool:
 # ---------------------------------------------------------------------------
 # Telegram
 # ---------------------------------------------------------------------------
+
 
 @router.post("/telegram/webhook")
 async def telegram_webhook(
@@ -140,6 +139,7 @@ async def telegram_webhook(
 # ---------------------------------------------------------------------------
 # Discord
 # ---------------------------------------------------------------------------
+
 
 @router.post("/discord/webhook")
 async def discord_webhook(
@@ -196,6 +196,7 @@ async def discord_webhook(
 # Slack
 # ---------------------------------------------------------------------------
 
+
 @router.post("/slack/webhook")
 async def slack_webhook(
     request: Request,
@@ -226,9 +227,12 @@ async def slack_webhook(
             raise HTTPException(status_code=401, detail="Invalid Slack timestamp") from exc
 
         sig_base = f"v0:{x_slack_request_timestamp}:{body.decode()}"
-        expected = "v0=" + hmac.new(
-            settings.slack_signing_secret.encode(), sig_base.encode(), hashlib.sha256
-        ).hexdigest()
+        expected = (
+            "v0="
+            + hmac.new(
+                settings.slack_signing_secret.encode(), sig_base.encode(), hashlib.sha256
+            ).hexdigest()
+        )
         if not hmac.compare_digest(expected, x_slack_signature):
             raise HTTPException(status_code=401, detail="Invalid Slack signature")
 
@@ -269,6 +273,7 @@ async def slack_webhook(
 # ---------------------------------------------------------------------------
 # Email (SendGrid / Postmark inbound parse)
 # ---------------------------------------------------------------------------
+
 
 @router.post("/email/inbound")
 async def email_inbound(request: Request) -> dict[str, Any]:
@@ -312,6 +317,7 @@ async def email_inbound(request: Request) -> dict[str, Any]:
 
 # ── WhatsApp (Meta Cloud API) ───────────────────────────────────────────────
 
+
 @router.get("/whatsapp/webhook")
 async def whatsapp_webhook_verify(
     request: Request,
@@ -329,6 +335,7 @@ async def whatsapp_webhook_verify(
     if mode == "subscribe" and token == settings.whatsapp_verify_token:
         logger.info("Gateway (WhatsApp): webhook verification successful.")
         from fastapi.responses import PlainTextResponse
+
         return PlainTextResponse(content=challenge or "")
     raise HTTPException(status_code=403, detail="WhatsApp webhook verification failed")
 
@@ -343,9 +350,8 @@ async def whatsapp_inbound(request: Request) -> dict[str, Any]:
     body = await request.body()
     sig = request.headers.get("X-Hub-Signature-256", "")
 
-    if (
-        settings.whatsapp_access_token
-        and not _verify_hmac(body, sig, settings.whatsapp_access_token)
+    if settings.whatsapp_access_token and not _verify_hmac(
+        body, sig, settings.whatsapp_access_token
     ):
         raise HTTPException(status_code=401, detail="Invalid WhatsApp webhook signature")
 
@@ -376,6 +382,7 @@ async def whatsapp_inbound(request: Request) -> dict[str, Any]:
 
 
 # ── Matrix / Element (Appservice API) ──────────────────────────────────────
+
 
 @router.put("/matrix/webhook")
 @router.post("/matrix/webhook")
@@ -427,6 +434,7 @@ async def matrix_inbound(
 
 # ── Mattermost (Slash Command) ──────────────────────────────────────────────
 
+
 @router.post("/mattermost/webhook")
 async def mattermost_inbound(request: Request) -> dict[str, Any]:
     """
@@ -466,6 +474,7 @@ async def mattermost_inbound(request: Request) -> dict[str, Any]:
 
 # ── Signal (via signal-cli REST API) ───────────────────────────────────────
 
+
 @router.post("/signal/webhook")
 async def signal_inbound(request: Request) -> dict[str, Any]:
     """
@@ -502,9 +511,12 @@ async def signal_inbound(request: Request) -> dict[str, Any]:
         return {"status": "success", "action": "acp_triggered", "task_id": task.id}
 
     return {"status": "ignored"}
+
+
 # ---------------------------------------------------------------------------
 # SMS (Twilio)
 # ---------------------------------------------------------------------------
+
 
 @router.post("/sms/inbound")
 async def sms_inbound(
@@ -521,6 +533,7 @@ async def sms_inbound(
     if settings.twilio_auth_token:
         try:
             from urllib.parse import parse_qs
+
             form_data = parse_qs(body.decode(), keep_blank_values=True)
             # Twilio signature = HMAC-SHA1 of URL + sorted params
             url = str(request.url)
@@ -544,6 +557,7 @@ async def sms_inbound(
 
     try:
         from urllib.parse import parse_qs
+
         form = parse_qs(body.decode())
         sms_body = form.get("Body", [""])[0].strip()
         from_number = form.get("From", ["unknown"])[0]
@@ -571,6 +585,7 @@ async def sms_inbound(
 # Completes 18/18 platform coverage matching Hermes Agent
 # ===========================================================================
 
+
 @router.post("/dingtalk/webhook")
 async def dingtalk_webhook(request: Request) -> dict[str, Any]:
     """DingTalk inbound webhook — HMAC-SHA256 validated."""
@@ -581,6 +596,7 @@ async def dingtalk_webhook(request: Request) -> dict[str, Any]:
     if getattr(settings, "dingtalk_app_secret", None):
         import base64 as _b64
         import hashlib as _hs
+
         string_to_sign = f"{timestamp}\n{settings.dingtalk_app_secret}"
         expected = _b64.b64encode(
             hmac.new(
@@ -602,7 +618,8 @@ async def dingtalk_webhook(request: Request) -> dict[str, Any]:
         target_url = _validate_webhook_url(target_url)
         task = run_acp_workflow_task.delay(target_url)
         memory_store.insert_transcript(
-            run_id=task.id, agent_role="gateway-dingtalk",
+            run_id=task.id,
+            agent_role="gateway-dingtalk",
             role="user",
             content=f"ACP from DingTalk ({sender}): {target_url}",
         )
@@ -624,6 +641,7 @@ async def feishu_webhook(request: Request) -> dict[str, Any]:
     body = await request.body()
     if getattr(settings, "feishu_app_secret", None):
         import hashlib as _hs
+
         ts = request.headers.get("X-Lark-Request-Timestamp", "")
         nonce = request.headers.get("X-Lark-Request-Nonce", "")
         sig = request.headers.get("X-Lark-Signature", "")
@@ -635,6 +653,7 @@ async def feishu_webhook(request: Request) -> dict[str, Any]:
     content_str = event.get("message", {}).get("content", "{}")
     try:
         import json as _j
+
         text = _j.loads(content_str).get("text", "").strip()
     except Exception:
         text = ""
@@ -651,9 +670,8 @@ async def wecom_webhook(request: Request) -> dict[str, Any]:
     """WeCom outgoing webhook — token-validated."""
     settings = get_settings()
     token = request.query_params.get("token", "")
-    if (
-        getattr(settings, "wecom_token", None)
-        and not hmac.compare_digest(settings.wecom_token, token)
+    if getattr(settings, "wecom_token", None) and not hmac.compare_digest(
+        settings.wecom_token, token
     ):
         raise HTTPException(status_code=401, detail="Invalid WeCom token")
     try:
@@ -684,9 +702,8 @@ async def weixin_webhook(request: Request) -> dict[str, Any]:
     """Weixin via WxPusher — appToken validated."""
     settings = get_settings()
     token = request.query_params.get("appToken", "")
-    if (
-        getattr(settings, "weixin_app_token", None)
-        and not hmac.compare_digest(settings.weixin_app_token, token)
+    if getattr(settings, "weixin_app_token", None) and not hmac.compare_digest(
+        settings.weixin_app_token, token
     ):
         raise HTTPException(status_code=401, detail="Invalid Weixin appToken")
     try:
@@ -751,16 +768,20 @@ async def homeassistant_webhook(request: Request) -> dict[str, Any]:
 
 @router.post("/webhook/{channel_id}")
 async def generic_webhook(
-    channel_id: str, request: Request, x_webhook_signature: str = None,
+    channel_id: str,
+    request: Request,
+    x_webhook_signature: str = None,
 ) -> dict[str, Any]:
     """Generic HMAC-signed webhook. channel_id used for routing/logging."""
     body = await request.body()
     from ..config import get_settings as _get_settings
+
     secret = _get_settings().autoswarm_webhook_secret
     if secret and x_webhook_signature and not _verify_hmac(body, x_webhook_signature, secret):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
     try:
         import json as _j
+
         data = _j.loads(body)
     except Exception:
         data = {}

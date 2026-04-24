@@ -1,6 +1,7 @@
 """
 E2E tests — Gap 2: Dangerous Command Approval System
 """
+
 import pytest
 
 from selva_tools.approval import is_dangerous
@@ -45,12 +46,14 @@ class TestRequestApproval:
 
         # Patch settings to avoid DB dependency in unit test
         from unittest.mock import MagicMock, patch
+
         mock_settings = MagicMock()
         mock_settings.auto_approve_dangerous = False
         mock_settings.command_approval_timeout_seconds = 5
 
         with patch("selva_tools.approval.get_settings", return_value=mock_settings):
             from selva_tools.approval import request_approval
+
             result = await request_approval(
                 command="rm -rf /tmp/old",
                 run_id="test-run-001",
@@ -65,6 +68,7 @@ class TestRequestApproval:
         monkeypatch.setenv("AUTO_APPROVE", "false")
 
         from unittest.mock import AsyncMock, MagicMock, patch
+
         mock_settings = MagicMock()
         mock_settings.auto_approve_dangerous = False
         mock_settings.command_approval_timeout_seconds = 1  # Very short for test
@@ -72,6 +76,7 @@ class TestRequestApproval:
         with patch("selva_tools.approval.get_settings", return_value=mock_settings):
             with patch("selva_tools.approval._persist_and_broadcast", new_callable=AsyncMock):
                 from selva_tools.approval import ApprovalStatus, request_approval
+
                 result = await request_approval(
                     command="rm -rf /tmp/old2",
                     run_id="test-run-002",

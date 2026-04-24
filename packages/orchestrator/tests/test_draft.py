@@ -70,9 +70,7 @@ class TestDraftWithoutPreference:
         """
         heavy_coder = [AgentRole.CODER] * 20
         coder_count = sum(
-            1
-            for _ in range(200)
-            if draft_agent_role(existing_roles=heavy_coder) is AgentRole.CODER
+            1 for _ in range(200) if draft_agent_role(existing_roles=heavy_coder) is AgentRole.CODER
         )
         # With base weight 0.30 and heavy penalty, coder fraction should drop.
         # Allow a generous upper bound to avoid flaky tests.
@@ -96,9 +94,7 @@ class TestGenerateAgentName:
         """The generated name must be a member of the role's name pool."""
         name = generate_agent_name(role)
         expected_names = _ROLE_NAMES[role]
-        assert name in expected_names, (
-            f"Name '{name}' not in {role.value} pool: {expected_names}"
-        )
+        assert name in expected_names, f"Name '{name}' not in {role.value} pool: {expected_names}"
 
     def test_names_are_non_empty_for_all_roles(self) -> None:
         """Every role should have at least one candidate name."""

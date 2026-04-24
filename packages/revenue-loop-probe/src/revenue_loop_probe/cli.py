@@ -76,9 +76,7 @@ def _select_stages(all_steps, wanted: str):
     names = {n.strip() for n in wanted.split(",") if n.strip()}
     selected = [s for s in all_steps if s.name in names]
     if not selected:
-        raise SystemExit(
-            f"--stages matched nothing. Valid names: {[s.name for s in all_steps]}"
-        )
+        raise SystemExit(f"--stages matched nothing. Valid names: {[s.name for s in all_steps]}")
     return selected
 
 

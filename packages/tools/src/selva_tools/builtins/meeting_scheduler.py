@@ -144,9 +144,7 @@ def _apply_business_hours(
     return out
 
 
-def _days_in_range(
-    after: datetime, before: datetime
-) -> list[str]:
+def _days_in_range(after: datetime, before: datetime) -> list[str]:
     """Return YYYY-MM-DD strings covering [after, before] inclusive of start day."""
     days: list[str] = []
     d = after.date()
@@ -230,18 +228,14 @@ class MeetingFindSlotsTool(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         participants: list[str] = list(kwargs["participants"] or [])
         if len(participants) < 2:
-            return ToolResult(
-                success=False, error="at least 2 participants required."
-            )
+            return ToolResult(success=False, error="at least 2 participants required.")
         try:
             after = _parse_iso(kwargs["after_iso"])
             before = _parse_iso(kwargs["before_iso"])
         except ValueError as e:
             return ToolResult(success=False, error=f"invalid ISO datetime: {e}")
         if before <= after:
-            return ToolResult(
-                success=False, error="before_iso must be after after_iso."
-            )
+            return ToolResult(success=False, error="before_iso must be after after_iso.")
         duration = timedelta(minutes=int(kwargs["duration_minutes"]))
         business_hours = bool(kwargs.get("business_hours", True))
 
@@ -344,9 +338,7 @@ class MeetingScheduleTool(BaseTool):
 
         participants: list[str] = list(kwargs["participants"] or [])
         if len(participants) < 2:
-            return ToolResult(
-                success=False, error="at least 2 participants required."
-            )
+            return ToolResult(success=False, error="at least 2 participants required.")
         try:
             start = _parse_iso(kwargs["slot_start_iso"])
         except ValueError as e:
@@ -357,9 +349,7 @@ class MeetingScheduleTool(BaseTool):
         zoom = kwargs.get("zoom_link")
         if zoom:
             description = (
-                f"{description}\n\nJoin: {zoom}".strip()
-                if description
-                else f"Join: {zoom}"
+                f"{description}\n\nJoin: {zoom}".strip() if description else f"Join: {zoom}"
             )
 
         tool = CreateCalendarEventTool()

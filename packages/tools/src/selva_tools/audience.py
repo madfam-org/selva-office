@@ -56,9 +56,7 @@ class AudienceMismatch(RuntimeError):  # noqa: N818 (name is intentional: "misma
 # Tracks the current swarm's audience during a task execution.
 # Workers bind this via ``with_audience(Audience.TENANT)`` at task start;
 # tools can assert the binding matches their required audience.
-_current_audience: ContextVar[Audience | None] = ContextVar(
-    "selva_tool_audience", default=None
-)
+_current_audience: ContextVar[Audience | None] = ContextVar("selva_tool_audience", default=None)
 
 
 def get_current_audience() -> Audience | None:

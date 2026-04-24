@@ -74,7 +74,9 @@ async def record_experience(
         experience_store.record(record)
         logger.debug(
             "Recorded experience for role=%s agent=%s score=%.1f",
-            agent_role, agent_id, score,
+            agent_role,
+            agent_id,
+            score,
         )
 
         # Per-agent memory
@@ -203,7 +205,11 @@ async def update_agent_performance(
 
         url = f"{nexus_url}/api/v1/agents/{agent_id}/stats"
         success = await fire_and_forget_request(
-            "PATCH", url, json=body, headers=get_worker_auth_headers(), timeout=5.0,
+            "PATCH",
+            url,
+            json=body,
+            headers=get_worker_auth_headers(),
+            timeout=5.0,
         )
         if not success:
             logger.warning("Failed to update stats for agent %s", agent_id)

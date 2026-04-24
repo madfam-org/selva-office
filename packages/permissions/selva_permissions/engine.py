@@ -67,7 +67,7 @@ class PermissionEngine:
                     reason=(
                         f"Action '{category.value}' auto-approved by playbook "
                         f"'{playbook_guard.state.playbook.name}' "
-                        f"(tokens: {playbook_guard.state.tokens_used}/{playbook_guard.state.playbook.token_budget})."
+                        f"(tokens: {playbook_guard.state.tokens_used}/{playbook_guard.state.playbook.token_budget})."  # noqa: E501
                     ),
                 )
 
@@ -114,8 +114,7 @@ class PermissionEngine:
         # the returned `level` lets callers render the right UI.
         if level == PermissionLevel.ASK_DUAL:
             reason = (
-                f"Action '{category.value}' requires TWO distinct "
-                "human approvers before execution."
+                f"Action '{category.value}' requires TWO distinct human approvers before execution."
             )
         else:
             reason = f"Action '{category.value}' requires human approval before execution."

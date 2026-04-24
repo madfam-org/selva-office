@@ -69,12 +69,16 @@ class TestComputePerfWeight:
         from nexus_api.routers.swarms import _compute_perf_weight
 
         good = _make_agent(
-            tasks_completed=9, tasks_failed=1,
-            approval_success_count=8, approval_denial_count=2,
+            tasks_completed=9,
+            tasks_failed=1,
+            approval_success_count=8,
+            approval_denial_count=2,
         )
         bad = _make_agent(
-            tasks_completed=2, tasks_failed=8,
-            approval_success_count=3, approval_denial_count=7,
+            tasks_completed=2,
+            tasks_failed=8,
+            approval_success_count=3,
+            approval_denial_count=7,
         )
         new = _make_agent()
 
@@ -90,12 +94,8 @@ class TestComputePerfWeight:
         """Verify the 30% weight doesn't dominate skill overlap."""
         from nexus_api.routers.swarms import _compute_perf_weight
 
-        perfect = _compute_perf_weight(
-            _make_agent(tasks_completed=100, approval_success_count=100)
-        )
-        worst = _compute_perf_weight(
-            _make_agent(tasks_failed=100, approval_denial_count=100)
-        )
+        perfect = _compute_perf_weight(_make_agent(tasks_completed=100, approval_success_count=100))
+        worst = _compute_perf_weight(_make_agent(tasks_failed=100, approval_denial_count=100))
 
         # With skill_score=1.0:
         # perfect: 1.0 * (0.7 + 0.3 * 1.0) = 1.0

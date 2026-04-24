@@ -8,7 +8,7 @@ celery_app = Celery(
     "nexus_api",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["nexus_api.tasks.acp_tasks"]
+    include=["nexus_api.tasks.acp_tasks"],
 )
 
 celery_app.conf.update(

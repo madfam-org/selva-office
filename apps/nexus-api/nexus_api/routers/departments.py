@@ -122,16 +122,12 @@ async def _get_dept_or_404(dept_id: str, db: AsyncSession) -> Department:
     try:
         uid = uuid.UUID(dept_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID") from exc
 
     result = await db.execute(select(Department).where(Department.id == uid))
     dept = result.scalar_one_or_none()
     if dept is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Department not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
     return dept
 
 
@@ -149,15 +145,11 @@ async def list_departments(
     base_stmt = select(Department).where(Department.org_id == tenant.org_id)
 
     # Total count
-    count_result = await db.execute(
-        select(func.count()).select_from(base_stmt.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
     total = count_result.scalar_one()
 
     # Paginated results
-    result = await db.execute(
-        base_stmt.order_by(Department.name).limit(limit).offset(offset)
-    )
+    result = await db.execute(base_stmt.order_by(Department.name).limit(limit).offset(offset))
     departments = result.scalars().all()
     return DepartmentListResponse(
         items=[_dept_to_response(d) for d in departments],

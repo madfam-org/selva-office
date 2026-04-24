@@ -128,13 +128,18 @@ def load_org_config(path: Path | None = None) -> OrgConfig:
 
         raw = yaml.safe_load(config_path.read_text()) or {}
         config = _parse_yaml(raw)
-        logger.info("Loaded org config from %s (%d providers, %d assignments)",
-                     config_path, len(config.providers), len(config.model_assignments))
+        logger.info(
+            "Loaded org config from %s (%d providers, %d assignments)",
+            config_path,
+            len(config.providers),
+            len(config.model_assignments),
+        )
         return config
     except ImportError:
         logger.warning("PyYAML not installed — cannot load org config; using defaults")
         return OrgConfig()
     except Exception:
-        logger.warning("Failed to parse org config at %s — using defaults",
-                       config_path, exc_info=True)
+        logger.warning(
+            "Failed to parse org config at %s — using defaults", config_path, exc_info=True
+        )
         return OrgConfig()

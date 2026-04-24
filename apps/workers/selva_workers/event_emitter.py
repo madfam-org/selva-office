@@ -75,8 +75,11 @@ async def emit_event(
     from .auth import get_worker_auth_headers
 
     await fire_and_forget_request(
-        "POST", f"{nexus_url}/api/v1/events/", json=body,
-        headers=get_worker_auth_headers(), timeout=2.0,
+        "POST",
+        f"{nexus_url}/api/v1/events/",
+        json=body,
+        headers=get_worker_auth_headers(),
+        timeout=2.0,
     )
 
     # Also PUBLISH to Redis for real-time WS relay
@@ -88,9 +91,7 @@ async def emit_event(
             "id": str(uuid.uuid4()),
             "created_at": time.time(),
         }
-        await pool.execute_with_retry(
-            "publish", EVENTS_CHANNEL, json.dumps(broadcast)
-        )
+        await pool.execute_with_retry("publish", EVENTS_CHANNEL, json.dumps(broadcast))
     except Exception:
         logger.warning("Failed to PUBLISH event %s to Redis", event_type)
 
@@ -132,47 +133,53 @@ def instrumented_node(fn):  # type: ignore[no-untyped-def]
                 with contextlib.suppress(Exception):
                     pool.submit(asyncio.run, coro).result(timeout=3)
 
-        _fire(emit_event(
-            nexus_url,
-            event_type="node.entered",
-            event_category="node",
-            task_id=task_id,
-            agent_id=agent_id,
-            node_id=node_name,
-            graph_type=graph_type,
-        ))
+        _fire(
+            emit_event(
+                nexus_url,
+                event_type="node.entered",
+                event_category="node",
+                task_id=task_id,
+                agent_id=agent_id,
+                node_id=node_name,
+                graph_type=graph_type,
+            )
+        )
 
         start = time.monotonic()
         try:
             result = fn(state, *args, **kwargs)
             elapsed = int((time.monotonic() - start) * 1000)
 
-            _fire(emit_event(
-                nexus_url,
-                event_type="node.exited",
-                event_category="node",
-                task_id=task_id,
-                agent_id=agent_id,
-                node_id=node_name,
-                graph_type=graph_type,
-                duration_ms=elapsed,
-            ))
+            _fire(
+                emit_event(
+                    nexus_url,
+                    event_type="node.exited",
+                    event_category="node",
+                    task_id=task_id,
+                    agent_id=agent_id,
+                    node_id=node_name,
+                    graph_type=graph_type,
+                    duration_ms=elapsed,
+                )
+            )
 
             return result
         except Exception as exc:
             elapsed = int((time.monotonic() - start) * 1000)
 
-            _fire(emit_event(
-                nexus_url,
-                event_type="node.error",
-                event_category="node",
-                task_id=task_id,
-                agent_id=agent_id,
-                node_id=node_name,
-                graph_type=graph_type,
-                duration_ms=elapsed,
-                error_message=str(exc)[:500],
-            ))
+            _fire(
+                emit_event(
+                    nexus_url,
+                    event_type="node.error",
+                    event_category="node",
+                    task_id=task_id,
+                    agent_id=agent_id,
+                    node_id=node_name,
+                    graph_type=graph_type,
+                    duration_ms=elapsed,
+                    error_message=str(exc)[:500],
+                )
+            )
 
             raise
 

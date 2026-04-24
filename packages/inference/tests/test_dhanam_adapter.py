@@ -71,20 +71,23 @@ class TestListTransactions:
 
     @pytest.mark.asyncio
     async def test_returns_transactions(self) -> None:
-        client = _mock_client("get", [
-            {
-                "id": "txn-1",
-                "amount": "1000.00",
-                "currency": "MXN",
-                "description": "Pago servicio",
-                "category": "income",
-                "date": "2026-04-05",
-                "payment_method": "spei",
-                "cfdi_uuid": "cfdi-abc",
-                "counterparty_rfc": "XAXX010101000",
-                "status": "completed",
-            },
-        ])
+        client = _mock_client(
+            "get",
+            [
+                {
+                    "id": "txn-1",
+                    "amount": "1000.00",
+                    "currency": "MXN",
+                    "description": "Pago servicio",
+                    "category": "income",
+                    "date": "2026-04-05",
+                    "payment_method": "spei",
+                    "cfdi_uuid": "cfdi-abc",
+                    "counterparty_rfc": "XAXX010101000",
+                    "status": "completed",
+                },
+            ],
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -138,16 +141,19 @@ class TestGetBankStatements:
 
     @pytest.mark.asyncio
     async def test_returns_statements(self) -> None:
-        client = _mock_client("get", [
-            {
-                "account_id": "acct-1",
-                "account_name": "BBVA Empresarial",
-                "institution": "BBVA",
-                "balance": "50000.00",
-                "currency": "MXN",
-                "transactions": [],
-            },
-        ])
+        client = _mock_client(
+            "get",
+            [
+                {
+                    "account_id": "acct-1",
+                    "account_name": "BBVA Empresarial",
+                    "institution": "BBVA",
+                    "balance": "50000.00",
+                    "currency": "MXN",
+                    "transactions": [],
+                },
+            ],
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -185,18 +191,21 @@ class TestGetPaymentSummary:
 
     @pytest.mark.asyncio
     async def test_returns_summary(self) -> None:
-        client = _mock_client("get", {
-            "period": "2026-04",
-            "total_income": "150000.00",
-            "total_expenses": "80000.00",
-            "by_method": {
-                "stripe_mx": "60000.00",
-                "oxxo": "20000.00",
-                "spei": "50000.00",
-                "conekta": "10000.00",
-                "transfer": "10000.00",
+        client = _mock_client(
+            "get",
+            {
+                "period": "2026-04",
+                "total_income": "150000.00",
+                "total_expenses": "80000.00",
+                "by_method": {
+                    "stripe_mx": "60000.00",
+                    "oxxo": "20000.00",
+                    "spei": "50000.00",
+                    "conekta": "10000.00",
+                    "transfer": "10000.00",
+                },
             },
-        })
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -235,17 +244,20 @@ class TestGetPosTransactions:
 
     @pytest.mark.asyncio
     async def test_returns_pos_transactions(self) -> None:
-        client = _mock_client("get", [
-            {
-                "id": "pos-1",
-                "amount": "500.00",
-                "currency": "MXN",
-                "description": "Terminal sale",
-                "payment_method": "stripe_mx",
-                "date": "2026-04-10",
-                "status": "completed",
-            },
-        ])
+        client = _mock_client(
+            "get",
+            [
+                {
+                    "id": "pos-1",
+                    "amount": "500.00",
+                    "currency": "MXN",
+                    "description": "Terminal sale",
+                    "payment_method": "stripe_mx",
+                    "date": "2026-04-10",
+                    "status": "completed",
+                },
+            ],
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -263,12 +275,15 @@ class TestGetTransaction:
 
     @pytest.mark.asyncio
     async def test_returns_transaction_dict(self) -> None:
-        client = _mock_client("get", {
-            "id": "txn-99",
-            "emisor_rfc": "AAA",
-            "receptor_rfc": "BBB",
-            "conceptos": [{"desc": "item"}],
-        })
+        client = _mock_client(
+            "get",
+            {
+                "id": "txn-99",
+                "emisor_rfc": "AAA",
+                "receptor_rfc": "BBB",
+                "conceptos": [{"desc": "item"}],
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -306,11 +321,14 @@ class TestGetExchangeRate:
     async def test_get_exchange_rate_success(self) -> None:
         from madfam_inference.adapters.dhanam import ExchangeRate
 
-        client = _mock_client("get", {
-            "date": "14/04/2026",
-            "rate": "17.0500",
-            "currency_pair": "USD/MXN",
-        })
+        client = _mock_client(
+            "get",
+            {
+                "date": "14/04/2026",
+                "rate": "17.0500",
+                "currency_pair": "USD/MXN",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -354,12 +372,15 @@ class TestGetTIIE:
     async def test_get_tiie_success(self) -> None:
         from madfam_inference.adapters.dhanam import EconomicIndicator
 
-        client = _mock_client("get", {
-            "series_id": "SF43783",
-            "name": "TIIE 28 dias",
-            "date": "14/04/2026",
-            "value": "11.2500",
-        })
+        client = _mock_client(
+            "get",
+            {
+                "series_id": "SF43783",
+                "name": "TIIE 28 dias",
+                "date": "14/04/2026",
+                "value": "11.2500",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -402,12 +423,15 @@ class TestGetInflation:
     async def test_get_inflation_success(self) -> None:
         from madfam_inference.adapters.dhanam import EconomicIndicator
 
-        client = _mock_client("get", {
-            "series_id": "SP74665",
-            "name": "INPC Variacion Anual",
-            "date": "14/04/2026",
-            "value": "4.2100",
-        })
+        client = _mock_client(
+            "get",
+            {
+                "series_id": "SP74665",
+                "name": "INPC Variacion Anual",
+                "date": "14/04/2026",
+                "value": "4.2100",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",
@@ -451,12 +475,15 @@ class TestGetUMA:
     async def test_get_uma_success(self) -> None:
         from madfam_inference.adapters.dhanam import EconomicIndicator
 
-        client = _mock_client("get", {
-            "series_id": "SP74668",
-            "name": "UMA Valor Diario",
-            "date": "14/04/2026",
-            "value": "113.14",
-        })
+        client = _mock_client(
+            "get",
+            {
+                "series_id": "SP74668",
+                "name": "UMA Valor Diario",
+                "date": "14/04/2026",
+                "value": "113.14",
+            },
+        )
 
         with patch(
             "madfam_inference.adapters.dhanam.httpx.AsyncClient",

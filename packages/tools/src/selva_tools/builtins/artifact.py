@@ -126,11 +126,13 @@ class ListArtifactsTool(BaseTool):
                 name = f.name
                 if prefix and not name.startswith(prefix):
                     continue
-                artifacts.append({
-                    "hash": name,
-                    "path": str(f),
-                    "size_bytes": f.stat().st_size,
-                })
+                artifacts.append(
+                    {
+                        "hash": name,
+                        "path": str(f),
+                        "size_bytes": f.stat().st_size,
+                    }
+                )
 
         return ToolResult(
             output=f"Found {len(artifacts)} artifact(s)",

@@ -36,11 +36,13 @@ class ContextRule(abc.ABC):
 
 
 # Destructive actions that are subject to time/trust restrictions.
-_DESTRUCTIVE_ACTIONS = frozenset({
-    ActionCategory.GIT_PUSH,
-    ActionCategory.DEPLOY,
-    ActionCategory.EMAIL_SEND,
-})
+_DESTRUCTIVE_ACTIONS = frozenset(
+    {
+        ActionCategory.GIT_PUSH,
+        ActionCategory.DEPLOY,
+        ActionCategory.EMAIL_SEND,
+    }
+)
 
 
 class TimeOfDayRule(ContextRule):

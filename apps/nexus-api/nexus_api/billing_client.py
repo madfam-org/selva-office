@@ -92,7 +92,5 @@ async def get_billing_status(dhanam_space_id: str) -> dict[str, Any] | None:
             resp.raise_for_status()
             return resp.json()
     except Exception:
-        logger.debug(
-            "Failed to fetch billing status for space %s", dhanam_space_id, exc_info=True
-        )
+        logger.debug("Failed to fetch billing status for space %s", dhanam_space_id, exc_info=True)
         return None

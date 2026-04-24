@@ -55,9 +55,7 @@ def test_implement_retries_on_json_error(tmp_path):
     wt.mkdir()
     state = _make_state(worktree_path=str(wt))
 
-    valid_response = json.dumps({
-        "files": [{"path": "src/main.py", "content": "print('hello')"}]
-    })
+    valid_response = json.dumps({"files": [{"path": "src/main.py", "content": "print('hello')"}]})
 
     call_count = {"n": 0}
 

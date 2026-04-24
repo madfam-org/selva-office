@@ -78,16 +78,12 @@ async def get_chat_history(
         base_query = base_query.where(ChatMessage.created_at < before)
 
     # Total count
-    count_result = await db.execute(
-        select(func.count()).select_from(base_query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
     total = count_result.scalar_one()
 
     # Paginated results
     result = await db.execute(
-        base_query.order_by(ChatMessage.created_at.desc())
-        .limit(limit)
-        .offset(offset)
+        base_query.order_by(ChatMessage.created_at.desc()).limit(limit).offset(offset)
     )
     messages = list(result.scalars().all())
     # Return oldest-first for display
@@ -105,9 +101,7 @@ async def get_chat_history(
         )
         for m in messages
     ]
-    return ChatHistoryResponse(
-        items=items, total=total, limit=limit, offset=offset
-    )
+    return ChatHistoryResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/messages", status_code=201)

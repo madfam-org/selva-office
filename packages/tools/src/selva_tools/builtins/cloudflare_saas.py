@@ -73,13 +73,11 @@ class CfSaasHostnameAddTool(BaseTool):
             "properties": {
                 "zone_id": {
                     "type": "string",
-                    "description": "Zone id of the fallback-origin zone "
-                    "(typically selva.town).",
+                    "description": "Zone id of the fallback-origin zone (typically selva.town).",
                 },
                 "hostname": {
                     "type": "string",
-                    "description": "The tenant's custom hostname (e.g. "
-                    "'app.tenant.com').",
+                    "description": "The tenant's custom hostname (e.g. 'app.tenant.com').",
                 },
                 "ssl_method": {
                     "type": "string",
@@ -122,10 +120,7 @@ class CfSaasHostnameAddTool(BaseTool):
             ov = r.get("ownership_verification") or {}
             return ToolResult(
                 success=True,
-                output=(
-                    f"Custom hostname queued: {r.get('hostname')}. "
-                    f"Status: {r.get('status')}."
-                ),
+                output=(f"Custom hostname queued: {r.get('hostname')}. Status: {r.get('status')}."),
                 data={
                     "hostname_id": r.get("id"),
                     "hostname": r.get("hostname"),
@@ -266,9 +261,7 @@ class CfSaasHostnameDeleteTool(BaseTool):
         zid = kwargs["zone_id"]
         hid = kwargs["hostname_id"]
         try:
-            body = await _request(
-                "DELETE", f"zones/{zid}/custom_hostnames/{hid}"
-            )
+            body = await _request("DELETE", f"zones/{zid}/custom_hostnames/{hid}")
             if not body.get("success"):
                 return ToolResult(success=False, error=_fmt_err(body))
             return ToolResult(

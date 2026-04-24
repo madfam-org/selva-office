@@ -41,7 +41,9 @@ class InterruptHandler:
     """
 
     nexus_api_url: str
-    redis_url: str = field(default_factory=lambda: os.environ.get("REDIS_URL", "redis://localhost:6379"))
+    redis_url: str = field(
+        default_factory=lambda: os.environ.get("REDIS_URL", "redis://localhost:6379")
+    )
     default_timeout: int = 300
     auth_headers: dict[str, str] = field(default_factory=dict)
     client: httpx.AsyncClient = field(init=False)
@@ -235,8 +237,7 @@ class InterruptHandler:
             payload.update(kwargs)
 
         reasoning = (
-            f"Agent {agent_id} requires approval for "
-            f"'{action_category}' during task {task_id}."
+            f"Agent {agent_id} requires approval for '{action_category}' during task {task_id}."
         )
 
         try:

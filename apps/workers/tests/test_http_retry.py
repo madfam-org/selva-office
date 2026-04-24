@@ -30,7 +30,8 @@ def _mock_response(status_code: int = 200, text: str = "OK") -> MagicMock:
 
 
 def _make_async_client(
-    response: MagicMock | None = None, exc: Exception | None = None,
+    response: MagicMock | None = None,
+    exc: Exception | None = None,
 ) -> MagicMock:
     """Create a mock httpx.AsyncClient context manager."""
     mock_client = AsyncMock()
@@ -67,7 +68,9 @@ class TestFireAndForgetRequest:
 
         assert result is True
         mock_client.request.assert_called_once_with(
-            "PATCH", "http://test:4300/api/v1/tasks/1", json={"status": "running"},
+            "PATCH",
+            "http://test:4300/api/v1/tasks/1",
+            json={"status": "running"},
             headers=None,
         )
 
@@ -184,9 +187,7 @@ class TestFireAndForgetRequest:
                 "selva_workers.http_retry.httpx.AsyncClient",
                 return_value=mock_client,
             ),
-            patch(
-                "selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock
-            ) as mock_sleep,
+            patch("selva_workers.http_retry.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         ):
             from selva_workers.http_retry import fire_and_forget_request
 
@@ -213,9 +214,7 @@ class TestFireAndForgetRequest:
         ) as mock_cls:
             from selva_workers.http_retry import fire_and_forget_request
 
-            await fire_and_forget_request(
-                "POST", "http://test:4300/api/v1/events", timeout=2.0
-            )
+            await fire_and_forget_request("POST", "http://test:4300/api/v1/events", timeout=2.0)
 
         mock_cls.assert_called_once_with(timeout=2.0)
 
@@ -320,9 +319,7 @@ class TestCircuitBreaker:
         ) as mock_cls:
             from selva_workers.http_retry import fire_and_forget_request
 
-            result = await fire_and_forget_request(
-                "PATCH", "http://test:4300/api/v1/tasks/1"
-            )
+            result = await fire_and_forget_request("PATCH", "http://test:4300/api/v1/tasks/1")
 
         assert result is False
         # httpx.AsyncClient should not be instantiated at all.
@@ -366,13 +363,9 @@ class TestRetryCircuitIntegration:
             from selva_workers.http_retry import fire_and_forget_request
 
             # 3 retries per call = 3 failures recorded.
-            await fire_and_forget_request(
-                "POST", "http://test:4300/api/v1/events", max_retries=3
-            )
+            await fire_and_forget_request("POST", "http://test:4300/api/v1/events", max_retries=3)
             # Another call: 2 more failures -> 5 total -> circuit opens.
-            await fire_and_forget_request(
-                "POST", "http://test:4300/api/v1/events", max_retries=2
-            )
+            await fire_and_forget_request("POST", "http://test:4300/api/v1/events", max_retries=2)
 
         cb = _get_circuit_breaker("http://test:4300/api/v1/events")
         assert cb.is_open() is True

@@ -55,9 +55,7 @@ class TestDeployTool:
             patch.dict("os.environ", env, clear=False),
             patch("httpx.AsyncClient", return_value=mock_client),
         ):
-            result = await tool.execute(
-                service="web", environment="staging", image_tag="v1.2.3"
-            )
+            result = await tool.execute(service="web", environment="staging", image_tag="v1.2.3")
 
         assert result.success
         assert result.data["deploy_id"] == "dep-123"

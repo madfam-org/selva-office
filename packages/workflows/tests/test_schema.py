@@ -42,9 +42,7 @@ class TestNodeDefinition:
             NodeDefinition(id="bad id!", type=NodeType.AGENT)
 
     def test_subgraph_node(self) -> None:
-        node = NodeDefinition(
-            id="sub", type=NodeType.SUBGRAPH, subgraph_id="other-workflow"
-        )
+        node = NodeDefinition(id="sub", type=NodeType.SUBGRAPH, subgraph_id="other-workflow")
         assert node.subgraph_id == "other-workflow"
 
     def test_python_runner_node(self) -> None:
@@ -59,9 +57,7 @@ class TestNodeDefinition:
         node = NodeDefinition(
             id="trimmed",
             type=NodeType.AGENT,
-            context_policy=ContextPolicyConfig(
-                type=ContextWindowPolicy.KEEP_LAST_N, n=5
-            ),
+            context_policy=ContextPolicyConfig(type=ContextWindowPolicy.KEEP_LAST_N, n=5),
         )
         assert node.context_policy.type == ContextWindowPolicy.KEEP_LAST_N
         assert node.context_policy.n == 5

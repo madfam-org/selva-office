@@ -43,11 +43,13 @@ class PIIClassificationTool(BaseTool):
         ]:
             matches = pattern.findall(text)
             if matches:
-                findings.append({
-                    "type": name,
-                    "count": len(matches),
-                    "redacted": [m[:4] + "***" for m in matches[:3]],
-                })
+                findings.append(
+                    {
+                        "type": name,
+                        "count": len(matches),
+                        "redacted": [m[:4] + "***" for m in matches[:3]],
+                    }
+                )
 
         has_pii = len(findings) > 0
         return ToolResult(
@@ -59,9 +61,7 @@ class PIIClassificationTool(BaseTool):
 
 class PrivacyNoticeGeneratorTool(BaseTool):
     name = "privacy_notice_generate"
-    description = (
-        "Generate an aviso de privacidad (LFPDPPP privacy notice) from tenant config"
-    )
+    description = "Generate an aviso de privacidad (LFPDPPP privacy notice) from tenant config"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -96,11 +96,14 @@ class PrivacyNoticeGeneratorTool(BaseTool):
         razon: str = kwargs.get("razon_social", "")
         rfc: str = kwargs.get("rfc", "")
         domicilio: str = kwargs.get("domicilio", "")
-        purposes: list[str] = kwargs.get("data_purposes", [
-            "Prestacion de servicios",
-            "Facturacion",
-            "Comunicacion comercial",
-        ])
+        purposes: list[str] = kwargs.get(
+            "data_purposes",
+            [
+                "Prestacion de servicios",
+                "Facturacion",
+                "Comunicacion comercial",
+            ],
+        )
         email: str = kwargs.get(
             "contact_email",
             f"privacidad@{razon.lower().replace(' ', '')}.com",
@@ -140,8 +143,7 @@ class PrivacyNoticeGeneratorTool(BaseTool):
 class DataDeletionTool(BaseTool):
     name = "data_deletion_search"
     description = (
-        "Search for PII across artifacts, memory, and events "
-        "for LFPDPPP right-to-deletion requests"
+        "Search for PII across artifacts, memory, and events for LFPDPPP right-to-deletion requests"
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -167,9 +169,7 @@ class DataDeletionTool(BaseTool):
 
     async def execute(self, **kwargs: Any) -> ToolResult:
         term: str = kwargs.get("search_term", "")
-        scope: list[str] = kwargs.get(
-            "scope", ["artifacts", "events", "chat", "memory"]
-        )
+        scope: list[str] = kwargs.get("scope", ["artifacts", "events", "chat", "memory"])
 
         if not term:
             return ToolResult(success=False, error="search_term is required")

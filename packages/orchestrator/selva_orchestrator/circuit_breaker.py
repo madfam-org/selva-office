@@ -12,8 +12,7 @@ Auto-resets at midnight UTC.
 from __future__ import annotations
 
 import logging
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +33,11 @@ class FinancialCircuitBreaker:
         self._daily_limit_cents = daily_limit_cents
 
     def _key(self, org_id: str) -> str:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         return f"circuit:financial:{org_id}:{date_str}"
 
     def _seconds_until_midnight_utc(self) -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
         midnight_tomorrow = midnight.replace(day=midnight.day + 1) if midnight <= now else midnight
         return max(1, int((midnight_tomorrow - now).total_seconds()))
@@ -88,9 +87,10 @@ class FinancialCircuitBreaker:
                 "remaining_cents": max(0, self._daily_limit_cents - current_cents),
                 "limit_cents": self._daily_limit_cents,
                 "tripped": current_cents >= self._daily_limit_cents,
-                "resets_at": datetime.now(timezone.utc).replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ).isoformat() + "Z",
+                "resets_at": datetime.now(UTC)
+                .replace(hour=0, minute=0, second=0, microsecond=0)
+                .isoformat()
+                + "Z",
             }
         except Exception:
             return {

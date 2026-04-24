@@ -23,9 +23,7 @@ from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
 
-ARGOCD_SERVER = os.environ.get(
-    "ARGOCD_SERVER", "https://argocd-server.argocd.svc.cluster.local"
-)
+ARGOCD_SERVER = os.environ.get("ARGOCD_SERVER", "https://argocd-server.argocd.svc.cluster.local")
 ARGOCD_TOKEN = os.environ.get("ARGOCD_AUTH_TOKEN", "")
 
 
@@ -47,9 +45,7 @@ async def _request(
     # argocd-server runs with its own self-signed in-cluster cert; verify=False
     # is fine when we're reaching it through cluster DNS.
     async with httpx.AsyncClient(timeout=30, verify=False) as client:
-        resp = await client.request(
-            method, url, headers=_headers(), json=json_body, params=params
-        )
+        resp = await client.request(method, url, headers=_headers(), json=json_body, params=params)
         try:
             body = resp.json()
         except Exception:
@@ -93,37 +89,27 @@ class ArgocdListAppsTool(BaseTool):
             items = body.get("items") or []
             if kwargs.get("project"):
                 items = [
-                    a
-                    for a in items
-                    if (a.get("spec") or {}).get("project") == kwargs["project"]
+                    a for a in items if (a.get("spec") or {}).get("project") == kwargs["project"]
                 ]
             if kwargs.get("namespace"):
                 items = [
                     a
                     for a in items
-                    if (a.get("spec") or {}).get("destination", {}).get(
-                        "namespace"
-                    )
+                    if (a.get("spec") or {}).get("destination", {}).get("namespace")
                     == kwargs["namespace"]
                 ]
             if kwargs.get("name_contains"):
                 needle = kwargs["name_contains"].lower()
                 items = [
-                    a
-                    for a in items
-                    if needle in (a.get("metadata", {}).get("name", "")).lower()
+                    a for a in items if needle in (a.get("metadata", {}).get("name", "")).lower()
                 ]
             summary = [
                 {
                     "name": (a.get("metadata") or {}).get("name"),
                     "project": (a.get("spec") or {}).get("project"),
-                    "namespace": (a.get("spec") or {})
-                    .get("destination", {})
-                    .get("namespace"),
+                    "namespace": (a.get("spec") or {}).get("destination", {}).get("namespace"),
                     "sync": (a.get("status") or {}).get("sync", {}).get("status"),
-                    "health": (a.get("status") or {})
-                    .get("health", {})
-                    .get("status"),
+                    "health": (a.get("status") or {}).get("health", {}).get("status"),
                     "revision": (a.get("status") or {}).get("sync", {}).get("revision"),
                 }
                 for a in items

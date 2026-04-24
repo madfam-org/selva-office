@@ -15,12 +15,14 @@ class TestWriteFilesToWorktree:
     def test_writes_valid_json_files(self, tmp_path: Path) -> None:
         from selva_workers.graphs.coding import _write_files_to_worktree
 
-        llm_output = json.dumps({
-            "files": [
-                {"path": "src/main.py", "content": "print('hello')"},
-                {"path": "README.md", "content": "# Project"},
-            ]
-        })
+        llm_output = json.dumps(
+            {
+                "files": [
+                    {"path": "src/main.py", "content": "print('hello')"},
+                    {"path": "README.md", "content": "# Project"},
+                ]
+            }
+        )
 
         result = _write_files_to_worktree(str(tmp_path), llm_output, {})
 
@@ -31,11 +33,13 @@ class TestWriteFilesToWorktree:
     def test_rejects_absolute_paths(self, tmp_path: Path) -> None:
         from selva_workers.graphs.coding import _write_files_to_worktree
 
-        llm_output = json.dumps({
-            "files": [
-                {"path": "/etc/passwd", "content": "malicious"},
-            ]
-        })
+        llm_output = json.dumps(
+            {
+                "files": [
+                    {"path": "/etc/passwd", "content": "malicious"},
+                ]
+            }
+        )
 
         result = _write_files_to_worktree(str(tmp_path), llm_output, {})
 
@@ -46,11 +50,13 @@ class TestWriteFilesToWorktree:
     def test_rejects_directory_traversal(self, tmp_path: Path) -> None:
         from selva_workers.graphs.coding import _write_files_to_worktree
 
-        llm_output = json.dumps({
-            "files": [
-                {"path": "../../../etc/shadow", "content": "malicious"},
-            ]
-        })
+        llm_output = json.dumps(
+            {
+                "files": [
+                    {"path": "../../../etc/shadow", "content": "malicious"},
+                ]
+            }
+        )
 
         result = _write_files_to_worktree(str(tmp_path), llm_output, {})
 
@@ -68,7 +74,9 @@ class TestWriteFilesToWorktree:
         from selva_workers.graphs.coding import _write_files_to_worktree
 
         result = _write_files_to_worktree(
-            str(tmp_path), None, {"description": "Create hello world"},
+            str(tmp_path),
+            None,
+            {"description": "Create hello world"},
         )
 
         assert result == ["AUTOSWARM_PLACEHOLDER.md"]
@@ -84,11 +92,13 @@ class TestWriteFilesToWorktree:
     def test_creates_nested_directories(self, tmp_path: Path) -> None:
         from selva_workers.graphs.coding import _write_files_to_worktree
 
-        llm_output = json.dumps({
-            "files": [
-                {"path": "a/b/c/deep.py", "content": "deep"},
-            ]
-        })
+        llm_output = json.dumps(
+            {
+                "files": [
+                    {"path": "a/b/c/deep.py", "content": "deep"},
+                ]
+            }
+        )
 
         result = _write_files_to_worktree(str(tmp_path), llm_output, {})
 
@@ -98,12 +108,14 @@ class TestWriteFilesToWorktree:
     def test_skips_entries_with_empty_path(self, tmp_path: Path) -> None:
         from selva_workers.graphs.coding import _write_files_to_worktree
 
-        llm_output = json.dumps({
-            "files": [
-                {"path": "", "content": "empty path"},
-                {"path": "valid.py", "content": "ok"},
-            ]
-        })
+        llm_output = json.dumps(
+            {
+                "files": [
+                    {"path": "", "content": "empty path"},
+                    {"path": "valid.py", "content": "ok"},
+                ]
+            }
+        )
 
         result = _write_files_to_worktree(str(tmp_path), llm_output, {})
 
@@ -116,27 +128,36 @@ class TestImplementWritesFiles:
     def test_implement_writes_files_from_llm(self, tmp_path: Path) -> None:
         from selva_workers.graphs.coding import implement
 
-        llm_output = json.dumps({
-            "files": [
-                {"path": "app.py", "content": "print('app')"},
-            ]
-        })
+        llm_output = json.dumps(
+            {
+                "files": [
+                    {"path": "app.py", "content": "print('app')"},
+                ]
+            }
+        )
 
-        with patch(
-            "selva_workers.inference.call_llm",
-            return_value=llm_output,
-        ), patch(
-            "selva_workers.inference.get_model_router",
-            return_value=MagicMock(),
+        with (
+            patch(
+                "selva_workers.inference.call_llm",
+                return_value=llm_output,
+            ),
+            patch(
+                "selva_workers.inference.get_model_router",
+                return_value=MagicMock(),
+            ),
         ):
-            result = implement({
-                "messages": [AIMessage(
-                    content="Plan ready",
-                    additional_kwargs={"plan": {"steps": ["step1"]}},
-                )],
-                "worktree_path": str(tmp_path),
-                "iteration": 0,
-            })
+            result = implement(
+                {
+                    "messages": [
+                        AIMessage(
+                            content="Plan ready",
+                            additional_kwargs={"plan": {"steps": ["step1"]}},
+                        )
+                    ],
+                    "worktree_path": str(tmp_path),
+                    "iteration": 0,
+                }
+            )
 
         assert (tmp_path / "app.py").read_text() == "print('app')"
         assert result["code_changes"][-1]["files_modified"] == ["app.py"]
@@ -148,15 +169,19 @@ class TestImplementWritesFiles:
             "selva_workers.inference.get_model_router",
             side_effect=RuntimeError("no providers"),
         ):
-            result = implement({
-                "messages": [AIMessage(
-                    content="Plan ready",
-                    additional_kwargs={"plan": {"steps": ["step1"]}},
-                )],
-                "worktree_path": str(tmp_path),
-                "iteration": 0,
-                "description": "Test task",
-            })
+            result = implement(
+                {
+                    "messages": [
+                        AIMessage(
+                            content="Plan ready",
+                            additional_kwargs={"plan": {"steps": ["step1"]}},
+                        )
+                    ],
+                    "worktree_path": str(tmp_path),
+                    "iteration": 0,
+                    "description": "Test task",
+                }
+            )
 
         assert (tmp_path / "AUTOSWARM_PLACEHOLDER.md").exists()
         assert "AUTOSWARM_PLACEHOLDER.md" in result["code_changes"][-1]["files_modified"]
@@ -176,9 +201,11 @@ class TestImplementWritesFiles:
             "selva_workers.graphs.coding.check_permission",
             return_value=mock_result,
         ):
-            result = implement({
-                "messages": [],
-                "iteration": 0,
-            })
+            result = implement(
+                {
+                    "messages": [],
+                    "iteration": 0,
+                }
+            )
 
         assert result["status"] == "blocked"

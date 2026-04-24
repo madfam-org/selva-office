@@ -72,9 +72,7 @@ class KustomizeListImagesTool(BaseTool):
             return ToolResult(success=False, error=err)
         path = Path(kwargs["kustomization_path"])
         if not path.is_file():
-            return ToolResult(
-                success=False, error=f"file not found: {path}"
-            )
+            return ToolResult(success=False, error=f"file not found: {path}")
         try:
             doc = yaml.safe_load(path.read_text()) or {}
             images = doc.get("images") or []
@@ -132,24 +130,18 @@ class KustomizeSetImageTool(BaseTool):
             return ToolResult(success=False, error=err)
         path = Path(kwargs["kustomization_path"])
         if not path.is_file():
-            return ToolResult(
-                success=False, error=f"file not found: {path}"
-            )
+            return ToolResult(success=False, error=f"file not found: {path}")
         name = kwargs["name"]
         new_name = kwargs.get("new_name") or name
         digest = kwargs.get("digest")
         new_tag = kwargs.get("new_tag")
         if not digest and not new_tag:
-            return ToolResult(
-                success=False, error="one of 'digest' or 'new_tag' is required"
-            )
+            return ToolResult(success=False, error="one of 'digest' or 'new_tag' is required")
         try:
             doc = yaml.safe_load(path.read_text()) or {}
             images = doc.setdefault("images", [])
             # Find existing entry by name.
-            existing = next(
-                (i for i in images if i.get("name") == name), None
-            )
+            existing = next((i for i in images if i.get("name") == name), None)
             entry = existing or {"name": name}
             entry["newName"] = new_name
             if digest:
@@ -217,8 +209,7 @@ class KustomizeBuildTool(BaseTool):
             if out.returncode != 0:
                 return ToolResult(
                     success=False,
-                    error=f"kustomize build failed (exit {out.returncode}): "
-                    f"{out.stderr[:1000]}",
+                    error=f"kustomize build failed (exit {out.returncode}): {out.stderr[:1000]}",
                 )
             # Summarise resources.
             err = _ensure_yaml()

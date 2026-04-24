@@ -124,6 +124,7 @@ class WorkerHealth:
         class _NoopTimer:
             def __enter__(self) -> _NoopTimer:
                 return self
+
             def __exit__(self, *args: object) -> None:
                 pass
 

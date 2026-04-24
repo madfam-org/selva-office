@@ -85,10 +85,7 @@ class SwarmOrchestrator:
         agent = self.agents[agent_id]
 
         if len(dept.agent_ids) >= dept.max_agents:
-            raise ValueError(
-                f"Department '{dept.name}' is at capacity "
-                f"({dept.max_agents} agents)"
-            )
+            raise ValueError(f"Department '{dept.name}' is at capacity ({dept.max_agents} agents)")
 
         # Remove from current department if assigned
         if agent.department_id and agent.department_id in self.departments:

@@ -43,9 +43,7 @@ from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_HARNESS_DIR = (
-    "/Users/aldoruizluna/labspace/tezca/experiments/meta-harness"
-)
+DEFAULT_HARNESS_DIR = "/Users/aldoruizluna/labspace/tezca/experiments/meta-harness"
 CLI_TIMEOUT_SEC = 30
 
 
@@ -83,9 +81,7 @@ async def _run_cli(args: list[str]) -> tuple[int, str, str]:
             stderr=asyncio.subprocess.PIPE,
         )
         try:
-            stdout_b, stderr_b = await asyncio.wait_for(
-                proc.communicate(), timeout=CLI_TIMEOUT_SEC
-            )
+            stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=CLI_TIMEOUT_SEC)
         except TimeoutError:
             proc.kill()
             await proc.wait()
@@ -174,9 +170,7 @@ class MetaHarnessBudgetGateTool(BaseTool):
                     success=False,
                     error=f"could not parse estimate JSON: {e}",
                 )
-            total_usd = float(
-                (parsed.get("estimate") or {}).get("total_usd", 0.0)
-            )
+            total_usd = float((parsed.get("estimate") or {}).get("total_usd", 0.0))
             hard_cap = float(kwargs.get("hard_cap_usd", 10.0))
             tier = str(kwargs.get("agent_tier", "ask")).lower()
             # Decision table: tier + usd → allow/ask/deny.
@@ -550,8 +544,7 @@ class MetaHarnessEscalateTierTool(BaseTool):
                 return ToolResult(
                     success=False,
                     error=(
-                        f"refused: requested tier {requested!r} is looser "
-                        f"than current {current!r}"
+                        f"refused: requested tier {requested!r} is looser than current {current!r}"
                     ),
                 )
             record = {
@@ -573,8 +566,7 @@ class MetaHarnessEscalateTierTool(BaseTool):
             return ToolResult(
                 success=True,
                 output=(
-                    f"tier escalation requested: {current} -> {requested} "
-                    f"for session={session_id}"
+                    f"tier escalation requested: {current} -> {requested} for session={session_id}"
                 ),
                 data={
                     "session_id": session_id,

@@ -7,6 +7,7 @@ the same browser automation and vision capabilities as Hermes Agent.
 Falls back to requests if Playwright is not installed, so the package
 remains importable in environments without a browser.
 """
+
 from __future__ import annotations
 
 import base64
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 PLAYWRIGHT_AVAILABLE = False
 try:
     from playwright.async_api import async_playwright
+
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     logger.warning("playwright not installed — browser tools will fall back to requests.")
@@ -25,6 +27,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 async def browser_navigate(url: str, timeout_ms: int = 30_000) -> dict:
     """
@@ -109,9 +112,7 @@ async def browser_click(url: str, selector: str, timeout_ms: int = 30_000) -> di
     return result
 
 
-async def browser_fill(
-    url: str, selector: str, value: str, timeout_ms: int = 30_000
-) -> dict:
+async def browser_fill(url: str, selector: str, value: str, timeout_ms: int = 30_000) -> dict:
     """Fill an input field matching *selector* on *url* with *value*."""
     if not PLAYWRIGHT_AVAILABLE:
         return {"error": "Playwright unavailable"}
@@ -188,9 +189,11 @@ async def vision_describe(image_b64: str, prompt: str = "Describe this image in 
 # Fallbacks
 # ---------------------------------------------------------------------------
 
+
 def _requests_fallback_nav(url: str) -> dict:
     try:
         import requests
+
         r = requests.head(url, timeout=10, allow_redirects=True)
         return {"status": r.status_code, "url": r.url}
     except Exception as exc:
@@ -207,8 +210,10 @@ def _requests_fallback_extract(url: str) -> str:
             def __init__(self):
                 super().__init__()
                 self._parts: list[str] = []
+
             def handle_data(self, data):
                 self._parts.append(data)
+
             @property
             def text(self):
                 return " ".join(self._parts)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
@@ -101,12 +101,9 @@ def fetch_context(state: CRMState) -> CRMState:
 
             adapter = PhyneCRMAdapter(base_url=phyne_url, token=phyne_token)
             profile = _run_async(adapter.get_unified_profile(recipient))
-            activities = _run_async(
-                adapter.list_activities("contact", profile.contact.id)
-            )
+            activities = _run_async(adapter.list_activities("contact", profile.contact.id))
             context_data["contact_history"] = [
-                {"date": a.due_date or "", "type": a.type, "subject": a.title}
-                for a in activities
+                {"date": a.due_date or "", "type": a.type, "subject": a.title} for a in activities
             ]
             context_data["account_status"] = profile.billing_status or "active"
             context_data["last_interaction_days_ago"] = 0
@@ -166,11 +163,13 @@ def draft_communication(state: CRMState) -> CRMState:
 
             agent_id = state.get("agent_id", "unknown")
             description = state.get("description", "")
-            experience_ctx = _run_async(build_experience_context(
-                agent_id=agent_id,
-                agent_role="crm",
-                task_description=description,
-            ))
+            experience_ctx = _run_async(
+                build_experience_context(
+                    agent_id=agent_id,
+                    agent_role="crm",
+                    task_description=description,
+                )
+            )
         except Exception:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
@@ -192,21 +191,19 @@ def draft_communication(state: CRMState) -> CRMState:
 
         if locale == "es-MX":
             user_content = (
-                f"Redacte un(a) {crm_action} para {recipient}.\n"
-                f"Contexto CRM: {crm_context}"
+                f"Redacte un(a) {crm_action} para {recipient}.\nContexto CRM: {crm_context}"
             )
         else:
-            user_content = (
-                f"Draft a {crm_action} for {recipient}.\n"
-                f"CRM context: {crm_context}"
-            )
+            user_content = f"Draft a {crm_action} for {recipient}.\nCRM context: {crm_context}"
 
-        draft = _run_async(call_llm(
-            router,
-            messages=[{"role": "user", "content": user_content}],
-            system_prompt=system_prompt,
-            task_type="crm",
-        ))
+        draft = _run_async(
+            call_llm(
+                router,
+                messages=[{"role": "user", "content": user_content}],
+                system_prompt=system_prompt,
+                task_type="crm",
+            )
+        )
     except Exception:
         locale = state.get("locale", "")
         if not locale:
@@ -386,26 +383,30 @@ def send(state: CRMState) -> CRMState:
             # tracking pixel on the recipient's browser carries it
             # through to Dhanam checkout. Dhanam reads `utm_campaign`
             # from the cookie at checkout time.
-            effective_utm = (
-                f"{utm_campaign}__{lead_id}" if lead_id else utm_campaign
+            effective_utm = f"{utm_campaign}__{lead_id}" if lead_id else utm_campaign
+            email_result = _run_async(
+                tool.execute(
+                    to_email=to_email,
+                    subject=subject,
+                    body_html=draft_content,
+                    utm_campaign=effective_utm,
+                    lead_id=lead_id,
+                )
             )
-            email_result = _run_async(tool.execute(
-                to_email=to_email,
-                subject=subject,
-                body_html=draft_content,
-                utm_campaign=effective_utm,
-                lead_id=lead_id,
-            ))
             send_result["email_id"] = (
                 email_result.data.get("email_id") if email_result.success else None
             )
             send_result["email_sent"] = email_result.success
             send_result["lead_id"] = lead_id
             if email_result.success:
-                masked = to_email[:3] + "***@" + to_email.split("@")[-1] if "@" in to_email else "***"
+                masked = (
+                    to_email[:3] + "***@" + to_email.split("@")[-1] if "@" in to_email else "***"
+                )
                 logger.info(
                     "Email sent to %s (id: %s, lead_id: %s)",
-                    masked, send_result.get("email_id"), lead_id or "-",
+                    masked,
+                    send_result.get("email_id"),
+                    lead_id or "-",
                 )
                 # T3.2 — emit `playbook.sent` on successful send. Done
                 # here (not in the tool) so the tool stays reusable by
@@ -465,10 +466,14 @@ def build_crm_graph() -> StateGraph:
 
     graph.set_entry_point("fetch_context")
     graph.add_edge("fetch_context", "draft_communication")
-    graph.add_conditional_edges("draft_communication", _should_skip_approval, {
-        "send": "send",
-        "approval_gate": "approval_gate",
-    })
+    graph.add_conditional_edges(
+        "draft_communication",
+        _should_skip_approval,
+        {
+            "send": "send",
+            "approval_gate": "approval_gate",
+        },
+    )
     graph.add_edge("approval_gate", "send")
     graph.add_edge("send", END)
 

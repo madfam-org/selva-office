@@ -106,8 +106,7 @@ class KarafielAdapter:
         token: str | None = None,
     ) -> None:
         self._base_url = (
-            base_url
-            or os.environ.get("KARAFIEL_API_URL", "http://localhost:3050")
+            base_url or os.environ.get("KARAFIEL_API_URL", "http://localhost:3050")
         ).rstrip("/")
         self._token = token or os.environ.get("KARAFIEL_API_TOKEN", "")
 

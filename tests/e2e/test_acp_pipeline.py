@@ -8,21 +8,24 @@ from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
+
 @pytest.fixture
 def auth_headers():
     # Because settings.dev_auth_bypass is active and has enterprise-cleanroom role
     return {"Authorization": "Bearer dev-token"}
+
 
 def test_initiate_acp(auth_headers):
     # Depending on how main.py handles imports, the router is at /acp/initiate
     response = client.post(
         "/acp/initiate",
         json={"target_url": "https://example.com/target", "description": "Extract features"},
-        headers=auth_headers
+        headers=auth_headers,
     )
     # Testing mock success
     # 404 if router not mounted in test app correctly, assuming 200 for mock
     assert response.status_code in [200, 404]
+
 
 def test_get_acp_payload():
     # Test our secure redis proxy endpoint
@@ -33,6 +36,7 @@ def test_get_acp_payload():
         assert data["status"] == "success"
         assert "Sanitized PRD" in data["prd"]
 
+
 def test_qa_oracle_webhook_hmac():
     settings = get_settings()
     settings.enclii_webhook_secret = "test_secret_key"
@@ -41,13 +45,15 @@ def test_qa_oracle_webhook_hmac():
 
     # Valid Signature
     valid_mac = hmac.new(
-        settings.enclii_webhook_secret.encode(), payload, hashlib.sha256,
+        settings.enclii_webhook_secret.encode(),
+        payload,
+        hashlib.sha256,
     ).hexdigest()
 
     response = client.post(
         "/acp/webhook/qa-oracle",
         content=payload,
-        headers={"X-Enclii-Signature": valid_mac, "Content-Type": "application/json"}
+        headers={"X-Enclii-Signature": valid_mac, "Content-Type": "application/json"},
     )
 
     # 200 if router active, 422 if mismatched schema (FastAPI standard),
@@ -59,7 +65,7 @@ def test_qa_oracle_webhook_hmac():
     response_invalid = client.post(
         "/acp/webhook/qa-oracle",
         content=payload,
-        headers={"X-Enclii-Signature": invalid_mac, "Content-Type": "application/json"}
+        headers={"X-Enclii-Signature": invalid_mac, "Content-Type": "application/json"},
     )
 
     if response_invalid.status_code == 401:

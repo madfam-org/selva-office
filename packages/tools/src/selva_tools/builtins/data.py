@@ -116,8 +116,12 @@ class DataTransformTool(BaseTool):
 
         try:
             sandbox_locals = {
-                "data": data, "len": len, "sorted": sorted,
-                "str": str, "int": int, "float": float,
+                "data": data,
+                "len": len,
+                "sorted": sorted,
+                "str": str,
+                "int": int,
+                "float": float,
             }
             result = eval(expression, {"__builtins__": {}}, sandbox_locals)  # noqa: S307
             output = json.dumps(result, indent=2) if not isinstance(result, str) else result

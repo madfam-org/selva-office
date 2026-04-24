@@ -113,11 +113,7 @@ def _build_llm_event_payload(
     )
     if last_user:
         raw = last_user.get("content")
-        prompt_text = (
-            raw if isinstance(raw, str)
-            else str(raw) if raw is not None
-            else ""
-        )
+        prompt_text = raw if isinstance(raw, str) else str(raw) if raw is not None else ""
         prompt_capped = _cap(prompt_text)
         if prompt_capped:
             payload["prompt_snippet"] = prompt_capped
@@ -169,9 +165,7 @@ async def call_llm(
         response: InferenceResponse = await router.complete(request)
 
         _llm_elapsed = int((_time.monotonic() - _llm_start) * 1000)
-        _total_tokens = (
-            (response.usage.get("total_tokens") or 0) if response.usage else 0
-        )
+        _total_tokens = (response.usage.get("total_tokens") or 0) if response.usage else 0
 
         # Emit LLM event for observability.
         #
@@ -220,7 +214,4 @@ async def call_llm(
     except Exception as exc:
         logger.warning("LLM call failed: %s. Using placeholder response.", exc)
         last_content = messages[-1].get("content", "") if messages else ""
-        return (
-            f"[LLM unavailable — placeholder response for: "
-            f"{last_content[:200]}]"
-        )
+        return f"[LLM unavailable — placeholder response for: {last_content[:200]}]"

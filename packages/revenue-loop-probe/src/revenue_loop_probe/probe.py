@@ -178,7 +178,10 @@ class RevenueLoopProbe:
 # Helper for stage authors: skip when a required env var is missing.
 def skip_if_missing(
     *env_keys: str,
-) -> Callable[[Callable[[ProbeContext], Awaitable[StageResult]]], Callable[[ProbeContext], Awaitable[StageResult]]]:
+) -> Callable[
+    [Callable[[ProbeContext], Awaitable[StageResult]]],
+    Callable[[ProbeContext], Awaitable[StageResult]],
+]:
     def decorator(fn):
         async def wrapper(ctx: ProbeContext) -> StageResult:
             missing = [k for k in env_keys if not ctx.env.get(k)]

@@ -90,9 +90,7 @@ class TestProbeDraft:
         )
         assert resp.status_code == 422
 
-    async def test_draft_503_when_token_not_configured(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_draft_503_when_token_not_configured(self, client: httpx.AsyncClient) -> None:
         settings = _cfg_mod.get_settings()
         original = settings.nexus_probe_token
         settings.nexus_probe_token = ""
@@ -164,9 +162,7 @@ class TestProbeEmailSend:
         assert "<p>Hi</p>" in sanitized
         assert "<p>bye</p>" in sanitized
 
-    async def test_send_strips_on_handlers_and_js_urls(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_send_strips_on_handlers_and_js_urls(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             "/api/v1/probe/email/send",
             json={
@@ -244,9 +240,7 @@ class TestProbeRunUpload:
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(return_value=mock_client)
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.post(
                 "/api/v1/probe/runs",
                 json=_sample_run("probe-upload-abc"),
@@ -271,16 +265,12 @@ class TestProbeRunUpload:
         ltrim_args = mock_client.ltrim.await_args.args
         assert ltrim_args == ("selva:probe:history", 0, 49)
 
-    async def test_upload_survives_redis_failure(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_upload_survives_redis_failure(self, client: httpx.AsyncClient) -> None:
         """Redis outage must not cause the probe's upload step to fail."""
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(side_effect=RuntimeError("redis down"))
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.post(
                 "/api/v1/probe/runs",
                 json=_sample_run(),
@@ -294,25 +284,19 @@ class TestProbeRunUpload:
 
 @pytest.mark.asyncio
 class TestProbeLatestRun:
-    async def test_latest_run_returns_null_when_empty(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_latest_run_returns_null_when_empty(self, client: httpx.AsyncClient) -> None:
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=None)
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(return_value=mock_client)
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.get("/api/v1/probe/latest-run")
 
         assert resp.status_code == 200
         assert resp.json() is None
 
-    async def test_latest_run_returns_stored_payload(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_latest_run_returns_stored_payload(self, client: httpx.AsyncClient) -> None:
         stored = {
             **_sample_run("probe-latest-xyz"),
             "received_at": 1_800_000_002.0,
@@ -322,9 +306,7 @@ class TestProbeLatestRun:
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(return_value=mock_client)
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.get("/api/v1/probe/latest-run")
 
         assert resp.status_code == 200
@@ -341,21 +323,15 @@ class TestProbeLatestRun:
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(return_value=mock_client)
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.get("/api/v1/probe/latest-run")
         assert resp.status_code == 200
 
-    async def test_latest_run_survives_redis_failure(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_latest_run_survives_redis_failure(self, client: httpx.AsyncClient) -> None:
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(side_effect=RuntimeError("redis down"))
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.get("/api/v1/probe/latest-run")
 
         # Fail-soft: return 200 null rather than 500 so the status page
@@ -377,17 +353,13 @@ class TestProbeHistory:
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(return_value=mock_client)
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.get("/api/v1/probe/history?limit=500")
 
         assert resp.status_code == 200
         mock_client.lrange.assert_awaited_once_with("selva:probe:history", 0, 49)
 
-    async def test_history_returns_parsed_entries(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_history_returns_parsed_entries(self, client: httpx.AsyncClient) -> None:
         stored = [
             json.dumps({**_sample_run(f"probe-{i}"), "received_at": 1_800_000_000.0 + i})
             for i in range(3)
@@ -397,9 +369,7 @@ class TestProbeHistory:
         mock_pool = MagicMock()
         mock_pool.client = AsyncMock(return_value=mock_client)
 
-        with patch(
-            "nexus_api.routers.probe.get_redis_pool", return_value=mock_pool
-        ):
+        with patch("nexus_api.routers.probe.get_redis_pool", return_value=mock_pool):
             resp = await client.get("/api/v1/probe/history?limit=10")
 
         assert resp.status_code == 200

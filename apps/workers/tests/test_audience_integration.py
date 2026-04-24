@@ -67,15 +67,11 @@ class TestAudienceEnforcement:
         assert tool.audience is Audience.PLATFORM
         with with_audience(Audience.TENANT):
             with pytest.raises(AudienceMismatch):
-                await tool.execute(
-                    lookup_field="canonical_id", lookup_value="x"
-                )
+                await tool.execute(lookup_field="canonical_id", lookup_value="x")
 
 
 class TestResolveAudienceWiring:
-    def test_madfam_org_id_env_round_trip(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_madfam_org_id_env_round_trip(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(PLATFORM_ORG_ID_ENV, "madfam-platform")
         assert resolve_audience("madfam-platform") is PermissionAudience.PLATFORM
         assert resolve_audience("tenant-acme") is PermissionAudience.TENANT

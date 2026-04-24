@@ -2,6 +2,7 @@
 Track B3: execute_code — single-call code execution sandbox with mandatory approval gate.
 Mirrors Hermes' tools/code_execution_tool.py.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -16,14 +17,23 @@ from .sandbox import SandboxLevel, ToolSandbox
 
 logger = logging.getLogger(__name__)
 
-_OUTPUT_CAP = 10_240       # 10 KB combined stdout+stderr
+_OUTPUT_CAP = 10_240  # 10 KB combined stdout+stderr
 _DEFAULT_TIMEOUT = 30.0
 _SUPPORTED_LANGUAGES = {"python", "bash", "sh", "javascript", "node"}
 
 # Patterns that require approval (subset of the approval.py catalogue)
 _EXEC_DANGEROUS_PATTERNS = [
-    "os.system", "subprocess", "open(", "open (", "shutil.rmtree",
-    "rm -rf", "curl ", "wget ", "nc ", "netcat", "socket"
+    "os.system",
+    "subprocess",
+    "open(",
+    "open (",
+    "shutil.rmtree",
+    "rm -rf",
+    "curl ",
+    "wget ",
+    "nc ",
+    "netcat",
+    "socket",
 ]
 
 
@@ -87,9 +97,8 @@ class ExecuteCodeTool(BaseTool):
             return ToolResult(
                 success=False,
                 error=(
-            f"Unsupported language '{language}'."
-            f" Supported: {sorted(_SUPPORTED_LANGUAGES)}"
-        ),
+                    f"Unsupported language '{language}'. Supported: {sorted(_SUPPORTED_LANGUAGES)}"
+                ),
             )
 
         # ----------------------------------------------------------------
@@ -103,13 +112,13 @@ class ExecuteCodeTool(BaseTool):
                     return ToolResult(
                         success=False,
                         error=(
-                            "Execution blocked: dangerous patterns"
-                            f" detected: {dangerous_matches}"
+                            f"Execution blocked: dangerous patterns detected: {dangerous_matches}"
                         ),
                     )
                 # policy == 'approve' — request HITL
                 try:
                     from .approval import request_approval
+
                     result = await request_approval(
                         code[:300],
                         run_id=run_id,
@@ -122,8 +131,7 @@ class ExecuteCodeTool(BaseTool):
                         )
                 except ImportError:
                     logger.warning(
-                        "execute_code: approval module not available"
-                        " — blocking by default.",
+                        "execute_code: approval module not available — blocking by default.",
                     )
                     return ToolResult(success=False, error="Approval module unavailable; blocking.")
 
@@ -134,8 +142,13 @@ class ExecuteCodeTool(BaseTool):
             # Optional dep install (Python only)
             if install_deps and language in ("python",):
                 deps_cmd = [
-                    sys.executable, "-m", "pip", "install",
-                    "--quiet", "--prefix", str(sandbox.workdir / "deps"),
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "--quiet",
+                    "--prefix",
+                    str(sandbox.workdir / "deps"),
                 ] + install_deps
                 proc = await asyncio.create_subprocess_exec(
                     *deps_cmd,
@@ -146,8 +159,11 @@ class ExecuteCodeTool(BaseTool):
 
             # Write code to tempfile
             suffix = {
-                "python": ".py", "bash": ".sh", "sh": ".sh",
-                "javascript": ".js", "node": ".js",
+                "python": ".py",
+                "bash": ".sh",
+                "sh": ".sh",
+                "javascript": ".js",
+                "node": ".js",
             }[language]
             code_file = sandbox.workdir / f"snippet{suffix}"
             code_file.write_text(code, encoding="utf-8")
@@ -162,14 +178,13 @@ class ExecuteCodeTool(BaseTool):
             }[language]
 
             proc = await asyncio.create_subprocess_exec(
-                *interpreter, str(code_file),
+                *interpreter,
+                str(code_file),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(sandbox.workdir),
             )
-            stdout_b, stderr_b = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
+            stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
 
             stdout = stdout_b.decode(errors="replace")
             stderr = stderr_b.decode(errors="replace")

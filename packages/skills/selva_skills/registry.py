@@ -36,9 +36,7 @@ class SkillAudienceMismatch(RuntimeError):  # noqa: N818 — "mismatch" is seman
     """Raised when a skill is activated by a swarm that lacks audience access."""
 
 
-def _can_access_skill(
-    skill_audience: SkillAudience, swarm_audience: SkillAudience | None
-) -> bool:
+def _can_access_skill(skill_audience: SkillAudience, swarm_audience: SkillAudience | None) -> bool:
     """Mirror of ``selva_tools.can_access`` for skills.
 
     Platform swarms see everything; tenant swarms see only tenant-tagged
@@ -115,9 +113,7 @@ class SkillRegistry:
                 if meta.name in self._metadata:
                     existing_tier = self._metadata[meta.name].tier
                     if existing_tier == SkillTier.CORE and tier == SkillTier.COMMUNITY:
-                        logger.info(
-                            "Skipping community skill '%s': overridden by core", meta.name
-                        )
+                        logger.info("Skipping community skill '%s': overridden by core", meta.name)
                         continue
                 meta.tier = tier
                 self._metadata[meta.name] = meta
@@ -184,9 +180,7 @@ class SkillRegistry:
         """
         if name in self._definitions:
             defn = self._definitions[name]
-            if audience is not None and not _can_access_skill(
-                defn.meta.audience, audience
-            ):
+            if audience is not None and not _can_access_skill(defn.meta.audience, audience):
                 _audience_violation(name, defn.meta.audience, audience)
             return defn
 
@@ -280,9 +274,7 @@ class SkillRegistry:
         if not self._community_enabled:
             return
         self._community_enabled = False
-        community_names = [
-            n for n, m in self._metadata.items() if m.tier == SkillTier.COMMUNITY
-        ]
+        community_names = [n for n, m in self._metadata.items() if m.tier == SkillTier.COMMUNITY]
         for name in community_names:
             del self._metadata[name]
             self._definitions.pop(name, None)
@@ -296,8 +288,10 @@ def get_skill_registry() -> SkillRegistry:
     """Return (or create) the global SkillRegistry singleton."""
     global _registry  # noqa: PLW0603
     if _registry is None:
-        community_enabled = os.getenv(
-            "AUTOSWARM_COMMUNITY_SKILLS_ENABLED", "false"
-        ).lower() in ("true", "1", "yes")
+        community_enabled = os.getenv("AUTOSWARM_COMMUNITY_SKILLS_ENABLED", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
         _registry = SkillRegistry(community_enabled=community_enabled)
     return _registry

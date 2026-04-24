@@ -157,9 +157,7 @@ class TestTenantIsolation:
         """A department in a different org should not appear in listing."""
         from nexus_api.models import Department
 
-        other_dept = Department(
-            name="Other Dept", slug="other-dept-xorg", org_id="other-org"
-        )
+        other_dept = Department(name="Other Dept", slug="other-dept-xorg", org_id="other-org")
         db_session.add(other_dept)
         await db_session.flush()
 

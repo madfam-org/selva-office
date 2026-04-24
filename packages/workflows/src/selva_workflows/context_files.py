@@ -8,6 +8,7 @@ convention for per-project grounding.
 A1: Prompt injection detection — scans loaded content for jailbreak patterns.
 A2: @context_ref expansion — inline file references resolved at load time.
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,17 +20,18 @@ logger = logging.getLogger(__name__)
 
 # Files scanned in priority order (later files take precedence)
 _CONTEXT_SOURCES = [
-    "CLAUDE.md",       # Cross-tool compatibility (read-only passthrough)
-    "GEMINI.md",       # Cross-tool compatibility
-    "AGENTS.md",       # Project-level architecture / agent instructions
-    ".autoswarm.md",   # Workspace-local override (highest priority)
+    "CLAUDE.md",  # Cross-tool compatibility (read-only passthrough)
+    "GEMINI.md",  # Cross-tool compatibility
+    "AGENTS.md",  # Project-level architecture / agent instructions
+    ".autoswarm.md",  # Workspace-local override (highest priority)
 ]
 
 _MAX_CHARS_PER_FILE = 32_000  # ~8,000 tokens at 4 chars/token
 
 # A1: Prompt injection signatures (case-insensitive)
 _INJECTION_PATTERNS: list[re.Pattern] = [
-    re.compile(p, re.IGNORECASE) for p in [
+    re.compile(p, re.IGNORECASE)
+    for p in [
         r"ignore (all )?previous instructions?",
         r"disregard (all )?previous",
         r"forget (everything|all) (above|before)",
@@ -122,7 +124,8 @@ class ContextFileLoader:
 
         logger.warning(
             "ContextFileLoader: potential prompt injection in %s (patterns: %s)",
-            filename, ", ".join(matches[:3]),
+            filename,
+            ", ".join(matches[:3]),
         )
         if self._policy == "block":
             logger.error("ContextFileLoader: BLOCKED %s due to injection policy=block.", filename)
@@ -175,8 +178,7 @@ class ContextFileLoader:
                     self._max_chars,
                 )
                 text = (
-                    text[: self._max_chars]
-                    + "\n\n[... truncated — file exceeds token limit ...]"
+                    text[: self._max_chars] + "\n\n[... truncated — file exceeds token limit ...]"
                 )
             return text
         except Exception as exc:

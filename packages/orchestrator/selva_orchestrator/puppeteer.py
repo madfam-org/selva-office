@@ -30,21 +30,15 @@ class PuppeteerOrchestrator(SwarmOrchestrator):
         """
         if candidates is None:
             candidates = [
-                aid
-                for aid, agent in self.agents.items()
-                if agent.status == AgentStatus.IDLE
+                aid for aid, agent in self.agents.items() if agent.status == AgentStatus.IDLE
             ]
         return self.bandit.select(candidates)
 
-    def select_agents(
-        self, count: int, candidates: list[str] | None = None
-    ) -> list[str]:
+    def select_agents(self, count: int, candidates: list[str] | None = None) -> list[str]:
         """Select multiple agents without replacement."""
         if candidates is None:
             candidates = [
-                aid
-                for aid, agent in self.agents.items()
-                if agent.status == AgentStatus.IDLE
+                aid for aid, agent in self.agents.items() if agent.status == AgentStatus.IDLE
             ]
 
         selected: list[str] = []

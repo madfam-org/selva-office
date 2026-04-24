@@ -194,10 +194,7 @@ def _next_business_day(d: date) -> date:
 
 class MexicanBusinessCalendarTool(BaseTool):
     name = "mexican_business_calendar"
-    description = (
-        "Check Mexican business days, holidays (Art. 74 LFT), "
-        "and CFDI deadlines"
-    )
+    description = "Check Mexican business days, holidays (Art. 74 LFT), and CFDI deadlines"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {

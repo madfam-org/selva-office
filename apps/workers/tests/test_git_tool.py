@@ -49,9 +49,7 @@ async def test_create_pr_gh_not_installed(git_tool: GitTool) -> None:
     """create_pr returns graceful error when gh CLI is not installed."""
     git_tool.bash = AsyncMock()
     git_tool.bash.execute = AsyncMock(
-        return_value=BashResult(
-            command="command -v gh", stdout="", stderr="", return_code=1
-        )
+        return_value=BashResult(command="command -v gh", stdout="", stderr="", return_code=1)
     )
 
     result = await git_tool.create_pr("/repo", "main", "Test PR", "Body text")
@@ -88,12 +86,8 @@ async def test_cleanup_worktree_shutil_fallback(git_tool: GitTool) -> None:
     # git worktree remove fails, then prune succeeds
     git_tool.bash.execute = AsyncMock(
         side_effect=[
-            BashResult(
-                command="git worktree remove", stdout="", stderr="error", return_code=1
-            ),
-            BashResult(
-                command="git worktree prune", stdout="", stderr="", return_code=0
-            ),
+            BashResult(command="git worktree remove", stdout="", stderr="error", return_code=1),
+            BashResult(command="git worktree prune", stdout="", stderr="", return_code=0),
         ]
     )
 

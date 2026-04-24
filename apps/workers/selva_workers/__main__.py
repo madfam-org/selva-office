@@ -166,9 +166,7 @@ async def run_graph_with_interrupts(
             resume_value["approved"],
         )
 
-        result = await asyncio.to_thread(
-            compiled.invoke, Command(resume=resume_value), config
-        )
+        result = await asyncio.to_thread(compiled.invoke, Command(resume=resume_value), config)
 
     return result
 
@@ -285,7 +283,9 @@ async def process_task(task_data: dict) -> None:
             agent_system_prompt = registry.build_system_prompt(skill_ids, locale=locale)
             logger.info(
                 "Built skill prompt for agent %s with skills: %s (locale=%s)",
-                agent_id, skill_ids, locale,
+                agent_id,
+                skill_ids,
+                locale,
             )
     except Exception:
         logger.warning("Failed to build skill prompt for agent %s", agent_id, exc_info=True)
@@ -302,11 +302,7 @@ async def process_task(task_data: dict) -> None:
     # enum to the selva_tools enum so ``enforce_audience()`` in the
     # tool layer matches by identity.
     payload_for_audience = task_data.get("payload", {}) or {}
-    task_org_id = (
-        task_data.get("org_id")
-        or payload_for_audience.get("org_id")
-        or ""
-    )
+    task_org_id = task_data.get("org_id") or payload_for_audience.get("org_id") or ""
     task_audience = ToolAudience(resolve_audience(task_org_id).value)
 
     initial_state: dict = {
@@ -338,8 +334,8 @@ async def process_task(task_data: dict) -> None:
         initial_state["sources"] = []
     elif graph_type == "crm":
         payload = task_data.get("payload", {})
-        initial_state["recipient"] = (
-            payload.get("contact_email") or payload.get("recipient", "unknown@example.com")
+        initial_state["recipient"] = payload.get("contact_email") or payload.get(
+            "recipient", "unknown@example.com"
         )
         initial_state["crm_action"] = payload.get("crm_action", "email")
         # Pass contact context from dispatch payload
@@ -349,9 +345,7 @@ async def process_task(task_data: dict) -> None:
         initial_state["lead_score"] = payload.get("lead_score")
         # T3.2 attribution — thread the lead_id through to the graph so
         # the send node can stamp it onto PostHog + UTM metadata.
-        initial_state["lead_id"] = (
-            task_data.get("lead_id") or payload.get("lead_id", "")
-        )
+        initial_state["lead_id"] = task_data.get("lead_id") or payload.get("lead_id", "")
         initial_state["utm_source"] = payload.get("utm_source", "selva")
         initial_state["utm_campaign"] = payload.get("utm_campaign", "hot_lead_auto")
         # Pass playbook data for conditional approval bypass
@@ -431,9 +425,7 @@ async def process_task(task_data: dict) -> None:
 
     # Set repo_path in initial state for coding graphs.
     if graph_type == "coding":
-        repo_path = (
-            task_data.get("payload", {}).get("repo_path") or settings.repo_base_path
-        )
+        repo_path = task_data.get("payload", {}).get("repo_path") or settings.repo_base_path
         # Expand ~ and ensure the directory exists and is writable.
         resolved_repo = Path(repo_path).expanduser().resolve()
         try:
@@ -446,7 +438,10 @@ async def process_task(task_data: dict) -> None:
             error_msg = f"Repo path {resolved_repo} is not writable: {exc}"
             logger.error(error_msg)
             await _update_task_status(
-                settings.nexus_api_url, task_id, "failed", {"error": error_msg},
+                settings.nexus_api_url,
+                task_id,
+                "failed",
+                {"error": error_msg},
                 error_message=error_msg,
             )
             await _publish_agent_status(agent_id, "error", current_node_id="")
@@ -461,7 +456,9 @@ async def process_task(task_data: dict) -> None:
     # Notify Colyseus that this agent is now working.
     await _publish_agent_status(agent_id, "working")
     await _update_task_status(
-        settings.nexus_api_url, task_id, "running",
+        settings.nexus_api_url,
+        task_id,
+        "running",
         started_at=datetime.now(UTC).isoformat(),
     )
     await _emit_event(
@@ -487,16 +484,12 @@ async def process_task(task_data: dict) -> None:
             if graph_type == "custom":
                 # Stream node progress for custom workflows
                 result = await asyncio.wait_for(
-                    _run_custom_with_streaming(
-                        compiled, initial_state, task_id, agent_id, handler
-                    ),
+                    _run_custom_with_streaming(compiled, initial_state, task_id, agent_id, handler),
                     timeout=timeout,
                 )
             else:
                 result = await asyncio.wait_for(
-                    run_graph_with_interrupts(
-                        compiled, initial_state, task_id, agent_id, handler
-                    ),
+                    run_graph_with_interrupts(compiled, initial_state, task_id, agent_id, handler),
                     timeout=timeout,
                 )
         graph_status = result.get("status", "completed")
@@ -507,7 +500,10 @@ async def process_task(task_data: dict) -> None:
         else:
             api_status = "completed"
         await _update_task_status(
-            settings.nexus_api_url, task_id, api_status, result.get("result"),
+            settings.nexus_api_url,
+            task_id,
+            api_status,
+            result.get("result"),
         )
         await _emit_event(
             settings.nexus_api_url,
@@ -528,11 +524,18 @@ async def process_task(task_data: dict) -> None:
             )
 
             await record_experience(
-                agent_id, agent_role, description, graph_type,
-                result.get("result"), graph_status, duration_seconds=_duration,
+                agent_id,
+                agent_role,
+                description,
+                graph_type,
+                result.get("result"),
+                graph_status,
+                duration_seconds=_duration,
             )
             await update_agent_performance(
-                settings.nexus_api_url, agent_id, graph_status,
+                settings.nexus_api_url,
+                agent_id,
+                graph_status,
                 duration_seconds=_duration,
             )
             await update_bandit_reward(agent_id, 1.0 if api_status == "completed" else 0.2)
@@ -542,7 +545,10 @@ async def process_task(task_data: dict) -> None:
     except TimeoutError:
         logger.error("Task %s timed out after %ds", task_id, timeout)
         await _update_task_status(
-            settings.nexus_api_url, task_id, "failed", {"error": f"Timed out after {timeout}s"},
+            settings.nexus_api_url,
+            task_id,
+            "failed",
+            {"error": f"Timed out after {timeout}s"},
             error_message=f"Timed out after {timeout}s",
         )
         await _emit_event(
@@ -566,16 +572,27 @@ async def process_task(task_data: dict) -> None:
 
             _duration = time.monotonic() - _task_start
             await record_experience(
-                agent_id, agent_role, description, graph_type,
-                None, "failed", duration_seconds=_duration,
+                agent_id,
+                agent_role,
+                description,
+                graph_type,
+                None,
+                "failed",
+                duration_seconds=_duration,
                 error_message=f"Timed out after {timeout}s",
             )
             await generate_reflexion(
-                agent_id, agent_role, description, graph_type,
+                agent_id,
+                agent_role,
+                description,
+                graph_type,
                 error_message=f"Timed out after {timeout}s",
             )
             await update_agent_performance(
-                settings.nexus_api_url, agent_id, "failed", duration_seconds=_duration,
+                settings.nexus_api_url,
+                agent_id,
+                "failed",
+                duration_seconds=_duration,
             )
             await update_bandit_reward(agent_id, 0.0)
 
@@ -583,7 +600,10 @@ async def process_task(task_data: dict) -> None:
     except Exception as exc:
         logger.exception("Task %s failed", task_id)
         await _update_task_status(
-            settings.nexus_api_url, task_id, "failed", {"error": str(exc)},
+            settings.nexus_api_url,
+            task_id,
+            "failed",
+            {"error": str(exc)},
             error_message=str(exc),
         )
         await _emit_event(
@@ -607,16 +627,27 @@ async def process_task(task_data: dict) -> None:
 
             _duration = time.monotonic() - _task_start
             await record_experience(
-                agent_id, agent_role, description, graph_type,
-                None, "failed", duration_seconds=_duration,
+                agent_id,
+                agent_role,
+                description,
+                graph_type,
+                None,
+                "failed",
+                duration_seconds=_duration,
                 error_message=str(exc)[:500],
             )
             await generate_reflexion(
-                agent_id, agent_role, description, graph_type,
+                agent_id,
+                agent_role,
+                description,
+                graph_type,
                 error_message=str(exc)[:500],
             )
             await update_agent_performance(
-                settings.nexus_api_url, agent_id, "failed", duration_seconds=_duration,
+                settings.nexus_api_url,
+                agent_id,
+                "failed",
+                duration_seconds=_duration,
             )
             await update_bandit_reward(agent_id, 0.0)
 
@@ -834,7 +865,8 @@ async def main() -> None:
 
             try:
                 messages = await consumer.read(
-                    count=settings.max_concurrent_tasks, block=5000,
+                    count=settings.max_concurrent_tasks,
+                    block=5000,
                 )
                 if not messages:
                     continue
@@ -846,16 +878,12 @@ async def main() -> None:
                     if _shutdown.is_set():
                         break
 
-                    task = asyncio.create_task(
-                        _process_with_semaphore(consumer, msg_id, task_data)
-                    )
+                    task = asyncio.create_task(_process_with_semaphore(consumer, msg_id, task_data))
                     _active_tasks.add(task)
                     task.add_done_callback(_active_tasks.discard)
 
             except ConnectionError:
-                logger.warning(
-                    "Redis connection lost, retrying in %.1fs...", backoff_delay
-                )
+                logger.warning("Redis connection lost, retrying in %.1fs...", backoff_delay)
                 await asyncio.sleep(backoff_delay)
                 backoff_delay = min(backoff_delay * 2, max_backoff)
     finally:

@@ -1,6 +1,7 @@
 """
 Gap 2: ApprovalRequest SQLAlchemy model.
 """
+
 from __future__ import annotations
 
 import enum
@@ -27,10 +28,13 @@ class ApprovalRequest(Base):
     command: str = Column(Text, nullable=False)
     reason: str = Column(Text, nullable=False)
     status: ApprovalStatus = Column(
-        Enum(ApprovalStatus), nullable=False, default=ApprovalStatus.PENDING,
+        Enum(ApprovalStatus),
+        nullable=False,
+        default=ApprovalStatus.PENDING,
     )
     requested_at: datetime = Column(
-        DateTime(timezone=True), nullable=False,
+        DateTime(timezone=True),
+        nullable=False,
         default=lambda: datetime.now(tz=UTC),
     )
     resolved_at: datetime = Column(DateTime(timezone=True), nullable=True)

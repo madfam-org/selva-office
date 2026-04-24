@@ -28,9 +28,7 @@ class TestComputeTokenManagerInitialState:
     def test_used_starts_at_zero(self, manager: ComputeTokenManager) -> None:
         assert manager.used == 0
 
-    def test_remaining_equals_daily_limit_at_start(
-        self, manager: ComputeTokenManager
-    ) -> None:
+    def test_remaining_equals_daily_limit_at_start(self, manager: ComputeTokenManager) -> None:
         assert manager.remaining == 1000
 
     def test_custom_daily_limit(self) -> None:
@@ -94,9 +92,7 @@ class TestDeduct:
 class TestCanAfford:
     """Verify budget affordability checks."""
 
-    def test_can_afford_when_budget_sufficient(
-        self, manager: ComputeTokenManager
-    ) -> None:
+    def test_can_afford_when_budget_sufficient(self, manager: ComputeTokenManager) -> None:
         assert manager.can_afford("draft_agent") is True
 
     def test_can_afford_when_budget_insufficient(self) -> None:
@@ -108,15 +104,11 @@ class TestCanAfford:
         """Budget of 100 can exactly afford 2 draft_agents (50 each)."""
         assert small_budget.can_afford("draft_agent", count=2) is True
 
-    def test_cannot_afford_one_over_limit(
-        self, small_budget: ComputeTokenManager
-    ) -> None:
+    def test_cannot_afford_one_over_limit(self, small_budget: ComputeTokenManager) -> None:
         """Budget of 100 cannot afford 3 draft_agents (150 > 100)."""
         assert small_budget.can_afford("draft_agent", count=3) is False
 
-    def test_can_afford_after_deduction(
-        self, small_budget: ComputeTokenManager
-    ) -> None:
+    def test_can_afford_after_deduction(self, small_budget: ComputeTokenManager) -> None:
         small_budget.deduct("draft_agent")  # 50 used, 50 remaining
         assert small_budget.can_afford("draft_agent") is True
         assert small_budget.can_afford("draft_agent", count=2) is False
@@ -130,17 +122,13 @@ class TestInsufficientTokensRaises:
         with pytest.raises(ValueError, match="Insufficient compute tokens"):
             m.deduct("draft_agent")  # costs 50, only 10 available
 
-    def test_overdraft_after_partial_use(
-        self, small_budget: ComputeTokenManager
-    ) -> None:
+    def test_overdraft_after_partial_use(self, small_budget: ComputeTokenManager) -> None:
         small_budget.deduct("draft_agent")  # 50 used, 50 remaining
         small_budget.deduct("draft_agent")  # 100 used, 0 remaining
         with pytest.raises(ValueError, match="Insufficient compute tokens"):
             small_budget.deduct("api_call")  # costs 3, 0 remaining
 
-    def test_overdraft_preserves_state(
-        self, small_budget: ComputeTokenManager
-    ) -> None:
+    def test_overdraft_preserves_state(self, small_budget: ComputeTokenManager) -> None:
         """Failed deduction should not mutate the used counter."""
         small_budget.deduct("draft_agent")  # 50 used
         used_before = small_budget.used

@@ -43,10 +43,12 @@ class TestDecomposeNode:
     def test_decompose_node_fallback(self) -> None:
         from selva_workers.graphs.puppeteer import decompose
 
-        result = decompose({
-            "messages": [],
-            "description": "Build a landing page",
-        })
+        result = decompose(
+            {
+                "messages": [],
+                "description": "Build a landing page",
+            }
+        )
 
         assert result["status"] == "decomposed"
         assert len(result["subtasks"]) == 1
@@ -56,10 +58,12 @@ class TestDecomposeNode:
     def test_decompose_adds_message(self) -> None:
         from selva_workers.graphs.puppeteer import decompose
 
-        result = decompose({
-            "messages": [],
-            "description": "Test task",
-        })
+        result = decompose(
+            {
+                "messages": [],
+                "description": "Test task",
+            }
+        )
 
         assert len(result["messages"]) == 1
         assert isinstance(result["messages"][0], AIMessage)
@@ -71,11 +75,13 @@ class TestAssignNode:
     def test_assign_node_fallback(self) -> None:
         from selva_workers.graphs.puppeteer import assign
 
-        result = assign({
-            "messages": [],
-            "subtasks": [{"description": "task1", "type": "general"}],
-            "agent_id": "agent-123",
-        })
+        result = assign(
+            {
+                "messages": [],
+                "subtasks": [{"description": "task1", "type": "general"}],
+                "agent_id": "agent-123",
+            }
+        )
 
         assert result["status"] == "assigned"
         assert "agent-123" in result["selected_agents"]
@@ -83,10 +89,12 @@ class TestAssignNode:
     def test_assign_no_subtasks_returns_error(self) -> None:
         from selva_workers.graphs.puppeteer import assign
 
-        result = assign({
-            "messages": [],
-            "subtasks": [],
-        })
+        result = assign(
+            {
+                "messages": [],
+                "subtasks": [],
+            }
+        )
 
         assert result["status"] == "error"
 
@@ -97,14 +105,16 @@ class TestExecuteParallelNode:
     def test_execute_parallel_node(self) -> None:
         from selva_workers.graphs.puppeteer import execute_parallel
 
-        result = execute_parallel({
-            "messages": [],
-            "subtasks": [
-                {"description": "subtask 1", "type": "general"},
-                {"description": "subtask 2", "type": "general"},
-            ],
-            "max_parallel": 3,
-        })
+        result = execute_parallel(
+            {
+                "messages": [],
+                "subtasks": [
+                    {"description": "subtask 1", "type": "general"},
+                    {"description": "subtask 2", "type": "general"},
+                ],
+                "max_parallel": 3,
+            }
+        )
 
         assert result["status"] == "executed"
         assert len(result["subtask_results"]) == 2
@@ -113,11 +123,13 @@ class TestExecuteParallelNode:
     def test_execute_no_subtasks_returns_error(self) -> None:
         from selva_workers.graphs.puppeteer import execute_parallel
 
-        result = execute_parallel({
-            "messages": [],
-            "subtasks": [],
-            "max_parallel": 3,
-        })
+        result = execute_parallel(
+            {
+                "messages": [],
+                "subtasks": [],
+                "max_parallel": 3,
+            }
+        )
 
         assert result["status"] == "error"
 
@@ -128,13 +140,15 @@ class TestAggregateNode:
     def test_aggregate_node(self) -> None:
         from selva_workers.graphs.puppeteer import aggregate
 
-        result = aggregate({
-            "messages": [],
-            "subtask_results": [
-                {"index": 0, "result": "Result A", "success": True},
-                {"index": 1, "result": "Result B", "success": True},
-            ],
-        })
+        result = aggregate(
+            {
+                "messages": [],
+                "subtask_results": [
+                    {"index": 0, "result": "Result A", "success": True},
+                    {"index": 1, "result": "Result B", "success": True},
+                ],
+            }
+        )
 
         assert result["status"] == "aggregated"
         assert result["aggregated_result"] is not None
@@ -144,10 +158,12 @@ class TestAggregateNode:
     def test_aggregate_no_results_returns_error(self) -> None:
         from selva_workers.graphs.puppeteer import aggregate
 
-        result = aggregate({
-            "messages": [],
-            "subtask_results": [],
-        })
+        result = aggregate(
+            {
+                "messages": [],
+                "subtask_results": [],
+            }
+        )
 
         assert result["status"] == "error"
 
@@ -158,14 +174,16 @@ class TestFeedbackNode:
     def test_feedback_node(self) -> None:
         from selva_workers.graphs.puppeteer import feedback
 
-        result = feedback({
-            "messages": [],
-            "subtask_results": [
-                {"index": 0, "success": True},
-                {"index": 1, "success": False},
-            ],
-            "selected_agents": ["agent-1"],
-        })
+        result = feedback(
+            {
+                "messages": [],
+                "subtask_results": [
+                    {"index": 0, "success": True},
+                    {"index": 1, "success": False},
+                ],
+                "selected_agents": ["agent-1"],
+            }
+        )
 
         assert result["status"] == "completed"
         assert len(result["messages"]) == 1
@@ -173,11 +191,13 @@ class TestFeedbackNode:
     def test_feedback_no_results(self) -> None:
         from selva_workers.graphs.puppeteer import feedback
 
-        result = feedback({
-            "messages": [],
-            "subtask_results": [],
-            "selected_agents": [],
-        })
+        result = feedback(
+            {
+                "messages": [],
+                "subtask_results": [],
+                "selected_agents": [],
+            }
+        )
 
         assert result["status"] == "completed"
 

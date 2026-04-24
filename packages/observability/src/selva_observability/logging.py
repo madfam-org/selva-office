@@ -65,6 +65,7 @@ def configure_logging(
 
 def _add_service_name(service_name: str) -> structlog.types.Processor:
     """Create a processor that adds service_name to each log event."""
+
     def processor(
         logger: logging.Logger,
         method_name: str,
@@ -72,6 +73,7 @@ def _add_service_name(service_name: str) -> structlog.types.Processor:
     ) -> dict[str, object]:
         event_dict["service"] = service_name
         return event_dict
+
     return processor
 
 

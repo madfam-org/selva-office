@@ -53,9 +53,7 @@ class MemoryManager:
             )
         return self._stores[agent_id]
 
-    async def get_relevant_context(
-        self, agent_id: str, query: str, top_k: int = 5
-    ) -> str:
+    async def get_relevant_context(self, agent_id: str, query: str, top_k: int = 5) -> str:
         """Retrieve relevant memories for injection into the LLM prompt.
 
         Returns a formatted string of relevant memory entries.

@@ -3,6 +3,7 @@ Gap 3: AutoSwarm Plugin Base Class
 
 Defines the AutoSwarmPlugin ABC and HookType enum.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

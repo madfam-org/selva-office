@@ -1,6 +1,7 @@
 """
 Tests for Gap 3: Cron Scheduler API (POST/GET/DELETE /api/v1/schedules).
 """
+
 from __future__ import annotations
 
 from datetime import UTC
@@ -13,6 +14,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def test_client():
     from nexus_api.main import app
+
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -20,6 +22,7 @@ def test_client():
 def _mock_auth(monkeypatch):
     """Inject a fake authenticated user for all schedule tests."""
     from nexus_api.auth import CurrentUser
+
     fake_user = MagicMock(spec=CurrentUser)
     fake_user.sub = "test-user-001"
     fake_user.roles = ["agent"]
@@ -66,6 +69,7 @@ class TestSchedulesRouter:
         # Patch db.get to return the fake schedule after refresh
         with patch("nexus_api.routers.schedules._to_response") as mock_resp:
             from nexus_api.routers.schedules import ScheduleResponse
+
             mock_resp.return_value = ScheduleResponse(
                 id="sched-abc",
                 user_id="test-user-001",

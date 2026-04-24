@@ -124,12 +124,10 @@ def _validate_yaml(yaml_content: str) -> WorkflowValidationResponse:
     return WorkflowValidationResponse(
         is_valid=result.is_valid,
         errors=[
-            {"code": e.code, "message": e.message, "node_id": e.node_id}
-            for e in result.errors
+            {"code": e.code, "message": e.message, "node_id": e.node_id} for e in result.errors
         ],
         warnings=[
-            {"code": w.code, "message": w.message, "node_id": w.node_id}
-            for w in result.warnings
+            {"code": w.code, "message": w.message, "node_id": w.node_id} for w in result.warnings
         ],
     )
 
@@ -186,9 +184,7 @@ async def list_workflows(
     base_stmt = select(Workflow).where(Workflow.org_id == tenant.org_id)
 
     # Total count
-    count_result = await db.execute(
-        select(func.count()).select_from(base_stmt.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
     total = count_result.scalar_one()
 
     # Paginated results
@@ -410,14 +406,10 @@ async def _get_workflow_or_404(workflow_id: str, db: AsyncSession) -> Workflow:
     try:
         uid = uuid.UUID(workflow_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID") from exc
 
     result = await db.execute(select(Workflow).where(Workflow.id == uid))
     wf = result.scalar_one_or_none()
     if wf is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
     return wf

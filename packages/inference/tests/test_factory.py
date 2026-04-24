@@ -66,8 +66,17 @@ class TestBuildRouterFromEnv:
         )
         names = router.available_providers
         expected = {
-            "anthropic", "openai", "openrouter", "together", "fireworks",
-            "deepinfra", "siliconflow", "moonshot", "groq", "mistral", "ollama",
+            "anthropic",
+            "openai",
+            "openrouter",
+            "together",
+            "fireworks",
+            "deepinfra",
+            "siliconflow",
+            "moonshot",
+            "groq",
+            "mistral",
+            "ollama",
         }
         assert expected.issubset(set(names))
         load_org_config.cache_clear()

@@ -44,10 +44,14 @@ class CreateLeadTool(BaseTool):
                 "contact_email": {"type": "string", "description": "Email address"},
                 "source": {
                     "type": "string",
-                    "description": "Lead source (e.g., 'website', 'referral', 'content', 'outbound')",
+                    "description": "Lead source (e.g., 'website', 'referral', 'content', 'outbound')",  # noqa: E501
                     "default": "agent_generated",
                 },
-                "notes": {"type": "string", "description": "Context about why this is a lead", "default": ""},
+                "notes": {
+                    "type": "string",
+                    "description": "Context about why this is a lead",
+                    "default": "",
+                },
             },
             "required": ["contact_name", "contact_email"],
         }
@@ -74,7 +78,7 @@ class CreateLeadTool(BaseTool):
 
             return ToolResult(
                 success=True,
-                output=f"Lead created: {data.get('id', 'unknown')} for {kwargs.get('contact_email', '')}",
+                output=f"Lead created: {data.get('id', 'unknown')} for {kwargs.get('contact_email', '')}",  # noqa: E501
                 data=data,
             )
         except httpx.HTTPError as exc:
@@ -90,8 +94,7 @@ class UpdateLeadStatusTool(BaseTool):
 
     name = "update_lead_status"
     description = (
-        "Update the status of a lead in PhyneCRM. "
-        "Use to advance leads through the sales pipeline."
+        "Update the status of a lead in PhyneCRM. Use to advance leads through the sales pipeline."
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -104,7 +107,11 @@ class UpdateLeadStatusTool(BaseTool):
                     "description": "New status (new, qualified, contacted, negotiation, won, lost)",
                     "enum": ["new", "qualified", "contacted", "negotiation", "won", "lost"],
                 },
-                "notes": {"type": "string", "description": "Reason for status change", "default": ""},
+                "notes": {
+                    "type": "string",
+                    "description": "Reason for status change",
+                    "default": "",
+                },
             },
             "required": ["lead_id", "status"],
         }
@@ -189,7 +196,7 @@ class CreateActivityTool(BaseTool):
 
             return ToolResult(
                 success=True,
-                output=f"Activity logged for {kwargs.get('entity_type', '')} {kwargs.get('entity_id', '')}",
+                output=f"Activity logged for {kwargs.get('entity_type', '')} {kwargs.get('entity_id', '')}",  # noqa: E501
                 data=data,
             )
         except httpx.HTTPError as exc:

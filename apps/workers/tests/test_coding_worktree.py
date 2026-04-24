@@ -17,33 +17,39 @@ class TestCodingWorktree:
         mock_git.create_worktree = AsyncMock(return_value="/tmp/worktrees/task-t1")
 
         with patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git):
-            result = plan({
-                "messages": [AIMessage(content="Build a feature")],
-                "repo_path": "/repos/myapp",
-                "task_id": "t1",
-            })
+            result = plan(
+                {
+                    "messages": [AIMessage(content="Build a feature")],
+                    "repo_path": "/repos/myapp",
+                    "task_id": "t1",
+                }
+            )
 
         assert result["worktree_path"] == "/tmp/worktrees/task-t1"
 
     def test_plan_skips_worktree_when_no_repo_path(self) -> None:
         from selva_workers.graphs.coding import plan
 
-        result = plan({
-            "messages": [AIMessage(content="Build a feature")],
-            "task_id": "t1",
-        })
+        result = plan(
+            {
+                "messages": [AIMessage(content="Build a feature")],
+                "task_id": "t1",
+            }
+        )
 
         assert result.get("worktree_path") is None
 
     def test_plan_skips_worktree_when_already_set(self) -> None:
         from selva_workers.graphs.coding import plan
 
-        result = plan({
-            "messages": [AIMessage(content="Build a feature")],
-            "repo_path": "/repos/myapp",
-            "worktree_path": "/existing/worktree",
-            "task_id": "t1",
-        })
+        result = plan(
+            {
+                "messages": [AIMessage(content="Build a feature")],
+                "repo_path": "/repos/myapp",
+                "worktree_path": "/existing/worktree",
+                "task_id": "t1",
+            }
+        )
 
         assert result["worktree_path"] == "/existing/worktree"
 
@@ -55,14 +61,17 @@ class TestCodingWorktree:
 
         original_cwd = getattr(_bash_tool, "allowed_cwd", None)
         try:
-            implement({
-                "messages": [AIMessage(
-                    content="Plan ready",
-                    additional_kwargs={"plan": {"steps": ["step1"]}}
-                )],
-                "worktree_path": worktree,
-                "iteration": 0,
-            })
+            implement(
+                {
+                    "messages": [
+                        AIMessage(
+                            content="Plan ready", additional_kwargs={"plan": {"steps": ["step1"]}}
+                        )
+                    ],
+                    "worktree_path": worktree,
+                    "iteration": 0,
+                }
+            )
             assert _bash_tool.allowed_cwd == worktree
         finally:
             _bash_tool.allowed_cwd = original_cwd
@@ -101,11 +110,13 @@ class TestCodingWorktree:
                 return_value=mock_settings,
             ),
         ):
-            result = push_gate({
-                "messages": [],
-                "code_changes": [{"iteration": 1}],
-                "worktree_path": "/tmp/worktrees/task-t1",
-            })
+            result = push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [{"iteration": 1}],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                }
+            )
 
         assert result["status"] == "pushed"
         assert result["worktree_path"] is None
@@ -124,11 +135,13 @@ class TestCodingWorktree:
             ),
             patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
         ):
-            result = push_gate({
-                "messages": [],
-                "code_changes": [],
-                "worktree_path": "/tmp/worktrees/task-t1",
-            })
+            result = push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                }
+            )
 
         assert result["status"] == "denied"
         assert result["worktree_path"] is None
@@ -145,11 +158,13 @@ class TestCodingWorktree:
     def test_test_node_uses_worktree_path(self) -> None:
         from selva_workers.graphs.coding import test
 
-        result = test({
-            "messages": [],
-            "iteration": 1,
-            "worktree_path": "/tmp/worktrees/task-t1",
-        })
+        result = test(
+            {
+                "messages": [],
+                "iteration": 1,
+                "worktree_path": "/tmp/worktrees/task-t1",
+            }
+        )
 
         # Should complete without error (falls back to simulated results).
         assert result["status"] == "testing"
@@ -157,10 +172,12 @@ class TestCodingWorktree:
     def test_plan_sets_branch_name(self) -> None:
         from selva_workers.graphs.coding import plan
 
-        result = plan({
-            "messages": [AIMessage(content="Build a feature")],
-            "task_id": "t1",
-        })
+        result = plan(
+            {
+                "messages": [AIMessage(content="Build a feature")],
+                "task_id": "t1",
+            }
+        )
 
         assert result["branch_name"] == "autoswarm/task-t1"
 
@@ -202,21 +219,26 @@ class TestPushGateCommitPush:
                 return_value=mock_settings,
             ),
         ):
-            result = push_gate({
-                "messages": [],
-                "code_changes": [{"iteration": 1}],
-                "worktree_path": "/tmp/worktrees/task-t1",
-                "task_id": "t1",
-                "description": "Add feature X",
-                "branch_name": "autoswarm/task-t1",
-            })
+            result = push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [{"iteration": 1}],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                    "task_id": "t1",
+                    "description": "Add feature X",
+                    "branch_name": "autoswarm/task-t1",
+                }
+            )
 
         assert result["status"] == "pushed"
         mock_git.commit.assert_called_once_with(
-            "/tmp/worktrees/task-t1", "autoswarm: Add feature X",
+            "/tmp/worktrees/task-t1",
+            "autoswarm: Add feature X",
         )
         mock_git.push.assert_called_once_with(
-            "/tmp/worktrees/task-t1", "autoswarm/task-t1", token=None,
+            "/tmp/worktrees/task-t1",
+            "autoswarm/task-t1",
+            token=None,
         )
         # Cleanup should still happen after commit+push.
         mock_git.cleanup_worktree.assert_called_once()
@@ -236,12 +258,14 @@ class TestPushGateCommitPush:
             ),
             patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
         ):
-            result = push_gate({
-                "messages": [],
-                "code_changes": [],
-                "worktree_path": "/tmp/worktrees/task-t1",
-                "task_id": "t1",
-            })
+            result = push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                    "task_id": "t1",
+                }
+            )
 
         assert result["status"] == "denied"
         mock_git.commit.assert_not_called()
@@ -278,13 +302,15 @@ class TestPushGateCommitPush:
                 return_value=mock_settings,
             ),
         ):
-            result = push_gate({
-                "messages": [],
-                "code_changes": [{"iteration": 1}],
-                "worktree_path": "/tmp/worktrees/task-t1",
-                "task_id": "t1",
-                "branch_name": "autoswarm/task-t1",
-            })
+            result = push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [{"iteration": 1}],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                    "task_id": "t1",
+                    "branch_name": "autoswarm/task-t1",
+                }
+            )
 
         assert result["status"] == "pushed"
         # Push should NOT be called when commit fails.

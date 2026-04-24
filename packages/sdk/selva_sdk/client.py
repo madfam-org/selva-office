@@ -105,9 +105,7 @@ class AutoSwarm:
                 return task
             elapsed = asyncio.get_event_loop().time() - start
             if elapsed >= timeout:
-                raise TaskTimeoutError(
-                    f"Task {task_id} did not complete within {timeout}s"
-                )
+                raise TaskTimeoutError(f"Task {task_id} did not complete within {timeout}s")
             await asyncio.sleep(poll_interval)
 
 
@@ -162,7 +160,5 @@ class AutoSwarmSync:
                 return task
             elapsed = time.monotonic() - start
             if elapsed >= timeout:
-                raise TaskTimeoutError(
-                    f"Task {task_id} did not complete within {timeout}s"
-                )
+                raise TaskTimeoutError(f"Task {task_id} did not complete within {timeout}s")
             time.sleep(poll_interval)

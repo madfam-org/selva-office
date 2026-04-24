@@ -129,7 +129,10 @@ class PlaybookGuard:
                     playbook.name,
                 )
                 return PermissionLevel.DENY
-            if self.state.dollars_exposed_cents + financial_exposure_cents > playbook.financial_cap_cents:
+            if (
+                self.state.dollars_exposed_cents + financial_exposure_cents
+                > playbook.financial_cap_cents
+            ):
                 logger.info(
                     "Playbook '%s' financial cap exceeded: exposed=%d, request=%d, limit=%d cents",
                     playbook.name,
@@ -151,7 +154,9 @@ class PlaybookGuard:
         )
         return PermissionLevel.ALLOW
 
-    def record_action(self, category: ActionCategory, token_cost: int = 0, financial_cents: int = 0) -> None:
+    def record_action(
+        self, category: ActionCategory, token_cost: int = 0, financial_cents: int = 0
+    ) -> None:
         """Record that an action was executed, deducting from budgets."""
         self.state.tokens_used += token_cost
         self.state.dollars_exposed_cents += financial_cents

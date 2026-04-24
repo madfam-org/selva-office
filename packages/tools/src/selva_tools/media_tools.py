@@ -2,6 +2,7 @@
 Track B5: image_gen — DALL-E 3 image generation tool.
 Track B6: tts — OpenAI TTS tool.
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # B5 — Image Generation
 # ---------------------------------------------------------------------------
+
 
 class GenerateImageTool(BaseTool):
     """Generate an image from a text prompt using DALL-E 3."""
@@ -105,6 +107,7 @@ class GenerateImageTool(BaseTool):
 # ---------------------------------------------------------------------------
 # B6 — Text-to-Speech
 # ---------------------------------------------------------------------------
+
 
 class TextToSpeechTool(BaseTool):
     """Convert text to speech using the OpenAI TTS API."""

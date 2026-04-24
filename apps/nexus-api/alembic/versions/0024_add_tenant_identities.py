@@ -83,19 +83,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_tenant_identities_karafiel_org_id", table_name="tenant_identities"
-    )
-    op.drop_index(
-        "ix_tenant_identities_phynecrm_tenant_id", table_name="tenant_identities"
-    )
-    op.drop_index(
-        "ix_tenant_identities_dhanam_space_id", table_name="tenant_identities"
-    )
-    op.drop_index(
-        "ix_tenant_identities_janua_org_id", table_name="tenant_identities"
-    )
-    op.drop_index(
-        "ix_tenant_identities_canonical_id", table_name="tenant_identities"
-    )
+    op.drop_index("ix_tenant_identities_karafiel_org_id", table_name="tenant_identities")
+    op.drop_index("ix_tenant_identities_phynecrm_tenant_id", table_name="tenant_identities")
+    op.drop_index("ix_tenant_identities_dhanam_space_id", table_name="tenant_identities")
+    op.drop_index("ix_tenant_identities_janua_org_id", table_name="tenant_identities")
+    op.drop_index("ix_tenant_identities_canonical_id", table_name="tenant_identities")
     op.drop_table("tenant_identities")

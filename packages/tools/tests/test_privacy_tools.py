@@ -60,9 +60,7 @@ class TestPIIClassificationTool:
     async def test_pii_classify_redacts_matches(self) -> None:
         tool = PIIClassificationTool()
         result = await tool.execute(text="RFC: XAXX010101000 y GARC850101AAA")
-        rfc_finding = next(
-            f for f in result.data["findings"] if f["type"] == "RFC"
-        )
+        rfc_finding = next(f for f in result.data["findings"] if f["type"] == "RFC")
         assert rfc_finding["count"] == 2
         # Redacted values should only show first 4 chars
         for r in rfc_finding["redacted"]:
@@ -171,9 +169,7 @@ class TestDataDeletionTool:
         tool = DataDeletionTool()
         result = await tool.execute(search_term="any-term")
         assert result.success
-        assert set(result.data["scopes_searched"]) == {
-            "artifacts", "events", "chat", "memory"
-        }
+        assert set(result.data["scopes_searched"]) == {"artifacts", "events", "chat", "memory"}
 
     def test_data_deletion_schema(self) -> None:
         tool = DataDeletionTool()

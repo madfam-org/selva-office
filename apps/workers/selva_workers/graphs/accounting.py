@@ -74,9 +74,7 @@ def fetch_period_data(state: AccountingState) -> AccountingState:
     regime = state.get("regime", "") or payload.get("regime", "pf")
 
     if not org_id or not period:
-        error_msg = AIMessage(
-            content="Accounting fetch failed: org_id and period are required."
-        )
+        error_msg = AIMessage(content="Accounting fetch failed: org_id and period are required.")
         return {
             **state,
             "messages": [*messages, error_msg],
@@ -379,9 +377,7 @@ def prepare_declaration(state: AccountingState) -> AccountingState:
         rfc = cfdi.get("receptor_rfc") or cfdi.get("emisor_rfc") or ""
         if rfc:
             with contextlib.suppress(ValueError, TypeError):
-                diot_by_rfc[rfc] = diot_by_rfc.get(rfc, 0.0) + float(
-                    cfdi.get("total", "0")
-                )
+                diot_by_rfc[rfc] = diot_by_rfc.get(rfc, 0.0) + float(cfdi.get("total", "0"))
 
     diot_data = {
         "by_rfc": diot_by_rfc,
@@ -416,9 +412,7 @@ def prepare_declaration(state: AccountingState) -> AccountingState:
                     org_id=org_id,
                     period=period,
                     declaration_type="iva_mensual",
-                    iva_trasladado=float(
-                        tax_computation.get("iva", {}).get("tax_amount", "0")
-                    ),
+                    iva_trasladado=float(tax_computation.get("iva", {}).get("tax_amount", "0")),
                 )
             )
 

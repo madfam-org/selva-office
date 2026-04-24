@@ -9,6 +9,7 @@ PluginManager — discovers and loads plugins from three sources:
 Each plugin declares tools, hooks, and context addenda via a plugin.yaml
 manifest and a Python class extending AutoSwarmPlugin.
 """
+
 from __future__ import annotations
 
 import importlib

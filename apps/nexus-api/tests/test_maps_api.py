@@ -77,9 +77,7 @@ async def _create_map(
 
 
 @pytest.mark.asyncio()
-async def test_create_map(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_create_map(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Creating a map with valid TMJ returns 201."""
     resp = await client.post(
         "/api/v1/maps",
@@ -143,9 +141,7 @@ async def test_list_maps(
 
 
 @pytest.mark.asyncio()
-async def test_get_map(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_get_map(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Getting a map by ID after creating it returns the map."""
     create_resp = await client.post(
         "/api/v1/maps",
@@ -161,9 +157,7 @@ async def test_get_map(
 
 
 @pytest.mark.asyncio()
-async def test_get_map_not_found(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_get_map_not_found(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Getting a non-existent map returns 404."""
     resp = await client.get(
         "/api/v1/maps/00000000-0000-0000-0000-000000000000",
@@ -178,9 +172,7 @@ async def test_get_map_not_found(
 
 
 @pytest.mark.asyncio()
-async def test_update_map(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_update_map(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Updating a map changes its fields."""
     create_resp = await client.post(
         "/api/v1/maps",
@@ -206,9 +198,7 @@ async def test_update_map(
 
 
 @pytest.mark.asyncio()
-async def test_delete_map(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_delete_map(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Deleting a map removes it."""
     create_resp = await client.post(
         "/api/v1/maps",
@@ -231,9 +221,7 @@ async def test_delete_map(
 
 
 @pytest.mark.asyncio()
-async def test_import_map(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_import_map(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Importing TMJ creates a new map entry."""
     resp = await client.post(
         "/api/v1/maps/import",
@@ -247,9 +235,7 @@ async def test_import_map(
 
 
 @pytest.mark.asyncio()
-async def test_export_map(
-    client: httpx.AsyncClient, auth_headers: dict[str, str]
-) -> None:
+async def test_export_map(client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
     """Exporting validates and returns raw TMJ content."""
     resp = await client.post(
         "/api/v1/maps/export",

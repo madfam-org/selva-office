@@ -46,7 +46,7 @@ class DeployPreflightTool(BaseTool):
     """
 
     name = "deploy_preflight"
-    description = "Kustomize build + manifest hygiene checks (digest pinning, resources, privileged, image pull secrets) before deploying."
+    description = "Kustomize build + manifest hygiene checks (digest pinning, resources, privileged, image pull secrets) before deploying."  # noqa: E501
 
     # All known checks. `default_checks` excludes advisory ones so tenant
     # swarms get blockers-only by default; `--checks all` runs advisory too.
@@ -109,23 +109,27 @@ class DeployPreflightTool(BaseTool):
             timeout=60.0,
         )
         if not build["success"]:
-            findings.append({
-                "severity": "blocker",
-                "check": "kustomize-build",
-                "resource": "",
-                "message": f"kustomize build failed: {build['stderr'].strip()[:300]}",
-            })
+            findings.append(
+                {
+                    "severity": "blocker",
+                    "check": "kustomize-build",
+                    "resource": "",
+                    "message": f"kustomize build failed: {build['stderr'].strip()[:300]}",
+                }
+            )
             return _to_result(findings, resource_count=0)
 
         try:
             docs = list(yaml.safe_load_all(build["stdout"]))
         except yaml.YAMLError as exc:
-            findings.append({
-                "severity": "blocker",
-                "check": "kustomize-build",
-                "resource": "",
-                "message": f"rendered YAML is invalid: {exc}",
-            })
+            findings.append(
+                {
+                    "severity": "blocker",
+                    "check": "kustomize-build",
+                    "resource": "",
+                    "message": f"rendered YAML is invalid: {exc}",
+                }
+            )
             return _to_result(findings, resource_count=0)
 
         workloads = [d for d in docs if isinstance(d, dict) and d.get("kind") in _WORKLOAD_KINDS]
@@ -176,9 +180,8 @@ def _iter_containers(workload: dict[str, Any]):
     # CronJob wraps jobTemplate.spec.template:
     if workload.get("kind") == "CronJob":
         template = (spec.get("jobTemplate") or {}).get("spec", {}).get("template") or {}
-    pod_spec = (template.get("spec") or {})
-    for container in pod_spec.get("containers") or []:
-        yield container
+    pod_spec = template.get("spec") or {}
+    yield from (pod_spec.get("containers") or [])
 
 
 def _check_digest_pinned(container: dict[str, Any], resource: str) -> list[dict[str, Any]]:
@@ -190,20 +193,24 @@ def _check_digest_pinned(container: dict[str, Any], resource: str) -> list[dict[
         return []
     # `:latest` is always a blocker.
     if image.endswith(":latest") or ":" not in image.rsplit("/", 1)[-1]:
-        return [{
+        return [
+            {
+                "severity": "blocker",
+                "check": "image-digest-pinned",
+                "resource": resource,
+                "message": f"image '{image}' is not digest-pinned (found :latest or no tag)",
+            }
+        ]
+    # A mutable tag (e.g. `:v1.2.3` or `:main`) is a blocker too — Kyverno
+    # rejects it in production, and it defeats ArgoCD's reconciliation.
+    return [
+        {
             "severity": "blocker",
             "check": "image-digest-pinned",
             "resource": resource,
-            "message": f"image '{image}' is not digest-pinned (found :latest or no tag)",
-        }]
-    # A mutable tag (e.g. `:v1.2.3` or `:main`) is a blocker too — Kyverno
-    # rejects it in production, and it defeats ArgoCD's reconciliation.
-    return [{
-        "severity": "blocker",
-        "check": "image-digest-pinned",
-        "resource": resource,
-        "message": f"image '{image}' uses a mutable tag — pin by @sha256: digest instead",
-    }]
+            "message": f"image '{image}' uses a mutable tag — pin by @sha256: digest instead",
+        }
+    ]
 
 
 def _check_resources(
@@ -213,12 +220,14 @@ def _check_resources(
     block = resources.get(key)
     if isinstance(block, dict) and block:
         return []
-    return [{
-        "severity": severity,
-        "check": f"container-resources-{key}",
-        "resource": resource,
-        "message": f"container '{container.get('name', '?')}' missing resources.{key}",
-    }]
+    return [
+        {
+            "severity": severity,
+            "check": f"container-resources-{key}",
+            "resource": resource,
+            "message": f"container '{container.get('name', '?')}' missing resources.{key}",
+        }
+    ]
 
 
 def _check_privileged(container: dict[str, Any], resource: str) -> list[dict[str, Any]]:
@@ -226,45 +235,47 @@ def _check_privileged(container: dict[str, Any], resource: str) -> list[dict[str
     # requires an explicit `privileged: false`. Missing key = blocker.
     security = container.get("securityContext") or {}
     if "privileged" not in security:
-        return [{
-            "severity": "blocker",
-            "check": "container-privileged-false",
-            "resource": resource,
-            "message": (
-                f"container '{container.get('name', '?')}' must set "
-                "securityContext.privileged: false explicitly (kyverno policy)"
-            ),
-        }]
+        return [
+            {
+                "severity": "blocker",
+                "check": "container-privileged-false",
+                "resource": resource,
+                "message": (
+                    f"container '{container.get('name', '?')}' must set "
+                    "securityContext.privileged: false explicitly (kyverno policy)"
+                ),
+            }
+        ]
     if security["privileged"] is True:
-        return [{
-            "severity": "blocker",
-            "check": "container-privileged-false",
-            "resource": resource,
-            "message": f"container '{container.get('name', '?')}' has privileged: true",
-        }]
+        return [
+            {
+                "severity": "blocker",
+                "check": "container-privileged-false",
+                "resource": resource,
+                "message": f"container '{container.get('name', '?')}' has privileged: true",
+            }
+        ]
     return []
 
 
-def _check_image_pull_secrets(
-    workload: dict[str, Any], resource: str
-) -> list[dict[str, Any]]:
+def _check_image_pull_secrets(workload: dict[str, Any], resource: str) -> list[dict[str, Any]]:
     """Advisory — warn when a GHCR workload has no imagePullSecrets."""
     spec = workload.get("spec") or {}
     template = spec.get("template") or {}
     if workload.get("kind") == "CronJob":
         template = (spec.get("jobTemplate") or {}).get("spec", {}).get("template") or {}
     pod_spec = template.get("spec") or {}
-    images = [
-        (c.get("image") or "") for c in (pod_spec.get("containers") or [])
-    ]
+    images = [(c.get("image") or "") for c in (pod_spec.get("containers") or [])]
     uses_private = any(img.startswith("ghcr.io/") for img in images)
     if uses_private and not pod_spec.get("imagePullSecrets"):
-        return [{
-            "severity": "warn",
-            "check": "image-pull-secrets",
-            "resource": resource,
-            "message": "workload pulls from ghcr.io but has no imagePullSecrets",
-        }]
+        return [
+            {
+                "severity": "warn",
+                "check": "image-pull-secrets",
+                "resource": resource,
+                "message": "workload pulls from ghcr.io but has no imagePullSecrets",
+            }
+        ]
     return []
 
 

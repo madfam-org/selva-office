@@ -49,7 +49,9 @@ class HumanNodeHandler:
 
             logger.info(
                 "Human node '%s' resumed: approved=%s feedback=%s",
-                node.id, approved, feedback,
+                node.id,
+                approved,
+                feedback,
             )
 
             new_status = "running" if approved else "rejected"

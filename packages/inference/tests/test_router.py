@@ -21,6 +21,7 @@ from madfam_inference.types import (
 # Mock provider factory
 # ---------------------------------------------------------------------------
 
+
 class MockProvider(InferenceProvider):
     """A lightweight mock InferenceProvider for testing routing decisions."""
 
@@ -70,11 +71,18 @@ def _make_request(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def all_providers() -> dict[str, MockProvider]:
     """All provider types registered."""
     return _make_providers(
-        "ollama", "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+        "ollama",
+        "anthropic",
+        "openai",
+        "fireworks",
+        "together",
+        "deepinfra",
+        "openrouter",
     )
 
 
@@ -82,7 +90,12 @@ def all_providers() -> dict[str, MockProvider]:
 def cloud_only_providers() -> dict[str, MockProvider]:
     """Cloud providers only -- no Ollama."""
     return _make_providers(
-        "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+        "anthropic",
+        "openai",
+        "fireworks",
+        "together",
+        "deepinfra",
+        "openrouter",
     )
 
 
@@ -95,6 +108,7 @@ def ollama_only() -> dict[str, MockProvider]:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestRouteRestrictedToOllama:
     """Restricted / confidential sensitivity must route to Ollama."""
@@ -150,8 +164,16 @@ class TestRoutePublicPrefersCheap:
     async def test_public_cheapest_priority_order(self) -> None:
         """Verify the CHEAPEST_PRIORITY constant order."""
         assert CHEAPEST_PRIORITY == [
-            "deepinfra", "groq", "together", "siliconflow", "fireworks", "mistral",
-            "moonshot", "openrouter", "openai", "anthropic",
+            "deepinfra",
+            "groq",
+            "together",
+            "siliconflow",
+            "fireworks",
+            "mistral",
+            "moonshot",
+            "openrouter",
+            "openai",
+            "anthropic",
         ]
 
     async def test_public_only_anthropic_available(self) -> None:
@@ -183,8 +205,16 @@ class TestRouteInternalPrefersCloud:
 
     async def test_internal_cloud_priority_order(self) -> None:
         assert CLOUD_PRIORITY == [
-            "anthropic", "openai", "groq", "mistral", "moonshot", "siliconflow",
-            "fireworks", "together", "deepinfra", "openrouter",
+            "anthropic",
+            "openai",
+            "groq",
+            "mistral",
+            "moonshot",
+            "siliconflow",
+            "fireworks",
+            "together",
+            "deepinfra",
+            "openrouter",
         ]
 
     async def test_internal_falls_through_to_openai(self) -> None:
@@ -206,9 +236,7 @@ class TestRouteInternalPrefersCloud:
 class TestRequireLocalEnforced:
     """require_local=True must exclusively use Ollama."""
 
-    async def test_require_local_uses_ollama(
-        self, all_providers: dict[str, MockProvider]
-    ) -> None:
+    async def test_require_local_uses_ollama(self, all_providers: dict[str, MockProvider]) -> None:
         router = ModelRouter(providers=all_providers)
         request = _make_request(require_local=True)
         response = await router.complete(request)
@@ -256,13 +284,17 @@ class TestPreferLocal:
 class TestRouterAvailableProviders:
     """Test the available_providers property."""
 
-    def test_lists_registered_providers(
-        self, all_providers: dict[str, MockProvider]
-    ) -> None:
+    def test_lists_registered_providers(self, all_providers: dict[str, MockProvider]) -> None:
         router = ModelRouter(providers=all_providers)
         available = router.available_providers
         assert set(available) == {
-            "ollama", "anthropic", "openai", "fireworks", "together", "deepinfra", "openrouter",
+            "ollama",
+            "anthropic",
+            "openai",
+            "fireworks",
+            "together",
+            "deepinfra",
+            "openrouter",
         }
 
     def test_empty_providers(self) -> None:
@@ -292,9 +324,7 @@ class TestPriorityListsIncludeNewProviders:
 class TestRouterStream:
     """Verify streaming routes correctly."""
 
-    async def test_stream_returns_chunks(
-        self, all_providers: dict[str, MockProvider]
-    ) -> None:
+    async def test_stream_returns_chunks(self, all_providers: dict[str, MockProvider]) -> None:
         router = ModelRouter(providers=all_providers)
         request = _make_request(sensitivity=Sensitivity.PUBLIC)
         chunks = []
@@ -318,7 +348,8 @@ class TestTaskTypeRouting:
                     provider="deepinfra", model="GLM-5", max_tokens=8192, temperature=0.5
                 ),
                 TaskType.CODING: ModelAssignment(
-                    provider="together", model="kimi-k2.5",
+                    provider="together",
+                    model="kimi-k2.5",
                 ),
             },
         )
@@ -370,9 +401,7 @@ class TestTaskTypeRouting:
         """When assigned provider isn't registered, fall through to defaults."""
         org_config = OrgConfig(
             model_assignments={
-                TaskType.PLANNING: ModelAssignment(
-                    provider="nonexistent", model="some-model"
-                ),
+                TaskType.PLANNING: ModelAssignment(provider="nonexistent", model="some-model"),
             },
         )
         providers = _make_providers("anthropic", "openai")

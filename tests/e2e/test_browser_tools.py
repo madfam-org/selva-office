@@ -1,6 +1,7 @@
 """
 E2E tests — Gap 1: Browser & Vision Tools
 """
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -28,6 +29,7 @@ class TestBrowserExtract:
         with patch("selva_tools.browser.PLAYWRIGHT_AVAILABLE", True):
             with patch("selva_tools.browser.async_playwright", return_value=mock_pw):
                 from selva_tools.browser import browser_extract
+
                 result = await browser_extract("https://example.com")
                 assert "Hello from SPA" in result
 
@@ -42,6 +44,7 @@ class TestBrowserExtract:
                 )
                 mock_get.return_value.raise_for_status = MagicMock()
                 from selva_tools.browser import browser_extract
+
                 result = await browser_extract("https://example.com")
                 assert isinstance(result, str)
 
@@ -51,6 +54,7 @@ class TestBrowserScreenshot:
     async def test_screenshot_returns_base64(self):
         """browser_screenshot returns base64-encoded PNG string."""
         import base64
+
         fake_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
         expected_b64 = base64.b64encode(fake_png).decode()
 
@@ -69,6 +73,7 @@ class TestBrowserScreenshot:
         with patch("selva_tools.browser.PLAYWRIGHT_AVAILABLE", True):
             with patch("selva_tools.browser.async_playwright", return_value=mock_pw):
                 from selva_tools.browser import browser_screenshot
+
                 result = await browser_screenshot("https://example.com")
                 assert result == expected_b64
 
@@ -76,6 +81,7 @@ class TestBrowserScreenshot:
     async def test_screenshot_returns_empty_without_playwright(self):
         with patch("selva_tools.browser.PLAYWRIGHT_AVAILABLE", False):
             from selva_tools.browser import browser_screenshot
+
             result = await browser_screenshot("https://example.com")
             assert result == ""
 
@@ -92,12 +98,14 @@ class TestVisionDescribe:
 
         with patch(
             "selva_tools.browser.get_default_router",
-            return_value=mock_router, create=True,
+            return_value=mock_router,
+            create=True,
         ):
             with patch("selva_tools.browser.InferenceRequest", create=True):
                 with patch("selva_tools.browser.RoutingPolicy", create=True):
                     with patch("selva_tools.browser.Sensitivity", create=True):
                         from selva_tools.browser import vision_describe
+
                         result = await vision_describe("base64fakeimage==")
                         assert isinstance(result, str)
 
@@ -106,8 +114,10 @@ class TestVisionDescribe:
         """vision_describe returns placeholder when LLM is unavailable."""
         with patch(
             "selva_tools.browser.get_default_router",
-            side_effect=Exception("No provider"), create=True,
+            side_effect=Exception("No provider"),
+            create=True,
         ):
             from selva_tools.browser import vision_describe
+
             result = await vision_describe("base64fakeimage==")
             assert "unavailable" in result.lower()

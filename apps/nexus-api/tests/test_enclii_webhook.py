@@ -64,9 +64,7 @@ class TestEncliiEventMapping:
 
         request = MagicMock()
         request.headers = {"authorization": "Bearer dev-token"}
-        request.body = AsyncMock(
-            return_value=json.dumps({"event": "deploy_started"}).encode()
-        )
+        request.body = AsyncMock(return_value=json.dumps({"event": "deploy_started"}).encode())
         request.state = MagicMock(request_id=None)
 
         mock_settings = MagicMock()
@@ -98,9 +96,7 @@ class TestEncliiTaskCreation:
             "error": "health check failed",
         }
 
-        task = await _create_task_from_enclii(
-            mock_session, "deploy_failed", payload, "coding"
-        )
+        task = await _create_task_from_enclii(mock_session, "deploy_failed", payload, "coding")
 
         assert task is not None
         assert task.graph_type == "coding"
@@ -124,9 +120,7 @@ class TestEncliiTaskCreation:
             "deploy_id": "dep-789",
         }
 
-        task = await _create_task_from_enclii(
-            mock_session, "deploy_succeeded", payload, "research"
-        )
+        task = await _create_task_from_enclii(mock_session, "deploy_succeeded", payload, "research")
 
         assert task is not None
         assert task.graph_type == "research"
@@ -138,8 +132,6 @@ class TestEncliiTaskCreation:
 
         mock_session = MagicMock()
 
-        task = await _create_task_from_enclii(
-            mock_session, "deploy_unknown", {}, "coding"
-        )
+        task = await _create_task_from_enclii(mock_session, "deploy_unknown", {}, "coding")
 
         assert task is None

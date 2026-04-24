@@ -31,9 +31,7 @@ class ComputeTokenManager:
     @staticmethod
     def _next_midnight_utc() -> datetime:
         now = datetime.now(UTC)
-        return now.replace(hour=0, minute=0, second=0, microsecond=0).replace(
-            day=now.day + 1
-        )
+        return now.replace(hour=0, minute=0, second=0, microsecond=0).replace(day=now.day + 1)
 
     @property
     def remaining(self) -> int:
@@ -42,8 +40,7 @@ class ComputeTokenManager:
     def _cost_for(self, action: str, count: int) -> int:
         if action not in self.COST_TABLE:
             raise KeyError(
-                f"Unknown action '{action}'. "
-                f"Valid actions: {', '.join(sorted(self.COST_TABLE))}"
+                f"Unknown action '{action}'. Valid actions: {', '.join(sorted(self.COST_TABLE))}"
             )
         if count < 1:
             raise ValueError("count must be at least 1")
@@ -64,9 +61,7 @@ class ComputeTokenManager:
         """
         cost = self._cost_for(action, count)
         if cost > self.remaining:
-            raise ValueError(
-                f"Insufficient compute tokens: need {cost}, have {self.remaining}"
-            )
+            raise ValueError(f"Insufficient compute tokens: need {cost}, have {self.remaining}")
         self.used += cost
         return self.remaining
 

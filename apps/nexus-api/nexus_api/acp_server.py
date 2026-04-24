@@ -6,6 +6,7 @@ over stdio (VS Code / Zed / JetBrains Agent Protocol).
 Start with: python -m nexus_api.acp_server
 Protocol: newline-delimited JSON-RPC 2.0 over stdin/stdout
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,6 +27,7 @@ SERVER_VERSION = "1.0.0"
 # JSON-RPC helpers
 # ---------------------------------------------------------------------------
 
+
 def _response(req_id: Any, result: Any) -> dict:
     return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
@@ -43,17 +45,23 @@ def _write(obj: dict) -> None:
 # Method handlers
 # ---------------------------------------------------------------------------
 
+
 async def handle_initialize(params: dict, req_id: Any) -> None:
-    _write(_response(req_id, {
-        "name": SERVER_NAME,
-        "version": SERVER_VERSION,
-        "capabilities": {
-            "run_acp": True,
-            "get_result": True,
-            "list_skills": True,
-        },
-        "started_at": datetime.now(tz=UTC).isoformat(),
-    }))
+    _write(
+        _response(
+            req_id,
+            {
+                "name": SERVER_NAME,
+                "version": SERVER_VERSION,
+                "capabilities": {
+                    "run_acp": True,
+                    "get_result": True,
+                    "list_skills": True,
+                },
+                "started_at": datetime.now(tz=UTC).isoformat(),
+            },
+        )
+    )
 
 
 async def handle_run_acp(params: dict, req_id: Any) -> None:
@@ -64,6 +72,7 @@ async def handle_run_acp(params: dict, req_id: Any) -> None:
         return
     try:
         from nexus_api.tasks.acp_tasks import run_acp_workflow_task  # type: ignore
+
         task = run_acp_workflow_task.delay(
             target_url,
             metadata={"workspace_path": workspace_path, "source": "acp_server"},
@@ -72,6 +81,7 @@ async def handle_run_acp(params: dict, req_id: Any) -> None:
     except ImportError:
         # Return a stub run_id when running outside nexus-api context
         import uuid
+
         stub_id = str(uuid.uuid4())
         logger.warning("ACP server: nexus_api not available — returning stub run_id %s", stub_id)
         _write(_response(req_id, {"run_id": stub_id, "status": "stub_mode"}))
@@ -86,6 +96,7 @@ async def handle_get_result(params: dict, req_id: Any) -> None:
         return
     try:
         from celery.result import AsyncResult  # type: ignore
+
         result = AsyncResult(run_id)
         state = result.state
         output = result.result if result.ready() else None
@@ -99,8 +110,11 @@ async def handle_get_result(params: dict, req_id: Any) -> None:
 async def handle_list_skills(params: dict, req_id: Any) -> None:
     try:
         from selva_skills import get_skill_registry  # type: ignore
-        skills = [{"name": s.name, "description": s.description}
-                  for s in get_skill_registry().list_skills()]
+
+        skills = [
+            {"name": s.name, "description": s.description}
+            for s in get_skill_registry().list_skills()
+        ]
         _write(_response(req_id, {"skills": skills}))
     except Exception as exc:
         _write(_error(req_id, -32603, str(exc)))
@@ -117,6 +131,7 @@ _HANDLERS = {
 # ---------------------------------------------------------------------------
 # Main server loop
 # ---------------------------------------------------------------------------
+
 
 async def serve() -> None:
     logger.info("ACP server starting (stdio JSON-RPC)…")

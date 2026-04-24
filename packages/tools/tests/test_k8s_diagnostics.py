@@ -84,9 +84,7 @@ class TestGetPods:
             "selva_tools.builtins.k8s_diagnostics._load_clients",
             return_value=(core, MagicMock(), MagicMock()),
         ):
-            await K8sGetPodsTool().execute(
-                namespace="madlab", label_selector="app=madlab-server"
-            )
+            await K8sGetPodsTool().execute(namespace="madlab", label_selector="app=madlab-server")
             call = core.list_namespaced_pod.call_args
             assert call.kwargs["label_selector"] == "app=madlab-server"
 
@@ -132,13 +130,9 @@ class TestDescribePod:
             "selva_tools.builtins.k8s_diagnostics._load_clients",
             return_value=(core, MagicMock(), MagicMock()),
         ):
-            r = await K8sDescribePodTool().execute(
-                namespace="madlab", name="madlab-server-xyz"
-            )
+            r = await K8sDescribePodTool().execute(namespace="madlab", name="madlab-server-xyz")
             assert r.success is True
-            assert r.data["containers"][0]["state"]["waiting"]["reason"] == (
-                "CrashLoopBackOff"
-            )
+            assert r.data["containers"][0]["state"]["waiting"]["reason"] == ("CrashLoopBackOff")
             assert r.data["events"][0]["reason"] == "BackOff"
             assert r.data["conditions"][0]["reason"] == "ContainersNotReady"
 
@@ -208,9 +202,7 @@ class TestGetReplicasets:
             spec=SimpleNamespace(
                 replicas=1,
                 template=SimpleNamespace(
-                    spec=SimpleNamespace(
-                        containers=[SimpleNamespace(image="img:tag")]
-                    )
+                    spec=SimpleNamespace(containers=[SimpleNamespace(image="img:tag")])
                 ),
             ),
             status=SimpleNamespace(replicas=1, ready_replicas=0),

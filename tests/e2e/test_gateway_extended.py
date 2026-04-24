@@ -1,6 +1,7 @@
 """
 Tests for Gap 4: Extended Gateway Platforms (Slack, Email, SMS).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -15,6 +16,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def test_client():
     from nexus_api.main import app
+
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -43,6 +45,7 @@ def _mock_memory(monkeypatch):
 # ---------------------------------------------------------------------------
 # Slack
 # ---------------------------------------------------------------------------
+
 
 class TestSlackGateway:
     URL = "/api/v1/gateway/slack/webhook"
@@ -84,8 +87,10 @@ class TestSlackGateway:
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
             lambda: MagicMock(
-                slack_signing_secret=secret, discord_webhook_secret="",
-                telegram_webhook_secret="", twilio_auth_token="",
+                slack_signing_secret=secret,
+                discord_webhook_secret="",
+                telegram_webhook_secret="",
+                twilio_auth_token="",
                 gateway_email_whitelist="",
             ),
         )
@@ -99,6 +104,7 @@ class TestSlackGateway:
 # Email
 # ---------------------------------------------------------------------------
 
+
 class TestEmailGateway:
     URL = "/api/v1/gateway/email/inbound"
 
@@ -106,15 +112,20 @@ class TestEmailGateway:
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
             lambda: MagicMock(
-                slack_signing_secret="", discord_webhook_secret="",
-                telegram_webhook_secret="", twilio_auth_token="",
+                slack_signing_secret="",
+                discord_webhook_secret="",
+                telegram_webhook_secret="",
+                twilio_auth_token="",
                 gateway_email_whitelist="boss@selva.town",
             ),
         )
-        resp = test_client.post(self.URL, json={
-            "from": "boss@selva.town",
-            "text": "Hey agent,\ninitiate_acp: https://target.example.com\nThanks",
-        })
+        resp = test_client.post(
+            self.URL,
+            json={
+                "from": "boss@selva.town",
+                "text": "Hey agent,\ninitiate_acp: https://target.example.com\nThanks",
+            },
+        )
         assert resp.status_code == 200
         assert resp.json().get("action") == "acp_triggered"
 
@@ -122,21 +133,27 @@ class TestEmailGateway:
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
             lambda: MagicMock(
-                slack_signing_secret="", discord_webhook_secret="",
-                telegram_webhook_secret="", twilio_auth_token="",
+                slack_signing_secret="",
+                discord_webhook_secret="",
+                telegram_webhook_secret="",
+                twilio_auth_token="",
                 gateway_email_whitelist="boss@selva.town",
             ),
         )
-        resp = test_client.post(self.URL, json={
-            "from": "stranger@evil.com",
-            "text": "initiate_acp: https://hacker.com",
-        })
+        resp = test_client.post(
+            self.URL,
+            json={
+                "from": "stranger@evil.com",
+                "text": "initiate_acp: https://hacker.com",
+            },
+        )
         assert resp.status_code == 403
 
 
 # ---------------------------------------------------------------------------
 # SMS
 # ---------------------------------------------------------------------------
+
 
 class TestSMSGateway:
     URL = "/api/v1/gateway/sms/inbound"
@@ -145,8 +162,10 @@ class TestSMSGateway:
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
             lambda: MagicMock(
-                slack_signing_secret="", discord_webhook_secret="",
-                telegram_webhook_secret="", twilio_auth_token="",
+                slack_signing_secret="",
+                discord_webhook_secret="",
+                telegram_webhook_secret="",
+                twilio_auth_token="",
                 gateway_email_whitelist="",
             ),
         )
@@ -163,8 +182,10 @@ class TestSMSGateway:
         monkeypatch.setattr(
             "nexus_api.routers.gateway.get_settings",
             lambda: MagicMock(
-                slack_signing_secret="", discord_webhook_secret="",
-                telegram_webhook_secret="", twilio_auth_token="",
+                slack_signing_secret="",
+                discord_webhook_secret="",
+                telegram_webhook_secret="",
+                twilio_auth_token="",
                 gateway_email_whitelist="",
             ),
         )

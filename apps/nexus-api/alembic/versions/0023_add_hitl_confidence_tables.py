@@ -111,41 +111,19 @@ def upgrade() -> None:
             nullable=False,
             server_default="1",
         ),
-        sa.Column(
-            "n_observed", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "n_approved_clean", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "n_approved_modified", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "n_rejected", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "n_timeout", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "n_reverted", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "beta_alpha", sa.Float(), nullable=False, server_default="1.0"
-        ),
-        sa.Column(
-            "beta_beta", sa.Float(), nullable=False, server_default="1.0"
-        ),
-        sa.Column(
-            "confidence", sa.Float(), nullable=False, server_default="0.5"
-        ),
+        sa.Column("n_observed", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("n_approved_clean", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("n_approved_modified", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("n_rejected", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("n_timeout", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("n_reverted", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("beta_alpha", sa.Float(), nullable=False, server_default="1.0"),
+        sa.Column("beta_beta", sa.Float(), nullable=False, server_default="1.0"),
+        sa.Column("confidence", sa.Float(), nullable=False, server_default="0.5"),
         sa.Column("tier", hitl_tier, nullable=False, server_default="ask"),
-        sa.Column(
-            "last_promoted_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("last_promoted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("locked_until", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "last_decision_at", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("last_decision_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),

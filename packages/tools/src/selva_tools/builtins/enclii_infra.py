@@ -78,7 +78,11 @@ class EncliiExecTool(BaseTool):
                     "description": "Command to execute (e.g., ['python', 'manage.py', 'migrate'])",
                 },
                 "env": {"type": "string", "default": "production", "description": "Environment"},
-                "timeout": {"type": "integer", "default": 120, "description": "Timeout in seconds (max 1800)"},
+                "timeout": {
+                    "type": "integer",
+                    "default": 120,
+                    "description": "Timeout in seconds (max 1800)",
+                },
             },
             "required": ["service_id", "command"],
         }
@@ -91,12 +95,14 @@ class EncliiExecTool(BaseTool):
         if not _check_command_allowed(command):
             return ToolResult(
                 success=False,
-                error=f"Command not in allowlist: {' '.join(command)}. Only migrations and diagnostics are permitted.",
+                error=f"Command not in allowlist: {' '.join(command)}. Only migrations and diagnostics are permitted.",  # noqa: E501
             )
 
         service_id = kwargs.get("service_id", "")
         try:
-            async with httpx.AsyncClient(timeout=min(kwargs.get("timeout", 120), 1800) + 10) as client:
+            async with httpx.AsyncClient(
+                timeout=min(kwargs.get("timeout", 120), 1800) + 10
+            ) as client:
                 resp = await client.post(
                     f"{ENCLII_API_URL}/v1/services/{service_id}/exec",
                     headers=_headers(),
@@ -121,7 +127,10 @@ class EncliiExecTool(BaseTool):
 
             return ToolResult(success=exit_code == 0, output=output, data=data)
         except httpx.HTTPStatusError as exc:
-            return ToolResult(success=False, error=f"Exec failed ({exc.response.status_code}): {exc.response.text[:200]}")
+            return ToolResult(
+                success=False,
+                error=f"Exec failed ({exc.response.status_code}): {exc.response.text[:200]}",
+            )
         except httpx.HTTPError as exc:
             return ToolResult(success=False, error=f"Exec request failed: {exc}")
 
@@ -144,7 +153,11 @@ class EncliiRestartTool(BaseTool):
             "properties": {
                 "service_id": {"type": "string", "description": "Enclii service ID or slug"},
                 "env": {"type": "string", "default": "production"},
-                "reason": {"type": "string", "default": "agent-initiated", "description": "Reason for restart"},
+                "reason": {
+                    "type": "string",
+                    "default": "agent-initiated",
+                    "description": "Reason for restart",
+                },
             },
             "required": ["service_id"],
         }
@@ -158,12 +171,17 @@ class EncliiRestartTool(BaseTool):
                 resp = await client.post(
                     f"{ENCLII_API_URL}/v1/services/{kwargs['service_id']}/restart",
                     headers=_headers(),
-                    json={"env": kwargs.get("env", "production"), "reason": kwargs.get("reason", "agent-initiated")},
+                    json={
+                        "env": kwargs.get("env", "production"),
+                        "reason": kwargs.get("reason", "agent-initiated"),
+                    },
                 )
                 resp.raise_for_status()
                 data = resp.json()
 
-            return ToolResult(success=True, output=f"Restart initiated: {data.get('message', 'OK')}", data=data)
+            return ToolResult(
+                success=True, output=f"Restart initiated: {data.get('message', 'OK')}", data=data
+            )
         except httpx.HTTPError as exc:
             return ToolResult(success=False, error=f"Restart failed: {exc}")
 
@@ -224,7 +242,11 @@ class EncliiLogsTool(BaseTool):
                 "service_id": {"type": "string"},
                 "env": {"type": "string", "default": "production"},
                 "lines": {"type": "integer", "default": 50, "maximum": 500},
-                "since": {"type": "string", "default": "1h", "description": "Time duration (e.g., 1h, 30m, 24h)"},
+                "since": {
+                    "type": "string",
+                    "default": "1h",
+                    "description": "Time duration (e.g., 1h, 30m, 24h)",
+                },
             },
             "required": ["service_id"],
         }
@@ -249,11 +271,15 @@ class EncliiLogsTool(BaseTool):
 
             logs = data.get("logs", data.get("entries", []))
             if isinstance(logs, list):
-                log_text = "\n".join(str(l) for l in logs[-50:])
+                log_text = "\n".join(str(entry) for entry in logs[-50:])
             else:
                 log_text = str(logs)[:3000]
 
-            return ToolResult(success=True, output=f"Logs ({len(logs) if isinstance(logs, list) else '?'} entries):\n{log_text}", data=data)
+            return ToolResult(
+                success=True,
+                output=f"Logs ({len(logs) if isinstance(logs, list) else '?'} entries):\n{log_text}",  # noqa: E501
+                data=data,
+            )
         except httpx.HTTPError as exc:
             return ToolResult(success=False, error=f"Logs fetch failed: {exc}")
 
@@ -296,7 +322,9 @@ class EncliiHealthTool(BaseTool):
 
             status = data.get("status", "unknown")
             pods = data.get("pods", [])
-            pod_summary = ", ".join(f"{p.get('name', '?')}: {p.get('status', '?')}" for p in pods[:5])
+            pod_summary = ", ".join(
+                f"{p.get('name', '?')}: {p.get('status', '?')}" for p in pods[:5]
+            )
 
             return ToolResult(
                 success=True,
@@ -331,7 +359,11 @@ class EncliiSecretsTool(BaseTool):
                 },
                 "key": {"type": "string", "description": "Variable name (required for set/delete)"},
                 "value": {"type": "string", "description": "Variable value (required for set)"},
-                "is_secret": {"type": "boolean", "default": True, "description": "Mark as secret (redacted in UI)"},
+                "is_secret": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Mark as secret (redacted in UI)",
+                },
             },
             "required": ["service_id"],
         }
@@ -355,7 +387,7 @@ class EncliiSecretsTool(BaseTool):
                     # Redact secret values
                     vars_list = data.get("env_vars", data if isinstance(data, list) else [])
                     summary = "\n".join(
-                        f"  {v.get('key', '?')}={'****' if v.get('is_secret') else v.get('value', '?')}"
+                        f"  {v.get('key', '?')}={'****' if v.get('is_secret') else v.get('value', '?')}"  # noqa: E501
                         for v in vars_list
                     )
                     return ToolResult(
@@ -368,14 +400,22 @@ class EncliiSecretsTool(BaseTool):
                     key = kwargs.get("key", "")
                     value = kwargs.get("value", "")
                     if not key or not value:
-                        return ToolResult(success=False, error="key and value required for set action")
+                        return ToolResult(
+                            success=False, error="key and value required for set action"
+                        )
                     resp = await client.post(
                         f"{ENCLII_API_URL}/v1/services/{service_id}/env-vars",
                         headers=_headers(),
-                        json={"key": key, "value": value, "is_secret": kwargs.get("is_secret", True)},
+                        json={
+                            "key": key,
+                            "value": value,
+                            "is_secret": kwargs.get("is_secret", True),
+                        },
                     )
                     resp.raise_for_status()
-                    return ToolResult(success=True, output=f"Set {key}=**** (secret)", data=resp.json())
+                    return ToolResult(
+                        success=True, output=f"Set {key}=**** (secret)", data=resp.json()
+                    )
 
                 elif action == "delete":
                     key = kwargs.get("key", "")

@@ -13,6 +13,7 @@ import pytest
 
 # -- Helpers ----------------------------------------------------------------
 
+
 def _make_event(
     event_type: str = "node_start",
     event_category: str = "lifecycle",
@@ -36,9 +37,7 @@ def _make_event(
 class TestCreateEvent:
     """Tests for POST /api/v1/events."""
 
-    async def test_create_event_requires_auth(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_create_event_requires_auth(self, client: httpx.AsyncClient) -> None:
         """POST /events without auth is rejected."""
         resp = await client.post("/api/v1/events/", json=_make_event())
         assert resp.status_code in (401, 403)
@@ -173,9 +172,7 @@ class TestListEvents:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    async def test_list_events_requires_auth(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_list_events_requires_auth(self, client: httpx.AsyncClient) -> None:
         """GET /events without auth is rejected."""
         resp = await client.get("/api/v1/events/")
         assert resp.status_code in (401, 403)
@@ -200,8 +197,12 @@ class TestListEvents:
         self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
         """Filtering by event_type narrows the result set."""
-        await client.post("/api/v1/events/", json=_make_event(event_type="llm_call"), headers=auth_headers)
-        await client.post("/api/v1/events/", json=_make_event(event_type="node_end"), headers=auth_headers)
+        await client.post(
+            "/api/v1/events/", json=_make_event(event_type="llm_call"), headers=auth_headers
+        )
+        await client.post(
+            "/api/v1/events/", json=_make_event(event_type="node_end"), headers=auth_headers
+        )
 
         resp = await client.get(
             "/api/v1/events/",
@@ -218,11 +219,13 @@ class TestListEvents:
     ) -> None:
         """Filtering by event_category narrows the result set."""
         await client.post(
-            "/api/v1/events/", json=_make_event(event_category="inference"),
+            "/api/v1/events/",
+            json=_make_event(event_category="inference"),
             headers=auth_headers,
         )
         await client.post(
-            "/api/v1/events/", json=_make_event(event_category="lifecycle"),
+            "/api/v1/events/",
+            json=_make_event(event_category="lifecycle"),
             headers=auth_headers,
         )
 
@@ -339,16 +342,12 @@ class TestTaskTimeline:
         # Create events with duration and token counts.
         await client.post(
             "/api/v1/events/",
-            json=_make_event(
-                task_id=task_id, duration_ms=100, token_count=50
-            ),
+            json=_make_event(task_id=task_id, duration_ms=100, token_count=50),
             headers=auth_headers,
         )
         await client.post(
             "/api/v1/events/",
-            json=_make_event(
-                task_id=task_id, duration_ms=200, token_count=75
-            ),
+            json=_make_event(task_id=task_id, duration_ms=200, token_count=75),
             headers=auth_headers,
         )
 
@@ -370,9 +369,7 @@ class TestTaskTimeline:
         ts1 = body["events"][1]["created_at"]
         assert ts0 <= ts1
 
-    async def test_timeline_requires_auth(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_timeline_requires_auth(self, client: httpx.AsyncClient) -> None:
         """Timeline endpoint requires authentication."""
         task_id = str(uuid.uuid4())
         resp = await client.get(f"/api/v1/events/tasks/{task_id}/timeline")

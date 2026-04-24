@@ -36,8 +36,9 @@ class TestRegistry:
 class TestCredsAbsence:
     @pytest.mark.asyncio
     async def test_missing_account_sid_errors(self) -> None:
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", ""), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", ""),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
         ):
             r = await SmsSendTool().execute(to_number="+5215555555555", body="hi")
             assert r.success is False
@@ -45,8 +46,9 @@ class TestCredsAbsence:
 
     @pytest.mark.asyncio
     async def test_missing_auth_token_errors(self) -> None:
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", ""
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", ""),
         ):
             r = await SmsStatusTool().execute(message_sid="SM1")
             assert r.success is False
@@ -54,9 +56,11 @@ class TestCredsAbsence:
 
     @pytest.mark.asyncio
     async def test_missing_from_number_errors(self) -> None:
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
-        ), patch("selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", ""):
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", ""),
+        ):
             r = await SmsSendTool().execute(to_number="+52555", body="hi")
             assert r.success is False
             assert "TWILIO_FROM_NUMBER" in (r.error or "")
@@ -79,16 +83,13 @@ class TestSmsSend:
                 "num_segments": "1",
             }
 
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+15005550006"
-        ), patch(
-            "selva_tools.builtins.twilio_sms._request", new=fake
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+15005550006"),
+            patch("selva_tools.builtins.twilio_sms._request", new=fake),
         ):
-            r = await SmsSendTool().execute(
-                to_number="+5215555555555", body="hola"
-            )
+            r = await SmsSendTool().execute(to_number="+5215555555555", body="hola")
             assert r.success is True
             assert r.data["sid"] == "SM123"
             assert captured["data"]["To"] == "+5215555555555"
@@ -103,12 +104,11 @@ class TestSmsSend:
             captured["data"] = data
             return 201, {"sid": "SM9", "status": "queued"}
 
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+1500"
-        ), patch(
-            "selva_tools.builtins.twilio_sms._request", new=fake
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+1500"),
+            patch("selva_tools.builtins.twilio_sms._request", new=fake),
         ):
             await SmsSendTool().execute(
                 to_number="+52555",
@@ -119,17 +119,18 @@ class TestSmsSend:
 
     @pytest.mark.asyncio
     async def test_error_bubbles_up(self) -> None:
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+1500"
-        ), patch(
-            "selva_tools.builtins.twilio_sms._request",
-            new=AsyncMock(
-                return_value=(
-                    400,
-                    {"message": "The 'To' number is invalid.", "code": 21211},
-                )
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+1500"),
+            patch(
+                "selva_tools.builtins.twilio_sms._request",
+                new=AsyncMock(
+                    return_value=(
+                        400,
+                        {"message": "The 'To' number is invalid.", "code": 21211},
+                    )
+                ),
             ),
         ):
             r = await SmsSendTool().execute(to_number="bad", body="hi")
@@ -146,12 +147,11 @@ class TestSmsSendTemplate:
             captured["data"] = data
             return 201, {"sid": "SM_T1", "status": "queued"}
 
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+1500"
-        ), patch(
-            "selva_tools.builtins.twilio_sms._request", new=fake
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_FROM_NUMBER", "+1500"),
+            patch("selva_tools.builtins.twilio_sms._request", new=fake),
         ):
             r = await SmsSendTemplateTool().execute(
                 to_number="+52555",
@@ -163,6 +163,7 @@ class TestSmsSendTemplate:
             assert captured["data"]["ContentSid"] == "HXabc123"
             # ContentVariables is a JSON string of the mapping
             import json
+
             loaded = json.loads(captured["data"]["ContentVariables"])
             assert loaded == {"1": "Ana", "2": "09:00"}
 
@@ -170,22 +171,24 @@ class TestSmsSendTemplate:
 class TestSmsStatus:
     @pytest.mark.asyncio
     async def test_status_returned(self) -> None:
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.twilio_sms._request",
-            new=AsyncMock(
-                return_value=(
-                    200,
-                    {
-                        "sid": "SM1",
-                        "status": "delivered",
-                        "error_code": None,
-                        "error_message": None,
-                        "price": "-0.0075",
-                        "price_unit": "USD",
-                    },
-                )
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
+            patch(
+                "selva_tools.builtins.twilio_sms._request",
+                new=AsyncMock(
+                    return_value=(
+                        200,
+                        {
+                            "sid": "SM1",
+                            "status": "delivered",
+                            "error_code": None,
+                            "error_message": None,
+                            "price": "-0.0075",
+                            "price_unit": "USD",
+                        },
+                    )
+                ),
             ),
         ):
             r = await SmsStatusTool().execute(message_sid="SM1")
@@ -213,9 +216,11 @@ class TestSmsListMessages:
                 ]
             }
 
-        with patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"), patch(
-            "selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"
-        ), patch("selva_tools.builtins.twilio_sms._request", new=fake):
+        with (
+            patch("selva_tools.builtins.twilio_sms.TWILIO_ACCOUNT_SID", "AC1"),
+            patch("selva_tools.builtins.twilio_sms.TWILIO_AUTH_TOKEN", "t"),
+            patch("selva_tools.builtins.twilio_sms._request", new=fake),
+        ):
             r = await SmsListMessagesTool().execute(to="+52555", limit=10)
             assert r.success is True
             assert len(r.data["messages"]) == 1

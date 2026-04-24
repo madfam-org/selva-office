@@ -57,7 +57,7 @@ import logging
 import os
 import re
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from ..audience import Audience
@@ -71,9 +71,7 @@ logger = logging.getLogger("selva.tools.k8s_configmap")
 # ---------------------------------------------------------------------------
 
 # Same 3 target clusters as RFC 0005.
-ALLOWED_CLUSTERS = frozenset(
-    {"madfam-dev", "madfam-staging", "madfam-prod"}
-)
+ALLOWED_CLUSTERS = frozenset({"madfam-dev", "madfam-staging", "madfam-prod"})
 
 # Namespaces in which the ``selva-config-writer`` SA has a RoleBinding.
 # Adding a namespace requires a manifest PR under
@@ -112,7 +110,7 @@ MAX_VALUE_BYTES = 256 * 1024
 SERVICEACCOUNT_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 
-class ConfigOperation(str, Enum):
+class ConfigOperation(StrEnum):
     """Operation types recorded in ``configmap_audit_log.operation``."""
 
     READ = "read"
@@ -248,9 +246,7 @@ def _read_configmap(namespace: str, name: str) -> dict[str, str] | None:
             raise _K8sAuthError(
                 f"read_namespaced_config_map forbidden: status={exc.status}"
             ) from exc
-        raise _K8sClientError(
-            f"read_namespaced_config_map failed: status={exc.status}"
-        ) from exc
+        raise _K8sClientError(f"read_namespaced_config_map failed: status={exc.status}") from exc
 
     data = getattr(cm, "data", None) or {}
     # ``data`` values are always strings in K8s ConfigMaps (binaryData
@@ -258,9 +254,7 @@ def _read_configmap(namespace: str, name: str) -> dict[str, str] | None:
     return dict(data)
 
 
-def _list_configmaps(
-    namespace: str, label_selector: str | None
-) -> list[dict[str, Any]]:
+def _list_configmaps(namespace: str, label_selector: str | None) -> list[dict[str, Any]]:
     """Return a compact list of ConfigMaps in the namespace."""
     from kubernetes import client  # type: ignore[import-not-found]
     from kubernetes.client.rest import ApiException  # type: ignore[import-not-found]
@@ -276,9 +270,7 @@ def _list_configmaps(
             raise _K8sAuthError(
                 f"list_namespaced_config_map forbidden: status={exc.status}"
             ) from exc
-        raise _K8sClientError(
-            f"list_namespaced_config_map failed: status={exc.status}"
-        ) from exc
+        raise _K8sClientError(f"list_namespaced_config_map failed: status={exc.status}") from exc
 
     items = getattr(result, "items", None) or []
     compact: list[dict[str, Any]] = []
@@ -330,8 +322,7 @@ def _apply_configmap_key(
         if exc.status == 404:
             if not create_if_missing:
                 raise _K8sClientError(
-                    f"ConfigMap {namespace}/{name} does not exist and "
-                    "create_if_missing=False"
+                    f"ConfigMap {namespace}/{name} does not exist and create_if_missing=False"
                 ) from exc
             try:
                 v1.create_namespaced_config_map(namespace=namespace, body=body)
@@ -344,9 +335,7 @@ def _apply_configmap_key(
             raise _K8sAuthError(
                 f"patch_namespaced_config_map forbidden: status={exc.status}"
             ) from exc
-        raise _K8sClientError(
-            f"patch_namespaced_config_map failed: status={exc.status}"
-        ) from exc
+        raise _K8sClientError(f"patch_namespaced_config_map failed: status={exc.status}") from exc
 
 
 def _delete_configmap_key(namespace: str, name: str, key: str) -> bool:
@@ -472,9 +461,7 @@ def _resolve_hitl_level(env: str, *, feature_flag: bool) -> str:
     else:
         override = PermissionLevel.ASK
 
-    engine = PermissionEngine(
-        overrides={ActionCategory.K8S_CONFIGMAP_WRITE: override}
-    )
+    engine = PermissionEngine(overrides={ActionCategory.K8S_CONFIGMAP_WRITE: override})
     result = engine.evaluate(ActionCategory.K8S_CONFIGMAP_WRITE)
     return result.level.value
 
@@ -492,10 +479,7 @@ def _validate_common_args(
 ) -> str | None:
     """Return an error message if any common arg is invalid, else None."""
     if cluster not in ALLOWED_CLUSTERS:
-        return (
-            f"cluster must be one of {sorted(ALLOWED_CLUSTERS)}; got "
-            f"{cluster!r}"
-        )
+        return f"cluster must be one of {sorted(ALLOWED_CLUSTERS)}; got {cluster!r}"
     if namespace not in ALLOWED_NAMESPACES:
         return (
             f"namespace {namespace!r} is not in the allow-list. "
@@ -595,7 +579,10 @@ class ReadConfigMapTool(BaseTool):
             msg = str(exc)
             logger.error(
                 "configmap read auth failure cluster=%s ns=%s name=%s err=%s",
-                cluster, namespace, configmap_name, msg,
+                cluster,
+                namespace,
+                configmap_name,
+                msg,
             )
             _audit_record(
                 approval_request_id=approval_request_id,
@@ -656,9 +643,7 @@ class ReadConfigMapTool(BaseTool):
 
         if data is None:
             return ToolResult(
-                output=(
-                    f"ConfigMap {namespace}/{configmap_name} does not exist."
-                ),
+                output=(f"ConfigMap {namespace}/{configmap_name} does not exist."),
                 data={
                     "approval_request_id": approval_request_id,
                     "status": "not_found",
@@ -669,9 +654,7 @@ class ReadConfigMapTool(BaseTool):
             )
 
         return ToolResult(
-            output=(
-                f"Read {len(data)} keys from {namespace}/{configmap_name}."
-            ),
+            output=(f"Read {len(data)} keys from {namespace}/{configmap_name}."),
             data={
                 "approval_request_id": approval_request_id,
                 "status": "applied",
@@ -793,9 +776,7 @@ class SetConfigMapValueTool(BaseTool):
         if new_value is None or not isinstance(new_value, str):
             return ToolResult(success=False, error="value is required (string)")
         if len(new_value.encode("utf-8")) > MAX_VALUE_BYTES:
-            return ToolResult(
-                success=False, error="value exceeds per-key size limit"
-            )
+            return ToolResult(success=False, error="value exceeds per-key size limit")
         if not reason or len(reason) < 10:
             return ToolResult(
                 success=False,
@@ -814,8 +795,14 @@ class SetConfigMapValueTool(BaseTool):
         logger.info(
             "configmap write requested cluster=%s ns=%s name=%s key=%s "
             "is_flag=%s hitl=%s approval_id=%s new_sha_prefix=%s",
-            cluster, namespace, configmap_name, key, is_flag, hitl_level,
-            approval_request_id, new_sha_pref,
+            cluster,
+            namespace,
+            configmap_name,
+            key,
+            is_flag,
+            hitl_level,
+            approval_request_id,
+            new_sha_pref,
         )
 
         # HITL gate: staging/prod return pending_approval without touching
@@ -1180,8 +1167,7 @@ class ListConfigMapsTool(BaseTool):
                 "label_selector": {
                     "type": "string",
                     "description": (
-                        "Optional K8s label selector (e.g. "
-                        "'app.kubernetes.io/part-of=karafiel')."
+                        "Optional K8s label selector (e.g. 'app.kubernetes.io/part-of=karafiel')."
                     ),
                 },
                 "rationale": {"type": "string"},
@@ -1206,17 +1192,12 @@ class ListConfigMapsTool(BaseTool):
         if cluster not in ALLOWED_CLUSTERS:
             return ToolResult(
                 success=False,
-                error=(
-                    f"cluster must be one of {sorted(ALLOWED_CLUSTERS)}; got "
-                    f"{cluster!r}"
-                ),
+                error=(f"cluster must be one of {sorted(ALLOWED_CLUSTERS)}; got {cluster!r}"),
             )
         if namespace not in ALLOWED_NAMESPACES:
             return ToolResult(
                 success=False,
-                error=(
-                    f"namespace {namespace!r} is not in the allow-list."
-                ),
+                error=(f"namespace {namespace!r} is not in the allow-list."),
             )
         route_err = _validate_route(cluster, namespace)
         if route_err:
@@ -1227,9 +1208,7 @@ class ListConfigMapsTool(BaseTool):
                 error="rationale is required (>= 10 chars, human-readable why)",
             )
         if label_selector is not None and not isinstance(label_selector, str):
-            return ToolResult(
-                success=False, error="label_selector must be a string"
-            )
+            return ToolResult(success=False, error="label_selector must be a string")
 
         approval_request_id = str(uuid.uuid4())
         hitl_level = "allow"

@@ -30,5 +30,15 @@ module.exports = {
     'no-console': 'warn',
     'prefer-const': 'error',
   },
+  overrides: [
+    {
+      // Test files mock Colyseus schemas and other structural types with `as any`
+      // to avoid pulling real schema classes just for assertions.
+      files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+      },
+    },
+  ],
   ignorePatterns: ['node_modules/', 'dist/', '.next/', '.turbo/'],
 };

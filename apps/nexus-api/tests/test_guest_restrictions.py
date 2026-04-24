@@ -12,6 +12,7 @@ from nexus_api.auth import get_current_user, require_non_guest
 # Minimal app fixture
 # ---------------------------------------------------------------------------
 
+
 def _create_test_app() -> FastAPI:
     from fastapi import APIRouter, Depends
 
@@ -38,6 +39,7 @@ def _create_test_app() -> FastAPI:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _guest_user() -> dict:
     return {

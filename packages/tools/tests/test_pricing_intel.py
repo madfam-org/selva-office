@@ -9,7 +9,6 @@ we never depend on a live dhanam/catalog.yaml snapshot.
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import httpx
@@ -22,14 +21,13 @@ from selva_tools.builtins.pricing_intel import (
     CompetitorPriceLookupTool,
     PromoStackFinding,
     TierGapFinding,
-    apply_coupon,
-    audit_promo_stacks,
-    audit_tier_gaps,
     _classify_promo_stack,
     _classify_tier_gap,
     _load_catalog_from_yaml,
+    apply_coupon,
+    audit_promo_stacks,
+    audit_tier_gaps,
 )
-
 
 # ============================================================================
 # apply_coupon — percent vs amount-off, currency guards
@@ -44,20 +42,14 @@ class TestApplyCoupon:
         assert apply_coupon(10000, {"percent_off": 50}, "MXN") == 5000
 
     def test_amount_off_same_currency(self) -> None:
-        assert apply_coupon(
-            10000, {"amount_off_cents": 400, "currency": "mxn"}, "MXN"
-        ) == 9600
+        assert apply_coupon(10000, {"amount_off_cents": 400, "currency": "mxn"}, "MXN") == 9600
 
     def test_amount_off_wrong_currency_skipped(self) -> None:
         # Coupon is in USD, the tier is in MXN — coupon should not apply.
-        assert apply_coupon(
-            10000, {"amount_off_cents": 400, "currency": "usd"}, "MXN"
-        ) == 10000
+        assert apply_coupon(10000, {"amount_off_cents": 400, "currency": "usd"}, "MXN") == 10000
 
     def test_amount_off_never_goes_below_zero(self) -> None:
-        assert apply_coupon(
-            100, {"amount_off_cents": 500, "currency": "mxn"}, "MXN"
-        ) == 0
+        assert apply_coupon(100, {"amount_off_cents": 500, "currency": "mxn"}, "MXN") == 0
 
     def test_unknown_coupon_shape_noop(self) -> None:
         assert apply_coupon(10000, {"duration": "forever"}, "MXN") == 10000
@@ -227,9 +219,7 @@ class TestCatalogLoadTool:
         assert res.data["coupons"] == ["intro_mx"]
 
     async def test_bad_path_returns_error(self, tmp_path: Path) -> None:
-        res = await CatalogLoadTool().execute(
-            source=str(tmp_path / "missing.yaml")
-        )
+        res = await CatalogLoadTool().execute(source=str(tmp_path / "missing.yaml"))
         assert res.success is False
         assert "failed to load catalog" in (res.error or "")
 
@@ -265,6 +255,7 @@ class TestCompetitorPriceLookupTool:
 
         transport = httpx.MockTransport(handler)
         import httpx as _httpx
+
         real_async_client = _httpx.AsyncClient
 
         # Monkey-patch AsyncClient to use our transport for this test only.
@@ -275,9 +266,7 @@ class TestCompetitorPriceLookupTool:
 
         _httpx.AsyncClient = PatchedClient  # type: ignore[assignment]
         try:
-            res = await CompetitorPriceLookupTool().execute(
-                url="https://comp.test/pricing"
-            )
+            res = await CompetitorPriceLookupTool().execute(url="https://comp.test/pricing")
             assert res.success
             assert res.data["status_code"] == 200
             assert "$99" in res.data["body"]
@@ -295,6 +284,7 @@ class TestCompetitorPriceLookupTool:
 
         transport = httpx.MockTransport(handler)
         import httpx as _httpx
+
         real = _httpx.AsyncClient
 
         class PatchedClient(real):
@@ -304,9 +294,7 @@ class TestCompetitorPriceLookupTool:
 
         _httpx.AsyncClient = PatchedClient  # type: ignore[assignment]
         try:
-            res = await CompetitorPriceLookupTool().execute(
-                url="https://comp.test/pricing"
-            )
+            res = await CompetitorPriceLookupTool().execute(url="https://comp.test/pricing")
             assert res.success is False
             assert res.data.get("status_code") == 503
         finally:
@@ -320,9 +308,16 @@ class TestCompetitorPriceLookupTool:
 
 def test_tier_gap_finding_round_trips_to_dict() -> None:
     f = TierGapFinding(
-        product_slug="x", from_tier="a", to_tier="b", currency="MXN",
-        from_monthly=1, to_monthly=2, ratio=2.0, feature_delta=1,
-        severity="ok", note="healthy",
+        product_slug="x",
+        from_tier="a",
+        to_tier="b",
+        currency="MXN",
+        from_monthly=1,
+        to_monthly=2,
+        ratio=2.0,
+        feature_delta=1,
+        severity="ok",
+        note="healthy",
     )
     d = f.__dict__
     assert d["product_slug"] == "x"
@@ -331,9 +326,15 @@ def test_tier_gap_finding_round_trips_to_dict() -> None:
 
 def test_promo_stack_finding_round_trips_to_dict() -> None:
     f = PromoStackFinding(
-        product_slug="x", tier_slug="pro", coupon="c1", currency="MXN",
-        list_monthly=10000, effective_monthly=6000, total_discount_pct=40.0,
-        severity="ok", note="healthy",
+        product_slug="x",
+        tier_slug="pro",
+        coupon="c1",
+        currency="MXN",
+        list_monthly=10000,
+        effective_monthly=6000,
+        total_discount_pct=40.0,
+        severity="ok",
+        note="healthy",
     )
     d = f.__dict__
     assert d["coupon"] == "c1"

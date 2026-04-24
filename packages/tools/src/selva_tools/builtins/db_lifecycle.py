@@ -72,9 +72,7 @@ async def _exec_in_postgres(
     except ImportError:
         return False, "kubernetes.stream unavailable"
     try:
-        pods = core.list_namespaced_pod(
-            namespace=namespace, label_selector="app=postgres"
-        )
+        pods = core.list_namespaced_pod(namespace=namespace, label_selector="app=postgres")
         if not pods.items:
             return False, f"no postgres pod found in namespace {namespace}"
         pod_name = pods.items[0].metadata.name
@@ -234,8 +232,8 @@ class DbRestoreFromR2Tool(BaseTool):
         if create:
             # Safe because db was validated against _SAFE_IDENT.
             precmd = (
-                f'psql -tAc "SELECT 1 FROM pg_database WHERE datname=\'{db}\'" '
-                f'| grep -q 1 || createdb {db}; '
+                f"psql -tAc \"SELECT 1 FROM pg_database WHERE datname='{db}'\" "
+                f"| grep -q 1 || createdb {db}; "
             )
         shell = (
             f"set -eo pipefail; "
@@ -329,9 +327,7 @@ class DbMaskAndCopyTool(BaseTool):
         #         against target for each (table, col).
         update_statements = []
         for table, cols in rules.items():
-            assigns = ", ".join(
-                f"{c} = encode(sha256({c}::text::bytea), 'hex')" for c in cols
-            )
+            assigns = ", ".join(f"{c} = encode(sha256({c}::text::bytea), 'hex')" for c in cols)
             # Only rows where at least one of the target columns is non-null.
             where = " OR ".join(f"{c} IS NOT NULL" for c in cols)
             update_statements.append(f"UPDATE {table} SET {assigns} WHERE {where};")
@@ -401,10 +397,7 @@ class DbSizeReportTool(BaseTool):
             "ORDER BY bytes DESC;"
         )
         # -F, sets column sep; -A disables aligned output (parseable); -t drops header.
-        shell = (
-            f"set -eo pipefail; "
-            f'psql -v ON_ERROR_STOP=1 -A -t -F"|" {db} -c "{sql}"'
-        )
+        shell = f'set -eo pipefail; psql -v ON_ERROR_STOP=1 -A -t -F"|" {db} -c "{sql}"'
         ok, out = await _exec_in_postgres(shell, namespace=namespace, timeout=120)
         if not ok:
             return ToolResult(success=False, error=out)
@@ -433,9 +426,7 @@ class DbSizeReportTool(BaseTool):
             total_bytes += nbytes
         return ToolResult(
             success=True,
-            output=(
-                f"{db}: {len(rows)} table(s), total {total_bytes} bytes."
-            ),
+            output=(f"{db}: {len(rows)} table(s), total {total_bytes} bytes."),
             data={
                 "database": db,
                 "tables": rows,

@@ -58,8 +58,7 @@ class WhatsAppTemplateTool(BaseTool):
                 "phone": {
                     "type": "string",
                     "description": (
-                        "Recipient phone number in E.164 format "
-                        "(e.g., +5215512345678)"
+                        "Recipient phone number in E.164 format (e.g., +5215512345678)"
                     ),
                 },
                 "template_name": {
@@ -94,8 +93,7 @@ class WhatsAppTemplateTool(BaseTool):
             return ToolResult(
                 success=False,
                 error=(
-                    f"Unknown template: {template_name}. "
-                    f"Available: {list(TEMPLATE_CATALOG.keys())}"
+                    f"Unknown template: {template_name}. Available: {list(TEMPLATE_CATALOG.keys())}"
                 ),
             )
 
@@ -111,12 +109,12 @@ class WhatsAppTemplateTool(BaseTool):
         # Build template message payload per Meta Business API spec
         template_components: list[dict[str, Any]] = []
         if parameters:
-            template_components.append({
-                "type": "body",
-                "parameters": [
-                    {"type": "text", "text": str(p)} for p in parameters
-                ],
-            })
+            template_components.append(
+                {
+                    "type": "body",
+                    "parameters": [{"type": "text", "text": str(p)} for p in parameters],
+                }
+            )
 
         payload = {
             "messaging_product": "whatsapp",

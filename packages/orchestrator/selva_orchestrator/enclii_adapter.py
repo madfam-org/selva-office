@@ -13,11 +13,13 @@ class EncliiAdapter:
 
     def __init__(self, endpoint: str | None = None, token: str | None = None):
         # We default to the local cluster or pull from environment
-        self.endpoint = endpoint or os.environ.get("ENCLII_API_URL", "http://enclii.local:4200/api/v1")
+        self.endpoint = endpoint or os.environ.get(
+            "ENCLII_API_URL", "http://enclii.local:4200/api/v1"
+        )
         self.token = token or os.environ.get("ENCLII_API_TOKEN")
         self.client = httpx.AsyncClient(
             base_url=self.endpoint,
-            headers={"Authorization": f"Bearer {self.token}"} if self.token else {}
+            headers={"Authorization": f"Bearer {self.token}"} if self.token else {},
         )
 
     async def deploy_dirty_pod(self, target_url: str) -> dict[str, Any]:
@@ -28,9 +30,7 @@ class EncliiAdapter:
         payload = {
             "template": "acp-dirty-pod",
             "run_id": run_id,
-            "environment": {
-                "TARGET_URL": target_url
-            }
+            "environment": {"TARGET_URL": target_url},
         }
         try:
             response = await self.client.post("/deployments", json=payload)
@@ -55,9 +55,7 @@ class EncliiAdapter:
             "template": "acp-clean-pod",
             "run_id": run_id,
             "airgap": True,
-            "payloads": {
-                "PRD_SPEC": sanitized_spec
-            }
+            "payloads": {"PRD_SPEC": sanitized_spec},
         }
 
         try:

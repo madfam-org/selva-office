@@ -14,10 +14,12 @@ async def test_dlq_stats_endpoint():
 
     mock_client = AsyncMock()
     mock_client.xlen = AsyncMock(return_value=3)
-    mock_client.xrevrange = AsyncMock(return_value=[
-        ("1-0", {"data": '{"task_id": "t1"}'}),
-        ("2-0", {"data": '{"task_id": "t2"}'}),
-    ])
+    mock_client.xrevrange = AsyncMock(
+        return_value=[
+            ("1-0", {"data": '{"task_id": "t1"}'}),
+            ("2-0", {"data": '{"task_id": "t2"}'}),
+        ]
+    )
 
     mock_pool = MagicMock()
     mock_pool.client = AsyncMock(return_value=mock_client)

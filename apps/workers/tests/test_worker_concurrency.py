@@ -116,6 +116,7 @@ async def test_removes_stale_worktrees(tmp_path):
     # Set mtime to 25 hours ago
     old_time = time.time() - (25 * 3600)
     import os
+
     os.utime(stale_wt, (old_time, old_time))
 
     removed = await _cleanup_stale_worktrees(str(tmp_path), stale_hours=24)

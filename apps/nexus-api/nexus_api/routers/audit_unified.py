@@ -26,7 +26,7 @@ See also: ``nexus_api.routers.audit`` (generic per-request audit for the
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -116,8 +116,7 @@ def _outcome_from_status(status_str: str) -> Literal["success", "failure", "deni
 def _secret_to_event(row: SecretAuditLog) -> UnifiedAuditEvent:
     actor = row.actor_user_sub or (f"agent:{row.agent_id}" if row.agent_id else None)
     target = (
-        f"{row.target_cluster}/{row.target_namespace}/"
-        f"{row.target_secret_name}:{row.target_key}"
+        f"{row.target_cluster}/{row.target_namespace}/{row.target_secret_name}:{row.target_key}"
     )
     return UnifiedAuditEvent(
         timestamp=row.created_at,
@@ -177,9 +176,7 @@ def _github_to_event(row: GithubAdminAuditLog) -> UnifiedAuditEvent:
 
 def _configmap_to_event(row: ConfigmapAuditLog) -> UnifiedAuditEvent:
     actor = row.actor_user_sub or (f"agent:{row.agent_id}" if row.agent_id else None)
-    target = (
-        f"{row.target_cluster}/{row.target_namespace}/{row.target_configmap_name}"
-    )
+    target = f"{row.target_cluster}/{row.target_namespace}/{row.target_configmap_name}"
     if row.target_key:
         target = f"{target}:{row.target_key}"
     return UnifiedAuditEvent(
@@ -284,7 +281,7 @@ def _parse_cursor(cursor: str | None) -> datetime | None:
             detail=f"Invalid cursor format (expected ISO-8601): {cursor}",
         ) from exc
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed
 
 

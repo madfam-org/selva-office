@@ -20,7 +20,6 @@ from selva_permissions.playbook import (
 )
 from selva_permissions.types import ActionCategory, PermissionLevel
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -120,14 +119,18 @@ class TestPlaybookExecutionState:
         state = PlaybookExecutionState(playbook=lead_response_playbook)
         assert state.dollars_remaining_cents == 500
 
-    def test_dollars_remaining_after_exposure(self, lead_response_playbook: PlaybookDefinition) -> None:
+    def test_dollars_remaining_after_exposure(
+        self, lead_response_playbook: PlaybookDefinition
+    ) -> None:
         state = PlaybookExecutionState(
             playbook=lead_response_playbook,
             dollars_exposed_cents=200,
         )
         assert state.dollars_remaining_cents == 300
 
-    def test_dollars_remaining_at_zero_cap(self, zero_financial_playbook: PlaybookDefinition) -> None:
+    def test_dollars_remaining_at_zero_cap(
+        self, zero_financial_playbook: PlaybookDefinition
+    ) -> None:
         state = PlaybookExecutionState(playbook=zero_financial_playbook)
         assert state.dollars_remaining_cents == 0
 
@@ -150,7 +153,9 @@ class TestPlaybookGuardActionCategory:
         result = guard.evaluate(ActionCategory.EMAIL_SEND)
         assert result == PermissionLevel.ALLOW
 
-    def test_disallowed_action_returns_deny(self, lead_response_playbook: PlaybookDefinition) -> None:
+    def test_disallowed_action_returns_deny(
+        self, lead_response_playbook: PlaybookDefinition
+    ) -> None:
         state = PlaybookExecutionState(playbook=lead_response_playbook)
         guard = PlaybookGuard(state)
         result = guard.evaluate(ActionCategory.DEPLOY)
@@ -201,7 +206,9 @@ class TestPlaybookGuardTokenBudget:
         result = guard.evaluate(ActionCategory.API_CALL, token_cost=10)
         assert result == PermissionLevel.DENY
 
-    def test_zero_token_cost_ignores_budget(self, lead_response_playbook: PlaybookDefinition) -> None:
+    def test_zero_token_cost_ignores_budget(
+        self, lead_response_playbook: PlaybookDefinition
+    ) -> None:
         state = PlaybookExecutionState(playbook=lead_response_playbook, tokens_used=50)
         guard = PlaybookGuard(state)
         # Zero cost should pass even when budget is exhausted
@@ -243,9 +250,7 @@ class TestPlaybookGuardFinancialCap:
         result = guard.evaluate(ActionCategory.API_CALL, financial_exposure_cents=1)
         assert result == PermissionLevel.DENY
 
-    def test_zero_exposure_ignores_cap(
-        self, zero_financial_playbook: PlaybookDefinition
-    ) -> None:
+    def test_zero_exposure_ignores_cap(self, zero_financial_playbook: PlaybookDefinition) -> None:
         state = PlaybookExecutionState(playbook=zero_financial_playbook)
         guard = PlaybookGuard(state)
         # Zero financial exposure should pass even with $0 cap
@@ -345,9 +350,7 @@ class TestPlaybookEngineIntegration:
         """When the matrix says DENY, playbook cannot relax it."""
         from selva_permissions.engine import PermissionEngine
 
-        engine = PermissionEngine(
-            overrides={ActionCategory.EMAIL_SEND: PermissionLevel.DENY}
-        )
+        engine = PermissionEngine(overrides={ActionCategory.EMAIL_SEND: PermissionLevel.DENY})
         state = PlaybookExecutionState(playbook=lead_response_playbook)
         guard = PlaybookGuard(state)
 

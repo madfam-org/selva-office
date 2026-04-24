@@ -119,8 +119,7 @@ class SendEmailTool(BaseTool):
             return ToolResult(
                 success=False,
                 error=(
-                    "Outbound voice mode not configured. Complete onboarding "
-                    "before sending mail."
+                    "Outbound voice mode not configured. Complete onboarding before sending mail."
                 ),
             )
 
@@ -183,9 +182,17 @@ class SendEmailTool(BaseTool):
                 logger.info("Email sent to=%s id=%s", to, message_id)
                 try:
                     from ..service_tracking import emit_service_usage
-                    emit_service_usage("resend", "transactional_email_sent", 1, {
-                        "to": to, "subject": subject, "message_id": message_id,
-                    })
+
+                    emit_service_usage(
+                        "resend",
+                        "transactional_email_sent",
+                        1,
+                        {
+                            "to": to,
+                            "subject": subject,
+                            "message_id": message_id,
+                        },
+                    )
                 except Exception:
                     pass
                 return ToolResult(

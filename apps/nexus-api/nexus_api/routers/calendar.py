@@ -164,10 +164,7 @@ async def list_events(
         return CalendarEventsListResponse(events=[], is_busy=False)
 
     # Determine if user is currently busy
-    is_busy = any(
-        event.start <= now <= event.end and not event.is_all_day
-        for event in events
-    )
+    is_busy = any(event.start <= now <= event.end and not event.is_all_day for event in events)
 
     return CalendarEventsListResponse(
         events=[_event_to_response(e) for e in events],

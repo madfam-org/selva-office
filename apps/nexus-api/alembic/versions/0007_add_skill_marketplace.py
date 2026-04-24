@@ -49,9 +49,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
-    op.create_index(
-        "ix_skill_marketplace_entries_org_id", "skill_marketplace_entries", ["org_id"]
-    )
+    op.create_index("ix_skill_marketplace_entries_org_id", "skill_marketplace_entries", ["org_id"])
 
     op.create_table(
         "skill_ratings",

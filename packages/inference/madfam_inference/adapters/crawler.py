@@ -45,8 +45,7 @@ class CrawlerAdapter:
         token: str | None = None,
     ) -> None:
         self._base_url = (
-            base_url
-            or os.environ.get("CRAWLER_API_URL", "http://localhost:3070")
+            base_url or os.environ.get("CRAWLER_API_URL", "http://localhost:3070")
         ).rstrip("/")
         self._token = token or os.environ.get("CRAWLER_API_TOKEN", "")
 

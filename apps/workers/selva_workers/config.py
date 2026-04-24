@@ -49,6 +49,7 @@ class Settings(BaseSettings):
                 "Generate with: openssl rand -hex 32"
             )
         return self
+
     git_author_name: str = "autoswarm-bot"
     git_author_email: str = "bot@autoswarm.dev"
 
@@ -100,8 +101,7 @@ class Settings(BaseSettings):
         ]
         if not any(api_keys):
             warnings.warn(
-                "No inference API keys configured. "
-                "Workers will fall back to static logic.",
+                "No inference API keys configured. Workers will fall back to static logic.",
                 stacklevel=2,
             )
 

@@ -6,6 +6,7 @@ Verifies:
 - Registry warns on legacy skills missing the schema field
 - Skills with correct v1 schema load without warnings
 """
+
 from __future__ import annotations
 
 import logging
@@ -14,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-V1_SKILL = textwrap.dedent('''\
+V1_SKILL = textwrap.dedent("""\
     SKILL_SCHEMA_VERSION = "agentskills/v1"
     SKILL_VERSION = "1.0.0"
     SKILL_AUTHOR = "autoswarm-qa-oracle"
@@ -24,15 +25,15 @@ V1_SKILL = textwrap.dedent('''\
 
     def SKILL_ENTRYPOINT(*args, **kwargs):
         return {"product_count": 42}
-''')
+""")
 
-LEGACY_SKILL = textwrap.dedent('''\
+LEGACY_SKILL = textwrap.dedent("""\
     SKILL_DESCRIPTION = "Old skill without schema version."
     SKILL_METADATA = {"run_id": "legacy-run"}
 
     def SKILL_ENTRYPOINT(*args, **kwargs):
         return "legacy result"
-''')
+""")
 
 
 @pytest.fixture()
@@ -45,6 +46,7 @@ class TestRegistryV1Compliance:
         (skills_dir / "v1_skill.py").write_text(V1_SKILL)
 
         from selva_skills.registry import SkillRegistry
+
         reg = SkillRegistry(skills_dir=str(skills_dir))
 
         with caplog.at_level(logging.WARNING, logger="selva_skills.registry"):
@@ -57,6 +59,7 @@ class TestRegistryV1Compliance:
         (skills_dir / "legacy_skill.py").write_text(LEGACY_SKILL)
 
         from selva_skills.registry import SkillRegistry
+
         reg = SkillRegistry(skills_dir=str(skills_dir))
 
         with caplog.at_level(logging.WARNING, logger="selva_skills.registry"):
@@ -69,6 +72,7 @@ class TestRegistryV1Compliance:
         (skills_dir / "v1_skill.py").write_text(V1_SKILL)
 
         from selva_skills.registry import SkillRegistry
+
         reg = SkillRegistry(skills_dir=str(skills_dir))
         reg.load_skills()
 
@@ -81,6 +85,7 @@ class TestQAOracleV1Synthesis:
     def test_synthesis_prompt_mandates_schema_version(self, tmp_path, monkeypatch):
         """The SKILL_SYNTHESIS_PROMPT should require SKILL_SCHEMA_VERSION = 'agentskills/v1'."""
         from selva_workflows.acp_qa_oracle import SKILL_SYNTHESIS_PROMPT
+
         assert "agentskills/v1" in SKILL_SYNTHESIS_PROMPT
         assert "SKILL_SCHEMA_VERSION" in SKILL_SYNTHESIS_PROMPT
         assert "SKILL_VERSION" in SKILL_SYNTHESIS_PROMPT
@@ -92,6 +97,7 @@ class TestQAOracleV1Synthesis:
         monkeypatch.setenv("AUTOSWARM_SKILLS_DIR", str(tmp_path))
 
         from selva_workflows.acp_qa_oracle import ACPQAOracleNode
+
         node = ACPQAOracleNode(source_code="x = 1", test_suite="")
         path = node._compile_skill_stub("run-v1-check")
 

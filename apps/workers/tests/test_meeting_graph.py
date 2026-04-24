@@ -46,11 +46,13 @@ class TestTranscribeNode:
             "selva_workers.inference.get_model_router",
             side_effect=RuntimeError("no providers"),
         ):
-            result = transcribe({
-                "messages": [],
-                "recording_url": "https://example.com/meeting.webm",
-                "description": "Sprint planning",
-            })
+            result = transcribe(
+                {
+                    "messages": [],
+                    "recording_url": "https://example.com/meeting.webm",
+                    "description": "Sprint planning",
+                }
+            )
 
         assert result["status"] == "transcribed"
         assert result["transcript"]
@@ -73,11 +75,13 @@ class TestTranscribeNode:
                 return_value="Alice: Let's discuss the roadmap.\nBob: Agreed.",
             ),
         ):
-            result = transcribe({
-                "messages": [],
-                "recording_url": "https://example.com/meeting.webm",
-                "description": "Roadmap discussion",
-            })
+            result = transcribe(
+                {
+                    "messages": [],
+                    "recording_url": "https://example.com/meeting.webm",
+                    "description": "Roadmap discussion",
+                }
+            )
 
         assert result["status"] == "transcribed"
         assert "roadmap" in result["transcript"].lower()
@@ -90,10 +94,12 @@ class TestSummarizeNode:
         """summarize returns a summary using fallback when LLM unavailable."""
         from selva_workers.graphs.meeting import summarize
 
-        result = summarize({
-            "messages": [],
-            "transcript": "Alice: We need to fix the login bug. Bob: I agree.",
-        })
+        result = summarize(
+            {
+                "messages": [],
+                "transcript": "Alice: We need to fix the login bug. Bob: I agree.",
+            }
+        )
 
         assert result["status"] == "summarized"
         assert result["summary"]
@@ -103,10 +109,12 @@ class TestSummarizeNode:
         """summarize with empty transcript returns error status."""
         from selva_workers.graphs.meeting import summarize
 
-        result = summarize({
-            "messages": [],
-            "transcript": "",
-        })
+        result = summarize(
+            {
+                "messages": [],
+                "transcript": "",
+            }
+        )
 
         assert result["status"] == "error"
         assert result["summary"] == ""
@@ -119,11 +127,13 @@ class TestExtractActionsNode:
         """extract_actions returns a list of action items."""
         from selva_workers.graphs.meeting import extract_actions
 
-        result = extract_actions({
-            "messages": [],
-            "transcript": "Alice: Bob will fix the bug by Friday.",
-            "summary": "Discussion about bug fixes.",
-        })
+        result = extract_actions(
+            {
+                "messages": [],
+                "transcript": "Alice: Bob will fix the bug by Friday.",
+                "summary": "Discussion about bug fixes.",
+            }
+        )
 
         assert result["status"] == "actions_extracted"
         assert isinstance(result["action_items"], list)
@@ -145,11 +155,13 @@ class TestExtractActionsNode:
                 return_value=mock_json,
             ),
         ):
-            result = extract_actions({
-                "messages": [],
-                "transcript": "Alice: Bob will fix the bug by Friday.",
-                "summary": "Bug fix discussion.",
-            })
+            result = extract_actions(
+                {
+                    "messages": [],
+                    "transcript": "Alice: Bob will fix the bug by Friday.",
+                    "summary": "Bug fix discussion.",
+                }
+            )
 
         assert result["status"] == "actions_extracted"
         assert len(result["action_items"]) == 1
@@ -164,12 +176,14 @@ class TestSaveArtifactNode:
         """save_artifact saves notes and sets result."""
         from selva_workers.graphs.meeting import save_artifact
 
-        result = save_artifact({
-            "messages": [],
-            "transcript": "Meeting transcript here.",
-            "summary": "Summary of the meeting.",
-            "action_items": [{"task": "Do thing", "assignee": "Alice", "deadline": "Monday"}],
-        })
+        result = save_artifact(
+            {
+                "messages": [],
+                "transcript": "Meeting transcript here.",
+                "summary": "Summary of the meeting.",
+                "action_items": [{"task": "Do thing", "assignee": "Alice", "deadline": "Monday"}],
+            }
+        )
 
         assert result["status"] == "completed"
         assert result["result"] is not None

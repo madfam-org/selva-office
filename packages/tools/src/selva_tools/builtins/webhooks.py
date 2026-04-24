@@ -160,9 +160,7 @@ def _resolve_hitl_level(env: str, *, dual_for_prod: bool = True) -> str:
         "staging": PermissionLevel.ASK,
         "prod": prod_level,
     }
-    engine = PermissionEngine(
-        overrides={ActionCategory.WEBHOOK_MANAGEMENT: env_overrides[env]}
-    )
+    engine = PermissionEngine(overrides={ActionCategory.WEBHOOK_MANAGEMENT: env_overrides[env]})
     result = engine.evaluate(ActionCategory.WEBHOOK_MANAGEMENT)
     return result.level.value
 
@@ -276,9 +274,7 @@ def _stripe_create_webhook_endpoint(
         if owned and client is not None:
             client.close()
     if resp.status_code >= 400:
-        raise _WebhookProviderError(
-            f"stripe create returned status={resp.status_code}"
-        )
+        raise _WebhookProviderError(f"stripe create returned status={resp.status_code}")
     return resp.json()
 
 
@@ -305,9 +301,7 @@ def _stripe_list_webhook_endpoints(
         if owned and client is not None:
             client.close()
     if resp.status_code >= 400:
-        raise _WebhookProviderError(
-            f"stripe list returned status={resp.status_code}"
-        )
+        raise _WebhookProviderError(f"stripe list returned status={resp.status_code}")
     body = resp.json()
     return list(body.get("data") or [])
 
@@ -332,9 +326,7 @@ def _stripe_delete_webhook_endpoint(
     if resp.status_code == 404:
         return False
     if resp.status_code >= 400:
-        raise _WebhookProviderError(
-            f"stripe delete returned status={resp.status_code}"
-        )
+        raise _WebhookProviderError(f"stripe delete returned status={resp.status_code}")
     return True
 
 
@@ -370,9 +362,7 @@ def _resend_create_webhook(
         if owned and client is not None:
             client.close()
     if resp.status_code >= 400:
-        raise _WebhookProviderError(
-            f"resend create returned status={resp.status_code}"
-        )
+        raise _WebhookProviderError(f"resend create returned status={resp.status_code}")
     return resp.json()
 
 
@@ -403,9 +393,7 @@ def _janua_register_redirect(
         if owned and client is not None:
             client.close()
     if resp.status_code >= 400:
-        raise _WebhookProviderError(
-            f"janua redirect register returned status={resp.status_code}"
-        )
+        raise _WebhookProviderError(f"janua redirect register returned status={resp.status_code}")
     return resp.json()
 
 
@@ -440,14 +428,9 @@ def _validate_destination_args(
 ) -> str | None:
     """Return an error string if the K8s destination args are invalid."""
     if destination_cluster not in ALLOWED_CLUSTERS:
-        return (
-            f"destination_cluster must be one of {sorted(ALLOWED_CLUSTERS)}"
-        )
+        return f"destination_cluster must be one of {sorted(ALLOWED_CLUSTERS)}"
     if destination_namespace not in ALLOWED_NAMESPACES:
-        return (
-            f"destination_namespace {destination_namespace!r} is not in "
-            "the allow-list"
-        )
+        return f"destination_namespace {destination_namespace!r} is not in the allow-list"
     if not destination_secret_name or not destination_secret_key:
         return "destination_secret_name and destination_secret_key are required"
     return None
@@ -509,8 +492,7 @@ class StripeWebhookCreateTool(BaseTool):
                 "api_key_env": {
                     "type": "string",
                     "description": (
-                        "Env var holding the Stripe secret key "
-                        "(e.g. 'STRIPE_MX_SECRET_KEY')."
+                        "Env var holding the Stripe secret key (e.g. 'STRIPE_MX_SECRET_KEY')."
                     ),
                 },
                 "destination_cluster": {
@@ -551,9 +533,7 @@ class StripeWebhookCreateTool(BaseTool):
         actor_user_sub = kwargs.get("actor_user_sub")
         request_id = kwargs.get("request_id")
         http_client: httpx.Client | None = kwargs.get("_http_client")
-        secret_writer: KubernetesSecretWriteTool | None = kwargs.get(
-            "_secret_writer"
-        )
+        secret_writer: KubernetesSecretWriteTool | None = kwargs.get("_secret_writer")
 
         common_err = _validate_common_webhook_args(
             url=url if isinstance(url, str) else None, rationale=rationale
@@ -603,8 +583,7 @@ class StripeWebhookCreateTool(BaseTool):
                 events_registered=events_final,
                 linked_secret_audit_id=None,
                 resulting_secret_name=(
-                    f"{destination_namespace}/"
-                    f"{destination_secret_name}:{destination_secret_key}"
+                    f"{destination_namespace}/{destination_secret_name}:{destination_secret_key}"
                 ),
                 rationale=rationale,
                 status="pending_approval",
@@ -674,10 +653,7 @@ class StripeWebhookCreateTool(BaseTool):
                 key=destination_secret_key,
                 value=signing_secret,
                 source=SecretSource.STRIPE_API.value,
-                rationale=(
-                    f"RFC 0008 webhook create for {account_id or 'stripe'}: "
-                    f"{rationale}"
-                ),
+                rationale=(f"RFC 0008 webhook create for {account_id or 'stripe'}: {rationale}"),
                 agent_id=agent_id,
                 actor_user_sub=actor_user_sub,
             )
@@ -741,13 +717,10 @@ class StripeWebhookCreateTool(BaseTool):
 
         secret_status = write_result.data.get("status") if write_result.data else None
         secret_approval_id = (
-            write_result.data.get("approval_request_id")
-            if write_result.data
-            else None
+            write_result.data.get("approval_request_id") if write_result.data else None
         )
         resulting_secret_name = (
-            f"{destination_namespace}/"
-            f"{destination_secret_name}:{destination_secret_key}"
+            f"{destination_namespace}/{destination_secret_name}:{destination_secret_key}"
         )
         _audit_webhook(
             approval_request_id=approval_request_id,
@@ -763,9 +736,7 @@ class StripeWebhookCreateTool(BaseTool):
             rationale=rationale,
             status="applied" if write_result.success else "failed",
             error_message=(
-                None
-                if write_result.success
-                else (write_result.error or "secret write failed")
+                None if write_result.success else (write_result.error or "secret write failed")
             ),
             request_id=str(request_id) if request_id else None,
         )
@@ -842,9 +813,7 @@ class StripeWebhookListTool(BaseTool):
 
         approval_request_id = str(uuid.uuid4())
         try:
-            endpoints = _stripe_list_webhook_endpoints(
-                api_key=api_key, client=http_client
-            )
+            endpoints = _stripe_list_webhook_endpoints(api_key=api_key, client=http_client)
         except _WebhookProviderError as exc:
             msg = str(exc)
             _audit_webhook(
@@ -985,8 +954,7 @@ class StripeWebhookDeleteTool(BaseTool):
             )
             return ToolResult(
                 output=(
-                    f"Stripe webhook delete for {webhook_id} is pending "
-                    f"{hitl_level} approval."
+                    f"Stripe webhook delete for {webhook_id} is pending {hitl_level} approval."
                 ),
                 data={
                     "approval_request_id": approval_request_id,
@@ -1047,8 +1015,7 @@ class StripeWebhookDeleteTool(BaseTool):
         )
         return ToolResult(
             output=(
-                f"Stripe webhook {webhook_id} "
-                f"{'already absent' if idempotent else 'deleted'}."
+                f"Stripe webhook {webhook_id} {'already absent' if idempotent else 'deleted'}."
             ),
             data={
                 "approval_request_id": approval_request_id,
@@ -1095,10 +1062,7 @@ class ResendWebhookCreateTool(BaseTool):
                 },
                 "api_key_env": {
                     "type": "string",
-                    "description": (
-                        "Env var holding the Resend API key (e.g. "
-                        "'RESEND_API_KEY')."
-                    ),
+                    "description": ("Env var holding the Resend API key (e.g. 'RESEND_API_KEY')."),
                 },
                 "destination_cluster": {
                     "type": "string",
@@ -1136,9 +1100,7 @@ class ResendWebhookCreateTool(BaseTool):
         actor_user_sub = kwargs.get("actor_user_sub")
         request_id = kwargs.get("request_id")
         http_client: httpx.Client | None = kwargs.get("_http_client")
-        secret_writer: KubernetesSecretWriteTool | None = kwargs.get(
-            "_secret_writer"
-        )
+        secret_writer: KubernetesSecretWriteTool | None = kwargs.get("_secret_writer")
 
         common_err = _validate_common_webhook_args(
             url=url if isinstance(url, str) else None, rationale=rationale
@@ -1163,8 +1125,7 @@ class ResendWebhookCreateTool(BaseTool):
         approval_request_id = str(uuid.uuid4())
 
         logger.info(
-            "resend webhook create requested url_prefix=%s dest=%s/%s:%s "
-            "hitl=%s approval_id=%s",
+            "resend webhook create requested url_prefix=%s dest=%s/%s:%s hitl=%s approval_id=%s",
             url_prefix,
             destination_namespace,
             destination_secret_name,
@@ -1185,8 +1146,7 @@ class ResendWebhookCreateTool(BaseTool):
                 events_registered=list(events_in) if events_in else None,
                 linked_secret_audit_id=None,
                 resulting_secret_name=(
-                    f"{destination_namespace}/"
-                    f"{destination_secret_name}:{destination_secret_key}"
+                    f"{destination_namespace}/{destination_secret_name}:{destination_secret_key}"
                 ),
                 rationale=rationale,
                 status="pending_approval",
@@ -1287,8 +1247,7 @@ class ResendWebhookCreateTool(BaseTool):
         except Exception as exc:  # noqa: BLE001
             err_class = type(exc).__name__
             logger.error(
-                "resend webhook create unexpected failure url_prefix=%s "
-                "err_class=%s",
+                "resend webhook create unexpected failure url_prefix=%s err_class=%s",
                 url_prefix,
                 err_class,
             )
@@ -1315,13 +1274,10 @@ class ResendWebhookCreateTool(BaseTool):
 
         secret_status = write_result.data.get("status") if write_result.data else None
         secret_approval_id = (
-            write_result.data.get("approval_request_id")
-            if write_result.data
-            else None
+            write_result.data.get("approval_request_id") if write_result.data else None
         )
         resulting_secret_name = (
-            f"{destination_namespace}/"
-            f"{destination_secret_name}:{destination_secret_key}"
+            f"{destination_namespace}/{destination_secret_name}:{destination_secret_key}"
         )
         _audit_webhook(
             approval_request_id=approval_request_id,
@@ -1337,9 +1293,7 @@ class ResendWebhookCreateTool(BaseTool):
             rationale=rationale,
             status="applied" if write_result.success else "failed",
             error_message=(
-                None
-                if write_result.success
-                else (write_result.error or "secret write failed")
+                None if write_result.success else (write_result.error or "secret write failed")
             ),
             request_id=str(request_id) if request_id else None,
         )
@@ -1393,8 +1347,7 @@ class JanuaOidcRedirectRegisterTool(BaseTool):
                 "admin_token_env": {
                     "type": "string",
                     "description": (
-                        "Env var holding the Janua admin token (e.g. "
-                        "'JANUA_ADMIN_API_KEY')."
+                        "Env var holding the Janua admin token (e.g. 'JANUA_ADMIN_API_KEY')."
                     ),
                 },
                 "rationale": {"type": "string"},
@@ -1437,8 +1390,7 @@ class JanuaOidcRedirectRegisterTool(BaseTool):
         approval_request_id = str(uuid.uuid4())
 
         logger.info(
-            "janua redirect register requested client=%s uri_prefix=%s "
-            "hitl=%s approval_id=%s",
+            "janua redirect register requested client=%s uri_prefix=%s hitl=%s approval_id=%s",
             client_id,
             uri_prefix,
             hitl_level,
@@ -1543,8 +1495,7 @@ class JanuaOidcRedirectRegisterTool(BaseTool):
         )
         return ToolResult(
             output=(
-                f"Janua OIDC redirect registered on client={client_id} "
-                f"(uri_prefix={uri_prefix})."
+                f"Janua OIDC redirect registered on client={client_id} (uri_prefix={uri_prefix})."
             ),
             data={
                 "approval_request_id": approval_request_id,

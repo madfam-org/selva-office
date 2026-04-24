@@ -156,10 +156,7 @@ def summarize(state: MeetingState) -> MeetingState:
         )
     except Exception as exc:
         logger.warning("Summary LLM call failed: %s. Using fallback.", exc)
-        summary = (
-            f"[Auto-summary unavailable]\n\n"
-            f"Transcript excerpt:\n{transcript[:500]}"
-        )
+        summary = f"[Auto-summary unavailable]\n\nTranscript excerpt:\n{transcript[:500]}"
 
     summary_msg = AIMessage(
         content="Meeting summary generated.",

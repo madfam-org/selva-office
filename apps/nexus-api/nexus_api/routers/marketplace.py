@@ -157,9 +157,7 @@ async def list_marketplace_skills(
     tenant: TenantContext = Depends(get_tenant),  # noqa: B008
 ) -> MarketplaceListResponse:
     """List marketplace skill entries with pagination, search, category filter, and sorting."""
-    base_stmt = select(SkillMarketplaceEntry).where(
-        SkillMarketplaceEntry.org_id == tenant.org_id
-    )
+    base_stmt = select(SkillMarketplaceEntry).where(SkillMarketplaceEntry.org_id == tenant.org_id)
 
     if search:
         pattern = f"%{search}%"
@@ -172,9 +170,7 @@ async def list_marketplace_skills(
         base_stmt = base_stmt.where(SkillMarketplaceEntry.category == category)
 
     # Total count (before sorting joins that may affect count)
-    count_result = await db.execute(
-        select(func.count()).select_from(base_stmt.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
     total = count_result.scalar_one()
 
     if sort_by == "downloads":
@@ -191,13 +187,10 @@ async def list_marketplace_skills(
             .group_by(SkillRating.entry_id)
             .subquery()
         )
-        base_stmt = (
-            base_stmt.outerjoin(
-                avg_sub,
-                SkillMarketplaceEntry.id == avg_sub.c.entry_id,
-            )
-            .order_by(avg_sub.c.avg_r.desc())
-        )
+        base_stmt = base_stmt.outerjoin(
+            avg_sub,
+            SkillMarketplaceEntry.id == avg_sub.c.entry_id,
+        ).order_by(avg_sub.c.avg_r.desc())
     else:
         base_stmt = base_stmt.order_by(SkillMarketplaceEntry.created_at.desc())
 
@@ -206,9 +199,7 @@ async def list_marketplace_skills(
     rows = result.scalars().all()
 
     entries = [_entry_to_response(e) for e in rows]
-    return MarketplaceListResponse(
-        entries=entries, total=total, limit=limit, offset=offset
-    )
+    return MarketplaceListResponse(entries=entries, total=total, limit=limit, offset=offset)
 
 
 @router.get("/skills/{entry_id}", response_model=MarketplaceEntryDetailResponse)

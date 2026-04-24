@@ -73,9 +73,7 @@ def _detect_language(repo_path: str | None) -> str:
     ext_counts: dict[str, int] = {}
     try:
         for p in root.rglob("*"):
-            if p.is_file() and not any(
-                part.startswith(".") for part in p.parts
-            ):
+            if p.is_file() and not any(part.startswith(".") for part in p.parts):
                 ext = p.suffix.lower()
                 if ext in (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".rb"):
                     ext_counts[ext] = ext_counts.get(ext, 0) + 1
@@ -137,9 +135,7 @@ async def build_experience_context(
                 else:
                     badge = "[FAILED]"
                 lines.append(f"- {badge} {rec.approach[:200]} → {rec.outcome[:150]}")
-            sections.append(
-                "## Past Approaches for Similar Tasks\n" + "\n".join(lines)
-            )
+            sections.append("## Past Approaches for Similar Tasks\n" + "\n".join(lines))
 
         # Agent-specific memories
         mem_manager = get_memory_manager(persist_dir=settings.memory_persist_dir)
@@ -151,9 +147,7 @@ async def build_experience_context(
         shortcuts = exp_store.get_shortcuts(task_description, threshold=0.85)
         if shortcuts:
             shortcut_lines = [f"- {s[:200]}" for s in shortcuts]
-            sections.append(
-                "## Proven Approaches (High Confidence)\n" + "\n".join(shortcut_lines)
-            )
+            sections.append("## Proven Approaches (High Confidence)\n" + "\n".join(shortcut_lines))
 
         return "\n\n".join(sections)
 
@@ -257,8 +251,7 @@ def build_implement_prompt(
     else:
         sections = [
             "You are a senior developer implementing code changes.",
-            "IMPORTANT: Return ONLY a JSON object with key 'files' "
-            "containing an array of objects.",
+            "IMPORTANT: Return ONLY a JSON object with key 'files' containing an array of objects.",
             "Each object must have 'path' (relative to project root) "
             "and 'content' (full file text).",
             'Example: {"files": [{"path": "src/main.py", "content": "# full file content..."}]}',

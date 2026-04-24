@@ -162,8 +162,7 @@ class R2BucketCreateTool(BaseTool):
                     "name": result.get("name"),
                     "location": result.get("location"),
                     "endpoint": (
-                        f"https://{CF_ACCOUNT_ID}.r2.cloudflarestorage.com/"
-                        f"{result.get('name')}"
+                        f"https://{CF_ACCOUNT_ID}.r2.cloudflarestorage.com/{result.get('name')}"
                     ),
                 },
             )
@@ -194,14 +193,10 @@ class R2BucketDeleteTool(BaseTool):
             return ToolResult(success=False, error=err)
         name = kwargs["name"]
         try:
-            body = await _request(
-                "DELETE", f"accounts/{CF_ACCOUNT_ID}/r2/buckets/{name}"
-            )
+            body = await _request("DELETE", f"accounts/{CF_ACCOUNT_ID}/r2/buckets/{name}")
             if not body.get("success"):
                 return ToolResult(success=False, error=_fmt_err(body))
-            return ToolResult(
-                success=True, output=f"Deleted bucket {name}.", data={"name": name}
-            )
+            return ToolResult(success=True, output=f"Deleted bucket {name}.", data={"name": name})
         except Exception as e:
             logger.error("r2_bucket_delete failed: %s", e)
             return ToolResult(success=False, error=str(e))

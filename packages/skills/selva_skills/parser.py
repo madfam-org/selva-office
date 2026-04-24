@@ -47,8 +47,7 @@ def parse_skill_md(path: Path) -> tuple[SkillMetadata, str]:
     expected_name = path.parent.name
     if meta.name != expected_name:
         raise ValueError(
-            f"{path}: skill name '{meta.name}' does not match "
-            f"directory name '{expected_name}'"
+            f"{path}: skill name '{meta.name}' does not match directory name '{expected_name}'"
         )
 
     return meta, body

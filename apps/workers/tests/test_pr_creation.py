@@ -85,14 +85,16 @@ class TestPrCreationAfterPush:
             patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
             patch("selva_workers.config.get_settings", return_value=mock_settings),
         ):
-            result = push_gate({
-                "messages": [],
-                "code_changes": [{"iteration": 1, "files_modified": ["src/main.py"]}],
-                "worktree_path": "/tmp/worktrees/task-t1",
-                "task_id": "t1",
-                "description": "Add feature X",
-                "branch_name": "autoswarm/task-t1",
-            })
+            result = push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [{"iteration": 1, "files_modified": ["src/main.py"]}],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                    "task_id": "t1",
+                    "description": "Add feature X",
+                    "branch_name": "autoswarm/task-t1",
+                }
+            )
 
         assert result["status"] == "pushed"
         mock_git.create_pr.assert_called_once()
@@ -123,13 +125,15 @@ class TestPrCreationAfterPush:
             patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
             patch("selva_workers.config.get_settings", return_value=mock_settings),
         ):
-            push_gate({
-                "messages": [],
-                "code_changes": [{"iteration": 1}],
-                "worktree_path": "/tmp/worktrees/task-t1",
-                "task_id": "t1",
-                "branch_name": "autoswarm/task-t1",
-            })
+            push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [{"iteration": 1}],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                    "task_id": "t1",
+                    "branch_name": "autoswarm/task-t1",
+                }
+            )
 
         mock_git.create_pr.assert_not_called()
 
@@ -161,14 +165,16 @@ class TestPrCreationAfterPush:
             patch("selva_workers.tools.git_tool.GitTool", return_value=mock_git),
             patch("selva_workers.config.get_settings", return_value=mock_settings),
         ):
-            result = push_gate({
-                "messages": [],
-                "code_changes": [{"iteration": 1}],
-                "worktree_path": "/tmp/worktrees/task-t1",
-                "task_id": "t1",
-                "description": "Add feature X",
-                "branch_name": "autoswarm/task-t1",
-            })
+            result = push_gate(
+                {
+                    "messages": [],
+                    "code_changes": [{"iteration": 1}],
+                    "worktree_path": "/tmp/worktrees/task-t1",
+                    "task_id": "t1",
+                    "description": "Add feature X",
+                    "branch_name": "autoswarm/task-t1",
+                }
+            )
 
         # Task should still succeed even if PR creation fails
         assert result["status"] == "pushed"

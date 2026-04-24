@@ -76,6 +76,8 @@ select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 "**/routers/*.py" = ["B008"]
 "**/auth.py" = ["B008"]
 "**/tests/*.py" = ["SIM117"]
+# HTML email templates — inline styles legitimately exceed 100 chars per line.
+"**/builtins/marketing_tools.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["selva_orchestrator", "madfam_inference", "selva_permissions", "nexus_api", "selva_workers", "selva_skills", "selva_observability", "selva_redis_pool", "selva_workflows", "selva_tools", "selva_memory", "selva_sdk", "selva_calendar", "selva_a2a"]

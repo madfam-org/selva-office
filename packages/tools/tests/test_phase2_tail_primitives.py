@@ -107,10 +107,13 @@ class TestStripeConnectHappyPath:
                 ),
             ]
         )
-        with patch(
-            "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
-            "sk_test_dummy",
-        ), patch("selva_tools.builtins.stripe_connect._request", mock):
+        with (
+            patch(
+                "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
+                "sk_test_dummy",
+            ),
+            patch("selva_tools.builtins.stripe_connect._request", mock),
+        ):
             res = await StripeConnectAccountCreateTool().execute(
                 email="ops@tenant.com",
                 business_type="company",
@@ -133,10 +136,13 @@ class TestStripeConnectHappyPath:
                 },
             )
         )
-        with patch(
-            "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
-            "sk_test_dummy",
-        ), patch("selva_tools.builtins.stripe_connect._request", mock):
+        with (
+            patch(
+                "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
+                "sk_test_dummy",
+            ),
+            patch("selva_tools.builtins.stripe_connect._request", mock),
+        ):
             res = await StripeConnectAccountLinkTool().execute(
                 account_id="acct_123",
                 return_url="https://r",
@@ -162,13 +168,14 @@ class TestStripeConnectHappyPath:
                 },
             )
         )
-        with patch(
-            "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
-            "sk_test_dummy",
-        ), patch("selva_tools.builtins.stripe_connect._request", mock):
-            res = await StripeConnectAccountStatusTool().execute(
-                account_id="acct_123"
-            )
+        with (
+            patch(
+                "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
+                "sk_test_dummy",
+            ),
+            patch("selva_tools.builtins.stripe_connect._request", mock),
+        ):
+            res = await StripeConnectAccountStatusTool().execute(account_id="acct_123")
             assert res.success, res.error
             assert res.data["charges_enabled"] is False
             assert res.data["currently_due"] == [
@@ -183,10 +190,13 @@ class TestStripeConnectHappyPath:
                 {"error": {"message": "country not supported", "code": "country_invalid"}},
             )
         )
-        with patch(
-            "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
-            "sk_test_dummy",
-        ), patch("selva_tools.builtins.stripe_connect._request", mock):
+        with (
+            patch(
+                "selva_tools.builtins.stripe_connect.STRIPE_SECRET_KEY",
+                "sk_test_dummy",
+            ),
+            patch("selva_tools.builtins.stripe_connect._request", mock),
+        ):
             res = await StripeConnectAccountCreateTool().execute(
                 email="x@y.z",
                 business_type="company",
@@ -202,11 +212,12 @@ class TestStripeConnectHappyPath:
 class TestSelvaOfficeHappyPath:
     async def test_seat_create(self) -> None:
         mock = AsyncMock(return_value=(201, {"seat_id": "seat-7"}))
-        with patch(
-            "selva_tools.builtins.selva_office_provisioning.WORKER_API_TOKEN",
-            "dev-bypass",
-        ), patch(
-            "selva_tools.builtins.selva_office_provisioning._request", mock
+        with (
+            patch(
+                "selva_tools.builtins.selva_office_provisioning.WORKER_API_TOKEN",
+                "dev-bypass",
+            ),
+            patch("selva_tools.builtins.selva_office_provisioning._request", mock),
         ):
             res = await SelvaOfficeSeatCreateTool().execute(
                 org_id="tenant-1",
@@ -222,15 +233,14 @@ class TestSelvaOfficeHappyPath:
 
     async def test_seat_revoke_requires_reason(self) -> None:
         mock = AsyncMock(return_value=(204, {}))
-        with patch(
-            "selva_tools.builtins.selva_office_provisioning.WORKER_API_TOKEN",
-            "dev-bypass",
-        ), patch(
-            "selva_tools.builtins.selva_office_provisioning._request", mock
+        with (
+            patch(
+                "selva_tools.builtins.selva_office_provisioning.WORKER_API_TOKEN",
+                "dev-bypass",
+            ),
+            patch("selva_tools.builtins.selva_office_provisioning._request", mock),
         ):
-            res = await SelvaOfficeSeatRevokeTool().execute(
-                seat_id="seat-7", reason="offboarded"
-            )
+            res = await SelvaOfficeSeatRevokeTool().execute(seat_id="seat-7", reason="offboarded")
             assert res.success, res.error
             assert res.data["reason"] == "offboarded"
 
@@ -241,11 +251,12 @@ class TestSelvaOfficeHappyPath:
                 {"detail": "seat already exists for this (org, user_sub)"},
             )
         )
-        with patch(
-            "selva_tools.builtins.selva_office_provisioning.WORKER_API_TOKEN",
-            "dev-bypass",
-        ), patch(
-            "selva_tools.builtins.selva_office_provisioning._request", mock
+        with (
+            patch(
+                "selva_tools.builtins.selva_office_provisioning.WORKER_API_TOKEN",
+                "dev-bypass",
+            ),
+            patch("selva_tools.builtins.selva_office_provisioning._request", mock),
         ):
             res = await SelvaOfficeSeatCreateTool().execute(
                 org_id="t", user_sub="u", display_name="d", email="e@f.g"

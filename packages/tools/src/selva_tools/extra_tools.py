@@ -3,6 +3,7 @@ Track B7: delegate — subagent delegation tool.
 Track B8: credential_files — allowlisted credential file reads.
 Track B2: web_tools — multi-provider web search and enhanced extraction.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # B2 — Web Tools
 # ---------------------------------------------------------------------------
+
 
 class WebSearchTool(BaseTool):
     """Multi-provider web search: Tavily (primary) → DuckDuckGo (fallback)."""
@@ -49,6 +51,7 @@ class WebSearchTool(BaseTool):
         if tavily_key:
             try:
                 import httpx
+
                 async with httpx.AsyncClient(timeout=15.0) as client:
                     resp = await client.post(
                         "https://api.tavily.com/search",
@@ -65,7 +68,7 @@ class WebSearchTool(BaseTool):
                         for r in data.get("results", [])
                     ]
                     lines = [
-                        f"{i+1}. {r['title']}\n   {r['url']}\n   {r['snippet']}"
+                        f"{i + 1}. {r['title']}\n   {r['url']}\n   {r['snippet']}"
                         for i, r in enumerate(results)
                     ]
                     return ToolResult(
@@ -78,16 +81,19 @@ class WebSearchTool(BaseTool):
         # DuckDuckGo fallback
         try:
             from duckduckgo_search import DDGS  # type: ignore
+
             results = []
             with DDGS() as ddgs:
                 for r in ddgs.text(query, max_results=n):
-                    results.append({
-                        "title": r.get("title"),
-                        "url": r.get("href"),
-                        "snippet": r.get("body", "")[:300],
-                    })
+                    results.append(
+                        {
+                            "title": r.get("title"),
+                            "url": r.get("href"),
+                            "snippet": r.get("body", "")[:300],
+                        }
+                    )
             lines = [
-                f"{i+1}. {r['title']}\n   {r['url']}\n   {r['snippet']}"
+                f"{i + 1}. {r['title']}\n   {r['url']}\n   {r['snippet']}"
                 for i, r in enumerate(results)
             ]
             return ToolResult(
@@ -124,16 +130,17 @@ class WebExtractTool(BaseTool):
 
         # Try Playwright browser_extract first
         try:
-
             from selva_tools.browser import browser_extract  # type: ignore
+
             content = await browser_extract(url)
         except Exception as exc:
             logger.warning(
-                "web_extract: browser_extract failed (%s)"
-                " — falling back to requests", exc,
+                "web_extract: browser_extract failed (%s) — falling back to requests",
+                exc,
             )
             try:
                 import httpx
+
                 async with httpx.AsyncClient(timeout=15.0) as client:
                     resp = await client.get(url, headers={"User-Agent": "AutoSwarm-WebExtract/1.0"})
                     resp.raise_for_status()
@@ -144,6 +151,7 @@ class WebExtractTool(BaseTool):
         if fmt == "markdown":
             try:
                 from markdownify import markdownify  # type: ignore
+
                 content = markdownify(content)
             except ImportError:
                 pass  # Return raw content if markdownify not installed
@@ -158,6 +166,7 @@ class WebExtractTool(BaseTool):
 # ---------------------------------------------------------------------------
 # B7 — Subagent Delegation
 # ---------------------------------------------------------------------------
+
 
 class DelegateTaskTool(BaseTool):
     """Spawn an isolated ACP subagent to handle a parallel workstream."""
@@ -211,6 +220,7 @@ class DelegateTaskTool(BaseTool):
 
         try:
             import asyncio
+
             task = run_acp_workflow_task.delay(
                 target_url or "internal://delegate",
                 metadata={
@@ -285,10 +295,7 @@ class ReadCredentialFileTool(BaseTool):
         if target.suffix not in _ALLOWED_EXTENSIONS:
             return ToolResult(
                 success=False,
-                error=(
-                    f"File type '{target.suffix}' not allowed."
-                    f" Allowed: {_ALLOWED_EXTENSIONS}"
-                ),
+                error=(f"File type '{target.suffix}' not allowed. Allowed: {_ALLOWED_EXTENSIONS}"),
             )
         if not target.exists():
             return ToolResult(success=False, error=f"Credential file not found: {filename}")

@@ -48,10 +48,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = ""
     discord_webhook_secret: str = ""
-    slack_signing_secret: str = ""           # Slack v0 HMAC signing secret
-    gateway_email_whitelist: str = ""        # Comma-separated authorised sender addresses
-    twilio_auth_token: str = ""              # Twilio account auth token
-    twilio_account_sid: str = ""             # Twilio account SID
+    slack_signing_secret: str = ""  # Slack v0 HMAC signing secret
+    gateway_email_whitelist: str = ""  # Comma-separated authorised sender addresses
+    twilio_auth_token: str = ""  # Twilio account auth token
+    twilio_account_sid: str = ""  # Twilio account SID
 
     # MCP tool server credentials
     tavily_api_key: str = ""
@@ -59,11 +59,11 @@ class Settings(BaseSettings):
 
     # Continuous learning / skills registry
     selva_skills_dir: str = "/var/lib/autoswarm/skills"
-    skill_refine_interval_days: int = 7      # Refine skills older than N days
+    skill_refine_interval_days: int = 7  # Refine skills older than N days
 
     # Memory compaction
     autoswarm_state_db_path: str = "/var/lib/autoswarm/autoswarm_state.db"
-    memory_retention_days: int = 30          # Compact transcripts older than N days
+    memory_retention_days: int = 30  # Compact transcripts older than N days
 
     # -- AI Inference ---------------------------------------------------------
     anthropic_api_key: str | None = None
@@ -107,24 +107,24 @@ class Settings(BaseSettings):
     ]
 
     # -- Dangerous Command Approval (Gap 2) -----------------------------------
-    auto_approve_dangerous: bool = False      # Set True in CI — bypasses HITL gate
+    auto_approve_dangerous: bool = False  # Set True in CI — bypasses HITL gate
     command_approval_timeout_seconds: int = 60  # Fail-closed after N seconds
 
     # -- Plugin Architecture (Gap 3) ------------------------------------------
-    plugin_dirs: list[str] = []               # Additional plugin scan directories
+    plugin_dirs: list[str] = []  # Additional plugin scan directories
 
     # -- Gateway Wave 2 (Gap 8) -----------------------------------------------
     # WhatsApp (Meta Cloud API)
-    whatsapp_verify_token: str = ""          # Used during webhook registration challenge
-    whatsapp_access_token: str = ""          # Meta Graph API access token
+    whatsapp_verify_token: str = ""  # Used during webhook registration challenge
+    whatsapp_access_token: str = ""  # Meta Graph API access token
     # Matrix / Element
-    matrix_appservice_token: str = ""        # Shared secret for appservice auth
-    matrix_homeserver_url: str = ""          # e.g. https://matrix.example.com
+    matrix_appservice_token: str = ""  # Shared secret for appservice auth
+    matrix_homeserver_url: str = ""  # e.g. https://matrix.example.com
     # Mattermost
-    mattermost_token: str = ""               # Shared secret from Mattermost slash command
+    mattermost_token: str = ""  # Shared secret from Mattermost slash command
     # Signal (via signal-cli REST)
-    signal_cli_url: str = ""                 # URL of running signal-cli REST API
-    signal_allowed_numbers: str = ""         # Comma-separated E.164 source numbers
+    signal_cli_url: str = ""  # URL of running signal-cli REST API
+    signal_allowed_numbers: str = ""  # Comma-separated E.164 source numbers
 
     # -- Security -------------------------------------------------------------
     dev_auth_bypass: bool = False
@@ -168,10 +168,7 @@ class Settings(BaseSettings):
                 f"got: {self.redis_url[:20]}..."
             )
 
-        if (
-            self.colyseus_secret == "change-me-in-production"
-            and self.environment != "development"
-        ):
+        if self.colyseus_secret == "change-me-in-production" and self.environment != "development":
             raise ValueError(
                 "COLYSEUS_SECRET must be set in production (cannot use default). "
                 "Generate with: openssl rand -hex 32"

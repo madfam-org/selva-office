@@ -2,6 +2,7 @@
 Track D3: Memory Provider Plugin ABC
 Mirrors Hermes' plugins/memory/memory_provider.py — swappable memory backends.
 """
+
 from __future__ import annotations
 
 import logging
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Abstract Base
 # ---------------------------------------------------------------------------
+
 
 class MemoryProvider(ABC):
     """
@@ -46,6 +48,7 @@ class MemoryProvider(ABC):
 # SQLite Provider (wraps existing EdgeMemoryDB)
 # ---------------------------------------------------------------------------
 
+
 class SQLiteMemoryProvider(MemoryProvider):
     """Default provider — wraps the existing SQLite + FTS5 EdgeMemoryDB."""
 
@@ -53,6 +56,7 @@ class SQLiteMemoryProvider(MemoryProvider):
         try:
             from selva_skills import get_skill_registry  # noqa: F401
             from selva_workflows.memory import EdgeMemoryDB  # type: ignore
+
             self._db = EdgeMemoryDB()
         except ImportError:
             self._db = None
@@ -81,6 +85,7 @@ class SQLiteMemoryProvider(MemoryProvider):
 # Redis Provider (short-context ephemeral recall)
 # ---------------------------------------------------------------------------
 
+
 class RedisMemoryProvider(MemoryProvider):
     """
     Ephemeral in-memory provider backed by Redis sorted sets.
@@ -93,9 +98,8 @@ class RedisMemoryProvider(MemoryProvider):
     def __init__(self) -> None:
         try:
             import redis.asyncio as aioredis  # type: ignore
-            self._redis = aioredis.from_url(
-                os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-            )
+
+            self._redis = aioredis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379/0"))
         except ImportError:
             self._redis = None
             logger.warning("RedisMemoryProvider: redis.asyncio not installed.")
@@ -105,6 +109,7 @@ class RedisMemoryProvider(MemoryProvider):
             return
         import json
         import time
+
         await self._redis.zadd(self._KEY, {json.dumps(episode, default=str): time.time()})
         # Keep only the last _MAX_EPISODES
         await self._redis.zremrangebyrank(self._KEY, 0, -(self._MAX_EPISODES + 1))

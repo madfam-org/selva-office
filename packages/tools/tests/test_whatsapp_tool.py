@@ -23,9 +23,7 @@ class TestWhatsAppToolMetadata:
         assert "template_name" in schema["required"]
         assert "parameters" in schema["required"]
         # template_name enum matches catalog keys
-        assert set(schema["properties"]["template_name"]["enum"]) == set(
-            TEMPLATE_CATALOG.keys()
-        )
+        assert set(schema["properties"]["template_name"]["enum"]) == set(TEMPLATE_CATALOG.keys())
 
     def test_template_catalog_has_4_entries(self) -> None:
         assert len(TEMPLATE_CATALOG) == 4
@@ -220,9 +218,7 @@ class TestWhatsAppToolExecution:
         tool = WhatsAppTemplateTool()
 
         mock_client = AsyncMock()
-        mock_client.post = AsyncMock(
-            side_effect=Exception("Connection refused")
-        )
+        mock_client.post = AsyncMock(side_effect=Exception("Connection refused"))
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 

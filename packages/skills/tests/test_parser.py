@@ -48,13 +48,7 @@ def test_parse_invalid_name_raises(tmp_path: Path) -> None:
     skill_dir = tmp_path / "Bad-Skill"
     skill_dir.mkdir()
     skill_md = skill_dir / "SKILL.md"
-    skill_md.write_text(
-        "---\n"
-        "name: Bad-Skill\n"
-        "description: Invalid name.\n"
-        "---\n\n"
-        "Body.\n"
-    )
+    skill_md.write_text("---\nname: Bad-Skill\ndescription: Invalid name.\n---\n\nBody.\n")
     with pytest.raises((ValueError, ValidationError)):
         parse_skill_md(skill_md)
 
@@ -64,13 +58,7 @@ def test_parse_name_mismatch_raises(tmp_path: Path) -> None:
     skill_dir = tmp_path / "my-skill"
     skill_dir.mkdir()
     skill_md = skill_dir / "SKILL.md"
-    skill_md.write_text(
-        "---\n"
-        "name: other-skill\n"
-        "description: Mismatched name.\n"
-        "---\n\n"
-        "Body.\n"
-    )
+    skill_md.write_text("---\nname: other-skill\ndescription: Mismatched name.\n---\n\nBody.\n")
     with pytest.raises(ValueError, match="does not match"):
         parse_skill_md(skill_md)
 

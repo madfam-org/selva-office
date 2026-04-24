@@ -40,7 +40,7 @@ import hashlib
 import logging
 import os
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from ..audience import Audience
@@ -56,9 +56,7 @@ logger = logging.getLogger("selva.tools.k8s_secret")
 # Allowed target clusters. RFC 0005 §"Kubeconfig mounting strategy"
 # lists exactly three cluster names; anything else is rejected before
 # the tool reaches the K8s API.
-ALLOWED_CLUSTERS = frozenset(
-    {"madfam-dev", "madfam-staging", "madfam-prod"}
-)
+ALLOWED_CLUSTERS = frozenset({"madfam-dev", "madfam-staging", "madfam-prod"})
 
 # Namespaces that the ``selva-secret-writer`` SA has a RoleBinding in.
 # Adding a new namespace requires a manifest PR under
@@ -87,7 +85,7 @@ MAX_VALUE_BYTES = 64 * 1024
 SERVICEACCOUNT_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 
-class SecretSource(str, Enum):
+class SecretSource(StrEnum):
     """Provenance of the value being written."""
 
     STRIPE_API = "stripe_api"
@@ -198,9 +196,7 @@ def _get_current_sha(namespace: str, secret_name: str, key: str) -> str | None:
     except ApiException as exc:
         if exc.status == 404 or exc.status == 403:
             return None
-        raise _K8sClientError(
-            f"read_namespaced_secret failed: status={exc.status}"
-        ) from exc
+        raise _K8sClientError(f"read_namespaced_secret failed: status={exc.status}") from exc
 
     data = getattr(secret, "data", None) or {}
     encoded = data.get(key)
@@ -213,9 +209,7 @@ def _get_current_sha(namespace: str, secret_name: str, key: str) -> str | None:
     return _sha256_full(decoded)
 
 
-def _apply_secret(
-    namespace: str, secret_name: str, key: str, value: str
-) -> str:
+def _apply_secret(namespace: str, secret_name: str, key: str, value: str) -> str:
     """Create-or-patch a single key in the named Secret. Returns operation type.
 
     Returns ``"create"`` if the Secret didn't exist and was created,
@@ -237,9 +231,7 @@ def _apply_secret(
 
     # Try patch first (update path); fall through to create on 404.
     try:
-        v1.patch_namespaced_secret(
-            name=secret_name, namespace=namespace, body=body
-        )
+        v1.patch_namespaced_secret(name=secret_name, namespace=namespace, body=body)
         return "update"
     except ApiException as exc:
         if exc.status == 404:
@@ -250,9 +242,7 @@ def _apply_secret(
                 raise _K8sClientError(
                     f"create_namespaced_secret failed: status={create_exc.status}"
                 ) from create_exc
-        raise _K8sClientError(
-            f"patch_namespaced_secret failed: status={exc.status}"
-        ) from exc
+        raise _K8sClientError(f"patch_namespaced_secret failed: status={exc.status}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +265,9 @@ def _audit_already_applied(
     the nexus-api package on the path.
     """
     try:
-        from nexus_api.audit.secret_audit import was_already_applied  # type: ignore[import-not-found]
+        from nexus_api.audit.secret_audit import (
+            was_already_applied,  # type: ignore[import-not-found]
+        )
     except Exception:  # pragma: no cover — missing dep is dev-only
         return False
     try:
@@ -365,9 +357,7 @@ def _resolve_hitl_level(env: str) -> str:
         "staging": PermissionLevel.ASK,
         "prod": PermissionLevel.ASK_DUAL,
     }
-    engine = PermissionEngine(
-        overrides={ActionCategory.K8S_SECRET_WRITE: env_overrides[env]}
-    )
+    engine = PermissionEngine(overrides={ActionCategory.K8S_SECRET_WRITE: env_overrides[env]})
     result = engine.evaluate(ActionCategory.K8S_SECRET_WRITE)
     return result.level.value
 
@@ -486,10 +476,7 @@ class KubernetesSecretWriteTool(BaseTool):
         if cluster not in ALLOWED_CLUSTERS:
             return ToolResult(
                 success=False,
-                error=(
-                    f"cluster must be one of {sorted(ALLOWED_CLUSTERS)}; got "
-                    f"{cluster!r}"
-                ),
+                error=(f"cluster must be one of {sorted(ALLOWED_CLUSTERS)}; got {cluster!r}"),
             )
         if namespace not in ALLOWED_NAMESPACES:
             return ToolResult(
@@ -511,9 +498,7 @@ class KubernetesSecretWriteTool(BaseTool):
             # Note: we intentionally do NOT echo the length either — the
             # ratio between declared max and actual length is enough
             # information to identify the key in some cases.
-            return ToolResult(
-                success=False, error="value exceeds per-key size limit"
-            )
+            return ToolResult(success=False, error="value exceeds per-key size limit")
         if source_raw not in {s.value for s in SecretSource}:
             return ToolResult(
                 success=False,
@@ -621,8 +606,7 @@ class KubernetesSecretWriteTool(BaseTool):
         except _K8sClientError as exc:
             msg = str(exc)
             logger.error(
-                "k8s secret write failed cluster=%s ns=%s name=%s key=%s "
-                "sha_prefix=%s err=%s",
+                "k8s secret write failed cluster=%s ns=%s name=%s key=%s sha_prefix=%s err=%s",
                 cluster,
                 namespace,
                 secret_name,
@@ -697,8 +681,7 @@ class KubernetesSecretWriteTool(BaseTool):
 
         return ToolResult(
             output=(
-                f"Secret {namespace}/{secret_name}:{key} {operation}d "
-                f"(sha_prefix={sha_pref})."
+                f"Secret {namespace}/{secret_name}:{key} {operation}d (sha_prefix={sha_pref})."
             ),
             data={
                 "approval_request_id": approval_request_id,
@@ -712,7 +695,5 @@ class KubernetesSecretWriteTool(BaseTool):
 
 # Audience tagging — platform-only tools. Tenant swarms are filtered
 # out of these at spec-generation time by ToolRegistry.get_specs(audience=...).
-for _cls in (
-    KubernetesSecretWriteTool,
-):
+for _cls in (KubernetesSecretWriteTool,):
     _cls.audience = Audience.PLATFORM

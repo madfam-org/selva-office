@@ -15,11 +15,11 @@ Contract this must hold (mirrors office-ui PR #23's extractLlmPreview):
 
 from __future__ import annotations
 
+from madfam_inference.types import Sensitivity
 from selva_workers.inference import (
     LLM_EVENT_TEXT_MAX_CHARS,
     _build_llm_event_payload,
 )
-from madfam_inference.types import Sensitivity
 
 
 def test_restricted_sensitivity_returns_none() -> None:

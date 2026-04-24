@@ -125,8 +125,7 @@ async def get_metrics_dashboard(
     resolved_count = agg_row[1]
 
     pending_count_result = await db.execute(
-        select(func.count(ApprovalRequest.id))
-        .where(ApprovalRequest.status == "pending")
+        select(func.count(ApprovalRequest.id)).where(ApprovalRequest.status == "pending")
     )
     pending_count = pending_count_result.scalar_one() or 0
 
@@ -160,8 +159,7 @@ async def get_metrics_dashboard(
 
     # -- Error rate -----------------------------------------------------------
     total_events_result = await db.execute(
-        select(func.count(TaskEvent.id))
-        .where(TaskEvent.created_at >= since)
+        select(func.count(TaskEvent.id)).where(TaskEvent.created_at >= since)
     )
     total_events = total_events_result.scalar_one() or 1
 
@@ -187,10 +185,12 @@ async def get_metrics_dashboard(
             .where(SwarmTask.created_at >= cursor)
             .where(SwarmTask.created_at < bucket_end)
         )
-        trends["tasks"].append(TrendPoint(
-            timestamp=cursor.isoformat(),
-            value=float(task_count_result.scalar_one() or 0),
-        ))
+        trends["tasks"].append(
+            TrendPoint(
+                timestamp=cursor.isoformat(),
+                value=float(task_count_result.scalar_one() or 0),
+            )
+        )
 
         err_count_result = await db.execute(
             select(func.count(TaskEvent.id))
@@ -198,10 +198,12 @@ async def get_metrics_dashboard(
             .where(TaskEvent.created_at < bucket_end)
             .where(TaskEvent.event_type.in_(["task.failed", "node.error"]))
         )
-        trends["errors"].append(TrendPoint(
-            timestamp=cursor.isoformat(),
-            value=float(err_count_result.scalar_one() or 0),
-        ))
+        trends["errors"].append(
+            TrendPoint(
+                timestamp=cursor.isoformat(),
+                value=float(err_count_result.scalar_one() or 0),
+            )
+        )
 
         cursor = bucket_end
 
@@ -293,12 +295,14 @@ async def get_roi_dashboard(
         # Rough cost estimate: $0.002 per token (blended LLM cost)
         est_cost = tokens * 0.002
 
-        agents.append(AgentROI(
-            agent_name=name,
-            tasks_completed=tasks,
-            compute_tokens_used=tokens,
-            estimated_cost_usd=round(est_cost, 2),
-        ))
+        agents.append(
+            AgentROI(
+                agent_name=name,
+                tasks_completed=tasks,
+                compute_tokens_used=tokens,
+                estimated_cost_usd=round(est_cost, 2),
+            )
+        )
 
     return {
         "period": period,

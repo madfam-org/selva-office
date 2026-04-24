@@ -525,9 +525,7 @@ async def test_stripe_list_allows_in_prod(
 
     client = _mock_httpx_client_with_handler(handler)
     tool = StripeWebhookListTool()
-    result = await tool.execute(
-        api_key_env="STRIPE_MX_SECRET_KEY", _http_client=client
-    )
+    result = await tool.execute(api_key_env="STRIPE_MX_SECRET_KEY", _http_client=client)
     assert result.success is True
     assert result.data["hitl_level"] == "allow"
     assert result.data["count"] == 0
@@ -836,12 +834,8 @@ def _strip_strings_and_comments(source: str) -> str:
     no_comments = re.sub(r"#[^\n]*", "", source)
     no_triple = re.sub(r'"""[\s\S]*?"""', '""', no_comments)
     no_triple = re.sub(r"'''[\s\S]*?'''", "''", no_triple)
-    no_strings = re.sub(
-        r'(?:rb|br|r|b|f|rf|fr)?"(?:\\.|[^"\\\n])*"', '""', no_triple
-    )
-    no_strings = re.sub(
-        r"(?:rb|br|r|b|f|rf|fr)?'(?:\\.|[^'\\\n])*'", "''", no_strings
-    )
+    no_strings = re.sub(r'(?:rb|br|r|b|f|rf|fr)?"(?:\\.|[^"\\\n])*"', '""', no_triple)
+    no_strings = re.sub(r"(?:rb|br|r|b|f|rf|fr)?'(?:\\.|[^'\\\n])*'", "''", no_strings)
     return no_strings
 
 
@@ -881,15 +875,11 @@ def test_tool_source_never_logs_or_returns_signing_secret() -> None:
             if line_end == -1:
                 line_end = len(source)
             offenders.append((label, source[line_start:line_end].strip()))
-    assert offenders == [], (
-        f"Forbidden reference to ``signing_secret`` in tool source: {offenders}"
-    )
+    assert offenders == [], f"Forbidden reference to ``signing_secret`` in tool source: {offenders}"
 
     # Positive check: the capture block does exist.
     assert "signing_secret = response.get(" in source_raw
-    assert (
-        "signing_secret = None" in source_raw
-    ), "missing post-handoff scrub of signing_secret"
+    assert "signing_secret = None" in source_raw, "missing post-handoff scrub of signing_secret"
 
 
 # ---------------------------------------------------------------------------

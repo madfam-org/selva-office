@@ -83,9 +83,7 @@ class TestCreate:
         assert body["meta"]["plan"] == "free"
         assert "id" in body and body["id"]
 
-    async def test_duplicate_canonical_id_returns_409(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_duplicate_canonical_id_returns_409(self, client: httpx.AsyncClient) -> None:
         await client.post(
             "/api/v1/tenant-identities",
             json=_payload("dup-id"),
@@ -101,9 +99,7 @@ class TestCreate:
 
 @pytest.mark.asyncio
 class TestResolve:
-    async def test_resolves_by_canonical_id(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_resolves_by_canonical_id(self, client: httpx.AsyncClient) -> None:
         await client.post(
             "/api/v1/tenant-identities",
             json=_payload("resolve-canonical"),
@@ -117,9 +113,7 @@ class TestResolve:
         assert resp.status_code == 200
         assert resp.json()["canonical_id"] == "resolve-canonical"
 
-    async def test_resolves_by_dhanam_space_id(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_resolves_by_dhanam_space_id(self, client: httpx.AsyncClient) -> None:
         await client.post(
             "/api/v1/tenant-identities",
             json=_payload("resolve-by-dhanam", dhanam_space_id="sp-unique-xyz"),
@@ -133,9 +127,7 @@ class TestResolve:
         assert resp.status_code == 200
         assert resp.json()["canonical_id"] == "resolve-by-dhanam"
 
-    async def test_invalid_field_returns_400(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_invalid_field_returns_400(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(
             "/api/v1/tenant-identities/resolve",
             params={"field": "not_a_field", "value": "x"},
@@ -143,9 +135,7 @@ class TestResolve:
         )
         assert resp.status_code == 400
 
-    async def test_not_found_returns_404(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_not_found_returns_404(self, client: httpx.AsyncClient) -> None:
         resp = await client.get(
             "/api/v1/tenant-identities/resolve",
             params={"field": "canonical_id", "value": "does-not-exist"},
@@ -156,9 +146,7 @@ class TestResolve:
 
 @pytest.mark.asyncio
 class TestValidate:
-    async def test_validates_existing_tenant(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_validates_existing_tenant(self, client: httpx.AsyncClient) -> None:
         await client.post(
             "/api/v1/tenant-identities",
             json=_payload("validate-me"),
@@ -174,9 +162,7 @@ class TestValidate:
         assert body["services_checked"] == 4  # janua+dhanam+phynecrm+karafiel
         assert body["drifts"] == []
 
-    async def test_validate_unknown_returns_404(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_validate_unknown_returns_404(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             "/api/v1/tenant-identities/nope/validate",
             headers=_headers(),

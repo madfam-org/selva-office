@@ -76,9 +76,7 @@ class TestCreateDepartment:
 
 @pytest.mark.asyncio
 class TestGetDepartment:
-    async def test_get_by_id(
-        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
-    ) -> None:
+    async def test_get_by_id(self, client: httpx.AsyncClient, auth_headers: dict[str, str]) -> None:
         create_resp = await client.post(
             "/api/v1/departments/",
             headers=auth_headers,

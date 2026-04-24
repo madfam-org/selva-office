@@ -7,7 +7,6 @@ Fire-and-forget — errors are logged at debug level and never raised.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +20,9 @@ def emit_proxy_usage(
 ) -> None:
     """Record an inference proxy call for consumption tracking."""
     try:
-        import httpx
         import os
+
+        import httpx
 
         nexus_url = os.environ.get("NEXUS_API_URL", "http://localhost:4300")
         worker_token = os.environ.get("WORKER_API_TOKEN", "")

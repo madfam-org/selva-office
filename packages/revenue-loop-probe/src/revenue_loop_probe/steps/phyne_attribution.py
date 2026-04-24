@@ -41,8 +41,7 @@ class PhyneAttributionStep(ProbeStep):
         timeout_s = float(ctx.env.get("PHYNE_ATTRIBUTION_POLL_TIMEOUT_S", "20"))
         deadline = time.perf_counter() + timeout_s
         url = (
-            f"{base_url.rstrip('/')}/v1/probe/attribution"
-            f"?lead_id={lead_id}&billing_id={billing_id}"
+            f"{base_url.rstrip('/')}/v1/probe/attribution?lead_id={lead_id}&billing_id={billing_id}"
         )
 
         assert ctx.http is not None

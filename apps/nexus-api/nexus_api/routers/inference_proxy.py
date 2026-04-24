@@ -11,6 +11,7 @@ authenticate with a Bearer token (the shared ``WORKER_API_TOKEN``).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import time
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["inference-proxy"])
 
 # ── Request / Response schemas (OpenAI-compatible) ─────────────────────
+
 
 class ChatMessage(BaseModel):
     role: str
@@ -69,6 +71,7 @@ def _get_router():
         return _router_instance
 
     from madfam_inference.factory import build_router_from_env
+
     from ..config import get_settings
 
     settings = get_settings()
@@ -94,6 +97,7 @@ def _get_router():
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
+
 
 def _make_completion_id() -> str:
     return f"chatcmpl-{uuid.uuid4().hex[:24]}"
@@ -181,6 +185,7 @@ def _emit_proxy_event(
     """Fire-and-forget consumption event."""
     try:
         from ..service_tracking import emit_proxy_usage
+
         emit_proxy_usage(
             caller=user.get("sub", "unknown"),
             provider=provider,
@@ -193,6 +198,7 @@ def _emit_proxy_event(
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────
+
 
 @router.post("/chat/completions")
 async def chat_completions(
@@ -211,10 +217,8 @@ async def chat_completions(
     model_override = body.model if body.model != "auto" else None
     sensitivity = Sensitivity.PUBLIC
     if x_sensitivity:
-        try:
+        with contextlib.suppress(ValueError):
             sensitivity = Sensitivity(x_sensitivity.lower())
-        except ValueError:
-            pass
 
     policy = RoutingPolicy(
         sensitivity=sensitivity,
@@ -291,9 +295,12 @@ async def embeddings(
     user: dict = Depends(get_current_user),
 ):
     """OpenAI-compatible embeddings endpoint."""
-    import httpx
-    from madfam_inference.org_config import load_org_config
     from pathlib import Path
+
+    import httpx
+
+    from madfam_inference.org_config import load_org_config
+
     from ..config import get_settings
 
     settings = get_settings()
@@ -302,6 +309,7 @@ async def embeddings(
         org_config = load_org_config(Path(settings.org_config_path).expanduser())
     except Exception:
         from madfam_inference.org_config import OrgConfig
+
         org_config = OrgConfig()
 
     # Determine which provider handles embeddings
@@ -341,7 +349,13 @@ async def embeddings(
     if len(texts) > 256:
         return JSONResponse(
             status_code=400,
-            content={"error": {"message": "Maximum 256 inputs per request", "type": "invalid_request_error", "code": "too_many_inputs"}},
+            content={
+                "error": {
+                    "message": "Maximum 256 inputs per request",
+                    "type": "invalid_request_error",
+                    "code": "too_many_inputs",
+                }
+            },
         )
 
     try:

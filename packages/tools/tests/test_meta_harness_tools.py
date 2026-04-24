@@ -68,9 +68,7 @@ class TestRegistry:
 class TestBudgetGate:
     @pytest.mark.asyncio
     async def test_happy_path_allow_under_threshold(self) -> None:
-        estimate_json = (
-            '{"run": {"model": "x"}, "estimate": {"total_usd": 0.5}}'
-        )
+        estimate_json = '{"run": {"model": "x"}, "estimate": {"total_usd": 0.5}}'
         with patch(
             "selva_tools.builtins.meta_harness._run_cli",
             new=AsyncMock(return_value=(0, estimate_json, "")),
@@ -189,9 +187,7 @@ class TestRoute:
         assert r.data["provider"] == "deepinfra"
 
     @pytest.mark.asyncio
-    async def test_no_provider_errors(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_no_provider_errors(self, monkeypatch: pytest.MonkeyPatch) -> None:
         for v in (
             "SELVA_API_BASE",
             "SELVA_API_KEY",
@@ -204,9 +200,7 @@ class TestRoute:
         assert "no inference provider" in (r.error or "").lower()
 
     @pytest.mark.asyncio
-    async def test_explicit_override_wins(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_explicit_override_wins(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SELVA_API_BASE", "https://selva.town/v1")
         monkeypatch.setenv("SELVA_API_KEY", "sk-test")
         monkeypatch.setenv("DEEPINFRA_API_KEY", "k")
@@ -220,9 +214,7 @@ class TestRoute:
 
 class TestRoleSummaryAndConvergence:
     @pytest.mark.asyncio
-    async def test_role_summary_stub_happy(
-        self, tmp_path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_role_summary_stub_happy(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("META_HARNESS_DIR", str(tmp_path))
         r = await MetaHarnessRoleSummaryTool().execute(session_id="s1")
         assert r.success is True
@@ -240,9 +232,7 @@ class TestRoleSummaryAndConvergence:
         assert "not found" in (r.error or "")
 
     @pytest.mark.asyncio
-    async def test_convergence_stub(
-        self, tmp_path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_convergence_stub(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("META_HARNESS_DIR", str(tmp_path))
         r = await MetaHarnessConvergenceCheckTool().execute(
             session_id="s1",
@@ -282,17 +272,13 @@ class TestSubmitRound:
     ) -> None:
         missing = tmp_path / "nope"
         monkeypatch.setenv("META_HARNESS_DIR", str(missing))
-        r = await MetaHarnessSubmitRoundTool().execute(
-            session_id="s1", role="r", content="c"
-        )
+        r = await MetaHarnessSubmitRoundTool().execute(session_id="s1", role="r", content="c")
         assert r.success is False
 
 
 class TestEscalateTier:
     @pytest.mark.asyncio
-    async def test_escalate_happy(
-        self, tmp_path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_escalate_happy(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("META_HARNESS_DIR", str(tmp_path))
         r = await MetaHarnessEscalateTierTool().execute(
             session_id="s1",

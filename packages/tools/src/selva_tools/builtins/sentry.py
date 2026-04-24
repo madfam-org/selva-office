@@ -54,9 +54,7 @@ async def _request(
 ) -> tuple[int, dict[str, Any] | list[Any] | str]:
     url = f"{SENTRY_API_BASE.rstrip('/')}{path}"
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.request(
-            method, url, headers=_headers(), params=params, json=json_body
-        )
+        resp = await client.request(method, url, headers=_headers(), params=params, json=json_body)
         try:
             body = resp.json()
         except Exception:
@@ -175,10 +173,7 @@ class SentryIssueGetTool(BaseTool):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
-                output=(
-                    f"{body.get('shortId') or issue_id}: "
-                    f"{body.get('title', '(no title)')}"
-                ),
+                output=(f"{body.get('shortId') or issue_id}: {body.get('title', '(no title)')}"),
                 data={
                     "id": body.get("id"),
                     "shortId": body.get("shortId"),
@@ -245,16 +240,13 @@ class SentryIssueUpdateTool(BaseTool):
                 error="Provide at least one of: status, assignedTo.",
             )
         try:
-            status, body = await _request(
-                "PUT", f"/issues/{issue_id}/", json_body=payload
-            )
+            status, body = await _request("PUT", f"/issues/{issue_id}/", json_body=payload)
             if status != 200 or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
                 output=(
-                    f"Issue {body.get('shortId') or issue_id} updated; "
-                    f"status={body.get('status')}."
+                    f"Issue {body.get('shortId') or issue_id} updated; status={body.get('status')}."
                 ),
                 data={
                     "id": body.get("id"),
@@ -296,9 +288,7 @@ class SentryEventListForIssueTool(BaseTool):
         issue_id = kwargs["issue_id"]
         params = {"limit": kwargs.get("limit", 10)}
         try:
-            status, body = await _request(
-                "GET", f"/issues/{issue_id}/events/", params=params
-            )
+            status, body = await _request("GET", f"/issues/{issue_id}/events/", params=params)
             if status != 200 or not isinstance(body, list):
                 return ToolResult(success=False, error=_err(status, body))
             events = [
@@ -307,8 +297,7 @@ class SentryEventListForIssueTool(BaseTool):
                     "dateCreated": e.get("dateCreated"),
                     "message": e.get("message"),
                     "platform": e.get("platform"),
-                    "user": (e.get("user") or {}).get("id")
-                    or (e.get("user") or {}).get("email"),
+                    "user": (e.get("user") or {}).get("id") or (e.get("user") or {}).get("email"),
                     "tags": [
                         {"key": t.get("key"), "value": t.get("value")}
                         for t in (e.get("tags") or [])

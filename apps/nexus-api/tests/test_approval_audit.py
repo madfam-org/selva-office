@@ -45,13 +45,19 @@ async def test_approve_stores_responded_by():
     db.refresh = AsyncMock()
 
     with (
-        patch("nexus_api.routers.approvals.manager", MagicMock(
-            send_approval_response=AsyncMock(),
-        )),
+        patch(
+            "nexus_api.routers.approvals.manager",
+            MagicMock(
+                send_approval_response=AsyncMock(),
+            ),
+        ),
         patch("nexus_api.routers.approvals.notify_approval_decision", new_callable=AsyncMock),
     ):
         result = await _respond_to_request(
-            str(req.id), "approved", "looks good", db,
+            str(req.id),
+            "approved",
+            "looks good",
+            db,
             responded_by="user-123",
         )
 
@@ -75,13 +81,19 @@ async def test_deny_stores_responded_by():
     db.refresh = AsyncMock()
 
     with (
-        patch("nexus_api.routers.approvals.manager", MagicMock(
-            send_approval_response=AsyncMock(),
-        )),
+        patch(
+            "nexus_api.routers.approvals.manager",
+            MagicMock(
+                send_approval_response=AsyncMock(),
+            ),
+        ),
         patch("nexus_api.routers.approvals.notify_approval_decision", new_callable=AsyncMock),
     ):
         result = await _respond_to_request(
-            str(req.id), "denied", "needs changes", db,
+            str(req.id),
+            "denied",
+            "needs changes",
+            db,
             responded_by="admin-456",
         )
 

@@ -13,9 +13,12 @@ async def test_hub_browse_mock():
     mock_resp.json.return_value = {
         "skills": [
             {
-                "name": "test-skill", "description": "desc",
-                "author": "me", "version": "1.0",
-                "category": "it", "downloads": 10,
+                "name": "test-skill",
+                "description": "desc",
+                "author": "me",
+                "version": "1.0",
+                "category": "it",
+                "downloads": 10,
             }
         ]
     }
@@ -25,6 +28,7 @@ async def test_hub_browse_mock():
         skills = await client.browse()
         assert len(skills) == 1
         assert skills[0].name == "test-skill"
+
 
 @pytest.mark.asyncio
 async def test_hub_install_mock(tmp_path):

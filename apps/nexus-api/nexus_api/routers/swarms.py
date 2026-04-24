@@ -101,9 +101,7 @@ def _compute_perf_weight(agent: Agent) -> float:
         return 0.5  # Neutral for new agents
 
     completion_rate = agent.tasks_completed / total_tasks if total_tasks > 0 else 0.5
-    approval_rate = (
-        agent.approval_success_count / total_approvals if total_approvals > 0 else 0.5
-    )
+    approval_rate = agent.approval_success_count / total_approvals if total_approvals > 0 else 0.5
 
     return 0.5 * approval_rate + 0.5 * completion_rate
 
@@ -128,7 +126,11 @@ def _task_to_response(task: SwarmTask) -> SwarmTaskResponse:
     "/dispatch",
     response_model=SwarmTaskResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_non_guest), Depends(require_non_demo), Depends(require_dispatch_rate_limit)],
+    dependencies=[
+        Depends(require_non_guest),
+        Depends(require_non_demo),
+        Depends(require_dispatch_rate_limit),
+    ],
 )
 async def dispatch_task(
     body: DispatchRequest,
@@ -195,9 +197,7 @@ async def dispatch_task(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail={
                         "error": "audience_mismatch",
-                        "message": (
-                            "Tenant swarms cannot dispatch platform-audience skills."
-                        ),
+                        "message": ("Tenant swarms cannot dispatch platform-audience skills."),
                         "forbidden_skills": forbidden,
                         "caller_audience": caller_audience.value,
                     },
@@ -226,9 +226,7 @@ async def dispatch_task(
             scored: list[tuple[float, Any]] = []
             required = set(body.required_skills)
             for agent in idle_agents:
-                agent_skills = set(
-                    agent.skill_ids or DEFAULT_ROLE_SKILLS.get(agent.role, [])
-                )
+                agent_skills = set(agent.skill_ids or DEFAULT_ROLE_SKILLS.get(agent.role, []))
                 overlap = len(required & agent_skills)
                 if overlap > 0:
                     skill_score = overlap / len(required)
@@ -240,7 +238,8 @@ async def dispatch_task(
             assigned_agent_ids = [str(a.id) for _, a in scored[:3]]
         except Exception:
             logging.getLogger(__name__).warning(
-                "Failed to auto-select agents by skill", exc_info=True,
+                "Failed to auto-select agents by skill",
+                exc_info=True,
             )
 
     # -- Fallback: auto-assign any idle agent when no agents or skills given --
@@ -267,7 +266,8 @@ async def dispatch_task(
                 assigned_agent_ids = [str(fallback_agent.id)]
         except Exception:
             logging.getLogger(__name__).warning(
-                "Failed to auto-assign fallback agent", exc_info=True,
+                "Failed to auto-assign fallback agent",
+                exc_info=True,
             )
 
     # -- Tenant limit enforcement -----------------------------------------------
@@ -279,9 +279,7 @@ async def dispatch_task(
         tenant_config = tc_result.scalar_one_or_none()
         if tenant_config is not None:
             # Check daily task limit
-            today_start_tc = datetime.now(UTC).replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            today_start_tc = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
             today_count_result = await db.execute(
                 select(func.count(SwarmTask.id)).where(
                     SwarmTask.org_id == tenant.org_id,
@@ -339,9 +337,7 @@ async def dispatch_task(
     dispatch_cost = 10  # matches ComputeTokenManager.COST_TABLE["dispatch_task"]
 
     # Check remaining budget before dispatching.
-    today_start = datetime.now(UTC).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     budget_result = await db.execute(
         select(func.coalesce(func.sum(ComputeTokenLedger.amount), 0)).where(
             ComputeTokenLedger.created_at >= today_start,
@@ -399,10 +395,15 @@ async def dispatch_task(
         # Resolve matching playbook for autonomous execution (Axiom IV)
         try:
             from .playbooks import _playbooks
+
             trigger_event = (task.payload or {}).get("trigger_event", "")
             if trigger_event:
                 for pb in _playbooks.values():
-                    if pb["trigger_event"] == trigger_event and pb["enabled"] and not pb["require_approval"]:
+                    if (
+                        pb["trigger_event"] == trigger_event
+                        and pb["enabled"]
+                        and not pb["require_approval"]
+                    ):
                         task_msg_data["playbook_id"] = pb["id"]
                         task_msg_data["playbook"] = pb
                         break
@@ -432,17 +433,22 @@ async def dispatch_task(
         )
     except Exception:
         logging.getLogger(__name__).debug(
-            "Failed to emit task.dispatched event", exc_info=True,
+            "Failed to emit task.dispatched event",
+            exc_info=True,
         )
 
     # PostHog analytics
     try:
         from nexus_api.analytics import track
 
-        track(str(tenant.org_id), "selva_task_dispatched", {
-            "graph_type": body.graph_type,
-            "task_id": str(task.id),
-        })
+        track(
+            str(tenant.org_id),
+            "selva_task_dispatched",
+            {
+                "graph_type": body.graph_type,
+                "task_id": str(task.id),
+            },
+        )
     except Exception:
         pass
 
@@ -525,7 +531,7 @@ async def get_task_board(
     # Resolve agent names
     all_agent_ids: set[str] = set()
     for t in tasks:
-        for aid in (t.assigned_agent_ids or []):
+        for aid in t.assigned_agent_ids or []:
             all_agent_ids.add(aid)
 
     agent_names: dict[str, str] = {}
@@ -539,7 +545,9 @@ async def get_task_board(
                     agent_names[aid] = agent.name
             except (ValueError, Exception):
                 logging.getLogger(__name__).debug(
-                    "Failed to resolve agent name for %s", aid, exc_info=True,
+                    "Failed to resolve agent name for %s",
+                    aid,
+                    exc_info=True,
                 )
 
     # Build columns
@@ -593,16 +601,12 @@ async def get_task(
     try:
         uid = uuid.UUID(task_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID") from exc
 
     result = await db.execute(select(SwarmTask).where(SwarmTask.id == uid))
     task = result.scalar_one_or_none()
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return _task_to_response(task)
 
 
@@ -620,16 +624,12 @@ async def update_task_status(
     try:
         uid = uuid.UUID(task_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID") from exc
 
     result = await db.execute(select(SwarmTask).where(SwarmTask.id == uid))
     task = result.scalar_one_or_none()
     if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
     task.status = body.status
 

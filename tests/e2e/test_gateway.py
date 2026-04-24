@@ -7,6 +7,7 @@ Verifies:
 - /initiate_acp command routing
 - /status FTS memory query
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,10 +22,12 @@ from fastapi.testclient import TestClient
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def test_client():
     """Return a TestClient with the full FastAPI app."""
     from nexus_api.main import app
+
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -55,6 +58,7 @@ def _mock_memory(monkeypatch):
 # ---------------------------------------------------------------------------
 # Telegram
 # ---------------------------------------------------------------------------
+
 
 class TestTelegramGateway:
     URL = "/api/v1/gateway/telegram/webhook"
@@ -99,6 +103,7 @@ class TestTelegramGateway:
 # ---------------------------------------------------------------------------
 # Discord
 # ---------------------------------------------------------------------------
+
 
 class TestDiscordGateway:
     URL = "/api/v1/gateway/discord/webhook"

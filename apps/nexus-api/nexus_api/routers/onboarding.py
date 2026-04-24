@@ -99,7 +99,7 @@ CONSENT_CLAUSES: dict[str, dict[str, str]] = {
         "typed_phrase": "I authorize Selva to send on my behalf with co-branded attribution",
         "heads_up": (
             "Outbound messages will carry co-branded attribution "
-            "(\"Selva on behalf of <you>\"). This is the default and "
+            '("Selva on behalf of <you>"). This is the default and '
             "lowest-risk option for most jurisdictions."
         ),
         "clause_body": (
@@ -249,9 +249,7 @@ _compute_signature = compute_signature
 
 
 async def _load_tenant(db: AsyncSession, org_id: str) -> TenantConfig:
-    result = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == org_id)
-    )
+    result = await db.execute(select(TenantConfig).where(TenantConfig.org_id == org_id))
     config = result.scalar_one_or_none()
     if config is None:
         raise HTTPException(
@@ -366,9 +364,7 @@ async def onboarding_status(
     or letting them into `/office`.
     """
     org_id = user.get("org_id", "default")
-    result = await db.execute(
-        select(TenantConfig).where(TenantConfig.org_id == org_id)
-    )
+    result = await db.execute(select(TenantConfig).where(TenantConfig.org_id == org_id))
     config = result.scalar_one_or_none()
     voice_mode = config.voice_mode if config else None
     return OnboardingStatus(
@@ -424,8 +420,7 @@ async def select_voice_mode(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                "Voice mode already selected. Use "
-                "PUT /api/v1/settings/outbound-voice to change it."
+                "Voice mode already selected. Use PUT /api/v1/settings/outbound-voice to change it."
             ),
         )
 

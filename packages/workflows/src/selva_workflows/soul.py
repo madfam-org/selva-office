@@ -6,6 +6,7 @@ the agent's personality, tone, values, and behavioral constraints.
 Injected into every system prompt ahead of Honcho's dynamic behavioral
 addendum, giving operators static brand-level control.
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,13 +52,15 @@ class SoulLoader:
                     if len(text) > _MAX_CHARS:
                         logger.warning(
                             "SOUL.md at %s exceeds %d chars — truncating.",
-                            path, _MAX_CHARS,
+                            path,
+                            _MAX_CHARS,
                         )
                         text = text[:_MAX_CHARS] + "\n\n[... truncated ...]"
                     self._cached = text
                     logger.info(
                         "SoulLoader: loaded personality from %s (%d chars).",
-                        path, len(text),
+                        path,
+                        len(text),
                     )
                     return text
                 except Exception as exc:

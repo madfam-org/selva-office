@@ -9,6 +9,7 @@ Bootstraps a first-run configuration by:
 4. Generating a .env file or printing export commands
 5. Verifying Celery worker reachability
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,10 +20,23 @@ import sys
 # Helper utilities
 # ---------------------------------------------------------------------------
 
-def _ok(msg: str) -> None: print(f"  \033[32m✓\033[0m {msg}")
-def _warn(msg: str) -> None: print(f"  \033[33m⚠\033[0m {msg}")
-def _fail(msg: str) -> None: print(f"  \033[31m✗\033[0m {msg}")
-def _header(msg: str) -> None: print(f"\n\033[1m{msg}\033[0m")
+
+def _ok(msg: str) -> None:
+    print(f"  \033[32m✓\033[0m {msg}")
+
+
+def _warn(msg: str) -> None:
+    print(f"  \033[33m⚠\033[0m {msg}")
+
+
+def _fail(msg: str) -> None:
+    print(f"  \033[31m✗\033[0m {msg}")
+
+
+def _header(msg: str) -> None:
+    print(f"\n\033[1m{msg}\033[0m")
+
+
 def _ask(prompt: str, default: str = "") -> str:
     suffix = f" [{default}]" if default else ""
     val = input(f"  {prompt}{suffix}: ").strip()
@@ -45,6 +59,7 @@ OPTIONAL_LLM_VARS = [
 # ---------------------------------------------------------------------------
 # Steps
 # ---------------------------------------------------------------------------
+
 
 def step_env_vars(collected: dict) -> dict:
     """Step 1: Check and collect required environment variables."""
@@ -89,6 +104,7 @@ async def step_connectivity(collected: dict) -> None:
     if db_url:
         try:
             import asyncpg
+
             conn = await asyncpg.connect(db_url.replace("+asyncpg", ""), timeout=5)
             await conn.close()
             _ok("PostgreSQL connection successful")
@@ -101,6 +117,7 @@ async def step_connectivity(collected: dict) -> None:
     if redis_url:
         try:
             import redis.asyncio as aioredis
+
             r = aioredis.from_url(redis_url)
             await r.ping()
             await r.aclose()
@@ -141,6 +158,7 @@ def step_summary(collected: dict) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def _run_wizard() -> None:
     print("\n\033[1;36m AutoSwarm Office — First-Run Setup Wizard\033[0m")

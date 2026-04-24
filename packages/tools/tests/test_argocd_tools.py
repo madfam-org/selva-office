@@ -180,9 +180,7 @@ class TestSyncApp:
             return 200, {"operation": {"sync": {"revision": "abc"}}}
 
         with patch("selva_tools.builtins.argocd._request", new=fake):
-            r = await ArgocdSyncAppTool().execute(
-                name="x", revision="main", prune=True, force=True
-            )
+            r = await ArgocdSyncAppTool().execute(name="x", revision="main", prune=True, force=True)
             assert r.success is True
             assert captured["method"] == "POST"
             assert captured["path"].endswith("/x/sync")

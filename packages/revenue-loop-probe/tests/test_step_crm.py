@@ -90,9 +90,7 @@ async def test_accepts_id_as_alias_for_lead_id():
     ctx = _ctx(env)
     try:
         with respx.mock(base_url=PHYNE_URL) as mock:
-            mock.post("/v1/probe/leads").respond(
-                json={"id": "lead_99"}, status_code=201
-            )
+            mock.post("/v1/probe/leads").respond(json={"id": "lead_99"}, status_code=201)
             res = await CrmHotLeadStep().run(ctx)
         assert res.status is StageStatus.PASSED
         assert ctx.state["lead_id"] == "lead_99"
@@ -109,9 +107,7 @@ async def test_fails_on_4xx():
     ctx = _ctx(env)
     try:
         with respx.mock(base_url=PHYNE_URL) as mock:
-            mock.post("/v1/probe/leads").respond(
-                json={"error": "unauthorized"}, status_code=403
-            )
+            mock.post("/v1/probe/leads").respond(json={"error": "unauthorized"}, status_code=403)
             res = await CrmHotLeadStep().run(ctx)
         assert res.status is StageStatus.FAILED
         assert "403" in (res.detail or "")
@@ -128,9 +124,7 @@ async def test_fails_when_response_missing_lead_id():
     ctx = _ctx(env)
     try:
         with respx.mock(base_url=PHYNE_URL) as mock:
-            mock.post("/v1/probe/leads").respond(
-                json={"echo": "ok"}, status_code=200
-            )
+            mock.post("/v1/probe/leads").respond(json={"echo": "ok"}, status_code=200)
             res = await CrmHotLeadStep().run(ctx)
         assert res.status is StageStatus.FAILED
         assert "lead_id" in (res.detail or "")
@@ -147,9 +141,7 @@ async def test_fails_on_network_exception():
     ctx = _ctx(env)
     try:
         with respx.mock(base_url=PHYNE_URL) as mock:
-            mock.post("/v1/probe/leads").mock(
-                side_effect=httpx.ConnectError("boom")
-            )
+            mock.post("/v1/probe/leads").mock(side_effect=httpx.ConnectError("boom"))
             res = await CrmHotLeadStep().run(ctx)
         assert res.status is StageStatus.FAILED
         assert "ConnectError" in (res.detail or "") or "boom" in (res.detail or "")

@@ -198,16 +198,8 @@ def downgrade() -> None:
         $$;
         """
     )
-    op.drop_index(
-        "ix_github_admin_audit_operation", table_name="github_admin_audit_log"
-    )
-    op.drop_index(
-        "ix_github_admin_audit_approval", table_name="github_admin_audit_log"
-    )
-    op.drop_index(
-        "ix_github_admin_audit_created", table_name="github_admin_audit_log"
-    )
-    op.drop_index(
-        "ix_github_admin_audit_target", table_name="github_admin_audit_log"
-    )
+    op.drop_index("ix_github_admin_audit_operation", table_name="github_admin_audit_log")
+    op.drop_index("ix_github_admin_audit_approval", table_name="github_admin_audit_log")
+    op.drop_index("ix_github_admin_audit_created", table_name="github_admin_audit_log")
+    op.drop_index("ix_github_admin_audit_target", table_name="github_admin_audit_log")
     op.drop_table("github_admin_audit_log")

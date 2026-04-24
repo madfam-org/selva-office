@@ -22,9 +22,7 @@ from selva_tools.builtins._spf_check import SpfResult
 @pytest.mark.asyncio
 async def test_send_email_blocked_when_voice_mode_not_set() -> None:
     tool = email_tools.SendEmailTool()
-    with patch.object(
-        email_tools, "_fetch_voice_mode", AsyncMock(return_value=None)
-    ):
+    with patch.object(email_tools, "_fetch_voice_mode", AsyncMock(return_value=None)):
         result = await tool.execute(
             to="dest@example.com",
             subject="Hi",
@@ -172,9 +170,7 @@ async def test_send_email_agent_identified_passes_when_aligned() -> None:
 async def test_marketing_email_refuses_without_voice_mode() -> None:
     tool = marketing_tools.SendMarketingEmailTool()
     with (
-        patch.object(
-            marketing_tools, "_fetch_voice_mode", AsyncMock(return_value=None)
-        ),
+        patch.object(marketing_tools, "_fetch_voice_mode", AsyncMock(return_value=None)),
         patch.dict("os.environ", {"RESEND_API_KEY": "rk-test"}, clear=False),
     ):
         result = await tool.execute(

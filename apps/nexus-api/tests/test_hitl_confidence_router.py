@@ -95,9 +95,7 @@ class TestRecordDecision:
         # Sprint 1: tier always ASK.
         assert body["tier"] == "ask"
 
-    async def test_same_context_aggregates_into_one_bucket(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_same_context_aggregates_into_one_bucket(self, client: httpx.AsyncClient) -> None:
         for _ in range(3):
             await client.post(
                 "/api/v1/hitl/decisions",
@@ -115,9 +113,7 @@ class TestRecordDecision:
         # α after 4 clean = 1 + 4 = 5; β = 1; mean = 5/6.
         assert body["confidence"] == pytest.approx(5 / 6)
 
-    async def test_different_context_creates_new_bucket(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_different_context_creates_new_bucket(self, client: httpx.AsyncClient) -> None:
         r1 = await client.post(
             "/api/v1/hitl/decisions",
             json=_sample_request("approved_clean", recipient_email="a@example.com"),
@@ -133,9 +129,7 @@ class TestRecordDecision:
         assert r1.json()["n_observed"] == 1
         assert r2.json()["n_observed"] == 1
 
-    async def test_mixed_outcomes_reflect_in_confidence(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_mixed_outcomes_reflect_in_confidence(self, client: httpx.AsyncClient) -> None:
         # 4 approve + 1 reject — mean of Beta(5, 2) = 5/7 ≈ 0.714.
         for _ in range(4):
             await client.post(
@@ -182,9 +176,7 @@ class TestConfidenceDashboard:
     async def test_dashboard_empty_when_no_decisions(
         self, client: httpx.AsyncClient, auth_headers: dict[str, str]
     ) -> None:
-        resp = await client.get(
-            "/api/v1/hitl/confidence", headers=auth_headers
-        )
+        resp = await client.get("/api/v1/hitl/confidence", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["total_buckets"] == 0
@@ -198,22 +190,16 @@ class TestConfidenceDashboard:
         for _ in range(3):
             await client.post(
                 "/api/v1/hitl/decisions",
-                json=_sample_request(
-                    "approved_clean", recipient_email="alice@example.com"
-                ),
+                json=_sample_request("approved_clean", recipient_email="alice@example.com"),
                 headers=_worker_headers(),
             )
         await client.post(
             "/api/v1/hitl/decisions",
-            json=_sample_request(
-                "rejected", recipient_email="bob@other.com"
-            ),
+            json=_sample_request("rejected", recipient_email="bob@other.com"),
             headers=_worker_headers(),
         )
 
-        resp = await client.get(
-            "/api/v1/hitl/confidence", headers=auth_headers
-        )
+        resp = await client.get("/api/v1/hitl/confidence", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["total_buckets"] == 2
@@ -267,16 +253,12 @@ class TestConfidenceDashboard:
             json=_sample_request("approved_clean", recipient_email="b@b.com"),
             headers=_worker_headers(),
         )
-        resp = await client.get(
-            "/api/v1/hitl/confidence?min_observed=2", headers=auth_headers
-        )
+        resp = await client.get("/api/v1/hitl/confidence?min_observed=2", headers=auth_headers)
         body = resp.json()
         assert len(body["buckets"]) == 1
         assert body["buckets"][0]["n_observed"] == 3
 
-    async def test_dashboard_requires_admin(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_dashboard_requires_admin(self, client: httpx.AsyncClient) -> None:
         """No Authorization = 401; that's the admin gate firing."""
         resp = await client.get("/api/v1/hitl/confidence")
         assert resp.status_code in (401, 403)
@@ -298,9 +280,7 @@ class TestDecisionsList:
                 json=_sample_request(outcome),
                 headers=_worker_headers(),
             )
-        resp = await client.get(
-            "/api/v1/hitl/decisions", headers=auth_headers
-        )
+        resp = await client.get("/api/v1/hitl/decisions", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body["total"] == 3
@@ -317,9 +297,7 @@ class TestDecisionsList:
                 json=_sample_request(outcome),
                 headers=_worker_headers(),
             )
-        resp = await client.get(
-            "/api/v1/hitl/decisions?outcome=rejected", headers=auth_headers
-        )
+        resp = await client.get("/api/v1/hitl/decisions?outcome=rejected", headers=auth_headers)
         body = resp.json()
         assert len(body["decisions"]) == 1
         assert body["decisions"][0]["outcome"] == "rejected"
@@ -337,9 +315,7 @@ class TestDecisionsList:
             json=_sample_request("approved_clean", agent_id="agent-b"),
             headers=_worker_headers(),
         )
-        resp = await client.get(
-            "/api/v1/hitl/decisions?agent_id=agent-a", headers=auth_headers
-        )
+        resp = await client.get("/api/v1/hitl/decisions?agent_id=agent-a", headers=auth_headers)
         body = resp.json()
         assert len(body["decisions"]) == 1
         assert body["decisions"][0]["agent_id"] == "agent-a"

@@ -30,8 +30,9 @@ class TestRegistry:
 class TestCreds:
     @pytest.mark.asyncio
     async def test_list_without_url_returns_error(self) -> None:
-        with patch("selva_tools.builtins.grafana.GRAFANA_URL", ""), patch(
-            "selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"
+        with (
+            patch("selva_tools.builtins.grafana.GRAFANA_URL", ""),
+            patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"),
         ):
             r = await GrafanaDashboardListTool().execute()
             assert r.success is False
@@ -39,9 +40,10 @@ class TestCreds:
 
     @pytest.mark.asyncio
     async def test_export_without_token_returns_error(self) -> None:
-        with patch(
-            "selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"
-        ), patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", ""):
+        with (
+            patch("selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"),
+            patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", ""),
+        ):
             r = await GrafanaPanelExportTool().execute(
                 dashboard_uid="abc", panel_id=1, from_time="now-1h"
             )
@@ -75,13 +77,13 @@ class TestDashboardList:
                 "folderTitle": "Fortuna",
             },
         ]
-        with patch(
-            "selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"
-        ), patch(
-            "selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.grafana._json_request",
-            new=AsyncMock(return_value=(200, body)),
+        with (
+            patch("selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"),
+            patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"),
+            patch(
+                "selva_tools.builtins.grafana._json_request",
+                new=AsyncMock(return_value=(200, body)),
+            ),
         ):
             r = await GrafanaDashboardListTool().execute(query="autoswarm")
             assert r.success is True
@@ -90,13 +92,13 @@ class TestDashboardList:
 
     @pytest.mark.asyncio
     async def test_list_error(self) -> None:
-        with patch(
-            "selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"
-        ), patch(
-            "selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"
-        ), patch(
-            "selva_tools.builtins.grafana._json_request",
-            new=AsyncMock(return_value=(401, {"message": "invalid token"})),
+        with (
+            patch("selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"),
+            patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"),
+            patch(
+                "selva_tools.builtins.grafana._json_request",
+                new=AsyncMock(return_value=(401, {"message": "invalid token"})),
+            ),
         ):
             r = await GrafanaDashboardListTool().execute()
             assert r.success is False
@@ -127,14 +129,12 @@ class TestPanelExport:
     async def test_successful_png_returns_base64(self) -> None:
         # Minimal 1x1 PNG bytes (just a sentinel — we don't decode it).
         png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
-        factory = _mock_async_client_with_response(
-            200, png_bytes, "image/png"
-        )
-        with patch(
-            "selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"
-        ), patch(
-            "selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"
-        ), patch("selva_tools.builtins.grafana.httpx.AsyncClient", factory):
+        factory = _mock_async_client_with_response(200, png_bytes, "image/png")
+        with (
+            patch("selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"),
+            patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.grafana.httpx.AsyncClient", factory),
+        ):
             r = await GrafanaPanelExportTool().execute(
                 dashboard_uid="abc",
                 panel_id=7,
@@ -147,14 +147,12 @@ class TestPanelExport:
 
     @pytest.mark.asyncio
     async def test_renderer_unavailable_falls_back_to_url(self) -> None:
-        factory = _mock_async_client_with_response(
-            500, b"renderer not installed", "text/plain"
-        )
-        with patch(
-            "selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"
-        ), patch(
-            "selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"
-        ), patch("selva_tools.builtins.grafana.httpx.AsyncClient", factory):
+        factory = _mock_async_client_with_response(500, b"renderer not installed", "text/plain")
+        with (
+            patch("selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"),
+            patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.grafana.httpx.AsyncClient", factory),
+        ):
             r = await GrafanaPanelExportTool().execute(
                 dashboard_uid="abc",
                 panel_id=7,
@@ -177,11 +175,11 @@ class TestPanelExport:
         client_instance.__aexit__ = AsyncMock(return_value=None)
         factory = MagicMock(return_value=client_instance)
 
-        with patch(
-            "selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"
-        ), patch(
-            "selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"
-        ), patch("selva_tools.builtins.grafana.httpx.AsyncClient", factory):
+        with (
+            patch("selva_tools.builtins.grafana.GRAFANA_URL", "https://g.x"),
+            patch("selva_tools.builtins.grafana.GRAFANA_API_TOKEN", "tok"),
+            patch("selva_tools.builtins.grafana.httpx.AsyncClient", factory),
+        ):
             r = await GrafanaPanelExportTool().execute(
                 dashboard_uid="abc",
                 panel_id=7,

@@ -51,9 +51,7 @@ async def _json_request(
 ) -> tuple[int, dict[str, Any] | list[Any] | str]:
     url = f"{GRAFANA_URL.rstrip('/')}{path}"
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.request(
-            method, url, headers=_headers(), params=params
-        )
+        resp = await client.request(method, url, headers=_headers(), params=params)
         try:
             body = resp.json()
         except Exception:
@@ -188,10 +186,7 @@ class GrafanaPanelExportTool(BaseTool):
                     # gets something useful to embed.
                     return ToolResult(
                         success=True,
-                        output=(
-                            "Image renderer unavailable; returning "
-                            "snapshot URL only."
-                        ),
+                        output=("Image renderer unavailable; returning snapshot URL only."),
                         data={
                             "snapshot_url": snapshot_url,
                             "image_base64": None,

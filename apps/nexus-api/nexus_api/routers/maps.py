@@ -142,15 +142,11 @@ async def list_maps(
     base_stmt = select(Map).where(Map.org_id == tenant.org_id)
 
     # Total count
-    count_result = await db.execute(
-        select(func.count()).select_from(base_stmt.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(base_stmt.subquery()))
     total = count_result.scalar_one()
 
     # Paginated results
-    result = await db.execute(
-        base_stmt.order_by(Map.updated_at.desc()).limit(limit).offset(offset)
-    )
+    result = await db.execute(base_stmt.order_by(Map.updated_at.desc()).limit(limit).offset(offset))
     maps = result.scalars().all()
     return MapListResponse(
         items=[_map_to_response(m) for m in maps],
@@ -255,14 +251,10 @@ async def _get_map_or_404(map_id: str, db: AsyncSession) -> Map:
     try:
         uid = uuid.UUID(map_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid UUID") from exc
 
     result = await db.execute(select(Map).where(Map.id == uid))
     m = result.scalar_one_or_none()
     if m is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Map not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
     return m

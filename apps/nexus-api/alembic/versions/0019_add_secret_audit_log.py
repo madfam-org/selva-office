@@ -116,10 +116,7 @@ def upgrade() -> None:
             name="ck_secret_audit_sha_prefix_len",
         ),
         sa.CheckConstraint(
-            (
-                "predecessor_sha256_prefix IS NULL OR "
-                "char_length(predecessor_sha256_prefix) = 8"
-            ),
+            ("predecessor_sha256_prefix IS NULL OR char_length(predecessor_sha256_prefix) = 8"),
             name="ck_secret_audit_pred_prefix_len",
         ),
     )

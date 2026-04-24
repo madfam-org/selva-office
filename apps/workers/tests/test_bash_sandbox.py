@@ -40,6 +40,7 @@ async def test_no_block_cd_dotdot_without_cwd():
 async def test_env_param_does_not_leak():
     """Environment variables passed via env= do not persist."""
     import os
+
     tool = BashTool()
     result = await tool.execute("echo $SECRET_VAR", env={"SECRET_VAR": "s3cret"})
     assert "s3cret" in result.stdout

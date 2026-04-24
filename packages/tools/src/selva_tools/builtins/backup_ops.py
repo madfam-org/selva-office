@@ -51,9 +51,7 @@ async def _exec_in_pgbackrest(
     except ImportError:
         return False, "kubernetes.stream unavailable"
     try:
-        pods = core.list_namespaced_pod(
-            namespace=namespace, label_selector="app=postgres"
-        )
+        pods = core.list_namespaced_pod(namespace=namespace, label_selector="app=postgres")
         if not pods.items:
             return False, f"no postgres pod found in namespace {namespace}"
         pod_name = pods.items[0].metadata.name

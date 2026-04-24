@@ -26,7 +26,7 @@ class PythonExecTool(BaseTool):
         sandbox = ToolSandbox()
         try:
             result = await sandbox.run_command(
-                f'python3 -c {_shell_quote(code)}',
+                f"python3 -c {_shell_quote(code)}",
                 timeout=30.0,
             )
             if result["success"]:

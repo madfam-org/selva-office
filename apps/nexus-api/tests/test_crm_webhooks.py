@@ -17,8 +17,6 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -143,9 +141,7 @@ class TestCRMWebhookSignature:
             )
             assert resp.status_code == 200
 
-    async def test_no_secret_configured_skips_verification(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_no_secret_configured_skips_verification(self, client: httpx.AsyncClient) -> None:
         """When no webhook secret is configured, signature check is skipped."""
         payload = _make_crm_event("unknown.event")
         resp = await client.post(
@@ -220,10 +216,13 @@ class TestCRMAutoDispatch:
                 return_value=mock_redis_pool,
             ),
         ):
-            payload = _make_crm_event("lead.hot", {
-                "contact_name": "Juan Garcia",
-                "contact_email": "juan@example.com",
-            })
+            payload = _make_crm_event(
+                "lead.hot",
+                {
+                    "contact_name": "Juan Garcia",
+                    "contact_email": "juan@example.com",
+                },
+            )
             resp = await client.post(
                 "/api/v1/gateway/phyne-crm",
                 content=json.dumps(payload).encode(),
@@ -242,9 +241,7 @@ class TestCRMAutoDispatch:
             assert call_args[0][0] == "xadd"
             assert call_args[0][1] == "autoswarm:task-stream"
 
-    async def test_dispatch_includes_crm_data_in_task(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_dispatch_includes_crm_data_in_task(self, client: httpx.AsyncClient) -> None:
         """The dispatched task message includes CRM event data for the agent."""
         mock_playbook = {
             "id": "pb-test-002",
@@ -278,11 +275,14 @@ class TestCRMAutoDispatch:
                 return_value=mock_redis_pool,
             ),
         ):
-            payload = _make_crm_event("lead.hot", {
-                "contact_name": "Maria",
-                "contact_email": "maria@test.com",
-                "company": "Acme Corp",
-            })
+            payload = _make_crm_event(
+                "lead.hot",
+                {
+                    "contact_name": "Maria",
+                    "contact_email": "maria@test.com",
+                    "company": "Acme Corp",
+                },
+            )
             resp = await client.post(
                 "/api/v1/gateway/phyne-crm",
                 content=json.dumps(payload).encode(),

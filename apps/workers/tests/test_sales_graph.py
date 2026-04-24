@@ -54,16 +54,18 @@ class TestQualifyLead:
     def test_qualify_lead_from_payload(self) -> None:
         from selva_workers.graphs.sales import qualify_lead
 
-        result = qualify_lead({
-            "messages": [],
-            "lead_id": "lead-001",
-            "workflow_variables": {
+        result = qualify_lead(
+            {
+                "messages": [],
                 "lead_id": "lead-001",
-                "customer_name": "Empresa SA",
-                "customer_email": "contacto@empresa.mx",
-                "lead_score": 80,
-            },
-        })
+                "workflow_variables": {
+                    "lead_id": "lead-001",
+                    "customer_name": "Empresa SA",
+                    "customer_email": "contacto@empresa.mx",
+                    "lead_score": 80,
+                },
+            }
+        )
 
         assert result["status"] == "qualified"
         assert result["lead_id"] == "lead-001"
@@ -75,14 +77,16 @@ class TestQualifyLead:
     def test_qualify_lead_unqualified_low_score(self) -> None:
         from selva_workers.graphs.sales import qualify_lead
 
-        result = qualify_lead({
-            "messages": [],
-            "lead_id": "lead-low",
-            "workflow_variables": {
-                "lead_score": 10,
-                "customer_name": "Bad Lead",
-            },
-        })
+        result = qualify_lead(
+            {
+                "messages": [],
+                "lead_id": "lead-low",
+                "workflow_variables": {
+                    "lead_score": 10,
+                    "customer_name": "Bad Lead",
+                },
+            }
+        )
 
         assert result["status"] == "unqualified"
         assert "below threshold" in result["messages"][0].content.lower()
@@ -91,26 +95,30 @@ class TestQualifyLead:
         """Without explicit score, default of 50 passes threshold."""
         from selva_workers.graphs.sales import qualify_lead
 
-        result = qualify_lead({
-            "messages": [],
-            "lead_id": "lead-default",
-            "workflow_variables": {"customer_name": "Neutral"},
-        })
+        result = qualify_lead(
+            {
+                "messages": [],
+                "lead_id": "lead-default",
+                "workflow_variables": {"customer_name": "Neutral"},
+            }
+        )
 
         assert result["status"] == "qualified"
 
     def test_qualify_lead_extracts_contact_info(self) -> None:
         from selva_workers.graphs.sales import qualify_lead
 
-        result = qualify_lead({
-            "messages": [],
-            "lead_id": "lead-contact",
-            "workflow_variables": {
-                "customer_phone": "+5215512345678",
-                "customer_email": "test@co.mx",
-                "customer_name": "Contacto",
-            },
-        })
+        result = qualify_lead(
+            {
+                "messages": [],
+                "lead_id": "lead-contact",
+                "workflow_variables": {
+                    "customer_phone": "+5215512345678",
+                    "customer_email": "test@co.mx",
+                    "customer_name": "Contacto",
+                },
+            }
+        )
 
         assert result["customer_phone"] == "+5215512345678"
         assert result["customer_email"] == "test@co.mx"
@@ -125,17 +133,19 @@ class TestGenerateCotizacion:
 
         # Force the template fallback by blocking inference import.
         with patch.dict("sys.modules", {"selva_workers.inference": None}):
-            result = generate_cotizacion({
-                "messages": [],
-                "lead_data": {"name": "Cliente Test", "rfc": "XAXX010101000"},
-                "workflow_variables": {
-                    "line_items": [
-                        {"description": "Servicio A", "price": 1000, "quantity": 2},
-                    ],
-                    "payment_terms": "30 dias",
-                    "validity_days": 15,
-                },
-            })
+            result = generate_cotizacion(
+                {
+                    "messages": [],
+                    "lead_data": {"name": "Cliente Test", "rfc": "XAXX010101000"},
+                    "workflow_variables": {
+                        "line_items": [
+                            {"description": "Servicio A", "price": 1000, "quantity": 2},
+                        ],
+                        "payment_terms": "30 dias",
+                        "validity_days": 15,
+                    },
+                }
+            )
 
         assert result["status"] == "cotizacion_ready"
         assert result["cotizacion"] is not None
@@ -150,11 +160,13 @@ class TestGenerateCotizacion:
         from selva_workers.graphs.sales import generate_cotizacion
 
         with patch.dict("sys.modules", {"selva_workers.inference": None}):
-            result = generate_cotizacion({
-                "messages": [],
-                "lead_data": {"name": "Empty"},
-                "workflow_variables": {},
-            })
+            result = generate_cotizacion(
+                {
+                    "messages": [],
+                    "lead_data": {"name": "Empty"},
+                    "workflow_variables": {},
+                }
+            )
 
         assert result["status"] == "cotizacion_ready"
         assert result["cotizacion"]["subtotal"] == 0.0
@@ -166,11 +178,13 @@ class TestGenerateCotizacion:
 
         existing = AIMessage(content="prior message")
         with patch.dict("sys.modules", {"selva_workers.inference": None}):
-            result = generate_cotizacion({
-                "messages": [existing],
-                "lead_data": {"name": "Test"},
-                "workflow_variables": {},
-            })
+            result = generate_cotizacion(
+                {
+                    "messages": [existing],
+                    "lead_data": {"name": "Test"},
+                    "workflow_variables": {},
+                }
+            )
 
         assert len(result["messages"]) == 2
         assert result["messages"][0].content == "prior message"
@@ -192,12 +206,14 @@ class TestSendCotizacion:
     def test_send_cotizacion_log_only_without_contact(self) -> None:
         from selva_workers.graphs.sales import send_cotizacion
 
-        result = send_cotizacion({
-            "messages": [],
-            "cotizacion": {"total": 5000},
-            "lead_data": {"name": "No Contact"},
-            "status": "approved",
-        })
+        result = send_cotizacion(
+            {
+                "messages": [],
+                "cotizacion": {"total": 5000},
+                "lead_data": {"name": "No Contact"},
+                "status": "approved",
+            }
+        )
 
         assert result["status"] == "cotizacion_sent"
         assert "log_only" in result["messages"][0].content
@@ -205,12 +221,14 @@ class TestSendCotizacion:
     def test_send_cotizacion_skips_on_denied(self) -> None:
         from selva_workers.graphs.sales import send_cotizacion
 
-        result = send_cotizacion({
-            "messages": [],
-            "cotizacion": {"total": 5000},
-            "lead_data": {"name": "Denied"},
-            "status": "denied",
-        })
+        result = send_cotizacion(
+            {
+                "messages": [],
+                "cotizacion": {"total": 5000},
+                "lead_data": {"name": "Denied"},
+                "status": "denied",
+            }
+        )
 
         assert result["status"] == "cancelled"
 
@@ -218,13 +236,15 @@ class TestSendCotizacion:
         from selva_workers.graphs.sales import send_cotizacion
 
         with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
-            result = send_cotizacion({
-                "messages": [],
-                "cotizacion": {"total": 3000, "validity_days": 15},
-                "lead_data": {"name": "Email Client"},
-                "customer_email": "client@co.mx",
-                "status": "approved",
-            })
+            result = send_cotizacion(
+                {
+                    "messages": [],
+                    "cotizacion": {"total": 3000, "validity_days": 15},
+                    "lead_data": {"name": "Email Client"},
+                    "customer_email": "client@co.mx",
+                    "status": "approved",
+                }
+            )
 
         assert result["status"] == "cotizacion_sent"
         assert "email" in result["messages"][0].content
@@ -236,16 +256,18 @@ class TestConvertToPedido:
     def test_convert_to_pedido_creates_order(self) -> None:
         from selva_workers.graphs.sales import convert_to_pedido
 
-        result = convert_to_pedido({
-            "messages": [],
-            "lead_id": "lead-pedido",
-            "lead_data": {"name": "Empresa SA", "rfc": "XAXX010101000"},
-            "cotizacion": {
-                "items": [{"description": "Servicio", "price": 1000, "quantity": 1}],
-                "total": 1160,
-                "payment_terms": "contado",
-            },
-        })
+        result = convert_to_pedido(
+            {
+                "messages": [],
+                "lead_id": "lead-pedido",
+                "lead_data": {"name": "Empresa SA", "rfc": "XAXX010101000"},
+                "cotizacion": {
+                    "items": [{"description": "Servicio", "price": 1000, "quantity": 1}],
+                    "total": 1160,
+                    "payment_terms": "contado",
+                },
+            }
+        )
 
         assert result["status"] == "pedido_created"
         assert result["pedido"] is not None
@@ -257,12 +279,14 @@ class TestConvertToPedido:
         """Without PhyneCRM, still creates the pedido locally."""
         from selva_workers.graphs.sales import convert_to_pedido
 
-        result = convert_to_pedido({
-            "messages": [],
-            "lead_id": "lead-no-crm",
-            "lead_data": {"name": "Local", "rfc": ""},
-            "cotizacion": {"items": [], "total": 0, "payment_terms": "contado"},
-        })
+        result = convert_to_pedido(
+            {
+                "messages": [],
+                "lead_id": "lead-no-crm",
+                "lead_data": {"name": "Local", "rfc": ""},
+                "cotizacion": {"items": [], "total": 0, "payment_terms": "contado"},
+            }
+        )
 
         assert result["status"] == "pedido_created"
         assert result["pedido"]["customer_name"] == "Local"
@@ -275,14 +299,16 @@ class TestDispatchBilling:
         """Without nexus-api, flags for manual invoice."""
         from selva_workers.graphs.sales import dispatch_billing
 
-        result = dispatch_billing({
-            "messages": [],
-            "pedido": {
-                "customer_name": "Test",
-                "items": [{"description": "Srv", "price": 500, "quantity": 1}],
-            },
-            "lead_data": {"rfc": "XAXX010101000"},
-        })
+        result = dispatch_billing(
+            {
+                "messages": [],
+                "pedido": {
+                    "customer_name": "Test",
+                    "items": [{"description": "Srv", "price": 500, "quantity": 1}],
+                },
+                "lead_data": {"rfc": "XAXX010101000"},
+            }
+        )
 
         assert result["status"] == "billing_dispatched"
         assert "Billing dispatched" in result["messages"][0].content
@@ -290,17 +316,19 @@ class TestDispatchBilling:
     def test_dispatch_billing_builds_conceptos(self) -> None:
         from selva_workers.graphs.sales import dispatch_billing
 
-        result = dispatch_billing({
-            "messages": [],
-            "pedido": {
-                "customer_name": "Multi",
-                "items": [
-                    {"description": "Item A", "price": 100, "quantity": 2},
-                    {"description": "Item B", "price": 200, "quantity": 1},
-                ],
-            },
-            "lead_data": {"rfc": "RFC_TEST"},
-        })
+        result = dispatch_billing(
+            {
+                "messages": [],
+                "pedido": {
+                    "customer_name": "Multi",
+                    "items": [
+                        {"description": "Item A", "price": 100, "quantity": 2},
+                        {"description": "Item B", "price": 200, "quantity": 1},
+                    ],
+                },
+                "lead_data": {"rfc": "RFC_TEST"},
+            }
+        )
 
         assert "2 concepto(s)" in result["messages"][0].content
 
@@ -311,13 +339,15 @@ class TestTrackCobranza:
     def test_track_cobranza_completes_without_dhanam(self) -> None:
         from selva_workers.graphs.sales import track_cobranza
 
-        result = track_cobranza({
-            "messages": [],
-            "pedido": {"customer_name": "Test", "total": 1000},
-            "lead_id": "lead-cobranza",
-            "billing_task_id": "billing-123",
-            "task_id": "task-456",
-        })
+        result = track_cobranza(
+            {
+                "messages": [],
+                "pedido": {"customer_name": "Test", "total": 1000},
+                "lead_id": "lead-cobranza",
+                "billing_task_id": "billing-123",
+                "task_id": "task-456",
+            }
+        )
 
         assert result["status"] == "completed"
         assert result["result"]["payment_status"] == "pending"
@@ -326,13 +356,15 @@ class TestTrackCobranza:
     def test_track_cobranza_result_structure(self) -> None:
         from selva_workers.graphs.sales import track_cobranza
 
-        result = track_cobranza({
-            "messages": [],
-            "pedido": {"customer_name": "Struct", "total": 500},
-            "lead_id": "lead-struct",
-            "billing_task_id": None,
-            "task_id": "task-struct",
-        })
+        result = track_cobranza(
+            {
+                "messages": [],
+                "pedido": {"customer_name": "Struct", "total": 500},
+                "lead_id": "lead-struct",
+                "billing_task_id": None,
+                "task_id": "task-struct",
+            }
+        )
 
         assert "pedido" in result["result"]
         assert "billing_task_id" in result["result"]

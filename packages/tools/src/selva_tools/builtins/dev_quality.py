@@ -17,7 +17,7 @@ import json
 import re
 import shlex
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from ..base import BaseTool, ToolResult
 from ..sandbox import ToolSandbox
@@ -50,7 +50,11 @@ def _available(cwd: str, executable: str) -> bool:
     """Sync `which` — avoids launching the actual slow toolchain just to probe."""
     import shutil
 
-    return shutil.which(executable, path=f"{cwd}/node_modules/.bin:/usr/local/bin:/usr/bin:/bin") is not None or shutil.which(executable) is not None
+    return (
+        shutil.which(executable, path=f"{cwd}/node_modules/.bin:/usr/local/bin:/usr/bin:/bin")
+        is not None
+        or shutil.which(executable) is not None
+    )
 
 
 # ---------- LintAndTypeCheckTool ----------
@@ -76,7 +80,7 @@ class LintAndTypeCheckTool(BaseTool):
     """
 
     name = "lint_and_typecheck"
-    description = "Run ruff + mypy + eslint + tsc on a path. Auto-detects language; skips missing toolchains; returns structured findings."
+    description = "Run ruff + mypy + eslint + tsc on a path. Auto-detects language; skips missing toolchains; returns structured findings."  # noqa: E501
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -169,27 +173,31 @@ class LintAndTypeCheckTool(BaseTool):
         try:
             entries = json.loads(stdout)
         except json.JSONDecodeError:
-            return [{
-                "tool": "ruff",
-                "severity": "error",
-                "file": "",
-                "line": 0,
-                "column": 0,
-                "code": "",
-                "message": f"ruff produced non-JSON output: {stdout[:200]}",
-            }]
+            return [
+                {
+                    "tool": "ruff",
+                    "severity": "error",
+                    "file": "",
+                    "line": 0,
+                    "column": 0,
+                    "code": "",
+                    "message": f"ruff produced non-JSON output: {stdout[:200]}",
+                }
+            ]
         findings: list[dict[str, Any]] = []
         for item in entries:
             loc = item.get("location") or {}
-            findings.append({
-                "tool": "ruff",
-                "severity": "error",
-                "file": item.get("filename", ""),
-                "line": loc.get("row", 0),
-                "column": loc.get("column", 0),
-                "code": item.get("code", ""),
-                "message": item.get("message", ""),
-            })
+            findings.append(
+                {
+                    "tool": "ruff",
+                    "severity": "error",
+                    "file": item.get("filename", ""),
+                    "line": loc.get("row", 0),
+                    "column": loc.get("column", 0),
+                    "code": item.get("code", ""),
+                    "message": item.get("message", ""),
+                }
+            )
         return findings
 
     async def _run_mypy(
@@ -215,15 +223,17 @@ class LintAndTypeCheckTool(BaseTool):
                 continue
             if m.group("sev") == "note":
                 continue  # notes attach to a preceding error; skip standalone lines
-            findings.append({
-                "tool": "mypy",
-                "severity": "error" if m.group("sev") == "error" else "warning",
-                "file": m.group("file"),
-                "line": int(m.group("line")),
-                "column": int(m.group("col") or 0),
-                "code": m.group("code") or "",
-                "message": m.group("msg"),
-            })
+            findings.append(
+                {
+                    "tool": "mypy",
+                    "severity": "error" if m.group("sev") == "error" else "warning",
+                    "file": m.group("file"),
+                    "line": int(m.group("line")),
+                    "column": int(m.group("col") or 0),
+                    "code": m.group("code") or "",
+                    "message": m.group("msg"),
+                }
+            )
         return findings
 
     async def _run_eslint(
@@ -246,27 +256,31 @@ class LintAndTypeCheckTool(BaseTool):
         try:
             reports = json.loads(stdout)
         except json.JSONDecodeError:
-            return [{
-                "tool": "eslint",
-                "severity": "error",
-                "file": "",
-                "line": 0,
-                "column": 0,
-                "code": "",
-                "message": f"eslint produced non-JSON output: {stdout[:200]}",
-            }]
+            return [
+                {
+                    "tool": "eslint",
+                    "severity": "error",
+                    "file": "",
+                    "line": 0,
+                    "column": 0,
+                    "code": "",
+                    "message": f"eslint produced non-JSON output: {stdout[:200]}",
+                }
+            ]
         findings: list[dict[str, Any]] = []
         for rep in reports:
             for msg in rep.get("messages", []):
-                findings.append({
-                    "tool": "eslint",
-                    "severity": "error" if msg.get("severity", 2) >= 2 else "warning",
-                    "file": rep.get("filePath", ""),
-                    "line": msg.get("line", 0),
-                    "column": msg.get("column", 0),
-                    "code": msg.get("ruleId", "") or "",
-                    "message": msg.get("message", ""),
-                })
+                findings.append(
+                    {
+                        "tool": "eslint",
+                        "severity": "error" if msg.get("severity", 2) >= 2 else "warning",
+                        "file": rep.get("filePath", ""),
+                        "line": msg.get("line", 0),
+                        "column": msg.get("column", 0),
+                        "code": msg.get("ruleId", "") or "",
+                        "message": msg.get("message", ""),
+                    }
+                )
         return findings
 
     async def _run_tsc(
@@ -277,7 +291,9 @@ class LintAndTypeCheckTool(BaseTool):
         if not (Path(cwd) / "node_modules" / ".bin" / "tsc").exists():
             skipped.append({"tool": "tsc", "reason": "node_modules/.bin/tsc not found"})
             return []
-        result = await _run("./node_modules/.bin/tsc --noEmit --pretty false", cwd=cwd, timeout=180.0)
+        result = await _run(
+            "./node_modules/.bin/tsc --noEmit --pretty false", cwd=cwd, timeout=180.0
+        )
         # tsc line shape: path/to/file.ts(12,5): error TS2304: Cannot find name 'foo'.
         pattern = re.compile(
             r"^(?P<file>[^(]+)\((?P<line>\d+),(?P<col>\d+)\):\s+"
@@ -288,15 +304,17 @@ class LintAndTypeCheckTool(BaseTool):
             m = pattern.match(raw)
             if not m:
                 continue
-            findings.append({
-                "tool": "tsc",
-                "severity": m.group("sev"),
-                "file": m.group("file"),
-                "line": int(m.group("line")),
-                "column": int(m.group("col")),
-                "code": m.group("code"),
-                "message": m.group("msg"),
-            })
+            findings.append(
+                {
+                    "tool": "tsc",
+                    "severity": m.group("sev"),
+                    "file": m.group("file"),
+                    "line": int(m.group("line")),
+                    "column": int(m.group("col")),
+                    "code": m.group("code"),
+                    "message": m.group("msg"),
+                }
+            )
         return findings
 
 
@@ -322,7 +340,7 @@ class TestCoverageForDiffTool(BaseTool):
     """
 
     name = "test_coverage_for_diff"
-    description = "Run coverage and report uncovered lines limited to the git diff. Graceful skip when coverage tooling is absent."
+    description = "Run coverage and report uncovered lines limited to the git diff. Graceful skip when coverage tooling is absent."  # noqa: E501
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -343,7 +361,7 @@ class TestCoverageForDiffTool(BaseTool):
                 },
                 "coverage_file": {
                     "type": "string",
-                    "description": "Path to an existing coverage.json; skips running tests if present.",
+                    "description": "Path to an existing coverage.json; skips running tests if present.",  # noqa: E501
                     "default": "",
                 },
                 "repo_path": {"type": "string", "default": "."},
@@ -379,7 +397,7 @@ class TestCoverageForDiffTool(BaseTool):
             if not _available(repo_path, "pytest"):
                 return ToolResult(
                     success=False,
-                    error="coverage.json missing and pytest not installed; pass coverage_file or install pytest+pytest-cov",
+                    error="coverage.json missing and pytest not installed; pass coverage_file or install pytest+pytest-cov",  # noqa: E501
                     data={"base_ref": base_ref, "changed_files": list(diff.keys())},
                 )
             cmd = test_command or f"pytest --cov=. --cov-report=json:{cov_path.name} -q"
@@ -442,9 +460,7 @@ class TestCoverageForDiffTool(BaseTool):
             },
         )
 
-    async def _changed_line_ranges(
-        self, base_ref: str, repo_path: str
-    ) -> dict[str, set[int]]:
+    async def _changed_line_ranges(self, base_ref: str, repo_path: str) -> dict[str, set[int]]:
         """Return {relpath: {added/modified line numbers}} for files of interest."""
         # `-U0` disables context lines so we only see actual @@ headers + additions.
         cmd = f"git -C {shlex.quote(repo_path)} diff -U0 {shlex.quote(base_ref)}...HEAD"

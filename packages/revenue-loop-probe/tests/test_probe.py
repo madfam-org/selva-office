@@ -17,7 +17,6 @@ import pytest
 
 from revenue_loop_probe.probe import (
     ProbeContext,
-    ProbeStep,
     RevenueLoopProbe,
     StageResult,
     StageStatus,
@@ -81,7 +80,9 @@ async def test_run_short_circuits_when_requested():
 
 
 async def test_raising_step_becomes_failed_result_not_crash():
-    probe = RevenueLoopProbe([_RaisingStep(), _StubStep("b", StageResult("b", StageStatus.PASSED, 1.0))])
+    probe = RevenueLoopProbe(
+        [_RaisingStep(), _StubStep("b", StageResult("b", StageStatus.PASSED, 1.0))]
+    )
     report = await probe.run(ProbeContext())
     assert report.stages[0].status is StageStatus.FAILED
     assert "boom" in (report.stages[0].detail or "")

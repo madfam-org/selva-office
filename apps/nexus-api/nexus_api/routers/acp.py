@@ -38,11 +38,9 @@ def run_acp_workflow_background(target_url: str):
     # run_analyst(target_url)
 
 
-
 @router.post("/initiate")
 async def initiate_acp(
-    request: InitiateACPRequest,
-    user: dict = Depends(require_role("enterprise-cleanroom"))
+    request: InitiateACPRequest, user: dict = Depends(require_role("enterprise-cleanroom"))
 ) -> dict[str, Any]:
     """
     Initiates the Autonomous Cleanroom Protocol (ACP).
@@ -55,9 +53,8 @@ async def initiate_acp(
         "status": "accepted",
         "message": "ACP Pipeline Phase I: Analyst initiated.",
         "task_id": task.id,
-        "target_url": str(request.target_url)
+        "target_url": str(request.target_url),
     }
-
 
 
 @router.get("/payloads/{run_id}")
@@ -75,16 +72,14 @@ async def get_acp_payload(run_id: str) -> dict[str, Any]:
         run_id=run_id,
         agent_role="acp-clean-swarm",
         role="system",
-        content="Requested sanitized payload via secure airgap bridge."
+        content="Requested sanitized payload via secure airgap bridge.",
     )
     return {"status": "success", "run_id": run_id, "prd": "Sanitized PRD SPEC from Redis Proxy"}
 
 
 @router.post("/webhook/qa-oracle")
 async def qa_oracle_webhook(
-    request: Request,
-    payload: QAOracleWebhook,
-    x_enclii_signature: str = Header(None)
+    request: Request, payload: QAOracleWebhook, x_enclii_signature: str = Header(None)
 ) -> dict[str, Any]:
     """
     Phase IV webhook entry. The Enclii QA pod posts results here.
@@ -109,7 +104,7 @@ async def qa_oracle_webhook(
         run_id=payload.run_id,
         agent_role="acp-qa-oracle",
         role="assistant",
-        content=f"Phase IV validation returned status: {payload.status}"
+        content=f"Phase IV validation returned status: {payload.status}",
     )
 
     if payload.status == "success":

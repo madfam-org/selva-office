@@ -141,9 +141,7 @@ async def create_tenant_identity(payload: TenantIdentityCreate) -> TenantIdentit
     """Create a tenant_identities row — call at end of onboarding."""
     async with async_session_factory() as session:
         existing = await session.scalar(
-            select(TenantIdentity).where(
-                TenantIdentity.canonical_id == payload.canonical_id
-            )
+            select(TenantIdentity).where(TenantIdentity.canonical_id == payload.canonical_id)
         )
         if existing is not None:
             raise HTTPException(
@@ -232,12 +230,14 @@ async def validate_tenant_consistency(canonical_id: str) -> ValidateConsistencyR
                 detail=f"no tenant_identities row for canonical_id={canonical_id}",
             )
         populated = [
-            f for f in (
+            f
+            for f in (
                 "janua_org_id",
                 "dhanam_space_id",
                 "phynecrm_tenant_id",
                 "karafiel_org_id",
-            ) if getattr(row, f)
+            )
+            if getattr(row, f)
         ]
         return ValidateConsistencyResponse(
             canonical_id=canonical_id,

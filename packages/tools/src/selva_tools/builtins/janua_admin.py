@@ -117,25 +117,18 @@ class JanuaOauthClientCreateTool(BaseTool):
             "name": kwargs["name"],
             "description": kwargs.get("description") or "",
             "redirect_uris": kwargs["redirect_uris"],
-            "grant_types": kwargs.get(
-                "grant_types", ["authorization_code", "refresh_token"]
-            ),
+            "grant_types": kwargs.get("grant_types", ["authorization_code", "refresh_token"]),
             "scopes": kwargs.get("scopes", ["openid", "profile", "email"]),
         }
         if kwargs.get("organization_id"):
             payload["organization_id"] = kwargs["organization_id"]
         try:
-            status, body = await _request(
-                "POST", "/api/v1/oauth-clients", json_body=payload
-            )
+            status, body = await _request("POST", "/api/v1/oauth-clients", json_body=payload)
             if not _ok(status) or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
-                output=(
-                    f"OAuth client created: {body.get('name')} "
-                    f"({body.get('client_id')})."
-                ),
+                output=(f"OAuth client created: {body.get('name')} ({body.get('client_id')})."),
                 data={
                     "client_id": body.get("client_id"),
                     "client_secret": body.get("client_secret"),
@@ -217,9 +210,7 @@ class JanuaOauthClientRotateSecretTool(BaseTool):
             return ToolResult(success=False, error=err)
         cid = kwargs["client_id"]
         try:
-            status, body = await _request(
-                "POST", f"/api/v1/oauth-clients/{cid}/rotate"
-            )
+            status, body = await _request("POST", f"/api/v1/oauth-clients/{cid}/rotate")
             if not _ok(status) or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
@@ -314,9 +305,7 @@ class JanuaOrgCreateTool(BaseTool):
             "metadata": kwargs.get("metadata") or {},
         }
         try:
-            status, body = await _request(
-                "POST", "/api/v1/organizations/", json_body=payload
-            )
+            status, body = await _request("POST", "/api/v1/organizations/", json_body=payload)
             if not _ok(status) or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(

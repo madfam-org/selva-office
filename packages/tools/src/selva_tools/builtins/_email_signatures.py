@@ -34,8 +34,7 @@ def _user_direct(
     return OutboundIdentity(
         from_address=f"{display} <{user_email}>",
         html_signature=(
-            f"<p style=\"margin-top:24px;font-size:12px;color:#555\">"
-            f"Best,<br>{display}</p>"
+            f'<p style="margin-top:24px;font-size:12px;color:#555">Best,<br>{display}</p>'
         ),
     )
 
@@ -51,7 +50,7 @@ def _dyad_selva_plus_user(
     return OutboundIdentity(
         from_address=f"Selva on behalf of {display} <{selva_from}>",
         html_signature=(
-            f"<p style=\"margin-top:24px;font-size:12px;color:#555\">"
+            f'<p style="margin-top:24px;font-size:12px;color:#555">'
             f"Sent by Selva on behalf of {display}.<br>"
             f"Reply-to: {user_email}</p>"
         ),
@@ -68,9 +67,9 @@ def _agent_identified(
     return OutboundIdentity(
         from_address=f"{agent_display_name} <{agent_slug}@selva.town>",
         html_signature=(
-            f"<p style=\"margin-top:24px;font-size:12px;color:#555\">"
+            f'<p style="margin-top:24px;font-size:12px;color:#555">'
             f"— {agent_display_name}, a Selva agent acting for {org_name}.<br>"
-            f"<a href=\"https://selva.town/agents/{agent_slug}\">"
+            f'<a href="https://selva.town/agents/{agent_slug}">'
             f"What is a Selva agent?</a></p>"
         ),
     )
@@ -102,9 +101,7 @@ def build_identity(
         )
     if voice_mode == "agent_identified":
         if not agent_slug or not agent_display_name:
-            raise ValueError(
-                "agent_identified mode requires agent_slug and agent_display_name"
-            )
+            raise ValueError("agent_identified mode requires agent_slug and agent_display_name")
         return _agent_identified(
             agent_slug=agent_slug,
             agent_display_name=agent_display_name,

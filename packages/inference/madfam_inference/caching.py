@@ -7,6 +7,7 @@ enabling prompt prefix caching that cuts inference costs on repeated calls.
 
 Non-Anthropic providers are completely untouched.
 """
+
 from __future__ import annotations
 
 import logging
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Minimum token threshold before caching is worth the overhead
 _MIN_CACHE_TOKENS = 1024
+
 
 # Approximate token count — 1 token ≈ 4 chars (conservative estimate)
 def _approx_tokens(text: str) -> int:
@@ -86,9 +88,7 @@ class PromptCacheManager:
             {"cache_read_tokens": int, "cache_write_tokens": int}
         """
         return {
-            "cache_read_tokens": int(
-                response_headers.get("anthropic-cache-read-input-tokens", 0)
-            ),
+            "cache_read_tokens": int(response_headers.get("anthropic-cache-read-input-tokens", 0)),
             "cache_write_tokens": int(
                 response_headers.get("anthropic-cache-creation-input-tokens", 0)
             ),

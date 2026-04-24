@@ -29,9 +29,7 @@ class TestBillingRecord:
         assert resp.json()["status"] == "recorded"
 
     @pytest.mark.asyncio
-    async def test_rejects_zero_amount(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_rejects_zero_amount(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             "/api/v1/billing/record",
             json={"action": "inference", "amount": 0, "org_id": "test-org"},
@@ -39,9 +37,7 @@ class TestBillingRecord:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_records_with_agent_and_task_ids(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_records_with_agent_and_task_ids(self, client: httpx.AsyncClient) -> None:
         import uuid
 
         agent_id = str(uuid.uuid4())
@@ -59,9 +55,7 @@ class TestBillingRecord:
         assert resp.status_code == 201
 
     @pytest.mark.asyncio
-    async def test_records_with_provider_and_model(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_records_with_provider_and_model(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             "/api/v1/billing/record",
             json={
@@ -79,9 +73,7 @@ class TestCheckBudget:
     """POST /api/v1/billing/check-budget returns budget status."""
 
     @pytest.mark.asyncio
-    async def test_returns_budget_when_under_limit(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_returns_budget_when_under_limit(self, client: httpx.AsyncClient) -> None:
         resp = await client.post(
             "/api/v1/billing/check-budget",
             json={"org_id": "dev"},
@@ -93,9 +85,7 @@ class TestCheckBudget:
         assert "daily_limit" in data
 
     @pytest.mark.asyncio
-    async def test_shows_over_budget_after_heavy_usage(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_shows_over_budget_after_heavy_usage(self, client: httpx.AsyncClient) -> None:
         # Record enough usage to exceed the default 1000 limit
         for _ in range(11):
             await client.post(
@@ -174,6 +164,4 @@ class TestDhanamWebhookTier:
             )
 
         assert resp.status_code == 200
-        mock_redis.set.assert_called_once_with(
-            "autoswarm:tier:acme-corp", "5000", ex=86400
-        )
+        mock_redis.set.assert_called_once_with("autoswarm:tier:acme-corp", "5000", ex=86400)

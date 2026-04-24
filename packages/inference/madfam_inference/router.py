@@ -16,12 +16,28 @@ _cache_manager = PromptCacheManager()
 # passed to ModelRouter should use these identifiers.
 LOCAL_PROVIDER = "ollama"
 CLOUD_PRIORITY = [
-    "anthropic", "openai", "groq", "mistral", "moonshot", "siliconflow",
-    "fireworks", "together", "deepinfra", "openrouter",
+    "anthropic",
+    "openai",
+    "groq",
+    "mistral",
+    "moonshot",
+    "siliconflow",
+    "fireworks",
+    "together",
+    "deepinfra",
+    "openrouter",
 ]
 CHEAPEST_PRIORITY = [
-    "deepinfra", "groq", "together", "siliconflow", "fireworks", "mistral",
-    "moonshot", "openrouter", "openai", "anthropic",
+    "deepinfra",
+    "groq",
+    "together",
+    "siliconflow",
+    "fireworks",
+    "mistral",
+    "moonshot",
+    "openrouter",
+    "openai",
+    "anthropic",
 ]
 
 
@@ -76,13 +92,16 @@ class ModelRouter:
                             policy.temperature = assignment.temperature
                         logger.debug(
                             "Task-type routing: %s → %s/%s",
-                            policy.task_type, assignment.provider, assignment.model,
+                            policy.task_type,
+                            assignment.provider,
+                            assignment.model,
                         )
                         return provider
                     logger.debug(
                         "Task-type assignment for %s points to %s, "
                         "but provider is not registered — falling through",
-                        policy.task_type, assignment.provider,
+                        policy.task_type,
+                        assignment.provider,
                     )
             except ValueError:
                 pass  # Unknown task type — fall through to default routing
@@ -91,9 +110,7 @@ class ModelRouter:
         if policy.require_local:
             provider = self._providers.get(LOCAL_PROVIDER)
             if provider is None:
-                raise RuntimeError(
-                    "require_local is True but no Ollama provider is registered."
-                )
+                raise RuntimeError("require_local is True but no Ollama provider is registered.")
             return provider
 
         # Determine priority lists — org config can override defaults
@@ -128,7 +145,8 @@ class ModelRouter:
         # For multimodal requests, prefer vision-capable providers
         if request.has_media():
             vision_candidates = [
-                n for n in candidates
+                n
+                for n in candidates
                 if self._providers.get(n) and self._providers[n].supports_vision
             ]
             if vision_candidates:
@@ -145,7 +163,9 @@ class ModelRouter:
         )
 
     def _get_fallback_candidates(
-        self, request: InferenceRequest, exclude: InferenceProvider,
+        self,
+        request: InferenceRequest,
+        exclude: InferenceProvider,
     ) -> list[str]:
         """Return provider names suitable for fallback, excluding the primary."""
         policy = request.policy
@@ -157,9 +177,9 @@ class ModelRouter:
         else:
             candidates = list(CHEAPEST_PRIORITY)
         return [
-            n for n in candidates
-            if self._providers.get(n) is not None
-            and self._providers[n] is not exclude
+            n
+            for n in candidates
+            if self._providers.get(n) is not None and self._providers[n] is not exclude
         ]
 
     async def complete(self, request: InferenceRequest) -> InferenceResponse:
@@ -187,7 +207,9 @@ class ModelRouter:
                 last_exc = exc
                 logger.warning(
                     "Provider %s failed (attempt %d/2): %s",
-                    type(provider).__name__, attempt + 1, exc,
+                    type(provider).__name__,
+                    attempt + 1,
+                    exc,
                 )
                 if attempt == 0:
                     await asyncio.sleep(1.0)
@@ -200,9 +222,7 @@ class ModelRouter:
             except Exception as exc:
                 logger.warning("Fallback provider %s also failed: %s", name, exc)
 
-        raise RuntimeError(
-            f"All providers failed for request. Last error: {last_exc}"
-        )
+        raise RuntimeError(f"All providers failed for request. Last error: {last_exc}")
 
     async def stream(self, request: InferenceRequest) -> AsyncIterator[str]:
         """Route the request to the appropriate provider and stream the response."""

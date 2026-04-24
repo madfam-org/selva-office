@@ -13,8 +13,6 @@ Covers:
 from __future__ import annotations
 
 import httpx
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Seed data verification
@@ -24,9 +22,7 @@ import pytest
 class TestPlaybookSeeds:
     """Verify that the 6 seed playbooks are loaded on startup."""
 
-    async def test_list_returns_seeded_playbooks(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_list_returns_seeded_playbooks(self, client: httpx.AsyncClient) -> None:
         resp = await client.get("/api/v1/playbooks")
         assert resp.status_code == 200
         data = resp.json()
@@ -46,9 +42,7 @@ class TestPlaybookSeeds:
         }
         assert expected.issubset(names)
 
-    async def test_seeded_playbooks_have_required_fields(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_seeded_playbooks_have_required_fields(self, client: httpx.AsyncClient) -> None:
         resp = await client.get("/api/v1/playbooks")
         for pb in resp.json():
             assert "id" in pb
@@ -192,9 +186,7 @@ class TestMatchPlaybook:
         resp = await client.get("/api/v1/playbooks/match", params={"event": "nonexistent:event"})
         assert resp.status_code == 404
 
-    async def test_match_skips_require_approval_playbooks(
-        self, client: httpx.AsyncClient
-    ) -> None:
+    async def test_match_skips_require_approval_playbooks(self, client: httpx.AsyncClient) -> None:
         """The 'Database Migration Runner' has require_approval=True and should not match."""
         resp = await client.get(
             "/api/v1/playbooks/match",

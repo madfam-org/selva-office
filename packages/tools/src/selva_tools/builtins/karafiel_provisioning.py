@@ -46,9 +46,7 @@ def _creds_check() -> str | None:
     return None
 
 
-async def _request(
-    method: str, path: str, json_body: dict[str, Any] | None = None
-):
+async def _request(method: str, path: str, json_body: dict[str, Any] | None = None):
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.request(
             method,
@@ -189,18 +187,14 @@ class KarafielSatCertUploadTool(BaseTool):
             base64.b64decode(kwargs["cer_base64"])
             base64.b64decode(kwargs["key_base64"])
         except Exception:
-            return ToolResult(
-                success=False, error="cer_base64 / key_base64 must decode cleanly."
-            )
+            return ToolResult(success=False, error="cer_base64 / key_base64 must decode cleanly.")
         payload = {
             "cer": kwargs["cer_base64"],
             "key": kwargs["key_base64"],
             "key_password": kwargs["key_password"],
         }
         try:
-            status, body = await _request(
-                "POST", f"/api/v1/orgs/{oid}/sat-cert", json_body=payload
-            )
+            status, body = await _request("POST", f"/api/v1/orgs/{oid}/sat-cert", json_body=payload)
             if not _ok(status):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
@@ -243,9 +237,7 @@ class KarafielPacRegisterTool(BaseTool):
             return ToolResult(success=False, error=err)
         oid = kwargs["org_id"]
         try:
-            status, body = await _request(
-                "POST", f"/api/v1/orgs/{oid}/pac/register"
-            )
+            status, body = await _request("POST", f"/api/v1/orgs/{oid}/pac/register")
             if not _ok(status):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
@@ -253,9 +245,7 @@ class KarafielPacRegisterTool(BaseTool):
                 output=f"PAC registration submitted for org {oid}.",
                 data={
                     "org_id": oid,
-                    "pac_status": (
-                        body.get("status") if isinstance(body, dict) else None
-                    ),
+                    "pac_status": (body.get("status") if isinstance(body, dict) else None),
                 },
             )
         except Exception as e:

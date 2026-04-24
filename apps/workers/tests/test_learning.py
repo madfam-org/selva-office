@@ -227,7 +227,10 @@ class TestUpdateAgentPerformance:
             from selva_workers.learning import update_agent_performance
 
             await update_agent_performance(
-                "http://test:4300", "agent-1", "completed", duration_seconds=30.5,
+                "http://test:4300",
+                "agent-1",
+                "completed",
+                duration_seconds=30.5,
             )
 
             mock_ffr.assert_called_once()
@@ -284,7 +287,10 @@ class TestUpdateAgentPerformance:
             from selva_workers.learning import update_agent_performance
 
             await update_agent_performance(
-                "http://test:4300", "agent-1", "completed", was_approval_denied=True,
+                "http://test:4300",
+                "agent-1",
+                "completed",
+                was_approval_denied=True,
             )
 
             body = mock_ffr.call_args.kwargs["json"]

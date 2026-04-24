@@ -85,9 +85,7 @@ async def test_connect_calendar_new(
         "access_token": "ya29.test-access",
         "refresh_token": "1//test-refresh",
     }
-    resp = await client.post(
-        "/api/v1/calendar/connect", json=payload, headers=auth_headers
-    )
+    resp = await client.post("/api/v1/calendar/connect", json=payload, headers=auth_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["connected"] is True
@@ -108,9 +106,7 @@ async def test_connect_calendar_update_existing(
         "provider": "microsoft",
         "access_token": "new-ms-token",
     }
-    resp = await client.post(
-        "/api/v1/calendar/connect", json=payload, headers=auth_headers
-    )
+    resp = await client.post("/api/v1/calendar/connect", json=payload, headers=auth_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["provider"] == "microsoft"
@@ -126,9 +122,7 @@ async def test_connect_calendar_missing_token(
 ) -> None:
     """Connecting without an access_token returns 422."""
     payload = {"provider": "google", "access_token": ""}
-    resp = await client.post(
-        "/api/v1/calendar/connect", json=payload, headers=auth_headers
-    )
+    resp = await client.post("/api/v1/calendar/connect", json=payload, headers=auth_headers)
     assert resp.status_code == 422
 
 

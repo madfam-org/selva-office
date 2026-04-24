@@ -68,9 +68,7 @@ class BillingEventConsumer:
         pool = get_redis_pool()
         client = await pool.client()
         try:
-            await client.xgroup_create(
-                self._stream_key, self._group_name, id="0", mkstream=True
-            )
+            await client.xgroup_create(self._stream_key, self._group_name, id="0", mkstream=True)
             logger.info(
                 "Created consumer group '%s' on '%s'",
                 self._group_name,
@@ -121,9 +119,7 @@ class BillingEventConsumer:
 
         logger.info("Billing consumer stopped")
 
-    async def _process_message(
-        self, msg_id: str, fields: dict[str, Any]
-    ) -> None:
+    async def _process_message(self, msg_id: str, fields: dict[str, Any]) -> None:
         """Process a single stream message with retry/DLQ logic."""
         get_redis_pool()
 
@@ -244,9 +240,7 @@ class BillingEventConsumer:
 
     async def _ack(self, message_id: str) -> None:
         pool = get_redis_pool()
-        await pool.execute_with_retry(
-            "xack", self._stream_key, self._group_name, message_id
-        )
+        await pool.execute_with_retry("xack", self._stream_key, self._group_name, message_id)
 
     async def _get_retry_count(self, message_id: str) -> int:
         pool = get_redis_pool()
@@ -261,9 +255,7 @@ class BillingEventConsumer:
             pass
         return 0
 
-    async def _move_to_dlq(
-        self, message_id: str, event_data: dict[str, Any], error: str
-    ) -> None:
+    async def _move_to_dlq(self, message_id: str, event_data: dict[str, Any], error: str) -> None:
         pool = get_redis_pool()
         dlq_data = json.dumps(
             {**event_data, "error": error, "original_id": message_id},

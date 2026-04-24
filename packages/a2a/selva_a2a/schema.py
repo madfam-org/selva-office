@@ -44,9 +44,7 @@ class AgentCard(BaseModel):
         default_factory=lambda: ["tasks/send", "tasks/get", "tasks/sendSubscribe"]
     )
     skills: list[AgentSkill] = Field(default_factory=list)
-    authentication: dict[str, Any] = Field(
-        default_factory=lambda: {"schemes": ["bearer"]}
-    )
+    authentication: dict[str, Any] = Field(default_factory=lambda: {"schemes": ["bearer"]})
 
 
 class TaskRequest(BaseModel):

@@ -73,7 +73,10 @@ class BashTool:
         return None
 
     async def execute(
-        self, command: str, *, env: dict[str, str] | None = None,
+        self,
+        command: str,
+        *,
+        env: dict[str, str] | None = None,
     ) -> BashResult:
         """Execute a shell command in a sandboxed subprocess.
 
@@ -100,7 +103,7 @@ class BashTool:
             )
 
         # -- Path containment check -------------------------------------------
-        if self.allowed_cwd and re.search(r'\bcd\s+[^;|&]*\.\.', command):
+        if self.allowed_cwd and re.search(r"\bcd\s+[^;|&]*\.\.", command):
             logger.warning("Blocked cd .. in sandboxed command: %s", command)
             return BashResult(
                 command=command,

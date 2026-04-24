@@ -14,8 +14,7 @@ logger = logging.getLogger("autoswarm.document_tools")
 class GeneratePDFTool(BaseTool):
     name = "generate_pdf"
     description = (
-        "Generate a PDF file from HTML content. "
-        "Requires the weasyprint package to be installed."
+        "Generate a PDF file from HTML content. Requires the weasyprint package to be installed."
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -70,8 +69,7 @@ class GeneratePDFTool(BaseTool):
 class ParsePDFTool(BaseTool):
     name = "parse_pdf"
     description = (
-        "Extract text content from a PDF file. "
-        "Requires the pdfplumber package to be installed."
+        "Extract text content from a PDF file. Requires the pdfplumber package to be installed."
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -212,8 +210,7 @@ def _basic_markdown_to_html(text: str) -> str:
 class GenerateChartTool(BaseTool):
     name = "generate_chart"
     description = (
-        "Generate a chart image (bar, line, or pie) from data. "
-        "Requires matplotlib to be installed."
+        "Generate a chart image (bar, line, or pie) from data. Requires matplotlib to be installed."
     )
 
     def parameters_schema(self) -> dict[str, Any]:

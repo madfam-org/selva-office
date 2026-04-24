@@ -175,9 +175,7 @@ def test_implement_node_with_mocked_llm(mock_call_llm, mock_get_router):
 
     from selva_workers.graphs.coding import implement, plan
 
-    mock_call_llm.return_value = json.dumps(
-        {"description": "Fix login", "steps": ["Fix auth"]}
-    )
+    mock_call_llm.return_value = json.dumps({"description": "Fix login", "steps": ["Fix auth"]})
     state = plan(_make_coding_state())
 
     mock_call_llm.return_value = json.dumps(

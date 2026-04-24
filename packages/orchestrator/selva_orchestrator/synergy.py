@@ -108,8 +108,7 @@ class SynergyCalculator:
         return [
             (rule.name, rule.multiplier)
             for rule in self.rules
-            if rule.required_roles.issubset(role_set)
-            and rule.required_skills.issubset(skill_set)
+            if rule.required_roles.issubset(role_set) and rule.required_skills.issubset(skill_set)
         ]
 
     def get_effective_multiplier(

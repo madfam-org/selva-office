@@ -30,6 +30,7 @@ class SkillResponse(BaseModel):
 
 class SkillCompactResponse(BaseModel):
     """Level-0: compact skill metadata (~3k tokens for full catalogue)."""
+
     name: str
     description: str
     category: str
@@ -38,6 +39,7 @@ class SkillCompactResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Existing endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/", response_model=list[SkillResponse])
 async def list_skills(tier: str | None = None) -> list[SkillResponse]:
@@ -77,6 +79,7 @@ async def community_status() -> dict[str, bool]:
 # Gap 4: Progressive disclosure endpoints (3-level, SKILL.md format)
 # ---------------------------------------------------------------------------
 
+
 @router.get("/compact", response_model=list[SkillCompactResponse])
 async def list_skills_compact() -> list[SkillCompactResponse]:
     """
@@ -114,8 +117,7 @@ async def get_skill_reference(skill_name: str, ref_path: str) -> dict:
     content = _md_registry.get_skill_reference(skill_name, ref_path)
     if content is None:
         raise HTTPException(
-            status_code=404,
-            detail=f"Reference '{ref_path}' not found in skill '{skill_name}'"
+            status_code=404, detail=f"Reference '{ref_path}' not found in skill '{skill_name}'"
         )
     return {"skill": skill_name, "ref_path": ref_path, "content": content}
 
@@ -123,6 +125,7 @@ async def get_skill_reference(skill_name: str, ref_path: str) -> dict:
 # ---------------------------------------------------------------------------
 # Refiner metrics endpoint
 # ---------------------------------------------------------------------------
+
 
 @router.get("/refiner/metrics")
 async def refiner_metrics(

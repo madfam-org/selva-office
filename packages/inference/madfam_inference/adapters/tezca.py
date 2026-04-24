@@ -47,8 +47,7 @@ class TezcaAdapter:
         token: str | None = None,
     ) -> None:
         self._base_url = (
-            base_url
-            or os.environ.get("TEZCA_API_URL", "http://localhost:3040")
+            base_url or os.environ.get("TEZCA_API_URL", "http://localhost:3040")
         ).rstrip("/")
         self._token = token or os.environ.get("TEZCA_API_TOKEN", "")
 

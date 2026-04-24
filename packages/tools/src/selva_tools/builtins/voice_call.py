@@ -197,10 +197,7 @@ class VoiceCallStatusTool(BaseTool):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
-                output=(
-                    f"{sid}: {body.get('status')} "
-                    f"duration={body.get('duration')}s"
-                ),
+                output=(f"{sid}: {body.get('status')} duration={body.get('duration')}s"),
                 data={
                     "sid": body.get("sid"),
                     "status": body.get("status"),

@@ -22,6 +22,7 @@ from nexus_api.models import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _utcnow() -> datetime:
     return datetime.now(UTC)
 
@@ -81,53 +82,61 @@ async def _seed_metrics_data(db: AsyncSession) -> dict[str, uuid.UUID]:
 
     # -- TaskEvents (node events for utilization + error events) ---------------
     for i in range(4):
-        db.add(TaskEvent(
-            id=uuid.uuid4(),
-            event_type="node.completed",
-            event_category="node",
-            agent_id=agent.id,
-            duration_ms=5000,
-            org_id="dev-org",
-            created_at=now - timedelta(minutes=20 + i),
-        ))
+        db.add(
+            TaskEvent(
+                id=uuid.uuid4(),
+                event_type="node.completed",
+                event_category="node",
+                agent_id=agent.id,
+                duration_ms=5000,
+                org_id="dev-org",
+                created_at=now - timedelta(minutes=20 + i),
+            )
+        )
 
     # Two error events
     error_event_id = uuid.uuid4()
     for i, etype in enumerate(["task.failed", "node.error"]):
-        db.add(TaskEvent(
-            id=error_event_id if i == 0 else uuid.uuid4(),
-            event_type=etype,
-            event_category="task" if "task" in etype else "node",
-            agent_id=agent.id,
-            node_id=f"error-node-{i}",
-            error_message=f"Something went wrong #{i}",
-            org_id="dev-org",
-            created_at=now - timedelta(minutes=5 + i),
-        ))
+        db.add(
+            TaskEvent(
+                id=error_event_id if i == 0 else uuid.uuid4(),
+                event_type=etype,
+                event_category="task" if "task" in etype else "node",
+                agent_id=agent.id,
+                node_id=f"error-node-{i}",
+                error_message=f"Something went wrong #{i}",
+                org_id="dev-org",
+                created_at=now - timedelta(minutes=5 + i),
+            )
+        )
     await db.flush()
 
     # -- ApprovalRequests (2 resolved, 1 pending) ------------------------------
     for i in range(2):
         created = now - timedelta(minutes=40 + i * 10)
-        db.add(ApprovalRequest(
+        db.add(
+            ApprovalRequest(
+                id=uuid.uuid4(),
+                agent_id=agent.id,
+                action_category="file_write",
+                action_type="write",
+                status="approved",
+                created_at=created,
+                responded_at=created + timedelta(seconds=45),
+                org_id="dev-org",
+            )
+        )
+    db.add(
+        ApprovalRequest(
             id=uuid.uuid4(),
             agent_id=agent.id,
             action_category="file_write",
             action_type="write",
-            status="approved",
-            created_at=created,
-            responded_at=created + timedelta(seconds=45),
+            status="pending",
+            created_at=now - timedelta(minutes=2),
             org_id="dev-org",
-        ))
-    db.add(ApprovalRequest(
-        id=uuid.uuid4(),
-        agent_id=agent.id,
-        action_category="file_write",
-        action_type="write",
-        status="pending",
-        created_at=now - timedelta(minutes=2),
-        org_id="dev-org",
-    ))
+        )
+    )
     await db.flush()
 
     # -- ComputeTokenLedger entries --------------------------------------------
@@ -136,16 +145,18 @@ async def _seed_metrics_data(db: AsyncSession) -> dict[str, uuid.UUID]:
         ("openai", "gpt-4o", 800),
         ("anthropic", "claude-sonnet-4-6", 2200),
     ]:
-        db.add(ComputeTokenLedger(
-            id=uuid.uuid4(),
-            action="inference",
-            amount=amount,
-            agent_id=agent.id,
-            provider=provider,
-            model=model,
-            org_id="dev-org",
-            created_at=now - timedelta(minutes=15),
-        ))
+        db.add(
+            ComputeTokenLedger(
+                id=uuid.uuid4(),
+                action="inference",
+                amount=amount,
+                agent_id=agent.id,
+                provider=provider,
+                model=model,
+                org_id="dev-org",
+                created_at=now - timedelta(minutes=15),
+            )
+        )
     await db.flush()
     await db.commit()
 

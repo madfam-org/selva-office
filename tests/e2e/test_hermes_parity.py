@@ -5,6 +5,7 @@ Covers:
 - HonchoProfiler preference injection
 - FTS5 transcript persistence from QA Oracle
 """
+
 from __future__ import annotations
 
 import os
@@ -12,6 +13,7 @@ import os
 # ---------------------------------------------------------------------------
 # QA Oracle — Skill Compilation (stub path)
 # ---------------------------------------------------------------------------
+
 
 def test_qa_oracle_validate_and_compile_skill(tmp_path, monkeypatch):
     """validate() should write a .py skill file to the skills directory."""
@@ -54,6 +56,7 @@ def test_qa_oracle_stub_fallback(tmp_path, monkeypatch):
 # HonchoProfiler — Dialectic User Modelling
 # ---------------------------------------------------------------------------
 
+
 def test_honcho_default_profile():
     """Without a memory store, the profiler returns the default profile."""
     from selva_workflows.honcho import HonchoProfiler
@@ -91,6 +94,7 @@ def test_honcho_system_addendum_contains_all_fields():
 # ---------------------------------------------------------------------------
 # EdgeMemoryDB — insert_transcript
 # ---------------------------------------------------------------------------
+
 
 def test_edge_memory_insert_and_retrieve():
     """insert_transcript should be FTS-searchable after insertion."""

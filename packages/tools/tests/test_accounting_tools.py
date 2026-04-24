@@ -35,9 +35,7 @@ class TestAccountingToolsSchema:
         assert len(tool.description) > 10
 
     @pytest.mark.parametrize("expected_name,tool_cls", ACCOUNTING_TOOLS)
-    def test_tool_schema_is_valid_json_schema(
-        self, expected_name: str, tool_cls: type
-    ) -> None:
+    def test_tool_schema_is_valid_json_schema(self, expected_name: str, tool_cls: type) -> None:
         tool = tool_cls()
         schema = tool.parameters_schema()
         assert schema["type"] == "object"

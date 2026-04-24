@@ -6,6 +6,7 @@ Persists a snapshot of the ACP workflow state to Postgres at the end of
 each phase so that a failed or user-aborted run can be resumed or rolled
 back to any previous phase boundary.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,9 +33,9 @@ try:
 
         id: str = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
         run_id: str = Column(String(255), nullable=False, index=True)
-        phase: str = Column(String(64), nullable=False)   # e.g. "phase_i", "phase_ii", etc.
+        phase: str = Column(String(64), nullable=False)  # e.g. "phase_i", "phase_ii", etc.
         phase_index: int = Column(Integer, nullable=False)
-        state_json: str = Column(Text, nullable=False)    # JSON-serialized graph state
+        state_json: str = Column(Text, nullable=False)  # JSON-serialized graph state
         created_at: datetime = Column(
             DateTime(timezone=True),
             nullable=False,
@@ -48,6 +49,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Manager
 # ---------------------------------------------------------------------------
+
 
 class CheckpointManager:
     """
@@ -92,6 +94,7 @@ class CheckpointManager:
         """Retrieve the most recent checkpoint for *run_id* at *phase*."""
         if self._db and SessionCheckpoint is not None:
             from sqlalchemy import select
+
             result = await self._db.execute(
                 select(SessionCheckpoint)
                 .where(
@@ -113,6 +116,7 @@ class CheckpointManager:
         """List all checkpoints for *run_id* ordered by phase_index."""
         if self._db and SessionCheckpoint is not None:
             from sqlalchemy import select
+
             result = await self._db.execute(
                 select(SessionCheckpoint)
                 .where(SessionCheckpoint.run_id == run_id)

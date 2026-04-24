@@ -2,6 +2,7 @@
 Track D1: agentskills.io REST client
 Mirrors Hermes' agent/skills_hub.py — browse, search, and install community skills.
 """
+
 from __future__ import annotations
 
 import logging
@@ -86,6 +87,7 @@ class SkillsHubClient:
         import io
         import tarfile
         import zipfile
+
         content = archive_resp.content
         skill_dir = target_dir / skill_name
         skill_dir.mkdir(exist_ok=True)
@@ -107,6 +109,7 @@ class SkillsHubClient:
     async def publish(self, skill_path: str | Path, token: str) -> dict:
         """Publish a local skill to the hub (requires a hub API token)."""
         import httpx
+
         skill_path = Path(skill_path)
         if not skill_path.exists():
             raise FileNotFoundError(f"Skill not found: {skill_path}")
@@ -126,6 +129,7 @@ class SkillsHubClient:
     async def _get(self, path: str, params: dict | None = None) -> list[HubSkill]:
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=_HUB_TIMEOUT) as client:
                 resp = await client.get(
                     f"{_HUB_BASE_URL}{path}",

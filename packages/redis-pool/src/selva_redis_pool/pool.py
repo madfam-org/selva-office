@@ -105,9 +105,7 @@ class RedisPool:
                 logger.info("Redis circuit breaker half-open, attempting recovery")
             else:
                 remaining = self._circuit_cooldown - elapsed
-                raise ConnectionError(
-                    f"Redis circuit breaker open, {remaining:.1f}s until retry"
-                )
+                raise ConnectionError(f"Redis circuit breaker open, {remaining:.1f}s until retry")
 
     def _record_success(self) -> None:
         """Record a successful operation."""

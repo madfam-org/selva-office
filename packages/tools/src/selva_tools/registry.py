@@ -51,8 +51,7 @@ class ToolRegistry:
         if audience is None:
             return sorted(self._tools.keys())
         return sorted(
-            name for name, tool in self._tools.items()
-            if can_access(tool.audience, audience)
+            name for name, tool in self._tools.items() if can_access(tool.audience, audience)
         )
 
     def get_specs(

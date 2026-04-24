@@ -71,17 +71,21 @@ class OpenAIProvider(InferenceProvider):
                 if block_type == "text":
                     openai_blocks.append({"type": "text", "text": block["content"]})
                 elif block_type == "image_url":
-                    openai_blocks.append({
-                        "type": "image_url",
-                        "image_url": {"url": block["content"]},
-                    })
+                    openai_blocks.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": block["content"]},
+                        }
+                    )
                 elif block_type == "image_base64":
                     mime = block.get("mime_type", "image/png")
                     data_uri = f"data:{mime};base64,{block['content']}"
-                    openai_blocks.append({
-                        "type": "image_url",
-                        "image_url": {"url": data_uri},
-                    })
+                    openai_blocks.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": data_uri},
+                        }
+                    )
                 else:
                     # Unknown block type -- pass through as text if it has content
                     if "content" in block:
@@ -156,17 +160,20 @@ class OpenAIProvider(InferenceProvider):
     async def stream(self, request: InferenceRequest) -> AsyncIterator[str]:
         body = self._build_body(request, stream=True)
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
-            "POST",
-            f"{self._base_url}/chat/completions",
-            headers=self._headers(),
-            json=body,
-        ) as resp:
+        async with (
+            httpx.AsyncClient(timeout=self._timeout) as client,
+            client.stream(
+                "POST",
+                f"{self._base_url}/chat/completions",
+                headers=self._headers(),
+                json=body,
+            ) as resp,
+        ):
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if not line.startswith("data: "):
                     continue
-                payload = line[len("data: "):]
+                payload = line[len("data: ") :]
                 if payload.strip() == "[DONE]":
                     break
                 try:

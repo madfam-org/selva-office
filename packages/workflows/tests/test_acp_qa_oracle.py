@@ -71,9 +71,7 @@ class TestValidate:
     # -- BashTool returns exit code 0 (tests pass) -------------------------
 
     @patch("selva_workflows.acp_qa_oracle.asyncio")
-    def test_validate_passes_when_bash_returns_zero(
-        self, mock_asyncio: MagicMock
-    ) -> None:
+    def test_validate_passes_when_bash_returns_zero(self, mock_asyncio: MagicMock) -> None:
         node = ACPQAOracleNode(source_code="x = 1", test_suite="pytest tests/")
 
         bash_result = _BashResult(return_code=0, stdout="all passed")
@@ -97,9 +95,7 @@ class TestValidate:
     # -- BashTool returns non-zero exit code (tests fail) ------------------
 
     @patch("selva_workflows.acp_qa_oracle.asyncio")
-    def test_validate_fails_when_bash_returns_nonzero(
-        self, mock_asyncio: MagicMock
-    ) -> None:
+    def test_validate_fails_when_bash_returns_nonzero(self, mock_asyncio: MagicMock) -> None:
         node = ACPQAOracleNode(source_code="x = 1", test_suite="pytest tests/")
 
         bash_result = _BashResult(return_code=1, stderr="FAILED test_foo")
@@ -124,9 +120,7 @@ class TestValidate:
     # -- Empty test_suite skips BashTool entirely --------------------------
 
     @patch("selva_workflows.acp_qa_oracle.asyncio")
-    def test_validate_passes_with_empty_test_suite(
-        self, mock_asyncio: MagicMock
-    ) -> None:
+    def test_validate_passes_with_empty_test_suite(self, mock_asyncio: MagicMock) -> None:
         """When test_suite is an empty string the ``if self.test_suite:``
         branch is skipped, so tests_passed stays True without needing BashTool."""
         node = ACPQAOracleNode(source_code="x = 1", test_suite="")

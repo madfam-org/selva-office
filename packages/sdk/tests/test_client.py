@@ -107,9 +107,7 @@ async def test_dispatch_auth_error() -> None:
 @pytest.mark.asyncio
 async def test_dispatch_budget_exceeded() -> None:
     def handle(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            402, json={"detail": "Compute token budget exceeded for today"}
-        )
+        return httpx.Response(402, json={"detail": "Compute token budget exceeded for today"})
 
     async with AutoSwarm(base_url="http://test", token="tok") as client:
         client._client = httpx.AsyncClient(
@@ -202,9 +200,7 @@ async def test_wait_for_task_timeout() -> None:
             transport=httpx.MockTransport(handle),
         )
         with pytest.raises(TaskTimeoutError):
-            await client.wait_for_task(
-                "aaaa-bbbb-cccc", poll_interval=0.01, timeout=0.03
-            )
+            await client.wait_for_task("aaaa-bbbb-cccc", poll_interval=0.01, timeout=0.03)
 
 
 @pytest.mark.asyncio

@@ -5,6 +5,7 @@ Queries EdgeMemoryDB for all transcript rows in a run and serializes
 them to the ShareGPT conversation format used by Atropos and other RL
 training pipelines, enabling fine-tuning on cleanroom-derived ACP runs.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,6 +50,7 @@ class TrajectoryExporter:
     def __init__(self, memory_store=None) -> None:
         if memory_store is None:
             from nexus_api.memory_store.db import memory_store as _ms
+
             self._store = _ms
         else:
             self._store = memory_store

@@ -63,9 +63,7 @@ class TestWorkflowCompiler:
         )
         graph = self.compiler.compile(wf)
         compiled = graph.compile()
-        result = compiled.invoke(
-            {"messages": [], "status": "running", "workflow_variables": {}}
-        )
+        result = compiled.invoke({"messages": [], "status": "running", "workflow_variables": {}})
         assert result["workflow_variables"]["lit"] == {"key": "val"}
 
     def test_compile_python_runner(self) -> None:
@@ -80,9 +78,7 @@ class TestWorkflowCompiler:
         )
         graph = self.compiler.compile(wf)
         compiled = graph.compile()
-        result = compiled.invoke(
-            {"messages": [], "status": "running", "workflow_variables": {}}
-        )
+        result = compiled.invoke({"messages": [], "status": "running", "workflow_variables": {}})
         assert result["workflow_variables"]["calc_result"] == 4
 
     def test_compile_loop_counter(self) -> None:
@@ -93,9 +89,7 @@ class TestWorkflowCompiler:
         )
         graph = self.compiler.compile(wf)
         compiled = graph.compile()
-        result = compiled.invoke(
-            {"messages": [], "status": "running", "workflow_variables": {}}
-        )
+        result = compiled.invoke({"messages": [], "status": "running", "workflow_variables": {}})
         assert result["workflow_variables"]["counter_count"] == 1
         assert result["workflow_variables"]["counter_done"] is False
 
@@ -112,7 +106,8 @@ class TestWorkflowCompiler:
             ],
             edges=[
                 EdgeDefinition(
-                    source="py", target="ok",
+                    source="py",
+                    target="ok",
                     condition=TriggerCondition(keyword="success"),
                 ),
                 EdgeDefinition(source="py", target="fail"),
@@ -120,9 +115,7 @@ class TestWorkflowCompiler:
         )
         graph = self.compiler.compile(wf)
         compiled = graph.compile()
-        result = compiled.invoke(
-            {"messages": [], "status": "running", "workflow_variables": {}}
-        )
+        result = compiled.invoke({"messages": [], "status": "running", "workflow_variables": {}})
         assert result["current_node_id"] == "ok"
 
     def test_compile_context_policy_keep_last_n(self) -> None:
@@ -133,22 +126,22 @@ class TestWorkflowCompiler:
                 NodeDefinition(
                     id="trimmed",
                     type=NodeType.PASSTHROUGH,
-                    context_policy=ContextPolicyConfig(
-                        type=ContextWindowPolicy.KEEP_LAST_N, n=2
-                    ),
+                    context_policy=ContextPolicyConfig(type=ContextWindowPolicy.KEEP_LAST_N, n=2),
                 ),
             ],
         )
         graph = self.compiler.compile(wf)
         compiled = graph.compile()
-        result = compiled.invoke({
-            "messages": [
-                HumanMessage(content="first"),
-                HumanMessage(content="second"),
-                HumanMessage(content="third"),
-            ],
-            "status": "running",
-        })
+        result = compiled.invoke(
+            {
+                "messages": [
+                    HumanMessage(content="first"),
+                    HumanMessage(content="second"),
+                    HumanMessage(content="third"),
+                ],
+                "status": "running",
+            }
+        )
         # After trimming to last 2, the passthrough passes through
         assert len(result["messages"]) == 2
 

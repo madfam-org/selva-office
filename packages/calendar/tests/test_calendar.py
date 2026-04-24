@@ -201,9 +201,7 @@ class TestMicrosoftCalendarAdapter:
                     "end": {"dateTime": "2026-03-14T10:00:00.0000000", "timeZone": "UTC"},
                     "isAllDay": False,
                     "onlineMeetingUrl": "https://teams.microsoft.com/xyz",
-                    "organizer": {
-                        "emailAddress": {"address": "manager@example.com"}
-                    },
+                    "organizer": {"emailAddress": {"address": "manager@example.com"}},
                     "attendees": [
                         {"emailAddress": {"address": "dev1@example.com"}},
                         {"emailAddress": {"address": "dev2@example.com"}},

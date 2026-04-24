@@ -12,26 +12,17 @@ import pytest
 
 from selva_tools.builtins.cloudflare_r2 import (
     R2BucketCreateTool,
-    R2BucketDeleteTool,
-    R2BucketListTool,
-    R2CorsSetTool,
     get_r2_tools,
 )
 from selva_tools.builtins.cloudflare_saas import (
     CfSaasHostnameAddTool,
-    CfSaasHostnameDeleteTool,
-    CfSaasHostnameListTool,
-    CfSaasHostnameStatusTool,
     get_cloudflare_saas_tools,
 )
 from selva_tools.builtins.cloudflare_tunnel import (
     CfTunnelCreateTool,
-    CfTunnelGetIngressTool,
-    CfTunnelListTool,
     CfTunnelPutIngressTool,
     get_cloudflare_tunnel_tools,
 )
-
 
 # -- Tunnel ------------------------------------------------------------------
 
@@ -60,11 +51,11 @@ class TestTunnelCreate:
                 "errors": [],
             }
 
-        with patch(
-            "selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"
-        ), patch("selva_tools.builtins.cloudflare_tunnel._request", new=fake):
+        with (
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare_tunnel._request", new=fake),
+        ):
             r = await CfTunnelCreateTool().execute(name="foundry")
             assert r.success is True
             assert r.data["tunnel_id"] == "tid-123"
@@ -74,18 +65,18 @@ class TestTunnelCreate:
 
     @pytest.mark.asyncio
     async def test_cname_target_in_response(self) -> None:
-        with patch(
-            "selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"
-        ), patch(
-            "selva_tools.builtins.cloudflare_tunnel._request",
-            new=AsyncMock(
-                return_value={
-                    "success": True,
-                    "result": {"id": "abc-uuid", "name": "foundry"},
-                    "errors": [],
-                }
+        with (
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"),
+            patch(
+                "selva_tools.builtins.cloudflare_tunnel._request",
+                new=AsyncMock(
+                    return_value={
+                        "success": True,
+                        "result": {"id": "abc-uuid", "name": "foundry"},
+                        "errors": [],
+                    }
+                ),
             ),
         ):
             r = await CfTunnelCreateTool().execute(name="foundry")
@@ -95,8 +86,9 @@ class TestTunnelCreate:
 class TestTunnelIngressValidation:
     @pytest.mark.asyncio
     async def test_missing_catchall_rejected(self) -> None:
-        with patch("selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"), patch(
-            "selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"
+        with (
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"),
         ):
             r = await CfTunnelPutIngressTool().execute(
                 tunnel_id="t",
@@ -117,11 +109,11 @@ class TestTunnelIngressValidation:
             captured["json_body"] = json_body
             return {"success": True, "result": {}, "errors": []}
 
-        with patch(
-            "selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"
-        ), patch("selva_tools.builtins.cloudflare_tunnel._request", new=fake):
+        with (
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_tunnel.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare_tunnel._request", new=fake),
+        ):
             r = await CfTunnelPutIngressTool().execute(
                 tunnel_id="t",
                 ingress=[
@@ -130,9 +122,7 @@ class TestTunnelIngressValidation:
                 ],
             )
             assert r.success is True
-            assert captured["json_body"]["config"]["ingress"][-1] == {
-                "service": "http_status:404"
-            }
+            assert captured["json_body"]["config"]["ingress"][-1] == {"service": "http_status:404"}
 
 
 # -- R2 ----------------------------------------------------------------------
@@ -162,11 +152,11 @@ class TestR2BucketCreate:
                 "errors": [],
             }
 
-        with patch(
-            "selva_tools.builtins.cloudflare_r2.CF_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.cloudflare_r2.CF_ACCOUNT_ID", "acc"
-        ), patch("selva_tools.builtins.cloudflare_r2._request", new=fake):
+        with (
+            patch("selva_tools.builtins.cloudflare_r2.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_r2.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare_r2._request", new=fake),
+        ):
             r = await R2BucketCreateTool().execute(name="subtext-audio")
             assert r.success is True
             # 'auto' means no locationHint sent
@@ -181,11 +171,11 @@ class TestR2BucketCreate:
             captured["json_body"] = json_body
             return {"success": True, "result": {"name": "x"}, "errors": []}
 
-        with patch(
-            "selva_tools.builtins.cloudflare_r2.CF_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.cloudflare_r2.CF_ACCOUNT_ID", "acc"
-        ), patch("selva_tools.builtins.cloudflare_r2._request", new=fake):
+        with (
+            patch("selva_tools.builtins.cloudflare_r2.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_r2.CF_ACCOUNT_ID", "acc"),
+            patch("selva_tools.builtins.cloudflare_r2._request", new=fake),
+        ):
             await R2BucketCreateTool().execute(
                 name="x", location="WNAM", storage_class="InfrequentAccess"
             )
@@ -194,25 +184,22 @@ class TestR2BucketCreate:
 
     @pytest.mark.asyncio
     async def test_endpoint_in_response(self) -> None:
-        with patch(
-            "selva_tools.builtins.cloudflare_r2.CF_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.cloudflare_r2.CF_ACCOUNT_ID", "acc123"
-        ), patch(
-            "selva_tools.builtins.cloudflare_r2._request",
-            new=AsyncMock(
-                return_value={
-                    "success": True,
-                    "result": {"name": "subtext-audio"},
-                    "errors": [],
-                }
+        with (
+            patch("selva_tools.builtins.cloudflare_r2.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_r2.CF_ACCOUNT_ID", "acc123"),
+            patch(
+                "selva_tools.builtins.cloudflare_r2._request",
+                new=AsyncMock(
+                    return_value={
+                        "success": True,
+                        "result": {"name": "subtext-audio"},
+                        "errors": [],
+                    }
+                ),
             ),
         ):
             r = await R2BucketCreateTool().execute(name="subtext-audio")
-            assert (
-                r.data["endpoint"]
-                == "https://acc123.r2.cloudflarestorage.com/subtext-audio"
-            )
+            assert r.data["endpoint"] == "https://acc123.r2.cloudflarestorage.com/subtext-audio"
 
 
 # -- SaaS --------------------------------------------------------------------
@@ -232,37 +219,33 @@ class TestSaasRegistry:
 class TestSaasHostnameAdd:
     @pytest.mark.asyncio
     async def test_ownership_verification_surfaced(self) -> None:
-        with patch(
-            "selva_tools.builtins.cloudflare_saas.CF_TOKEN", "t"
-        ), patch(
-            "selva_tools.builtins.cloudflare_saas._request",
-            new=AsyncMock(
-                return_value={
-                    "success": True,
-                    "result": {
-                        "id": "hn-1",
-                        "hostname": "app.tenant.com",
-                        "status": "pending",
-                        "ssl": {"status": "pending_validation"},
-                        "ownership_verification": {
-                            "type": "txt",
-                            "name": "_cf-custom-hostname.app.tenant.com",
-                            "value": "abcd-uuid",
+        with (
+            patch("selva_tools.builtins.cloudflare_saas.CF_TOKEN", "t"),
+            patch(
+                "selva_tools.builtins.cloudflare_saas._request",
+                new=AsyncMock(
+                    return_value={
+                        "success": True,
+                        "result": {
+                            "id": "hn-1",
+                            "hostname": "app.tenant.com",
+                            "status": "pending",
+                            "ssl": {"status": "pending_validation"},
+                            "ownership_verification": {
+                                "type": "txt",
+                                "name": "_cf-custom-hostname.app.tenant.com",
+                                "value": "abcd-uuid",
+                            },
                         },
-                    },
-                    "errors": [],
-                }
+                        "errors": [],
+                    }
+                ),
             ),
         ):
-            r = await CfSaasHostnameAddTool().execute(
-                zone_id="z", hostname="app.tenant.com"
-            )
+            r = await CfSaasHostnameAddTool().execute(zone_id="z", hostname="app.tenant.com")
             assert r.success is True
             assert r.data["ownership_verification"]["type"] == "txt"
-            assert (
-                r.data["ownership_verification"]["name"]
-                == "_cf-custom-hostname.app.tenant.com"
-            )
+            assert r.data["ownership_verification"]["name"] == "_cf-custom-hostname.app.tenant.com"
 
     @pytest.mark.asyncio
     async def test_default_ssl_method_http(self) -> None:
@@ -276,11 +259,10 @@ class TestSaasHostnameAdd:
                 "errors": [],
             }
 
-        with patch(
-            "selva_tools.builtins.cloudflare_saas.CF_TOKEN", "t"
-        ), patch("selva_tools.builtins.cloudflare_saas._request", new=fake):
-            await CfSaasHostnameAddTool().execute(
-                zone_id="z", hostname="app.tenant.com"
-            )
+        with (
+            patch("selva_tools.builtins.cloudflare_saas.CF_TOKEN", "t"),
+            patch("selva_tools.builtins.cloudflare_saas._request", new=fake),
+        ):
+            await CfSaasHostnameAddTool().execute(zone_id="z", hostname="app.tenant.com")
             assert captured["json_body"]["ssl"]["method"] == "http"
             assert captured["json_body"]["ssl"]["type"] == "dv"

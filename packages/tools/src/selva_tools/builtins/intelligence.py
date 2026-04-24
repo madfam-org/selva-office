@@ -10,8 +10,7 @@ from ..base import BaseTool, ToolResult
 class DOFMonitorTool(BaseTool):
     name = "dof_monitor"
     description = (
-        "Search the Diario Oficial de la Federacion for regulatory changes "
-        "via MADFAM Crawler"
+        "Search the Diario Oficial de la Federacion for regulatory changes via MADFAM Crawler"
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -21,15 +20,13 @@ class DOFMonitorTool(BaseTool):
                 "query": {
                     "type": "string",
                     "description": (
-                        "Search terms for DOF (e.g. 'reforma fiscal', 'RESICO', "
-                        "'salario minimo')"
+                        "Search terms for DOF (e.g. 'reforma fiscal', 'RESICO', 'salario minimo')"
                     ),
                 },
                 "since": {
                     "type": "string",
                     "description": (
-                        "Optional ISO date to filter results after this date "
-                        "(e.g. '2026-01-01')"
+                        "Optional ISO date to filter results after this date (e.g. '2026-01-01')"
                     ),
                 },
             },
@@ -80,8 +77,7 @@ class ExchangeRateTool(BaseTool):
         return ToolResult(
             success=success,
             output=(
-                f"{result.currency_pair}: {result.rate} "
-                f"(fecha: {result.date})"
+                f"{result.currency_pair}: {result.rate} (fecha: {result.date})"
                 if success
                 else f"No exchange rate data available for {currency}/MXN"
             ),
@@ -91,9 +87,7 @@ class ExchangeRateTool(BaseTool):
 
 class UMATrackerTool(BaseTool):
     name = "uma_tracker"
-    description = (
-        "Get current UMA (Unidad de Medida y Actualizacion) value via Dhanam"
-    )
+    description = "Get current UMA (Unidad de Medida y Actualizacion) value via Dhanam"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -190,9 +184,7 @@ class InflationTool(BaseTool):
 
 class SATMonitorTool(BaseTool):
     name = "sat_monitor"
-    description = (
-        "Check RFC tax obligation status and alerts via Karafiel SAT module"
-    )
+    description = "Check RFC tax obligation status and alerts via Karafiel SAT module"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -200,9 +192,7 @@ class SATMonitorTool(BaseTool):
             "properties": {
                 "rfc": {
                     "type": "string",
-                    "description": (
-                        "RFC to check obligations for (e.g. 'XAXX010101000')"
-                    ),
+                    "description": ("RFC to check obligations for (e.g. 'XAXX010101000')"),
                 },
             },
             "required": ["rfc"],
@@ -231,10 +221,7 @@ class SATMonitorTool(BaseTool):
 
 class SIEMComplianceTool(BaseTool):
     name = "siem_compliance"
-    description = (
-        "Check SIEM (Sistema de Informacion Empresarial Mexicano) "
-        "registration status"
-    )
+    description = "Check SIEM (Sistema de Informacion Empresarial Mexicano) registration status"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {

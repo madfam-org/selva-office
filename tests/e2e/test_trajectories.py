@@ -1,6 +1,7 @@
 """
 E2E tests — Gap 6: Trajectory Export (ShareGPT format)
 """
+
 import json
 from unittest.mock import MagicMock
 
@@ -31,6 +32,7 @@ _FAKE_TRANSCRIPTS = [
 class TestTrajectoryExporter:
     def _make_exporter(self):
         from selva_workflows.trajectory import TrajectoryExporter
+
         mock_store = MagicMock()
         exporter = TrajectoryExporter(memory_store=mock_store)
         exporter._fetch_transcript_rows = MagicMock(return_value=_FAKE_TRANSCRIPTS)
@@ -61,6 +63,7 @@ class TestTrajectoryExporter:
     def test_empty_run_returns_empty_conversations(self):
         """No transcripts → empty conversations list."""
         from selva_workflows.trajectory import TrajectoryExporter
+
         mock_store = MagicMock()
         exporter = TrajectoryExporter(memory_store=mock_store)
         exporter._fetch_transcript_rows = MagicMock(return_value=[])

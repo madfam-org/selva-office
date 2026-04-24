@@ -53,7 +53,7 @@ class GenerateParametricModelTool(BaseTool):
                 },
                 "dimensions": {
                     "type": "object",
-                    "description": "Dimension parameters (e.g., {width: 100, height: 50, depth: 30} in mm)",
+                    "description": "Dimension parameters (e.g., {width: 100, height: 50, depth: 30} in mm)",  # noqa: E501
                 },
                 "material": {
                     "type": "string",
@@ -154,7 +154,7 @@ class RunDFMAnalysisTool(BaseTool):
 
             return ToolResult(
                 success=True,
-                output=f"DFM Analysis: {status}. {'; '.join(issues[:3]) if issues else 'No issues found.'}",
+                output=f"DFM Analysis: {status}. {'; '.join(issues[:3]) if issues else 'No issues found.'}",  # noqa: E501
                 data=data,
             )
         except httpx.HTTPError as exc:
@@ -211,7 +211,7 @@ class GenerateQuoteTool(BaseTool):
             currency = data.get("currency", "MXN")
             return ToolResult(
                 success=True,
-                output=f"Quote generated: {currency} ${price:.2f} for {kwargs.get('quantity', 1)} unit(s)",
+                output=f"Quote generated: {currency} ${price:.2f} for {kwargs.get('quantity', 1)} unit(s)",  # noqa: E501
                 data=data,
             )
         except httpx.HTTPError as exc:
@@ -273,7 +273,7 @@ class CreateWorkOrderTool(BaseTool):
             order_id = data.get("work_order_id", data.get("id", "unknown"))
             return ToolResult(
                 success=True,
-                output=f"Work order created: {order_id} (qty: {kwargs.get('quantity', 1)}, material: {kwargs.get('material', 'PLA')})",
+                output=f"Work order created: {order_id} (qty: {kwargs.get('quantity', 1)}, material: {kwargs.get('material', 'PLA')})",  # noqa: E501
                 data=data,
             )
         except httpx.HTTPError as exc:

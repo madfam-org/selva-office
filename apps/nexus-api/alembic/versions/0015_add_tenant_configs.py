@@ -43,9 +43,7 @@ def upgrade() -> None:
         sa.Column("dhanam_space_id", sa.String(255), nullable=True),
         sa.Column("phyne_tenant_id", sa.String(255), nullable=True),
         # Feature flags
-        sa.Column(
-            "cfdi_enabled", sa.Boolean, nullable=False, server_default=sa.text("false")
-        ),
+        sa.Column("cfdi_enabled", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.Column(
             "intelligence_enabled",
             sa.Boolean,

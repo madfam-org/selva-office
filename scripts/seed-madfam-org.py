@@ -11,6 +11,7 @@ Seed the MADFAM organizational structure into AutoSwarm Office.
 Usage:
   python scripts/seed-selva-org.py [--api-url URL] [--token TOKEN]
 """
+
 import argparse
 import os
 import sys
@@ -38,8 +39,7 @@ DEPARTMENTS = [
         "name": "Build & Run Engine",
         "slug": "build-engine",
         "description": (
-            "Product execution, code delivery, infrastructure"
-            " reliability. The execution backbone."
+            "Product execution, code delivery, infrastructure reliability. The execution backbone."
         ),
         "max_agents": 12,
         "position_x": 750,
@@ -49,8 +49,7 @@ DEPARTMENTS = [
         "name": "Growth & Market Syndicate",
         "slug": "growth",
         "description": (
-            "Market analysis, content creation, customer"
-            " relationships, conversion optimization."
+            "Market analysis, content creation, customer relationships, conversion optimization."
         ),
         "max_agents": 8,
         "position_x": 250,
@@ -60,8 +59,7 @@ DEPARTMENTS = [
         "name": "Physical-Digital Bridge",
         "slug": "operations",
         "description": (
-            "Financial control, supply chain, manufacturing"
-            " orchestration, digital twin management."
+            "Financial control, supply chain, manufacturing orchestration, digital twin management."
         ),
         "max_agents": 6,
         "position_x": 750,
@@ -87,7 +85,13 @@ AGENTS = [
         "level": 9,
         "department_slug": "executive",
         "node_id": "executive",
-        "skill_ids": ["strategic-planning", "crm-outreach", "research", "doc-coauthoring", "product-catalog"],
+        "skill_ids": [
+            "strategic-planning",
+            "crm-outreach",
+            "research",
+            "doc-coauthoring",
+            "product-catalog",
+        ],
     },
     # ═══ BUILD NODE ═══
     {
@@ -138,7 +142,14 @@ AGENTS = [
         "level": 8,
         "department_slug": "build-engine",
         "node_id": "orchestration",
-        "skill_ids": ["coding", "webapp-testing", "mcp-builder", "research", "operations", "infrastructure-monitoring"],
+        "skill_ids": [
+            "coding",
+            "webapp-testing",
+            "mcp-builder",
+            "research",
+            "operations",
+            "infrastructure-monitoring",
+        ],
     },
     # ═══ LEDGER NODE ═══
     {
@@ -223,8 +234,7 @@ def seed_agents(dept_map: dict[str, str]) -> None:
         dept_id = dept_map.get(agent_def["department_slug"])
         if not dept_id:
             print(
-                f"  ✗  {agent_def['name']}"
-                f" — department '{agent_def['department_slug']}' not found",
+                f"  ✗  {agent_def['name']} — department '{agent_def['department_slug']}' not found",
             )
             continue
 
@@ -239,8 +249,7 @@ def seed_agents(dept_map: dict[str, str]) -> None:
         result = api("POST", "/api/v1/agents/", payload)
         if result:
             print(
-                f"  ✚  {agent_def['name']} [{agent_def['role']}]"
-                f" → {agent_def['department_slug']}",
+                f"  ✚  {agent_def['name']} [{agent_def['role']}] → {agent_def['department_slug']}",
             )
         else:
             print(f"  ✗  Failed to create {agent_def['name']}")

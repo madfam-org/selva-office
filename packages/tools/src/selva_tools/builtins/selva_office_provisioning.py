@@ -32,9 +32,7 @@ from ..base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
 
-NEXUS_API_URL = os.environ.get(
-    "NEXUS_API_URL", "http://nexus-api.autoswarm.svc.cluster.local"
-)
+NEXUS_API_URL = os.environ.get("NEXUS_API_URL", "http://nexus-api.autoswarm.svc.cluster.local")
 WORKER_API_TOKEN = os.environ.get("WORKER_API_TOKEN", "")
 HTTP_TIMEOUT = 15.0
 
@@ -52,9 +50,7 @@ def _creds_check() -> str | None:
     return None
 
 
-async def _request(
-    method: str, path: str, json_body: dict[str, Any] | None = None
-):
+async def _request(method: str, path: str, json_body: dict[str, Any] | None = None):
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         resp = await client.request(
             method,
@@ -134,9 +130,7 @@ class SelvaOfficeSeatCreateTool(BaseTool):
         if kwargs.get("metadata"):
             payload["metadata"] = kwargs["metadata"]
         try:
-            status, body = await _request(
-                "POST", "/api/v1/office/seats", json_body=payload
-            )
+            status, body = await _request("POST", "/api/v1/office/seats", json_body=payload)
             if not _ok(status) or not isinstance(body, dict):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
@@ -194,10 +188,7 @@ class SelvaOfficeSeatAssignDepartmentTool(BaseTool):
                 return ToolResult(success=False, error=_err(status, body))
             return ToolResult(
                 success=True,
-                output=(
-                    f"Seat {sid} moved to department "
-                    f"{kwargs['department_id']}"
-                ),
+                output=(f"Seat {sid} moved to department {kwargs['department_id']}"),
                 data={
                     "seat_id": sid,
                     "department_id": kwargs["department_id"],

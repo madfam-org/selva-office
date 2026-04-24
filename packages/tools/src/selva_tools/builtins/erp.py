@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 class CONTPAQiExportTool(BaseTool):
     name = "contpaqi_export"
     description = (
-        "Generate CONTPAQi-compatible CSV or XML from accounting data "
-        "(polizas, auxiliares)"
+        "Generate CONTPAQi-compatible CSV or XML from accounting data (polizas, auxiliares)"
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -92,40 +91,60 @@ def _build_contpaqi_csv(
 
     if polizas:
         # Header row for polizas
-        writer.writerow([
-            "tipo_poliza", "numero", "fecha", "concepto",
-            "cuenta", "debe", "haber", "referencia",
-        ])
+        writer.writerow(
+            [
+                "tipo_poliza",
+                "numero",
+                "fecha",
+                "concepto",
+                "cuenta",
+                "debe",
+                "haber",
+                "referencia",
+            ]
+        )
         for p in polizas:
-            writer.writerow([
-                p.get("tipo_poliza", "D"),
-                p.get("numero", ""),
-                p.get("fecha", ""),
-                p.get("concepto", ""),
-                p.get("cuenta", ""),
-                p.get("debe", "0.00"),
-                p.get("haber", "0.00"),
-                p.get("referencia", ""),
-            ])
+            writer.writerow(
+                [
+                    p.get("tipo_poliza", "D"),
+                    p.get("numero", ""),
+                    p.get("fecha", ""),
+                    p.get("concepto", ""),
+                    p.get("cuenta", ""),
+                    p.get("debe", "0.00"),
+                    p.get("haber", "0.00"),
+                    p.get("referencia", ""),
+                ]
+            )
 
     if auxiliares:
         if polizas:
             writer.writerow([])  # Separator
-        writer.writerow([
-            "cuenta", "nombre_cuenta", "fecha", "tipo_movimiento",
-            "debe", "haber", "saldo", "referencia",
-        ])
+        writer.writerow(
+            [
+                "cuenta",
+                "nombre_cuenta",
+                "fecha",
+                "tipo_movimiento",
+                "debe",
+                "haber",
+                "saldo",
+                "referencia",
+            ]
+        )
         for a in auxiliares:
-            writer.writerow([
-                a.get("cuenta", ""),
-                a.get("nombre_cuenta", ""),
-                a.get("fecha", ""),
-                a.get("tipo_movimiento", ""),
-                a.get("debe", "0.00"),
-                a.get("haber", "0.00"),
-                a.get("saldo", "0.00"),
-                a.get("referencia", ""),
-            ])
+            writer.writerow(
+                [
+                    a.get("cuenta", ""),
+                    a.get("nombre_cuenta", ""),
+                    a.get("fecha", ""),
+                    a.get("tipo_movimiento", ""),
+                    a.get("debe", "0.00"),
+                    a.get("haber", "0.00"),
+                    a.get("saldo", "0.00"),
+                    a.get("referencia", ""),
+                ]
+            )
 
     return output.getvalue()
 
@@ -142,8 +161,16 @@ def _build_contpaqi_xml(
         lines.append("  <Polizas>")
         for p in polizas:
             lines.append("    <Poliza")
-            for key in ("tipo_poliza", "numero", "fecha", "concepto",
-                        "cuenta", "debe", "haber", "referencia"):
+            for key in (
+                "tipo_poliza",
+                "numero",
+                "fecha",
+                "concepto",
+                "cuenta",
+                "debe",
+                "haber",
+                "referencia",
+            ):
                 val = str(p.get(key, "")).replace("&", "&amp;").replace('"', "&quot;")
                 lines.append(f'      {key}="{val}"')
             lines.append("    />")
@@ -153,8 +180,16 @@ def _build_contpaqi_xml(
         lines.append("  <Auxiliares>")
         for a in auxiliares:
             lines.append("    <Auxiliar")
-            for key in ("cuenta", "nombre_cuenta", "fecha", "tipo_movimiento",
-                        "debe", "haber", "saldo", "referencia"):
+            for key in (
+                "cuenta",
+                "nombre_cuenta",
+                "fecha",
+                "tipo_movimiento",
+                "debe",
+                "haber",
+                "saldo",
+                "referencia",
+            ):
                 val = str(a.get(key, "")).replace("&", "&amp;").replace('"', "&quot;")
                 lines.append(f'      {key}="{val}"')
             lines.append("    />")
@@ -166,10 +201,7 @@ def _build_contpaqi_xml(
 
 class GenericERPExportTool(BaseTool):
     name = "erp_export"
-    description = (
-        "Generic JSON/CSV export for any ERP system with optional "
-        "field mapping schema"
-    )
+    description = "Generic JSON/CSV export for any ERP system with optional field mapping schema"
 
     def parameters_schema(self) -> dict[str, Any]:
         return {

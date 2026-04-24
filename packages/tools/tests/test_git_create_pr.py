@@ -28,13 +28,13 @@ class TestGitCreatePR:
     async def test_refuses_from_main(self, tmp_path: Path) -> None:
         from selva_tools.builtins.git import GitCreatePRTool
 
-        run = _mock_run([
-            {"stdout": "main\n", "stderr": "", "return_code": 0, "success": True},
-        ])
+        run = _mock_run(
+            [
+                {"stdout": "main\n", "stderr": "", "return_code": 0, "success": True},
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
-            result = await GitCreatePRTool().execute(
-                title="feat: x", repo_path=str(tmp_path)
-            )
+            result = await GitCreatePRTool().execute(title="feat: x", repo_path=str(tmp_path))
 
         assert not result.success
         assert "protected branch" in (result.error or "")
@@ -44,15 +44,17 @@ class TestGitCreatePR:
     async def test_warns_on_non_conventional_title(self, tmp_path: Path) -> None:
         from selva_tools.builtins.git import GitCreatePRTool
 
-        run = _mock_run([
-            {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},  # branch
-            {
-                "stdout": "https://github.com/owner/repo/pull/42\n",
-                "stderr": "",
-                "return_code": 0,
-                "success": True,
-            },
-        ])
+        run = _mock_run(
+            [
+                {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},  # branch
+                {
+                    "stdout": "https://github.com/owner/repo/pull/42\n",
+                    "stderr": "",
+                    "return_code": 0,
+                    "success": True,
+                },
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await GitCreatePRTool().execute(
                 title="added a thing", body="b", repo_path=str(tmp_path)
@@ -66,15 +68,17 @@ class TestGitCreatePR:
     async def test_accepts_conventional_title(self, tmp_path: Path) -> None:
         from selva_tools.builtins.git import GitCreatePRTool
 
-        run = _mock_run([
-            {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
-            {
-                "stdout": "https://github.com/owner/repo/pull/7\n",
-                "stderr": "",
-                "return_code": 0,
-                "success": True,
-            },
-        ])
+        run = _mock_run(
+            [
+                {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
+                {
+                    "stdout": "https://github.com/owner/repo/pull/7\n",
+                    "stderr": "",
+                    "return_code": 0,
+                    "success": True,
+                },
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await GitCreatePRTool().execute(
                 title="fix(auth): handle expired token", body="b", repo_path=str(tmp_path)
@@ -93,15 +97,17 @@ class TestGitCreatePR:
         template.parent.mkdir()
         template.write_text("## Summary\n\n## Test plan\n")
 
-        run = _mock_run([
-            {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
-            {
-                "stdout": "https://github.com/owner/repo/pull/1\n",
-                "stderr": "",
-                "return_code": 0,
-                "success": True,
-            },
-        ])
+        run = _mock_run(
+            [
+                {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
+                {
+                    "stdout": "https://github.com/owner/repo/pull/1\n",
+                    "stderr": "",
+                    "return_code": 0,
+                    "success": True,
+                },
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await GitCreatePRTool().execute(
                 title="feat: x", body="", repo_path=str(tmp_path)
@@ -118,15 +124,17 @@ class TestGitCreatePR:
         codeowners.parent.mkdir()
         codeowners.write_text("* @alice @bob\n/infra/ @ops-team\n")
 
-        run = _mock_run([
-            {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
-            {
-                "stdout": "https://github.com/owner/repo/pull/1\n",
-                "stderr": "",
-                "return_code": 0,
-                "success": True,
-            },
-        ])
+        run = _mock_run(
+            [
+                {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
+                {
+                    "stdout": "https://github.com/owner/repo/pull/1\n",
+                    "stderr": "",
+                    "return_code": 0,
+                    "success": True,
+                },
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await GitCreatePRTool().execute(
                 title="feat: x",
@@ -142,15 +150,17 @@ class TestGitCreatePR:
     async def test_surfaces_gh_failure(self, tmp_path: Path) -> None:
         from selva_tools.builtins.git import GitCreatePRTool
 
-        run = _mock_run([
-            {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
-            {
-                "stdout": "",
-                "stderr": "gh: not authenticated",
-                "return_code": 1,
-                "success": False,
-            },
-        ])
+        run = _mock_run(
+            [
+                {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
+                {
+                    "stdout": "",
+                    "stderr": "gh: not authenticated",
+                    "return_code": 1,
+                    "success": False,
+                },
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await GitCreatePRTool().execute(
                 title="feat: x", body="b", repo_path=str(tmp_path)
@@ -165,14 +175,16 @@ class TestGitCreatePR:
         stderr embedded so the caller can see *why* the branch probe failed."""
         from selva_tools.builtins.git import GitCreatePRTool
 
-        run = _mock_run([
-            {
-                "stdout": "",
-                "stderr": "fatal: not a git repository",
-                "return_code": 128,
-                "success": False,
-            },
-        ])
+        run = _mock_run(
+            [
+                {
+                    "stdout": "",
+                    "stderr": "fatal: not a git repository",
+                    "return_code": 128,
+                    "success": False,
+                },
+            ]
+        )
         with patch("selva_tools.sandbox.ToolSandbox.run_command", new=run):
             result = await GitCreatePRTool().execute(
                 title="feat: x", body="b", repo_path=str(tmp_path)
@@ -201,15 +213,17 @@ class TestGitCreatePR:
                 raise OSError("permission denied")
             return real_read_text(self, *args, **kwargs)
 
-        run = _mock_run([
-            {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
-            {
-                "stdout": "https://github.com/owner/repo/pull/1\n",
-                "stderr": "",
-                "return_code": 0,
-                "success": True,
-            },
-        ])
+        run = _mock_run(
+            [
+                {"stdout": "feat/x\n", "stderr": "", "return_code": 0, "success": True},
+                {
+                    "stdout": "https://github.com/owner/repo/pull/1\n",
+                    "stderr": "",
+                    "return_code": 0,
+                    "success": True,
+                },
+            ]
+        )
         with (
             patch("selva_tools.sandbox.ToolSandbox.run_command", new=run),
             patch.object(Path, "read_text", _raising_read_text),

@@ -42,11 +42,13 @@ class TestFetchContext:
     def test_fallback_mock_context_without_phyne(self) -> None:
         from selva_workers.graphs.crm import fetch_context
 
-        result = fetch_context({
-            "messages": [],
-            "recipient": "user@example.com",
-            "crm_action": "email",
-        })
+        result = fetch_context(
+            {
+                "messages": [],
+                "recipient": "user@example.com",
+                "crm_action": "email",
+            }
+        )
 
         assert result["status"] == "fetching_context"
         assert result["recipient"] == "user@example.com"
@@ -56,10 +58,12 @@ class TestFetchContext:
     def test_context_includes_mock_history(self) -> None:
         from selva_workers.graphs.crm import fetch_context
 
-        result = fetch_context({
-            "messages": [],
-            "recipient": "test@co.com",
-        })
+        result = fetch_context(
+            {
+                "messages": [],
+                "recipient": "test@co.com",
+            }
+        )
 
         msg = result["messages"][0]
         crm_ctx = msg.additional_kwargs.get("crm_context", {})
@@ -78,10 +82,12 @@ class TestFetchContext:
         from selva_workers.graphs.crm import fetch_context
 
         with patch.dict("os.environ", {"PHYNE_CRM_URL": "http://fake-phyne:8080"}):
-            result = fetch_context({
-                "messages": [],
-                "recipient": "phyne-user@test.com",
-            })
+            result = fetch_context(
+                {
+                    "messages": [],
+                    "recipient": "phyne-user@test.com",
+                }
+            )
 
         # Should still succeed via fallback
         assert result["status"] == "fetching_context"
@@ -93,14 +99,18 @@ class TestDraftCommunication:
     def test_fallback_draft_without_llm(self) -> None:
         from selva_workers.graphs.crm import draft_communication
 
-        result = draft_communication({
-            "messages": [AIMessage(
-                content="CRM context fetched",
-                additional_kwargs={"crm_context": {"contact_history": []}},
-            )],
-            "recipient": "user@test.com",
-            "crm_action": "email",
-        })
+        result = draft_communication(
+            {
+                "messages": [
+                    AIMessage(
+                        content="CRM context fetched",
+                        additional_kwargs={"crm_context": {"contact_history": []}},
+                    )
+                ],
+                "recipient": "user@test.com",
+                "crm_action": "email",
+            }
+        )
 
         assert result["status"] == "drafted"
         assert result["draft_content"] is not None
@@ -109,11 +119,13 @@ class TestDraftCommunication:
     def test_draft_message_added(self) -> None:
         from selva_workers.graphs.crm import draft_communication
 
-        result = draft_communication({
-            "messages": [],
-            "recipient": "bob@co.com",
-            "crm_action": "email",
-        })
+        result = draft_communication(
+            {
+                "messages": [],
+                "recipient": "bob@co.com",
+                "crm_action": "email",
+            }
+        )
 
         assert len(result["messages"]) == 1
         assert "Draft" in result["messages"][0].content
@@ -129,12 +141,14 @@ class TestApprovalGate:
             "selva_workers.graphs.crm.interrupt",
             return_value={"approved": True},
         ):
-            result = approval_gate({
-                "messages": [],
-                "draft_content": "Hello",
-                "recipient": "test@co.com",
-                "crm_action": "email",
-            })
+            result = approval_gate(
+                {
+                    "messages": [],
+                    "draft_content": "Hello",
+                    "recipient": "test@co.com",
+                    "crm_action": "email",
+                }
+            )
 
         assert result["status"] == "approved"
 
@@ -145,12 +159,14 @@ class TestApprovalGate:
             "selva_workers.graphs.crm.interrupt",
             return_value={"approved": False, "feedback": "Tone is wrong"},
         ):
-            result = approval_gate({
-                "messages": [],
-                "draft_content": "Hello",
-                "recipient": "test@co.com",
-                "crm_action": "email",
-            })
+            result = approval_gate(
+                {
+                    "messages": [],
+                    "draft_content": "Hello",
+                    "recipient": "test@co.com",
+                    "crm_action": "email",
+                }
+            )
 
         assert result["status"] == "denied"
         assert "Tone is wrong" in result["messages"][-1].content
@@ -162,12 +178,14 @@ class TestSendNode:
     def test_skips_if_denied(self) -> None:
         from selva_workers.graphs.crm import send
 
-        result = send({
-            "messages": [],
-            "recipient": "user@test.com",
-            "crm_action": "email",
-            "status": "denied",
-        })
+        result = send(
+            {
+                "messages": [],
+                "recipient": "user@test.com",
+                "crm_action": "email",
+                "status": "denied",
+            }
+        )
 
         assert result["status"] == "cancelled"
 
@@ -181,12 +199,14 @@ class TestSendNode:
             mock_result.level = PermissionLevel.DENY
             mock_check.return_value = mock_result
 
-            result = send({
-                "messages": [],
-                "recipient": "user@test.com",
-                "crm_action": "email",
-                "status": "approved",
-            })
+            result = send(
+                {
+                    "messages": [],
+                    "recipient": "user@test.com",
+                    "crm_action": "email",
+                    "status": "approved",
+                }
+            )
 
         assert result["status"] == "blocked"
 
@@ -200,13 +220,15 @@ class TestSendNode:
             mock_result.level = PermissionLevel.ALLOW
             mock_check.return_value = mock_result
 
-            result = send({
-                "messages": [],
-                "recipient": "user@test.com",
-                "crm_action": "email",
-                "status": "approved",
-                "task_id": "task-42",
-            })
+            result = send(
+                {
+                    "messages": [],
+                    "recipient": "user@test.com",
+                    "crm_action": "email",
+                    "status": "approved",
+                    "task_id": "task-42",
+                }
+            )
 
         assert result["status"] == "completed"
         assert result["result"]["delivered"] is True
@@ -221,13 +243,15 @@ class TestSendNode:
             mock_result.level = PermissionLevel.ALLOW
             mock_check.return_value = mock_result
 
-            result = send({
-                "messages": [],
-                "recipient": "alice@co.com",
-                "crm_action": "email",
-                "status": "approved",
-                "task_id": "t-99",
-            })
+            result = send(
+                {
+                    "messages": [],
+                    "recipient": "alice@co.com",
+                    "crm_action": "email",
+                    "status": "approved",
+                    "task_id": "t-99",
+                }
+            )
 
         assert result["result"]["message_id"] == "msg-t-99"
         assert result["result"]["recipient"] == "alice@co.com"

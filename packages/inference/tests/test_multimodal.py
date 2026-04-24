@@ -27,6 +27,7 @@ from madfam_inference.types import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _text_only_request() -> InferenceRequest:
     """Build a simple text-only inference request."""
     return InferenceRequest(
@@ -105,6 +106,7 @@ class _TextOnlyProvider(InferenceProvider):
 # ContentType and MediaContent model tests
 # ---------------------------------------------------------------------------
 
+
 class TestContentType:
     def test_enum_values(self) -> None:
         assert ContentType.TEXT == "text"
@@ -149,6 +151,7 @@ class TestMediaContent:
 # InferenceRequest.has_media() tests
 # ---------------------------------------------------------------------------
 
+
 class TestHasMedia:
     def test_text_only_returns_false(self) -> None:
         request = _text_only_request()
@@ -181,13 +184,15 @@ class TestHasMedia:
     def test_text_blocks_only_returns_false(self) -> None:
         """A list of content blocks that are all text should return False."""
         request = InferenceRequest(
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "content": "part one"},
-                    {"type": "text", "content": "part two"},
-                ],
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "content": "part one"},
+                        {"type": "text", "content": "part two"},
+                    ],
+                }
+            ],
         )
         assert request.has_media() is False
 
@@ -196,10 +201,13 @@ class TestHasMedia:
         request = InferenceRequest(
             messages=[
                 {"role": "user", "content": "text only"},
-                {"role": "user", "content": [
-                    {"type": "text", "content": "look at this"},
-                    {"type": "image_base64", "content": "abc", "mime_type": "image/png"},
-                ]},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "content": "look at this"},
+                        {"type": "image_base64", "content": "abc", "mime_type": "image/png"},
+                    ],
+                },
             ],
         )
         assert request.has_media() is True
@@ -208,6 +216,7 @@ class TestHasMedia:
 # ---------------------------------------------------------------------------
 # OpenAI provider _format_messages tests
 # ---------------------------------------------------------------------------
+
 
 class TestOpenAIFormatMessages:
     def test_string_content_passthrough(self) -> None:
@@ -219,9 +228,12 @@ class TestOpenAIFormatMessages:
 
     def test_text_block_conversion(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "text", "content": "describe this"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "content": "describe this"},
+                ],
+            },
         ]
         result = OpenAIProvider._format_messages(messages)
         assert len(result) == 1
@@ -231,9 +243,12 @@ class TestOpenAIFormatMessages:
 
     def test_image_url_conversion(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "image_url", "content": "https://example.com/img.png"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "content": "https://example.com/img.png"},
+                ],
+            },
         ]
         result = OpenAIProvider._format_messages(messages)
         block = result[0]["content"][0]
@@ -242,13 +257,16 @@ class TestOpenAIFormatMessages:
 
     def test_image_base64_to_data_uri(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {
-                    "type": "image_base64",
-                    "content": "aW1hZ2VkYXRh",
-                    "mime_type": "image/jpeg",
-                },
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_base64",
+                        "content": "aW1hZ2VkYXRh",
+                        "mime_type": "image/jpeg",
+                    },
+                ],
+            },
         ]
         result = OpenAIProvider._format_messages(messages)
         block = result[0]["content"][0]
@@ -257,9 +275,12 @@ class TestOpenAIFormatMessages:
 
     def test_image_base64_default_mime_type(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "image_base64", "content": "abc123"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_base64", "content": "abc123"},
+                ],
+            },
         ]
         result = OpenAIProvider._format_messages(messages)
         block = result[0]["content"][0]
@@ -267,14 +288,17 @@ class TestOpenAIFormatMessages:
 
     def test_mixed_content_blocks(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "text", "content": "What is this?"},
-                {
-                    "type": "image_base64",
-                    "content": "base64data",
-                    "mime_type": "image/png",
-                },
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "content": "What is this?"},
+                    {
+                        "type": "image_base64",
+                        "content": "base64data",
+                        "mime_type": "image/png",
+                    },
+                ],
+            },
         ]
         result = OpenAIProvider._format_messages(messages)
         content = result[0]["content"]
@@ -284,9 +308,12 @@ class TestOpenAIFormatMessages:
 
     def test_preserves_role(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "assistant", "content": [
-                {"type": "text", "content": "I see an image."},
-            ]},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "text", "content": "I see an image."},
+                ],
+            },
         ]
         result = OpenAIProvider._format_messages(messages)
         assert result[0]["role"] == "assistant"
@@ -295,6 +322,7 @@ class TestOpenAIFormatMessages:
 # ---------------------------------------------------------------------------
 # Anthropic provider _format_messages tests
 # ---------------------------------------------------------------------------
+
 
 class TestAnthropicFormatMessages:
     def test_string_content_wrapped(self) -> None:
@@ -307,9 +335,12 @@ class TestAnthropicFormatMessages:
 
     def test_text_block(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "text", "content": "describe"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "content": "describe"},
+                ],
+            },
         ]
         result = AnthropicProvider._format_messages(messages)
         block = result[0]["content"][0]
@@ -317,13 +348,16 @@ class TestAnthropicFormatMessages:
 
     def test_image_base64_block(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {
-                    "type": "image_base64",
-                    "content": "aW1hZ2VkYXRh",
-                    "mime_type": "image/jpeg",
-                },
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_base64",
+                        "content": "aW1hZ2VkYXRh",
+                        "mime_type": "image/jpeg",
+                    },
+                ],
+            },
         ]
         result = AnthropicProvider._format_messages(messages)
         block = result[0]["content"][0]
@@ -334,9 +368,12 @@ class TestAnthropicFormatMessages:
 
     def test_image_url_block(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "image_url", "content": "https://example.com/img.png"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "content": "https://example.com/img.png"},
+                ],
+            },
         ]
         result = AnthropicProvider._format_messages(messages)
         block = result[0]["content"][0]
@@ -346,14 +383,17 @@ class TestAnthropicFormatMessages:
 
     def test_mixed_content(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "text", "content": "What is this?"},
-                {
-                    "type": "image_base64",
-                    "content": "data",
-                    "mime_type": "image/png",
-                },
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "content": "What is this?"},
+                    {
+                        "type": "image_base64",
+                        "content": "data",
+                        "mime_type": "image/png",
+                    },
+                ],
+            },
         ]
         result = AnthropicProvider._format_messages(messages)
         content = result[0]["content"]
@@ -374,6 +414,7 @@ class TestAnthropicFormatMessages:
 # Ollama provider _format_messages tests
 # ---------------------------------------------------------------------------
 
+
 class TestOllamaFormatMessages:
     def test_string_content_passthrough(self) -> None:
         messages: list[dict[str, Any]] = [
@@ -384,14 +425,17 @@ class TestOllamaFormatMessages:
 
     def test_image_base64_extracted_to_images_field(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "text", "content": "What is this?"},
-                {
-                    "type": "image_base64",
-                    "content": "aW1hZ2VkYXRh",
-                    "mime_type": "image/png",
-                },
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "content": "What is this?"},
+                    {
+                        "type": "image_base64",
+                        "content": "aW1hZ2VkYXRh",
+                        "mime_type": "image/png",
+                    },
+                ],
+            },
         ]
         result = OllamaProvider._format_messages(messages)
         assert len(result) == 1
@@ -400,11 +444,14 @@ class TestOllamaFormatMessages:
 
     def test_multiple_images(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "text", "content": "Compare these"},
-                {"type": "image_base64", "content": "img1", "mime_type": "image/png"},
-                {"type": "image_base64", "content": "img2", "mime_type": "image/jpeg"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "content": "Compare these"},
+                    {"type": "image_base64", "content": "img1", "mime_type": "image/png"},
+                    {"type": "image_base64", "content": "img2", "mime_type": "image/jpeg"},
+                ],
+            },
         ]
         result = OllamaProvider._format_messages(messages)
         assert result[0]["images"] == ["img1", "img2"]
@@ -412,9 +459,12 @@ class TestOllamaFormatMessages:
     def test_image_url_fallback_to_text(self) -> None:
         """Ollama does not support image URLs natively -- they are included as text."""
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "image_url", "content": "https://example.com/img.png"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "content": "https://example.com/img.png"},
+                ],
+            },
         ]
         result = OllamaProvider._format_messages(messages)
         assert "https://example.com/img.png" in result[0]["content"]
@@ -422,9 +472,12 @@ class TestOllamaFormatMessages:
 
     def test_no_images_key_for_text_only_blocks(self) -> None:
         messages: list[dict[str, Any]] = [
-            {"role": "user", "content": [
-                {"type": "text", "content": "just text"},
-            ]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "content": "just text"},
+                ],
+            },
         ]
         result = OllamaProvider._format_messages(messages)
         assert result[0]["content"] == "just text"
@@ -434,6 +487,7 @@ class TestOllamaFormatMessages:
 # ---------------------------------------------------------------------------
 # Provider supports_vision property tests
 # ---------------------------------------------------------------------------
+
 
 class TestSupportsVision:
     def test_base_provider_defaults_false(self) -> None:
@@ -475,6 +529,7 @@ class TestSupportsVision:
 # ---------------------------------------------------------------------------
 # Router vision filtering tests
 # ---------------------------------------------------------------------------
+
 
 class TestRouterVisionFiltering:
     async def test_multimodal_request_selects_vision_provider(self) -> None:

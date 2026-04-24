@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -33,11 +33,27 @@ NPM_REGISTRY_PASSWORD = os.environ.get("NPM_REGISTRY_PASSWORD", "")
 
 # All repos that depend on NPM_MADFAM_TOKEN
 ECOSYSTEM_REPOS = [
-    "karafiel", "enclii", "janua", "dhanam", "tezca", "forgesight",
-    "fortuna", "phyne-crm", "avala", "digifab-quoting", "forj",
-    "rondelio", "routecraft", "blueprint-harvester", "sim4d",
-    "madfam-site", "autoswarm-office", "solarpunk-foundry",
-    "symbiosis-hcm", "stratum-tcg", "primavera3d",
+    "karafiel",
+    "enclii",
+    "janua",
+    "dhanam",
+    "tezca",
+    "forgesight",
+    "fortuna",
+    "phyne-crm",
+    "avala",
+    "digifab-quoting",
+    "forj",
+    "rondelio",
+    "routecraft",
+    "blueprint-harvester",
+    "sim4d",
+    "madfam-site",
+    "autoswarm-office",
+    "solarpunk-foundry",
+    "symbiosis-hcm",
+    "stratum-tcg",
+    "primavera3d",
 ]
 GITHUB_ORG = "madfam-org"
 
@@ -54,7 +70,7 @@ def _decode_jwt_expiry(token: str) -> datetime | None:
         decoded = json.loads(base64.urlsafe_b64decode(payload))
         exp = decoded.get("exp")
         if exp:
-            return datetime.fromtimestamp(exp, tz=timezone.utc)
+            return datetime.fromtimestamp(exp, tz=UTC)
     except Exception:
         pass
     return None
@@ -93,7 +109,7 @@ class NpmCheckExpiryTool(BaseTool):
         if not expiry:
             return ToolResult(success=False, error="Cannot decode token expiry")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         days_left = (expiry - now).days
         is_expired = days_left < 0
         needs_rotation = days_left < 30
@@ -268,10 +284,19 @@ class NpmRotateTokenTool(BaseTool):
         for repo in target_repos:
             try:
                 proc = subprocess.run(
-                    ["gh", "secret", "set", "NPM_MADFAM_TOKEN",
-                     "--repo", f"{GITHUB_ORG}/{repo}",
-                     "--body", token],
-                    capture_output=True, text=True, timeout=30,
+                    [
+                        "gh",
+                        "secret",
+                        "set",
+                        "NPM_MADFAM_TOKEN",
+                        "--repo",
+                        f"{GITHUB_ORG}/{repo}",
+                        "--body",
+                        token,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 results["repos"][repo] = "OK" if proc.returncode == 0 else proc.stderr.strip()
             except Exception as e:
@@ -340,10 +365,19 @@ class NpmUpdateGitHubSecretsTool(BaseTool):
         for repo in target_repos:
             try:
                 proc = subprocess.run(
-                    ["gh", "secret", "set", "NPM_MADFAM_TOKEN",
-                     "--repo", f"{GITHUB_ORG}/{repo}",
-                     "--body", token],
-                    capture_output=True, text=True, timeout=30,
+                    [
+                        "gh",
+                        "secret",
+                        "set",
+                        "NPM_MADFAM_TOKEN",
+                        "--repo",
+                        f"{GITHUB_ORG}/{repo}",
+                        "--body",
+                        token,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 results[repo] = "OK" if proc.returncode == 0 else proc.stderr.strip()
             except Exception as e:
