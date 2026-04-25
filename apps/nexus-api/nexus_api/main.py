@@ -108,13 +108,18 @@ def create_app() -> FastAPI:
     init_tracing("nexus-api")
     logger.info("Configuration validated for environment=%s", settings.environment)
 
+    # H9 (audit 2026-04-23): /docs and /openapi.json must NOT be public in
+    # prod (would enumerate every nexus-api endpoint to anonymous callers).
+    # Gate on settings.environment so local/staging keep Swagger UI.
+    _docs_enabled = settings.environment != "production"
     app = FastAPI(
         title="AutoSwarm Nexus API",
         version="0.2.0",
         description="Core orchestration API for the AutoSwarm Office platform",
         lifespan=lifespan,
-        docs_url="/api/v1/docs",
-        openapi_url="/api/v1/openapi.json",
+        docs_url="/api/v1/docs" if _docs_enabled else None,
+        redoc_url="/api/v1/redoc" if _docs_enabled else None,
+        openapi_url="/api/v1/openapi.json" if _docs_enabled else None,
     )
 
     # -- Prometheus metrics ----------------------------------------------------
