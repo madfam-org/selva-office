@@ -1,5 +1,10 @@
 # CLAUDE.md -- AutoSwarm Office
 
+## Pricing & PMF Anchoring
+
+- **Pricing source-of-truth**: `internal-devops/decisions/2026-04-25-tulana-ecosystem-pricing.md`. Selva tiers (Tulana v0.1 recommended, MXN/hr): Maker Pack 85 / Studio Pack 170 / Enterprise Pack 255. Confidence: **medium** — only product with a Tulana v0.1 SKU live (see `scripts/seed-mvp.py:188-197`).
+- **PMF measurement**: per RFC 0013, NPS + Sean Ellis + retention via `@madfam/pmf-widget` → Tulana `/v1/pmf/*` endpoints. Composite PMF Score informs price moves + sunset decisions.
+
 ## Deployment Pipeline (dev → staging → prod)
 
 autoswarm-office is the **Phase 4** target for the 3-tier pipeline
