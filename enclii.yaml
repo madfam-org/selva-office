@@ -25,6 +25,32 @@ metadata:
   project: autoswarm-office
   description: AutoSwarm Office — Core orchestration API
 spec:
+  status:
+    enabled: true
+    entries:
+      - name: Selva Landing
+        url: https://selva.town
+        group: Selva Office
+        family: Selva Swarm
+        description: AI workforce landing page
+      - name: Selva API
+        url: https://api.selva.town/health
+        href: https://api.selva.town
+        group: Selva Office
+        family: Selva Swarm
+        description: Agent orchestration API
+      - name: Selva Demo
+        url: https://app.selva.town/demo
+        href: https://app.selva.town
+        group: Selva Office
+        family: Selva Swarm
+        description: Virtual office demo
+      - name: Selva Admin
+        url: https://admin.selva.town/login
+        href: https://admin.selva.town
+        group: Selva Office
+        family: Selva Swarm
+        description: Admin operations console
   build:
     type: dockerfile
     dockerfile: infra/docker/Dockerfile.nexus-api
