@@ -7,7 +7,16 @@ updates:
     groups:
       production-dependencies:
         patterns: ["*"]
+        # Only group patch + minor bumps. Majors get their own PRs so each
+        # framework-shifting bump (eslint, next, colyseus, redis, jose, etc.)
+        # can be reviewed, smoke-tested, and landed independently.
+        # See claudedocs/security-remediation-2026-04-27/remediation-plan.md.
+        update-types: ["minor", "patch"]
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      python-deps:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
