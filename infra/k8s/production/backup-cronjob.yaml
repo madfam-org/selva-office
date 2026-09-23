@@ -213,7 +213,13 @@ spec:
       remoteRef:
         key: postgres-credentials
         property: username
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
     - secretKey: password
       remoteRef:
         key: postgres-credentials
         property: password
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
