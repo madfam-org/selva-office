@@ -20,7 +20,7 @@
     "@types/simple-peer": "^9.11.9",
     "@xyflow/react": "^12.11.3",
     "js-yaml": "^4.3.0",
-    "next": "^15.5.21",
+    "next": "^15.5.25",
     "phaser": "^3.87.0",
     "posthog-js": "^1.418.10",
     "react": "^19.2.8",
