@@ -1,0 +1,53 @@
+# Staging patch for the nexus-api-migrate PreSync hook (production/migrate-job.yaml).
+#
+# The base Job reads its secrets from `selva-secrets`, the prod-only name.
+# Without this remap the hook pod fails in selva-staging with
+#   Error: secret "selva-secrets" not found
+# and because a failing PreSync hook blocks the whole sync, selva-office-staging
+# sat OutOfSync with every staging Deployment frozen on a months-old image while
+# staging-deploy.yml kept committing new digests.
+#
+# Same refs and keys as patch-nexus-api.yaml, so the migration boots with the
+# settings the staging API runs with. kustomize merges `env` by name.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nexus-api-migrate
+spec:
+  template:
+    spec:
+      containers:
+        - name: migrate
+          env:
+            - name: ENVIRONMENT
+              value: staging
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: selva-staging-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: selva-staging-secrets
+                  key: redis-url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: selva-staging-secrets
+                  key: secret-key
+            - name: WORKER_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: selva-staging-secrets
+                  key: WORKER_API_TOKEN
+            - name: CONSENT_LEDGER_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: selva-staging-secrets
+                  key: CONSENT_LEDGER_SIGNING_SECRET
+            - name: COLYSEUS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: selva-staging-secrets
+                  key: colyseus-secret

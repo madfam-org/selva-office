@@ -95,6 +95,10 @@ patches:
     target:
       kind: Deployment
       name: nexus-api
+  - path: patch-migrate-job.yaml
+    target:
+      kind: Job
+      name: nexus-api-migrate
   - path: patch-office-ui.yaml
     target:
       kind: Deployment
