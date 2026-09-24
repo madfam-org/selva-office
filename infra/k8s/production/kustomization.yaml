@@ -11,10 +11,6 @@ namespace: selva
 # Cross-path read of phynd's HMAC/bearer values (secret/phynd-crm already
 # exists), so selva signs exactly what phynd verifies. Consumer mounts in
 # nexus-api are optional:true; safe to include pre-consumer.
-resources:
-- configmap.yaml
-- org-config.yaml
-- tenant-policies.yaml
 # ollama.yaml — DELIBERADAMENTE NO LISTADO. Vive en optional/ollama.yaml.
 #
 # El Deployment de Ollama fue bloqueado en admisión por la ClusterPolicy
@@ -37,6 +33,10 @@ resources:
 #   3. Re-agregar `- optional/ollama.yaml` a esta lista.
 # Hasta entonces `restricted`/`confidential` siguen fallando cerrado con
 # 503 `local_backend_unavailable`, que es el comportamiento correcto.
+resources:
+- configmap.yaml
+- org-config.yaml
+- tenant-policies.yaml
 - service-account.yaml
 - migrate-job.yaml
 - nexus-api.yaml
@@ -82,7 +82,7 @@ commonLabels:
 # observed in a ready production ReplicaSet after the newer audit-derived
 # digest failed to pull.
 images:
-- digest: sha256:a72ace3d08ae68be255dffc2122014c84b0d4db5d672493bd7bd02620bcc4d78
+- digest: sha256:dc807c380487cbea4ad34690ae25a709e9201a08c9e340697526bd8c65016ea5
   name: ghcr.io/madfam-org/selva-admin
   newName: ghcr.io/madfam-org/selva-admin
 - digest: sha256:92e1dd7df6695ec1eae914bb3ae379ca99a6475568e2be5afd9ab440a064db4d
@@ -97,7 +97,7 @@ images:
 - digest: sha256:d96d3b2bd48bc205401ee00bcfe3e949e687afff4383c676351b725ac144b623
   name: ghcr.io/madfam-org/selva-nexus-api
   newName: ghcr.io/madfam-org/selva-nexus-api
-- digest: sha256:19166159d2656c00306a02fa7f27fc1d7725983f1b7a685c6841736e26a447f1
+- digest: sha256:bc40f974bd1082587ef498a1f225e132ba26cc4032c1681694bbba5cb786417b
   name: ghcr.io/madfam-org/selva-office-ui
   newName: ghcr.io/madfam-org/selva-office-ui
 - digest: sha256:1d1565a32429c2126076873c83880a82bfa121353dc868cc330ac7363c8cfeaa
