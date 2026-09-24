@@ -19,7 +19,7 @@ We do not build businesses; we engineer operational hyperobjects. The purpose of
 **Decentralized Resilience:** Data, operations, and algorithmic models are containerized and redundant. We default to open-source protocols to guarantee perpetual access. If a node falls, the swarm re-routes. We exist in a state of perpetual uptime.
 
 ### Infrastructure Implementation
-- **Bare Metal:** 3-node K3s cluster on Hetzner (foundry-cp, foundry-worker-01, foundry-builder-01)
+- **Bare Metal:** 3-node K3s cluster on Hetzner (control-plane node, worker node, CI builder node; node identity lives only in the private operations record)
 - **PaaS:** Enclii — sovereign deployment platform with ArgoCD GitOps
 - **Identity:** Janua — self-hosted OAuth2/OIDC, zero external auth dependencies
 - **Orchestration:** Selva (Selva Office) — agent swarm platform on sovereign infra
