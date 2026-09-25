@@ -1,3 +1,35 @@
+# Prometheus ServiceMonitors for the selva namespace (inherited unchanged by
+# overlays/staging → selva-staging).
+#
+# The operator matches `endpoints[].port` to a Service port NAME. Every Service
+# here had one unnamed port, so none of the four original monitors resolved a
+# target. Fixed 2026-09-25 against live evidence:
+#
+#   nexus-api  :4300/metrics → prometheus_client exposition
+#              ("# HELP python_gc_objects_collected_total ..."). Kept; Service
+#              port named `http`.
+#   gateway    :4304/metrics → 200 text/plain, EMPTY body (apps/gateway/src/
+#              index.ts answers "" — a stub with no registry yet). Kept: an
+#              empty exposition is valid, so the scrape still yields `up` for
+#              the gateway, and real metrics land later without a manifest
+#              change. Its port was `health`, a name no Service ever had;
+#              now `http`, matching the Service.
+#   colyseus   REMOVED. :4303/metrics is 404 ("Cannot GET /metrics"); apps/
+#              colyseus has no metrics route at all. Naming its port would
+#              only have turned an inert monitor into a permanently-down
+#              target. Re-add alongside a real /metrics route.
+#   workers    REMOVED. There is no `workers` Service for it to select, and the
+#              pod listens on no TCP port: selva_workers/health.py defines a
+#              metrics server (default :4305) that nothing starts. Re-add
+#              together with starting that server, a containerPort and a
+#              Service.
+#
+# Reachability: selva / selva-staging have NO NetworkPolicies, so ingress to
+# these pods is open. Do NOT add a lone "allow monitoring" NetworkPolicy here:
+# the first policy selecting a pod for Ingress makes that pod default-deny for
+# every other source (cloudflared, intra-namespace), i.e. an outage. The scrape
+# path is gated only on the Prometheus egress side (enclii monitoring
+# manifests).
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -17,22 +49,6 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: selva-colyseus
-  namespace: selva
-  labels:
-    app.kubernetes.io/name: selva
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: colyseus
-  endpoints:
-    - port: http
-      path: /metrics
-      interval: 15s
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
   name: selva-gateway
   namespace: selva
   labels:
@@ -42,22 +58,6 @@ spec:
     matchLabels:
       app.kubernetes.io/name: gateway
   endpoints:
-    - port: health
-      path: /metrics
-      interval: 15s
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: selva-workers
-  namespace: selva
-  labels:
-    app.kubernetes.io/name: selva
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: workers
-  endpoints:
-    - port: health
+    - port: http
       path: /metrics
       interval: 15s
