@@ -115,6 +115,10 @@ spec:
   selector:
     app.kubernetes.io/name: gateway
   ports:
-    - port: 80
+    # Named so ServiceMonitor/selva-gateway (service-monitors.yaml, `port: http`)
+    # resolves an endpoint: the operator matches endpoints to Service ports by
+    # NAME only. Unnamed, the monitor matched zero targets.
+    - name: http
+      port: 80
       targetPort: 4304
       protocol: TCP
