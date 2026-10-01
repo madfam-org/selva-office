@@ -48,7 +48,7 @@ env:
 jobs:
   preflight:
     name: Staging provisioning preflight
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       enabled: ${{ steps.check.outputs.enabled }}
     steps:
@@ -86,7 +86,7 @@ jobs:
     name: Build ${{ matrix.service }} staging image
     needs: preflight
     if: needs.preflight.outputs.enabled == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -208,7 +208,7 @@ jobs:
   update-staging-overlay:
     name: Patch staging overlay digests
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -278,7 +278,7 @@ jobs:
   smoke:
     name: Staging smoke test
     needs: update-staging-overlay
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
