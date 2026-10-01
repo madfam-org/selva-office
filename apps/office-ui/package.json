@@ -19,7 +19,7 @@
     "@sentry/nextjs": "10.70.0",
     "@types/simple-peer": "^9.11.9",
     "@xyflow/react": "^12.11.3",
-    "js-yaml": "^4.3.2",
+    "js-yaml": "^5.4.2",
     "next": "^15.5.25",
     "phaser": "^3.87.0",
     "posthog-js": "^1.418.10",
