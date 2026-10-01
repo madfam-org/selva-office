@@ -6,7 +6,7 @@ requires-python = ">=3.12,<3.15"
 dependencies = [
   "pydantic>=2.10.5",
   "httpx>=0.28.1",
-  "urllib3>=2.7.0",
+  "urllib3>=2.8.0",
   # RFC 0005: k8s_secret tool uses the official SDK for in-cluster
   # SA token discovery, object models, and kubeconfig loading. A bare
   # httpx-against-the-API implementation was considered (it would drop
