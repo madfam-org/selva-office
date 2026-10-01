@@ -18,7 +18,7 @@ on:
 jobs:
   smoke:
     name: Voice-mode gate smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       NEXUS_API_URL: ${{ inputs.api_url || vars.NEXUS_API_STAGING_URL || 'https://staging-api.selva.town' }}

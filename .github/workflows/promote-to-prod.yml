@@ -58,7 +58,7 @@ concurrency:
 jobs:
   validate:
     name: Validate promotion candidate(s)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_promote: ${{ steps.resolve.outputs.should_promote }}
       nexus_api_digest: ${{ steps.resolve.outputs.nexus_api_digest }}
@@ -211,7 +211,7 @@ jobs:
     name: Write prod kustomization
     needs: validate
     if: needs.validate.outputs.should_promote == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

@@ -35,7 +35,7 @@ permissions:
 jobs:
   detect-changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       nexus-api: ${{ steps.changes.outputs.nexus-api }}
       office-ui: ${{ steps.changes.outputs.office-ui }}
@@ -89,7 +89,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.service }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: detect-changes
     if: >-
       needs.detect-changes.outputs.nexus-api == 'true' ||
@@ -239,7 +239,7 @@ jobs:
 
   commit-digests:
     name: Commit Digests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [detect-changes, build]
     if: success() || failure()
     steps:
@@ -322,7 +322,7 @@ jobs:
 
   notify-enclii:
     name: Notify Enclii
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build, commit-digests]
     if: always()
     steps:

@@ -49,7 +49,7 @@ concurrency:
 jobs:
   rollback:
     name: Write target digest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

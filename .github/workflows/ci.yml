@@ -13,7 +13,7 @@ concurrency:
 jobs:
   networkpolicy-port-lint:
     name: NetworkPolicy port consistency
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 3
     # Prevents the 2026-05-04 status.enclii.dev outage class:
     # NetworkPolicy `ports:` clauses that don't intersect the selected pods'
@@ -32,7 +32,7 @@ jobs:
 
   lint-ts:
     name: Lint TypeScript
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +50,7 @@ jobs:
 
   lint-py:
     name: Lint Python
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -69,7 +69,7 @@ jobs:
 
   typecheck-py:
     name: Typecheck Python
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: lint-py
     steps:
       - uses: actions/checkout@v4
@@ -253,7 +253,7 @@ jobs:
 
   lint-community-skills:
     name: Lint Community Skills (advisory)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     continue-on-error: true
     steps:
@@ -290,7 +290,7 @@ jobs:
 
   typecheck:
     name: Typecheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: lint-ts
     steps:
       - uses: actions/checkout@v4
@@ -309,7 +309,7 @@ jobs:
 
   test-ts:
     name: Test TypeScript
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: typecheck
     steps:
       - uses: actions/checkout@v4
@@ -328,7 +328,7 @@ jobs:
 
   test-py:
     name: Test Python
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: lint-py
     services:
       postgres:
@@ -435,7 +435,7 @@ jobs:
 
   critical-path-coverage:
     name: Critical Path Coverage Gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: lint-py
     steps:
       - uses: actions/checkout@v4
@@ -567,7 +567,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [test-ts, test-py, typecheck-py]
     steps:
       - uses: actions/checkout@v4
@@ -589,7 +589,7 @@ jobs:
 
   security:
     name: Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
