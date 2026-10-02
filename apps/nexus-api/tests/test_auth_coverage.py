@@ -10,8 +10,10 @@ exercising the user-facing JWT branches plus the small
 Strategy: bypass the heavy ``Settings`` constructor with a
 ``MagicMock(spec=Settings)`` and stub out the JWKS HTTP fetch so we
 don't hit the network. JWT-verify branches are tested by patching
-``jose.jwt.decode`` / ``get_unverified_header`` (the third-party
-library is treated as a black box; we verify our routing only).
+PyJWT's ``jwt.decode`` / ``get_unverified_header`` and the JWK-to-key
+conversion (the third-party library is treated as a black box; we
+verify our routing only). Real-token verification lives in
+``test_auth_pyjwt_verification.py``.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ import httpx
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-from jose import JWTError
+from jwt import PyJWTError as JWTError
 
 from nexus_api import auth as _auth_mod
 from nexus_api.config import Settings
@@ -139,6 +141,7 @@ class TestVerifyJwt:
                 _auth_mod, "_fetch_jwks", AsyncMock(return_value={"keys": [{"kid": "k"}]})
             ),
             patch.object(_auth_mod, "_get_signing_key", return_value={"kid": "k"}),
+            patch.object(_auth_mod, "_verification_key", return_value=MagicMock()),
             patch.object(
                 _auth_mod.jwt,
                 "decode",
@@ -155,6 +158,7 @@ class TestVerifyJwt:
                 _auth_mod, "_fetch_jwks", AsyncMock(return_value={"keys": [{"kid": "k"}]})
             ),
             patch.object(_auth_mod, "_get_signing_key", return_value={"kid": "k"}),
+            patch.object(_auth_mod, "_verification_key", return_value=MagicMock()),
             patch.object(_auth_mod.jwt, "decode", side_effect=JWTError("expired")),
             pytest.raises(HTTPException) as exc_info,
         ):
@@ -186,6 +190,7 @@ class TestVerifyJwt:
                 _auth_mod, "_fetch_jwks", AsyncMock(return_value={"keys": [{"kid": "k"}]})
             ),
             patch.object(_auth_mod, "_get_signing_key", return_value={"kid": "k"}),
+            patch.object(_auth_mod, "_verification_key", return_value=MagicMock()),
             patch.object(_auth_mod.jwt, "decode", return_value={"sub": "u"}),
         ):
             payload = await _auth_mod.verify_jwt("tok")

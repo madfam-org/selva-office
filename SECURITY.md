@@ -28,58 +28,49 @@ This project handles sensitive data including:
 
 ## Janua JWT verification (nexus-api)
 
-Status as of 2026-10-01. `apps/nexus-api/nexus_api/auth.py` holds the only
-server-side JWT verification in the Python services. `verify_jwt()` is called
-from `get_current_user()`. The inference gateway imports the same module
-through the `selva-nexus-api` workspace package, so both deployables share it.
+`apps/nexus-api/nexus_api/auth.py` holds the only server-side JWT verification
+in the Python services. `verify_jwt()` is called from `get_current_user()` and
+from the approvals and events WebSockets. The inference gateway imports the
+same module through the `selva-nexus-api` workspace package, so both
+deployables share it.
 
-How it verifies today:
+How it verifies:
 
-- **Library:** `python-jose` 3.5.0 (`from jose import JWTError, jwt`). This is
-  the last python-jose call site in the repo. PyJWT 2.15.1 is in `uv.lock` only
-  as a transitive dependency of `mcp`, and the repo never imports it.
+- **Library:** PyJWT (`pyjwt[crypto]>=2.15.1`, declared by
+  `apps/nexus-api/pyproject.toml`). python-jose and its `ecdsa` dependency are
+  no longer installed.
 - **Key:** it fetches `{JANUA_ISSUER_URL}/.well-known/jwks.json` (10 s
   timeout) and caches it in-process for 1 h. It picks the key whose `kid`
-  matches the token header. A token without `kid`, or with a `kid` that is not
-  in the cached set, gets a 401. The cache is **not** refreshed on an unknown
-  `kid`, so after a Janua key rotation new tokens are rejected for up to 1 h.
-- **Algorithms:** `algorithms=["RS256"]` only.
-- **Claims:** `issuer=JANUA_ISSUER_URL` (a missing or different `iss` fails)
-  and `audience=JANUA_CLIENT_ID`. python-jose's defaults also apply. `exp` is
-  checked when present, but neither `exp` nor `aud` is *required*. A signed
-  Janua token that omits either claim is accepted. There is no clock leeway.
+  matches the token header and binds it to RS256 (`jwt.PyJWK`). A JWK that
+  declares another `alg`, a `use` other than `sig`, or a non-RSA key type is
+  rejected. A token without `kid` gets a 401.
+- **Unknown `kid`:** Janua rotates its key with a hard cut, so a `kid` that is
+  not in the cached set refetches the JWKS once, bypassing the TTL, and the
+  token is rejected only if the fresh set does not have it either. Forced
+  refetches are limited to one per 60 s per process, so tokens with forged
+  `kid` values cannot turn into a stream of requests to Janua. Within that
+  window an unknown `kid` is rejected without a refetch.
+- **Algorithms:** `["RS256"]` only. Janua publishes one RS256 key and the
+  module only ever accepted RS256, so `none`, HS256 (including HS256 keyed with
+  the public key), RS384/RS512 and ES256 are rejected.
+- **Claims:** `exp`, `iss` and `aud` are required. `iss` must equal
+  `JANUA_ISSUER_URL` exactly and `aud` must contain `JANUA_CLIENT_ID`. `exp`,
+  `nbf` and `iat` are checked with a 30 s leeway for clock skew.
 - **Failures:** a verification error answers 401 with `WWW-Authenticate:
-  Bearer`. A JWKS fetch error answers 503.
+  Bearer`. A JWKS fetch error, including a failed forced refetch, answers 503.
+  The WebSockets close with 4401.
 - The worker/gateway shared-secret token and the development bypass are
   handled in `get_current_user()` before JWT verification. They are documented
   in `AGENTS.md` ("Security Posture").
 
-### Follow-up: port `nexus_api/auth.py` from python-jose to PyJWT
+Tests: `apps/nexus-api/tests/test_auth_pyjwt_verification.py` signs real RS256
+tokens and covers each rule above, including the refetch and its rate limit.
+`test_auth_coverage.py` covers the routing branches. Both run in CI's
+"nexus-api critical paths" coverage gate.
 
-This is not done yet. #301 bumped the dependencies but deliberately left the
-auth code alone. The port should bring this module to the contract the other
-MADFAM Python services adopted in the 2026-10 PyJWT ports:
-
-- `jwt.PyJWKClient`, or the existing cache, with **kid-matched** keys and a
-  refetch on an unknown `kid`;
-- an explicit algorithm allow-list (`["RS256"]`);
-- `options={"require": ["exp", "iss", "aud"]}` with `audience` and `issuer`
-  set;
-- `leeway=30` seconds;
-- the same 401/503 split.
-
-It should also remove `python-jose[cryptography]` from
-`apps/nexus-api/pyproject.toml` and `apps/inference-gateway/pyproject.toml`,
-and declare `pyjwt[crypto]` directly. `ecdsa` should then leave `uv.lock`,
-and the CVE-2024-23342 entry in `.trivyignore` (which exists only because
-python-jose pulls in `ecdsa`) can be deleted. The tests to extend are
-`apps/nexus-api/tests/test_auth_coverage.py` (it patches `jose.jwt.decode` /
-`get_unverified_header` today) and `test_auth_worker_token_scoping.py`. Both
-run in CI's "nexus-api critical paths" coverage gate (75%).
-
-Janua's side of the contract (issuer, JWKS URL, `kid`-matched signature
-check, and a PyJWT example) is
-[docs/guides/ECOSYSTEM_INTEGRATION.md](https://github.com/madfam-org/janua/blob/main/docs/guides/ECOSYSTEM_INTEGRATION.md).
+Janua's side of the contract (issuer, JWKS, `kid` rotation, audience, required
+claims) is
+[docs/reference/ISSUER_AND_JWKS.md](https://github.com/madfam-org/janua/blob/main/docs/reference/ISSUER_AND_JWKS.md).
 
 ## Known Security Exceptions
 

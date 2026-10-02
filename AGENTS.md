@@ -1077,15 +1077,12 @@ block pattern (see any existing platform module for template).
   validation. Janua tokens are JWTs with `sub`, `email`, `roles`, and `org_id` claims.
   - **Enterprise SSO Mapping**: To support multi-tenant boundaries (RLS in PostgreSQL), Janua must be configured with an OpenID Connect Enterprise Connection. Navigate to the Janua dashboard and map your IdP's group/tenant ID claim to the `org_id` token claim. This `org_id` is automatically extracted by the `TenantRLSMiddleware` in `security.py` to enforce secure PostgreSQL Row-Level Security isolation boundaries.
 
-  - **JWT verification (2026-10-01):** `apps/nexus-api/nexus_api/auth.py`
-    still uses **python-jose** (RS256 only, `kid`-matched JWKS key, `iss` +
-    `aud` checked, `exp` checked when present but not required, no leeway, a
-    1 h JWKS cache without refetch on an unknown `kid`). It is the last
-    python-jose call site, and the inference gateway runs it too. **Follow-up,
-    not done:** port it to PyJWT with required `exp`/`iss`/`aud`, 30 s leeway
-    and a refetch on an unknown `kid`, then drop python-jose and the `ecdsa`
-    `.trivyignore` entry. The full contract and plan are in `SECURITY.md`
-    ("Janua JWT verification (nexus-api)").
+  - **JWT verification:** `apps/nexus-api/nexus_api/auth.py` uses **PyJWT**
+    (RS256 only, `kid`-matched JWKS key, `exp`/`iss`/`aud` required, 30 s
+    leeway, a 1 h JWKS cache with one rate-limited refetch on an unknown
+    `kid`). The inference gateway runs the same module. python-jose and
+    `ecdsa` are no longer dependencies. The full contract is in
+    `SECURITY.md` ("Janua JWT verification (nexus-api)").
 
 - **Dhanam** handles billing and subscriptions. Compute token budgets are enforced
   by the orchestrator package and tracked in the `compute_token_ledger` table.

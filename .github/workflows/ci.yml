@@ -465,6 +465,7 @@ jobs:
           cd apps/nexus-api
           uv run pytest \
             tests/test_auth_coverage.py \
+            tests/test_auth_pyjwt_verification.py \
             tests/test_auth_worker_token_scoping.py \
             tests/test_database_coverage.py \
             tests/test_voice_mode_onboarding.py \

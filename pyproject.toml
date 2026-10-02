@@ -143,7 +143,6 @@ module = [
     "posthog.*",
     "opentelemetry.*",
     "faiss.*",
-    "jose.*",
     "yaml.*",
     "cachetools.*",
     "langgraph.*",
