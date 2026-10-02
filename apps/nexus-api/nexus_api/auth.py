@@ -6,9 +6,10 @@ import logging
 from typing import Any
 
 import httpx
+import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidKeyError, InvalidTokenError, PyJWTError
 
 from .config import Settings, get_settings
 from .middleware.security import org_id_var
@@ -30,6 +31,23 @@ _JWKS_TTL_SECONDS = 3600.0
 # <100ms; the generous 10s window protects against cold-start CDN misses
 # without blocking the whole verify path on a hung issuer.
 _JWKS_FETCH_TIMEOUT_S: float = 10.0
+
+# Janua signs access tokens with RS256 and names the signing key in the `kid`
+# header (see docs/guides/ECOSYSTEM_INTEGRATION.md in madfam-org/janua). The
+# allow-list is fixed here and never derived from the token header or the
+# JWKS, so `none` and HMAC algorithms (key confusion with the public JWK) can
+# never verify.
+_JANUA_ALGORITHMS = ["RS256"]
+
+# Clock-skew tolerance between Janua and this pod, applied to exp/nbf/iat.
+# PyJWT rejects an `iat` in the future (python-jose did not), so a token minted
+# by a Janua pod whose clock runs slightly ahead needs this to verify.
+_JANUA_LEEWAY_SECONDS = 30
+
+# Claims every Janua access token carries. python-jose accepted a token with no
+# `exp` (it never expired) and skipped the audience check when `aud` was
+# absent; requiring them closes both gaps. `iss` was already enforced.
+_JANUA_REQUIRED_CLAIMS = ["exp", "iss", "aud"]
 
 
 async def _fetch_jwks(issuer_url: str) -> dict[str, Any]:
@@ -60,21 +78,49 @@ async def _fetch_jwks(issuer_url: str) -> dict[str, Any]:
 
 
 def _get_signing_key(jwks: dict[str, Any], token: str) -> dict[str, Any]:
-    """Extract the correct signing key from the JWKS based on the token's ``kid`` header."""
+    """Extract the correct signing key from the JWKS based on the token's ``kid`` header.
+
+    Raises:
+        jwt.PyJWTError: on a malformed token header, a missing ``kid`` or a
+            ``kid`` that is not in the JWKS.
+    """
     unverified_header = jwt.get_unverified_header(token)
     kid = unverified_header.get("kid")
     if kid is None:
-        raise JWTError("Token header missing 'kid' claim")
+        raise InvalidTokenError("Token header missing 'kid' claim")
 
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
             return key
 
-    raise JWTError(f"Signing key '{kid}' not found in JWKS")
+    raise InvalidTokenError(f"Signing key '{kid}' not found in JWKS")
+
+
+def _verification_key(jwk: dict[str, Any]) -> jwt.PyJWK:
+    """Bind the selected JWK to the RS256 algorithm.
+
+    A JWK that declares another ``alg`` or a non-signature ``use``, or that is
+    not an RSA key, is rejected rather than verified.
+
+    Raises:
+        jwt.PyJWTError: when the JWK cannot verify an RS256 signature.
+    """
+    if jwk.get("alg") not in (None, *_JANUA_ALGORITHMS):
+        raise InvalidKeyError(f"JWKS key alg {jwk.get('alg')!r} is not allowed")
+    if jwk.get("use") not in (None, "sig"):
+        raise InvalidKeyError(f"JWKS key use {jwk.get('use')!r} is not 'sig'")
+    return jwt.PyJWK(jwk, algorithm=_JANUA_ALGORITHMS[0])
 
 
 async def verify_jwt(token: str, settings: Settings | None = None) -> dict[str, Any]:
     """Decode and validate a Janua-issued RS256 JWT.
+
+    Validates (PyJWT):
+      - signature, with the JWKS key named by the token's ``kid``;
+      - algorithm, against the fixed ``["RS256"]`` allow-list;
+      - ``exp`` (required), ``nbf`` and ``iat``, with a 30 s clock-skew leeway;
+      - ``iss`` (required) equals ``janua_issuer_url``;
+      - ``aud`` (required) contains ``janua_client_id``.
 
     Returns the full decoded payload on success.
 
@@ -90,14 +136,16 @@ async def verify_jwt(token: str, settings: Settings | None = None) -> dict[str, 
 
         payload: dict[str, Any] = jwt.decode(
             token,
-            signing_key,
-            algorithms=["RS256"],
+            _verification_key(signing_key),
+            algorithms=_JANUA_ALGORITHMS,
             audience=settings.janua_client_id,
             issuer=settings.janua_issuer_url,
+            leeway=_JANUA_LEEWAY_SECONDS,
+            options={"require": _JANUA_REQUIRED_CLAIMS},
         )
         return payload
 
-    except JWTError as exc:
+    except PyJWTError as exc:
         logger.warning("JWT verification failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

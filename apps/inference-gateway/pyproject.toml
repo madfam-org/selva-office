@@ -10,7 +10,6 @@ dependencies = [
   "asyncpg>=0.30.0",
   "pydantic>=2.10.5",
   "pydantic-settings>=2.7.1",
-  "python-jose[cryptography]>=3.3.0",
   "httpx>=0.28.1",
   # Reused shared cores — no re-implementation, single source of truth.
   "madfam-inference",
