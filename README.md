@@ -151,6 +151,16 @@ Selva Office is part of the MADFAM platform and integrates with:
 - **Dhanam** -- Billing, subscriptions, and compute token budgets
 - **Enclii** -- Deployment orchestration via ArgoCD (ports 4200-4204)
 
+## Related repositories / contracts
+
+| Repository | Contract | Defined in |
+|---|---|---|
+| [janua](https://github.com/madfam-org/janua) | Identity. `nexus-api` (and the inference gateway, which imports the same module) verifies Janua RS256 JWTs against `{JANUA_ISSUER_URL}/.well-known/jwks.json`. How this repo verifies today, and the pending python-jose to PyJWT port: [SECURITY.md](SECURITY.md#janua-jwt-verification-nexus-api). | [`docs/guides/ECOSYSTEM_INTEGRATION.md`](https://github.com/madfam-org/janua/blob/main/docs/guides/ECOSYSTEM_INTEGRATION.md) |
+| [janua](https://github.com/madfam-org/janua) | Machine-to-machine tokens, for services that call Selva with a Janua token. | [`docs/service-tokens.md`](https://github.com/madfam-org/janua/blob/main/docs/service-tokens.md) |
+| [enclii](https://github.com/madfam-org/enclii) | Deploy platform. [`enclii.yaml`](enclii.yaml) follows its service spec. The Agent Tool Plane (Coupler) consumer plan is [docs/COUPLER_INTEGRATION.md](docs/COUPLER_INTEGRATION.md). | [`docs/reference/service-spec.md`](https://github.com/madfam-org/enclii/blob/main/docs/reference/service-spec.md), [`docs/strategy/AGENT_TOOL_PLANE.md`](https://github.com/madfam-org/enclii/blob/main/docs/strategy/AGENT_TOOL_PLANE.md) |
+| [tezca](https://github.com/madfam-org/tezca) (consumer) | Calls Selva's OpenAI-compatible `/v1` relay for its chat feature. | [`docs/strategy/SELVA_ONBOARDING_TICKET_2026-04-27.md`](https://github.com/madfam-org/tezca/blob/main/docs/strategy/SELVA_ONBOARDING_TICKET_2026-04-27.md) |
+| Dhanam (billing) | Subscriptions and compute-token budgets. This repo's side is the billing router (`apps/nexus-api/nexus_api/routers/billing.py`) and the `compute_token_ledger` table. | This repo: [docs/INTEGRATION.md](docs/INTEGRATION.md) |
+
 ## Role in the MADFAM monetization engine
 
 Selva Office sits in MADFAM's commercial pipeline in two ways.

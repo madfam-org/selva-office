@@ -33,6 +33,12 @@ Compact LLM context index for this repository.
 - Canonical architecture: enclii `docs/strategy/AGENT_TOOL_PLANE.md`
 - Janua blocker: ConnectedAccount / ADR-002
 
+## Auth and dependency notes (2026-10-01)
+
+- Janua JWT verification is `apps/nexus-api/nexus_api/auth.py` (also used by the inference gateway). It still runs on python-jose: RS256, `kid`-matched JWKS, `iss`+`aud` checked, `exp`/`aud` not required, no leeway. Porting it to PyJWT is an open follow-up; see `SECURITY.md` → "Janua JWT verification (nexus-api)".
+- Security floors: root `pyproject.toml` `[tool.uv] constraint-dependencies` (pyjwt 2.15.1, urllib3 2.8.0, …) and pnpm overrides (fast-uri, brace-expansion). SQLAlchemy has no `<2.1` bound yet. CI runners are pinned to `ubuntu-24.04`.
+- Contract links: `README.md` → "Related repositories / contracts".
+
 ## Production operations
 
 Routine production operations are Enclii-first. Use Enclii web, API, or CLI

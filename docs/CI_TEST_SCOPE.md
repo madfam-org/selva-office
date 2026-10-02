@@ -33,6 +33,32 @@ contract.
 | Full Python workspace `uv run pytest apps packages tests` | Scheduled hardening run or high-risk refactor | Backend/platform | Some package suites require external services, pgvector, or long-running fixtures |
 | Community skill lint deep checks | Pull requests touching `packages/skills/community-skills/` | Skills owner | Advisory by design until community skill fixtures are normalized |
 
+## Conditional skips and known gaps (inventory 2026-10-01)
+
+There are no `.only`, `it.skip`, `describe.skip`, unconditional
+`pytest.mark.skip` or `xfail` markers in the repo. These conditional skips
+remain, and each depends on the environment:
+
+| Test | Skips when | CI status |
+|---|---|---|
+| `apps/nexus-api/tests/test_rls_strict_mode.py` (`postgres_only`) | the test database is not PostgreSQL (conftest pins SQLite) | **Not run by any CI step.** The strict-RLS assertions only run when someone points `DATABASE_URL` at PostgreSQL locally. Gap: add the file to `test-py`, which already has a pgvector PostgreSQL service. |
+| `apps/nexus-api/tests/test_tracing_middleware.py` (one case) | `opentelemetry` is not importable | Not in a CI step. Runs in the full-workspace hardening run. |
+| `packages/budget-gate/tests/test_api.py` | `fastapi`/`httpx` missing (`importorskip`) | Both are installed by `uv sync`, so it runs wherever it is invoked. |
+| `packages/tools/tests/test_k8s_secret.py` (one case) | the nexus-api audit module is not importable | Runs in the full-workspace hardening run. |
+
+**Known red outside PR CI:** `packages/skills/tests/test_community_skills.py`
+has 5 failures on `main` (2026-10-01). It expects 25 community skills and
+finds 27. `community-skills/video-downloader/SKILL.md` declares the name
+`youtube-downloader`, which does not match its directory. The file is not in
+any PR job. It belongs to the community-skills owner (see the Non-PR Gates
+table).
+
+The JWT verification tests (`test_auth_coverage.py`,
+`test_auth_worker_token_scoping.py`) run in `critical-path-coverage`. They
+mock python-jose today. When `nexus_api/auth.py` is ported to PyJWT (see
+`SECURITY.md`, "Janua JWT verification (nexus-api)"), they must move with it.
+On 2026-10-01 they gave 30 passed locally.
+
 ## Change Rule
 
 Any new tenant-safety, money-path, outbound-action, or dispatch-contract
