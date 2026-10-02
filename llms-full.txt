@@ -51,6 +51,29 @@ These files are maintained by `internal-devops/scripts/sync-agent-docs.py`.
 If repo-specific long-form agent guidance is needed, put it in `AGENTS.md`,
 not `CLAUDE.md`.
 
+## Auth contract and open follow-up (2026-10-01)
+
+- `apps/nexus-api/nexus_api/auth.py::verify_jwt` is the only Python JWT
+  verification. The inference gateway reaches it through
+  `nexus_api.routers.inference_proxy`.
+- It uses python-jose 3.5.0 and fetches the JWKS from
+  `{JANUA_ISSUER_URL}/.well-known/jwks.json` (1 h cache, no refetch on an
+  unknown `kid`).
+- It verifies `algorithms=["RS256"]`, `issuer=JANUA_ISSUER_URL` and
+  `audience=JANUA_CLIENT_ID`. `exp` is checked only when present. Tokens
+  without `exp` or `aud` are accepted. There is no leeway.
+- Errors: 401 on a verification failure, 503 on a JWKS fetch failure.
+- Follow-up (not done): port it to PyJWT with required `exp`/`iss`/`aud`, a
+  30 s leeway and a refetch on an unknown `kid`. Then drop
+  `python-jose[cryptography]` from nexus-api and inference-gateway, and drop
+  the `ecdsa` CVE-2024-23342 `.trivyignore` entry. Canonical: `SECURITY.md`.
+- Janua's contract:
+  https://github.com/madfam-org/janua/blob/main/docs/guides/ECOSYSTEM_INTEGRATION.md
+- Dependency notes: the floors are in root `pyproject.toml`
+  `constraint-dependencies` (pyjwt>=2.15.1, urllib3>=2.8.0, starlette>=1.3.1,
+  cryptography>=48.0.1, …). SQLAlchemy is 2.0.48 in `uv.lock` with no `<2.1`
+  bound. Runners are pinned to `ubuntu-24.04`.
+
 ## Nexus API surfaces (campaign orchestration)
 
 Phase 2 Tulana import (shipped):

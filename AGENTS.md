@@ -1077,16 +1077,43 @@ block pattern (see any existing platform module for template).
   validation. Janua tokens are JWTs with `sub`, `email`, `roles`, and `org_id` claims.
   - **Enterprise SSO Mapping**: To support multi-tenant boundaries (RLS in PostgreSQL), Janua must be configured with an OpenID Connect Enterprise Connection. Navigate to the Janua dashboard and map your IdP's group/tenant ID claim to the `org_id` token claim. This `org_id` is automatically extracted by the `TenantRLSMiddleware` in `security.py` to enforce secure PostgreSQL Row-Level Security isolation boundaries.
 
+  - **JWT verification (2026-10-01):** `apps/nexus-api/nexus_api/auth.py`
+    still uses **python-jose** (RS256 only, `kid`-matched JWKS key, `iss` +
+    `aud` checked, `exp` checked when present but not required, no leeway, a
+    1 h JWKS cache without refetch on an unknown `kid`). It is the last
+    python-jose call site, and the inference gateway runs it too. **Follow-up,
+    not done:** port it to PyJWT with required `exp`/`iss`/`aud`, 30 s leeway
+    and a refetch on an unknown `kid`, then drop python-jose and the `ecdsa`
+    `.trivyignore` entry. The full contract and plan are in `SECURITY.md`
+    ("Janua JWT verification (nexus-api)").
+
 - **Dhanam** handles billing and subscriptions. Compute token budgets are enforced
   by the orchestrator package and tracked in the `compute_token_ledger` table.
-  Use the billing router at `apps/nexus-api/src/routers/billing.py`.
+  Use the billing router at `apps/nexus-api/nexus_api/routers/billing.py`.
 
 - **Enclii** handles deployment. `enclii.yaml` (repo root) defines all six
   services (nexus-api, office-ui, admin, colyseus, gateway, workers).
   The `.github/workflows/deploy.yml` pipeline builds images and notifies Enclii.
 
 - Read sibling repo `llms-full.txt` files for full API surfaces of Janua, Dhanam,
-  and Enclii.
+  and Enclii. The contract links (Janua JWKS/issuer, service tokens, Enclii
+  service spec, Agent Tool Plane, Tezca's Selva relay) are in `README.md` under
+  "Related repositories / contracts".
+
+- **Dependency notes (2026-10-01):**
+  - Security floors live in the root `pyproject.toml`
+    `[tool.uv] constraint-dependencies`: `pyjwt>=2.15.1`, `urllib3>=2.8.0`,
+    `starlette>=1.3.1`, `cryptography>=48.0.1` and others (#301).
+  - The fast-uri and brace-expansion floors are pnpm overrides in
+    `package.json`.
+  - SQLAlchemy is locked at 2.0.48 but has **no `<2.1` upper bound**
+    (`sqlalchemy[asyncio]>=2.0.36`). The images install with
+    `uv sync --frozen`, so they stay on 2.0.x until someone relocks. Add
+    `sqlalchemy<2.1` to `constraint-dependencies` before any broad
+    `uv lock --upgrade`: SQLAlchemy 2.1 stops installing `greenlet` by
+    default and changes the default PostgreSQL driver.
+  - CI's GitHub-hosted jobs are pinned to `runs-on: ubuntu-24.04` (#303),
+    ahead of `ubuntu-latest` moving to Ubuntu 26 on 2026-10-19.
 
 ## Coding Standards
 

@@ -43,12 +43,14 @@ to protected routes are redirected to the Janua login page.
 ### FastAPI Middleware (Nexus API)
 
 The Nexus API validates Janua-issued JWTs on every protected endpoint via the
-`get_current_user` dependency in `apps/nexus-api/src/auth.py`. The dependency:
+`get_current_user` dependency in `apps/nexus-api/nexus_api/auth.py`. The dependency:
 
 1. Extracts the Bearer token from the `Authorization` header.
-2. Fetches the Janua JWKS from `{JANUA_ISSUER_URL}/.well-known/jwks.json` (cached).
-3. Validates the token signature, expiry, issuer, and audience claims.
-4. Returns the decoded JWT payload (sub, email, roles).
+2. Fetches the Janua JWKS from `{JANUA_ISSUER_URL}/.well-known/jwks.json` (cached for 1 h, and not refreshed on an unknown `kid`).
+3. Picks the key by `kid` and validates the RS256 signature, the issuer and the audience (`JANUA_CLIENT_ID`). `exp` is enforced when present. The library is python-jose, which does not *require* `exp` or `aud`.
+4. Returns `sub`, `roles`, `org_id` and `email` from the payload.
+
+The exact contract and the pending port to PyJWT (required `exp`/`iss`/`aud`, 30 s leeway, refetch on an unknown `kid`) are in [SECURITY.md](../SECURITY.md#janua-jwt-verification-nexus-api). Janua's side is [docs/guides/ECOSYSTEM_INTEGRATION.md](https://github.com/madfam-org/janua/blob/main/docs/guides/ECOSYSTEM_INTEGRATION.md).
 
 ### JWT Claims
 
