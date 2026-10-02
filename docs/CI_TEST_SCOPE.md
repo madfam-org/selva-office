@@ -53,6 +53,9 @@ finds 27. `community-skills/video-downloader/SKILL.md` declares the name
 any PR job. It belongs to the community-skills owner (see the Non-PR Gates
 table).
 
+Both gaps are tracked as H1 and H4 in the engineering backlog:
+[PHASE_0_REMEDIATION_PLAN.md → Dependency and test hygiene](./PHASE_0_REMEDIATION_PLAN.md#dependency-and-test-hygiene-open-reviewed-2026-10-02).
+
 The JWT verification tests (`test_auth_coverage.py`,
 `test_auth_pyjwt_verification.py`, `test_auth_worker_token_scoping.py`) run in
 `critical-path-coverage`. `test_auth_pyjwt_verification.py` signs real RS256

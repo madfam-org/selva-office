@@ -1109,6 +1109,10 @@ block pattern (see any existing platform module for template).
     `sqlalchemy<2.1` to `constraint-dependencies` before any broad
     `uv lock --upgrade`: SQLAlchemy 2.1 stops installing `greenlet` by
     default and changes the default PostgreSQL driver.
+  - Open dependency and test hygiene items (this bound, the remaining
+    `pip-audit` findings, the red community-skills test, strict-RLS tests
+    outside CI) are one list:
+    [docs/PHASE_0_REMEDIATION_PLAN.md → Dependency and test hygiene](docs/PHASE_0_REMEDIATION_PLAN.md#dependency-and-test-hygiene-open-reviewed-2026-10-02).
   - CI's GitHub-hosted jobs are pinned to `runs-on: ubuntu-24.04` (#303),
     ahead of `ubuntu-latest` moving to Ubuntu 26 on 2026-10-19.
 

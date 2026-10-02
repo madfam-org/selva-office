@@ -36,7 +36,7 @@ Compact LLM context index for this repository.
 ## Auth and dependency notes (2026-10-01)
 
 - Janua JWT verification is `apps/nexus-api/nexus_api/auth.py` (also used by the inference gateway). It still runs on python-jose: RS256, `kid`-matched JWKS, `iss`+`aud` checked, `exp`/`aud` not required, no leeway. Porting it to PyJWT is an open follow-up; see `SECURITY.md` → "Janua JWT verification (nexus-api)".
-- Security floors: root `pyproject.toml` `[tool.uv] constraint-dependencies` (pyjwt 2.15.1, urllib3 2.8.0, …) and pnpm overrides (fast-uri, brace-expansion). SQLAlchemy has no `<2.1` bound yet. CI runners are pinned to `ubuntu-24.04`.
+- Security floors: root `pyproject.toml` `[tool.uv] constraint-dependencies` (pyjwt 2.15.1, urllib3 2.8.0, …) and pnpm overrides (fast-uri, brace-expansion). SQLAlchemy has no `<2.1` bound yet. Open hygiene items: `docs/PHASE_0_REMEDIATION_PLAN.md` → «Dependency and test hygiene». CI runners are pinned to `ubuntu-24.04`.
 - Contract links: `README.md` → "Related repositories / contracts".
 
 ## Production operations

@@ -71,6 +71,9 @@ not `CLAUDE.md`.
   `constraint-dependencies` (pyjwt>=2.15.1, urllib3>=2.8.0, starlette>=1.3.1,
   cryptography>=48.0.1, …). SQLAlchemy is 2.0.48 in `uv.lock` with no `<2.1`
   bound. Runners are pinned to `ubuntu-24.04`.
+- Pending engineering work: `docs/PHASE_0_REMEDIATION_PLAN.md` → «Engineering
+  backlog» (including «Dependency and test hygiene»); human-blocked items:
+  `docs/OPERATOR_BACKLOG.md`.
 
 ## Nexus API surfaces (campaign orchestration)
 
