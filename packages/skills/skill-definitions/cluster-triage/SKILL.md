@@ -153,7 +153,7 @@ These are real patterns observed — keep them top-of-mind:
 - **`ERR_PNPM_OUTDATED_LOCKFILE`**. Someone updated package.json without
   running `pnpm install`. Regenerate lockfile locally, commit, retrigger.
 
-- **CI failing on GitHub billing hold.** GitHub-hosted jobs (`runs-on: ubuntu-24.04`) break;
+- **CI failing on GitHub billing hold.** Routes to `ubuntu-latest` break;
   flip `runs-on` to the ARC-runner conditional. Org-level variables with
   `visibility=private` need repo-level opt-in.
 
