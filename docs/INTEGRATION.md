@@ -46,11 +46,11 @@ The Nexus API validates Janua-issued JWTs on every protected endpoint via the
 `get_current_user` dependency in `apps/nexus-api/nexus_api/auth.py`. The dependency:
 
 1. Extracts the Bearer token from the `Authorization` header.
-2. Fetches the Janua JWKS from `{JANUA_ISSUER_URL}/.well-known/jwks.json` (cached for 1 h, and not refreshed on an unknown `kid`).
-3. Picks the key by `kid` and validates the RS256 signature, the issuer and the audience (`JANUA_CLIENT_ID`). `exp` is enforced when present. The library is python-jose, which does not *require* `exp` or `aud`.
+2. Fetches the Janua JWKS from `{JANUA_ISSUER_URL}/.well-known/jwks.json` (cached for 1 h; an unknown `kid` refetches it once, at most once per 60 s).
+3. Picks the key by `kid` and validates the RS256 signature with PyJWT. `exp`, `iss` (`JANUA_ISSUER_URL`) and `aud` (`JANUA_CLIENT_ID`) are required, with a 30 s leeway.
 4. Returns `sub`, `roles`, `org_id` and `email` from the payload.
 
-The exact contract and the pending port to PyJWT (required `exp`/`iss`/`aud`, 30 s leeway, refetch on an unknown `kid`) are in [SECURITY.md](../SECURITY.md#janua-jwt-verification-nexus-api). Janua's side is [docs/guides/ECOSYSTEM_INTEGRATION.md](https://github.com/madfam-org/janua/blob/main/docs/guides/ECOSYSTEM_INTEGRATION.md).
+The exact contract is in [SECURITY.md](../SECURITY.md#janua-jwt-verification-nexus-api). Janua's side is [docs/reference/ISSUER_AND_JWKS.md](https://github.com/madfam-org/janua/blob/main/docs/reference/ISSUER_AND_JWKS.md).
 
 ### JWT Claims
 

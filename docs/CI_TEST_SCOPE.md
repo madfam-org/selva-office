@@ -54,10 +54,11 @@ any PR job. It belongs to the community-skills owner (see the Non-PR Gates
 table).
 
 The JWT verification tests (`test_auth_coverage.py`,
-`test_auth_worker_token_scoping.py`) run in `critical-path-coverage`. They
-mock python-jose today. When `nexus_api/auth.py` is ported to PyJWT (see
-`SECURITY.md`, "Janua JWT verification (nexus-api)"), they must move with it.
-On 2026-10-01 they gave 30 passed locally.
+`test_auth_pyjwt_verification.py`, `test_auth_worker_token_scoping.py`) run in
+`critical-path-coverage`. `test_auth_pyjwt_verification.py` signs real RS256
+tokens against a test JWKS and checks the contract in `SECURITY.md` ("Janua
+JWT verification (nexus-api)"); `test_auth_coverage.py` mocks PyJWT to cover
+the routing branches.
 
 ## Change Rule
 

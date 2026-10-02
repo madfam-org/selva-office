@@ -4,7 +4,8 @@ Real RS256 tokens are signed with throwaway RSA keys and verified against a
 JWKS built from their public halves. Only the JWKS HTTP fetch is stubbed, so
 these tests exercise PyJWT's signature, algorithm and claim checks as
 ``verify_jwt`` configures them: key selection by ``kid``, the fixed
-``["RS256"]`` allow-list, required ``exp``/``iss``/``aud`` and a 30 s leeway.
+``["RS256"]`` allow-list, required ``exp``/``iss``/``aud``, a 30 s leeway, and
+one rate-limited JWKS refetch when the token names an unknown ``kid``.
 """
 
 from __future__ import annotations
@@ -118,6 +119,7 @@ def _hs256_with_public_key_token(public_key: rsa.RSAPublicKey, kid: str) -> str:
 def _clear_jwks_cache() -> None:
     _auth_mod._jwks_cache = None
     _auth_mod._jwks_cache_time = None
+    _auth_mod._jwks_forced_refresh_time = None
 
 
 async def _verify(token: str, jwks: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -234,3 +236,86 @@ class TestClaims:
     async def test_iat_far_in_future_rejected(self) -> None:
         now = int(time.time())
         await _assert_rejected(_token(iat=now + 600, exp=now + 1200))
+
+
+@pytest.mark.asyncio
+class TestUnknownKidRefetch:
+    """An unknown ``kid`` refetches the JWKS once, rate-limited, then decides."""
+
+    async def test_unknown_kid_refetches_once_then_rejects(self) -> None:
+        fetch = AsyncMock(return_value=_JWKS)
+        with (
+            patch.object(_auth_mod, "_fetch_jwks", fetch),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await _auth_mod.verify_jwt(_token(kid="key-forged"), _settings())
+        assert exc_info.value.status_code == 401
+        assert fetch.await_count == 2
+        assert fetch.await_args_list[0].kwargs == {}
+        assert fetch.await_args_list[1].kwargs == {"force": True}
+
+    async def test_rotated_key_verifies_after_refetch(self) -> None:
+        rotated = {"keys": [_rsa_jwk(_KEY_B, "key-b")]}
+        fetch = AsyncMock(side_effect=[{"keys": [_rsa_jwk(_KEY_A, "key-a")]}, rotated])
+        with patch.object(_auth_mod, "_fetch_jwks", fetch):
+            payload = await _auth_mod.verify_jwt(
+                _token(private_key=_KEY_B, kid="key-b"), _settings()
+            )
+        assert payload["sub"] == "user-1"
+        assert fetch.await_count == 2
+
+    async def test_known_kid_does_not_refetch(self) -> None:
+        fetch = AsyncMock(return_value=_JWKS)
+        with patch.object(_auth_mod, "_fetch_jwks", fetch):
+            await _auth_mod.verify_jwt(_token(), _settings())
+        assert fetch.await_count == 1
+
+    async def test_refetch_is_rate_limited(self) -> None:
+        fetch = AsyncMock(return_value=_JWKS)
+        with patch.object(_auth_mod, "_fetch_jwks", fetch):
+            for kid in ("forged-1", "forged-2", "forged-3"):
+                with pytest.raises(HTTPException) as exc_info:
+                    await _auth_mod.verify_jwt(_token(kid=kid), _settings())
+                assert exc_info.value.status_code == 401
+        # One cached lookup per request, plus a single forced refetch in total.
+        forced = [c for c in fetch.await_args_list if c.kwargs == {"force": True}]
+        assert len(forced) == 1
+        assert fetch.await_count == 4
+
+    async def test_refetch_allowed_again_after_interval(self) -> None:
+        fetch = AsyncMock(return_value=_JWKS)
+        with patch.object(_auth_mod, "_fetch_jwks", fetch):
+            await _assert_rejected_with(fetch, _token(kid="forged-1"))
+            _auth_mod._jwks_forced_refresh_time = (
+                time.monotonic() - _auth_mod._JWKS_FORCED_REFRESH_MIN_INTERVAL_S - 1
+            )
+            await _assert_rejected_with(fetch, _token(kid="forged-2"))
+        forced = [c for c in fetch.await_args_list if c.kwargs == {"force": True}]
+        assert len(forced) == 2
+
+    async def test_forced_fetch_bypasses_ttl_cache(self) -> None:
+        responses = iter([{"keys": [{"kid": "old"}]}, {"keys": [{"kid": "new"}]}])
+        mock_client = MagicMock()
+
+        async def _get(_url: str) -> MagicMock:
+            resp = MagicMock()
+            resp.json.return_value = next(responses)
+            return resp
+
+        mock_client.get = _get
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        with patch.object(_auth_mod.httpx, "AsyncClient", return_value=mock_client):
+            first = await _auth_mod._fetch_jwks(_ISSUER)
+            cached = await _auth_mod._fetch_jwks(_ISSUER)
+            forced = await _auth_mod._fetch_jwks(_ISSUER, force=True)
+            after = await _auth_mod._fetch_jwks(_ISSUER)
+        assert first is cached
+        assert forced == {"keys": [{"kid": "new"}]}
+        assert after is forced
+
+
+async def _assert_rejected_with(fetch: AsyncMock, token: str) -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        await _auth_mod.verify_jwt(token, _settings())
+    assert exc_info.value.status_code == 401
