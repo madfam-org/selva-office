@@ -251,6 +251,20 @@ Priority-ordered PR-sized items:
 | E16 | `epic/commercial-ga-correctness` | Memory store async count/stub audit | 0.8 |
 | E17 | `epic/commercial-ga-correctness` | CI app/package test scope audit | 0.8 |
 
+### Dependency and test hygiene (open, reviewed 2026-10-02)
+
+Items found after the python-jose → PyJWT port (#305). **Kind** is
+*engineering* or *owner decision*; human-blocked items live in
+[OPERATOR_BACKLOG.md](./OPERATOR_BACKLOG.md). Remove a row in the PR that
+finishes it.
+
+| # | Item | Why it matters | Priority | Kind | Link |
+|---|------|----------------|----------|------|------|
+| H1 | Fix `packages/skills/tests/test_community_skills.py` (red on `main`: expects 25 core skills, finds 27; `community-skills/video-downloader/SKILL.md` declares `youtube-downloader`) | The file is in no PR job, so the drift went unnoticed; a `packages/skills` change rebuilds nexus-api, workers and the gateway, so ship it with the next skills change | P2 | engineering | [CI_TEST_SCOPE.md](./CI_TEST_SCOPE.md#conditional-skips-and-known-gaps-inventory-2026-10-01) |
+| H2 | Add `sqlalchemy<2.1` to `[tool.uv] constraint-dependencies` and relock | `uv.lock` holds 2.0.48, but nothing stops a broad `uv lock --upgrade` from taking 2.1, which stops installing `greenlet` by default and changes the default PostgreSQL driver | P2 | engineering | [AGENTS.md](../AGENTS.md) («SQLAlchemy is locked at 2.0.48») |
+| H3 | Clear the remaining `pip-audit` findings: bumps for bleach, click, idna, the langgraph packages, oauthlib, pydantic-settings and requests | Keeps the image scans and the dependency floors in `pyproject.toml` honest; each bump needs its own test run because langgraph and pydantic-settings touch runtime behaviour | P2 | engineering | — |
+| H4 | Run `apps/nexus-api/tests/test_rls_strict_mode.py` in CI | Its strict-RLS assertions only run against PostgreSQL and no CI step runs them; `test-py` already has a pgvector PostgreSQL service | P1 | engineering | [CI_TEST_SCOPE.md](./CI_TEST_SCOPE.md#conditional-skips-and-known-gaps-inventory-2026-10-01) |
+
 ---
 
 ## Phase 0 exit checklist (copy before Phase 1)
