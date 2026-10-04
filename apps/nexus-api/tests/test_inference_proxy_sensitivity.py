@@ -6,7 +6,7 @@ real unverified claim before this suite:
 1. ``X-Sensitivity`` fails CLOSED. Absent or invalid ⇒ 400. It used to
    default to ``public`` — and an invalid value was swallowed by a
    ``contextlib.suppress(ValueError)``, so a typo silently downgraded a
-   clinical request to "cheapest cloud vendor" with no log line at all.
+   restricted request to "cheapest cloud vendor" with no log line at all.
 2. A tenant's server-side sensitivity FLOOR holds even when the client
    under-declares, so a dropped header at any hop cannot degrade a
    regulated tenant.
@@ -42,11 +42,11 @@ from nexus_api.auth import get_current_user
 from nexus_api.database import get_db
 from nexus_api.routers import inference_proxy
 
-CREA_ORG_ID = "e6cbd51d-8329-4c4e-8c74-aba643ab4575"
+RESTRICTED_TENANT_ORG_ID = "e6cbd51d-8329-4c4e-8c74-aba643ab4575"
 
-# Stand-in for a clinical note. Never a real one, and the assertions below
+# Stand-in for a sensitive note. Never a real one, and the assertions below
 # are exactly that this string does not escape into a log or a ledger.
-CLINICAL_TEXT = "El menor J.P. mostró conducta disruptiva durante la sesión del martes."
+SENSITIVE_TEXT = "La persona J.P. reportó un incidente durante la sesión del martes."
 
 
 class _FakeRouter:
@@ -101,7 +101,7 @@ def _build_app(org_id: str = "platform") -> FastAPI:
 async def _post(app: FastAPI, headers: dict[str, str], **body_overrides):
     body = {
         "model": "auto",
-        "messages": [{"role": "user", "content": CLINICAL_TEXT}],
+        "messages": [{"role": "user", "content": SENSITIVE_TEXT}],
         **body_overrides,
     }
     transport = httpx.ASGITransport(app=app)
@@ -215,16 +215,16 @@ class TestSensitivityFailsClosed:
         self, fake_router: _FakeRouter, caplog: pytest.LogCaptureFixture
     ) -> None:
         """The rejection must be visible to operators AND must not put the
-        clinical payload into the log stream."""
+        restricted payload into the log stream."""
         with caplog.at_level(logging.WARNING, logger=inference_proxy.logger.name):
-            await _post(_build_app(org_id=CREA_ORG_ID), {"Authorization": "Bearer t"})
+            await _post(_build_app(org_id=RESTRICTED_TENANT_ORG_ID), {"Authorization": "Bearer t"})
 
         records = [r for r in caplog.records if "X-Sensitivity" in r.getMessage()]
         assert records, "the rejection must produce a WARNING"
         combined = " ".join(r.getMessage() for r in caplog.records)
-        assert CLINICAL_TEXT not in combined
-        assert "menor" not in combined
-        assert CREA_ORG_ID in combined  # org is routing metadata, not content
+        assert SENSITIVE_TEXT not in combined
+        assert "incidente" not in combined
+        assert RESTRICTED_TENANT_ORG_ID in combined  # org is routing metadata, not content
 
     async def test_invalid_value_rejection_is_logged(
         self, fake_router: _FakeRouter, caplog: pytest.LogCaptureFixture
@@ -235,7 +235,7 @@ class TestSensitivityFailsClosed:
             )
         combined = " ".join(r.getMessage() for r in caplog.records)
         assert "publik" in combined
-        assert CLINICAL_TEXT not in combined
+        assert SENSITIVE_TEXT not in combined
 
 
 # ---------------------------------------------------------------------------
@@ -243,11 +243,11 @@ class TestSensitivityFailsClosed:
 # ---------------------------------------------------------------------------
 
 
-def _crea_book(**overrides) -> TenantPolicyBook:
-    """The shipped CTM policy, with per-test overrides."""
+def _restricted_tenant_book(**overrides) -> TenantPolicyBook:
+    """The shipped restricted-tenant policy, with per-test overrides."""
     fields: dict[str, Any] = {
-        "org_id": CREA_ORG_ID,
-        "display_name": "Crea Tu Mundo",
+        "org_id": RESTRICTED_TENANT_ORG_ID,
+        "display_name": "vCTO client (restricted)",
         "sensitivity_floor": Sensitivity.RESTRICTED,
         "allowed_task_types": ["summarization", "family-feedback"],
         "max_tokens_cap": 1500,
@@ -256,7 +256,7 @@ def _crea_book(**overrides) -> TenantPolicyBook:
         "daily_usd_budget": 2.0,
     }
     fields.update(overrides)
-    return TenantPolicyBook(tenants={CREA_ORG_ID: TenantPolicy(**fields)})
+    return TenantPolicyBook(tenants={RESTRICTED_TENANT_ORG_ID: TenantPolicy(**fields)})
 
 
 @pytest.mark.asyncio
@@ -265,11 +265,11 @@ class TestTenantFloor:
     async def test_under_declared_request_is_raised_to_the_floor(
         self, fake_router: _FakeRouter, declared: str
     ) -> None:
-        """If the MAP's header is ever dropped or rewritten by a hop, the
-        gateway still treats CTM's data as restricted."""
-        with _policies(_crea_book()):
+        """If the tenant's header is ever dropped or rewritten by a hop, the
+        gateway still treats the tenant's data as restricted."""
+        with _policies(_restricted_tenant_book()):
             resp = await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": declared},
             )
         assert resp.status_code == 200
@@ -278,16 +278,16 @@ class TestTenantFloor:
     async def test_floor_never_lowers_a_stricter_request(
         self, fake_router: _FakeRouter
     ) -> None:
-        with _policies(_crea_book(sensitivity_floor=Sensitivity.INTERNAL)):
+        with _policies(_restricted_tenant_book(sensitivity_floor=Sensitivity.INTERNAL)):
             await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": "restricted"},
             )
         assert fake_router.seen[-1].policy.sensitivity is Sensitivity.RESTRICTED
 
     async def test_other_tenants_are_unaffected(self, fake_router: _FakeRouter) -> None:
         """The policy book only ever tightens the tenant it names."""
-        with _policies(_crea_book()):
+        with _policies(_restricted_tenant_book()):
             await _post(
                 _build_app(org_id="dhanam"),
                 {"Authorization": "Bearer t", "X-Sensitivity": "public"},
@@ -297,9 +297,9 @@ class TestTenantFloor:
     async def test_floor_still_requires_the_header(self, fake_router: _FakeRouter) -> None:
         """A floor is a safety net, not a licence to omit the declaration —
         the header stays mandatory even for a tenant with a floor."""
-        with _policies(_crea_book()):
+        with _policies(_restricted_tenant_book()):
             resp = await _post(
-                _build_app(org_id=CREA_ORG_ID), {"Authorization": "Bearer t"}
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID), {"Authorization": "Bearer t"}
             )
         assert resp.status_code == 400
 
@@ -310,9 +310,9 @@ class TestTenantLimits:
     async def test_map_task_types_are_allowed(
         self, fake_router: _FakeRouter, task_type: str
     ) -> None:
-        with _policies(_crea_book()):
+        with _policies(_restricted_tenant_book()):
             resp = await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {
                     "Authorization": "Bearer t",
                     "X-Sensitivity": "restricted",
@@ -324,9 +324,9 @@ class TestTenantLimits:
     async def test_unlisted_task_type_is_rejected(self, fake_router: _FakeRouter) -> None:
         """A new AI surface must be added to the tenant policy deliberately,
         not appear by sending a new header value."""
-        with _policies(_crea_book()):
+        with _policies(_restricted_tenant_book()):
             resp = await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {
                     "Authorization": "Bearer t",
                     "X-Sensitivity": "restricted",
@@ -340,9 +340,9 @@ class TestTenantLimits:
     async def test_max_tokens_is_capped_by_tenant_policy(
         self, fake_router: _FakeRouter
     ) -> None:
-        with _policies(_crea_book()):
+        with _policies(_restricted_tenant_book()):
             await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": "restricted"},
                 max_tokens=32000,
             )
@@ -364,8 +364,8 @@ class TestTenantLimits:
     ) -> None:
         inference_proxy._rate_limiter = None
         headers = {"Authorization": "Bearer t", "X-Sensitivity": "restricted"}
-        app = _build_app(org_id=CREA_ORG_ID)
-        with _policies(_crea_book(rate_limit_per_minute=2)):
+        app = _build_app(org_id=RESTRICTED_TENANT_ORG_ID)
+        with _policies(_restricted_tenant_book(rate_limit_per_minute=2)):
             assert (await _post(app, headers)).status_code == 200
             assert (await _post(app, headers)).status_code == 200
             limited = await _post(app, headers)
@@ -382,7 +382,7 @@ class TestTenantLimits:
         inference_proxy._rate_limiter = None
         headers = {"Authorization": "Bearer t", "X-Sensitivity": "public"}
         app = _build_app(org_id="dhanam")
-        with _policies(_crea_book()):
+        with _policies(_restricted_tenant_book()):
             for _ in range(50):
                 assert (await _post(app, headers)).status_code == 200
 
@@ -423,13 +423,13 @@ class TestDeadlinesAndFailClosed:
             async def complete(self, request):
                 await asyncio.sleep(10)
 
-        book = _crea_book(request_timeout_seconds=0.05)
+        book = _restricted_tenant_book(request_timeout_seconds=0.05)
         with (
             patch.object(inference_proxy, "_get_router", return_value=_SlowRouter()),
             _policies(book),
         ):
             resp = await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": "restricted"},
             )
         seen["status"] = resp.status_code
@@ -453,7 +453,7 @@ class TestDeadlinesAndFailClosed:
                 _StallingRouter(),
                 _FakeReqShim(),
                 "cmpl-timeout",
-                {"sub": "svc", "org_id": CREA_ORG_ID},
+                {"sub": "svc", "org_id": RESTRICTED_TENANT_ORG_ID},
                 timeout_seconds=0.05,
             )
         ]
@@ -511,17 +511,17 @@ class TestNoContentPersistence:
             patch.object(inference_proxy, "_get_router", return_value=router),
             patch.object(inference_proxy, "_record_usage", new=recorded),
             patch.object(inference_proxy, "_emit_proxy_event"),
-            _policies(_crea_book()),
+            _policies(_restricted_tenant_book()),
         ):
             resp = await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": "restricted"},
             )
         assert resp.status_code == 200
         recorded.assert_awaited_once()
 
         serialized = repr(recorded.await_args.args) + repr(recorded.await_args.kwargs)
-        assert CLINICAL_TEXT not in serialized
+        assert SENSITIVE_TEXT not in serialized
         assert "Resumen sugerido" not in serialized
         # What IS recorded: counts and routing metadata.
         assert "prompt_tokens" in serialized
@@ -556,16 +556,16 @@ class TestNoContentPersistence:
             patch.object(inference_proxy, "_get_router", return_value=router),
             patch.object(inference_proxy, "_record_usage", new=AsyncMock()),
             patch.object(inference_proxy, "_emit_proxy_event"),
-            _policies(_crea_book()),
+            _policies(_restricted_tenant_book()),
             caplog.at_level(logging.DEBUG),
         ):
             await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": "restricted"},
             )
 
         combined = " ".join(r.getMessage() for r in caplog.records)
-        assert CLINICAL_TEXT not in combined
+        assert SENSITIVE_TEXT not in combined
         assert "Resumen sugerido" not in combined
 
     async def test_provider_failure_logs_no_prompt(
@@ -578,30 +578,32 @@ class TestNoContentPersistence:
         )
         with (
             patch.object(inference_proxy, "_get_router", return_value=router),
-            _policies(_crea_book()),
+            _policies(_restricted_tenant_book()),
             caplog.at_level(logging.DEBUG),
         ):
             resp = await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": "restricted"},
             )
 
         assert resp.status_code == 503
         combined = " ".join(r.getMessage() for r in caplog.records)
-        assert CLINICAL_TEXT not in combined
+        assert SENSITIVE_TEXT not in combined
 
     async def test_error_bodies_carry_no_prompt(self) -> None:
         """Nor may an error RESPONSE echo the payload back."""
         router = _FakeRouter(raises=RuntimeError("boom"))
         with (
             patch.object(inference_proxy, "_get_router", return_value=router),
-            _policies(_crea_book()),
+            _policies(_restricted_tenant_book()),
         ):
             failed = await _post(
-                _build_app(org_id=CREA_ORG_ID),
+                _build_app(org_id=RESTRICTED_TENANT_ORG_ID),
                 {"Authorization": "Bearer t", "X-Sensitivity": "restricted"},
             )
-        rejected = await _post(_build_app(org_id=CREA_ORG_ID), {"Authorization": "Bearer t"})
+        rejected = await _post(
+            _build_app(org_id=RESTRICTED_TENANT_ORG_ID), {"Authorization": "Bearer t"}
+        )
 
         for resp in (failed, rejected):
-            assert CLINICAL_TEXT not in resp.text
+            assert SENSITIVE_TEXT not in resp.text

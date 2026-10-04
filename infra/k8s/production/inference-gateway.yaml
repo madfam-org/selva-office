@@ -121,7 +121,7 @@ spec:
               value: "/etc/selva/org-config.yaml"
             # Per-tenant floors, caps, and rate limits (tenant-policies.yaml).
             # Absent file ⇒ no floors in force; the startup log says which
-            # tenants loaded. See docs/RUNBOOK_SELVA_CTM.md.
+            # tenants loaded. See the restricted-tier operator runbook (private operations repo).
             - name: TENANT_POLICY_PATH
               value: "/etc/selva/tenant-policies/tenant-policies.yaml"
             # The local backend that serves restricted/confidential data.

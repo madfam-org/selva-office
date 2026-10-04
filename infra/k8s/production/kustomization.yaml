@@ -28,7 +28,7 @@ namespace: selva
 #
 # Para volver a listarlo aquí hacen falta, en orden:
 #   1. Espejar la imagen al registro aprobado (ver
-#      docs/RUNBOOK_SELVA_CTM.md § 1. Espejar la imagen de Ollama).
+#      the restricted-tier operator runbook (private operations repo) § 1. Espejar la imagen de Ollama).
 #   2. Verificar que el mirror se puede jalar desde el cluster.
 #   3. Re-agregar `- optional/ollama.yaml` a esta lista.
 # Hasta entonces `restricted`/`confidential` siguen fallando cerrado con

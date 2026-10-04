@@ -16,7 +16,7 @@
 # La imagen quedó apuntada a `ghcr.io/madfam-org/ollama:0.5.7`, que SÍ
 # empata la política — pero ese mirror **todavía no existe**. Publicarlo
 # es un paso de operador, documentado en
-# `docs/RUNBOOK_SELVA_CTM.md` § «1. Espejar la imagen de Ollama».
+# the restricted-tier operator runbook (private operations repo) § «1. Espejar la imagen de Ollama».
 #
 # Orden obligatorio para encender el backend local:
 #   1. Espejar y verificar `ghcr.io/madfam-org/ollama:0.5.7`.
@@ -48,22 +48,21 @@
 # --------------
 # Traffic is gateway → ollama.selva.svc.cluster.local:11434, entirely
 # inside the cluster. No third-party vendor is contacted, which is what
-# makes the MAP's family-facing privacy notice ("no transferimos tus
-# datos a terceros") true for AI-assisted drafting.
+# a restricted-tier tenant's data contract requires for AI-assisted
+# drafting.
 #
 # ═══════════════════════════════════════════════════════════════════════
 # MODEL CHOICE — llama3.1:8b-instruct-q4_K_M   (ASSUMPTION, see below)
 # ═══════════════════════════════════════════════════════════════════════
-# The workload is Spanish (es-MX) clinical-register summarisation: turn a
-# therapist's session notes into a minuta draft, or a set of observations
-# into a family-facing Padlet note. Short inputs (≤ ~2k tokens), short
-# outputs (capped at 1500 tokens by the CTM tenant policy), and a human
-# always reviews before anything is sent.
+# The workload is Spanish (es-MX) summarisation of short professional
+# notes into drafts a person reviews. Short inputs (≤ ~2k tokens), short
+# outputs (capped at 1500 tokens by the restricted tenant's policy), and a
+# human always reviews before anything is sent.
 #
 # Requirements that drove the pick, in order:
 #   1. Genuinely usable Spanish. An English-first model that "does"
-#      Spanish produces stilted output a therapist will not send to a
-#      family; that makes the feature worse than the manual path.
+#      Spanish produces stilted output a professional will not send;
+#      that makes the feature worse than the manual path.
 #   2. Fits the cluster. The nodes already sit near 100% CPU *requests*
 #      (see inference-gateway.yaml:21-23). A 4-bit 8B model needs
 #      ~5-6 GiB resident and runs CPU-only at a few tokens/second —
@@ -75,19 +74,19 @@
 # Alternatives considered and why not (today):
 #   - qwen2.5:7b-instruct — comparable size, strong multilingual scores;
 #     a reasonable second choice. Pick it if Spanish fluency measures
-#     better on CTM's own samples.
+#     better on the tenant's own samples.
 #   - llama3.2:3b — the Ollama library default and ~2 GiB; would fit
-#     more comfortably, but summarisation quality on clinical register
-#     is materially weaker. Use it only as a degraded fallback.
+#     more comfortably, but summarisation quality on professional
+#     register is materially weaker. Use it only as a degraded fallback.
 #   - Anything ≥ 30B or unquantised — does not fit the current nodes
 #     without a GPU node pool. That is a cluster-capacity decision, not
 #     a Selva one.
 #
 # THIS IS AN ASSUMPTION, NOT A MEASUREMENT. No model has been downloaded
-# or benchmarked in this lane. Before flipping the MAP to SELVA_ENABLED,
-# run the es-MX quality pass described in docs/RUNBOOK_SELVA_CTM.md
+# or benchmarked in this lane. Before the tenant's app turns SELVA_ENABLED on,
+# run the es-MX quality pass described in the restricted-tier operator runbook (private operations repo)
 # (§ "Elegir y validar el modelo") against real-shaped (never real)
-# clinical text, and change OLLAMA_DEFAULT_MODEL here if a different
+# text, and change OLLAMA_DEFAULT_MODEL here if a different
 # model wins. The router does not hard-code a model name; the provider
 # default and this env are the only places it is stated.
 #

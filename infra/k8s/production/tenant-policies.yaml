@@ -25,33 +25,32 @@ metadata:
 data:
   tenant-policies.yaml: |
     # ── Gateway-wide defaults (apply to every tenant without an entry) ──
-    # 45 s matches the client contract published to consumers: the MAP
-    # sends AbortSignal.timeout(45_000), so the server deadline and the
-    # client deadline agree instead of one silently outliving the other.
+    # 45 s matches the deadline the consuming app sets
+    # (AbortSignal.timeout(45_000)), so the server deadline and the client
+    # deadline agree instead of one silently outliving the other.
     default_request_timeout_seconds: 45
     default_max_tokens_cap: 4096
 
     tenants:
-      # ── Crea Tu Mundo (CTM) — the MAP, clinical data about minors ────
-      # Org id issued by Janua; sent by crea-map as X-Selva-Tenant-Org.
-      # Contract: Anexo A (LFPDPPP encargado) signed 2026-08-24. The
-      # public privacy notice tells families their data is not transferred
-      # to third parties, which is only true while inference is served
-      # inside the encargado chain — hence the restricted floor.
+      # ── A vCTO client tenant under a data-processing contract ─────
+      # Org id issued by Janua; sent by the tenant's app as
+      # X-Selva-Tenant-Org. The tenant's contract keeps inference inside
+      # the processor chain, hence the restricted floor. Which client this
+      # is lives in the private operations repo, not here.
       e6cbd51d-8329-4c4e-8c74-aba643ab4575:
-        display_name: Crea Tu Mundo
+        display_name: vCTO client (restricted)
         # The load-bearing line. Even a request arriving as `public` is
         # served as `restricted`, i.e. local-model only. There is no
         # code path that can lower this.
         sensitivity_floor: restricted
-        # The MAP's two AI surfaces today: «Sugerir con IA» on minutas
-        # and «Generar retroalimentación para Padlet». Anything else is
-        # a 400 — a new surface must be added here deliberately.
+        # The tenant's two AI surfaces today map to these task types.
+        # Anything else is a 400 — a new surface must be added here
+        # deliberately.
         allowed_task_types:
           - summarization
           - family-feedback
-        # A clinical summary or a family note is short. Capping output
-        # bounds both cost and the time a therapist waits.
+        # These outputs are short notes. Capping output bounds both cost
+        # and the time a person waits.
         max_tokens_cap: 1500
         # Server deadline, below the 45 s client budget so the gateway
         # answers with a clean 504 before the client aborts.
@@ -67,6 +66,6 @@ data:
         # inference_usage_ledger.
         daily_usd_budget: 2.0
         notes: >-
-          CTM/MAP. Contrato vCTO + Anexo A (encargado LFPDPPP) 2026-08-24.
-          No se persiste prompt ni respuesta. Ver docs/RUNBOOK_SELVA_CTM.md
-          y docs/DATA_CONTRACT_RESTRICTED.md.
+          Tier restringido para un cliente vCTO con contrato de encargado.
+          No se persiste prompt ni respuesta. Ver docs/DATA_CONTRACT_RESTRICTED.md;
+          el runbook del operador vive en el repositorio privado de operaciones.

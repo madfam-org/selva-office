@@ -6,15 +6,15 @@ before ever reaching the sensitivity branch. Any task type mapped in the
 org config therefore beat ``X-Sensitivity: restricted`` and sent the
 payload to whatever cloud vendor the assignment named.
 
-The MAP (Crea Tu Mundo's clinical platform) was protected only by
+The restricted vCTO tenant's app was protected only by
 accident: it sends ``summarization`` and ``family-feedback``, and neither
 string is a member of the ``TaskType`` enum, so ``TaskType(...)`` raised
 ``ValueError`` and the code fell through to the sensitivity branch. The
-day someone added ``summarization`` to the org config, clinical notes
-about minors would have gone to DeepInfra with no code change anywhere.
+day someone added ``summarization`` to the org config, that tenant's
+regulated notes would have gone to DeepInfra with no code change anywhere.
 
 These tests make that structural instead of accidental: the tests below
-deliberately map the MAP's task types in the org config — the exact
+deliberately map that tenant's task types in the org config — the exact
 scenario that used to break — and assert the local provider still wins.
 """
 
@@ -148,9 +148,9 @@ class TestTaskTypeCannotBypassSensitivity:
             await router.complete(_request(sensitivity=sensitivity, task_type="planning"))
 
 
-class TestMapTaskTypes:
-    """The MAP's two concrete surfaces: minutas (`summarization`) and the
-    Padlet family feedback (`family-feedback`).
+class TestRestrictedTenantTaskTypes:
+    """The tenant's two concrete surfaces: `summarization` and
+    `family-feedback`.
 
     Today neither is a ``TaskType`` member. These tests assert the outcome
     is correct BOTH ways — unmapped today, and mapped tomorrow — so that
@@ -180,7 +180,7 @@ class TestMapTaskTypes:
         self, all_providers: dict[str, MockProvider], task_type: str
     ) -> None:
         """Simulate the future in which ``summarization`` IS in the enum and
-        IS pinned to a cloud provider. The clinical payload must still be
+        IS pinned to a cloud provider. The restricted payload must still be
         served locally — the whole point of the fix."""
 
         class _FakeAssignment:
