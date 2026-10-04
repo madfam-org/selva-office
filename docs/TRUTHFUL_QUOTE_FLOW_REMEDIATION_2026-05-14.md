@@ -4,7 +4,7 @@ Last updated: 2026-05-14
 
 ## Scope
 
-Selva agents must be able to generate Tablaco quotes through Yantra4D/Cotiza without human superadmin credentials and without presenting fallback pricing as final.
+Selva agents must be able to generate client quotes through Yantra4D/Cotiza without human superadmin credentials and without presenting fallback pricing as final.
 
 ## Current evidence
 
@@ -15,7 +15,7 @@ Selva agents must be able to generate Tablaco quotes through Yantra4D/Cotiza wit
 
 ## Production gap
 
-Selva still needs provisioned Janua/Enclii-backed service credentials with the minimum scopes required for live Tablaco quoting.
+Selva still needs provisioned Janua/Enclii-backed service credentials with the minimum scopes required for live client quoting.
 
 ## Remediation plan
 
@@ -29,7 +29,7 @@ Selva still needs provisioned Janua/Enclii-backed service credentials with the m
 
 ## Acceptance gates
 
-- Selva can request a Tablaco quote without superadmin credentials.
+- Selva can request a client quote without superadmin credentials.
 - Selva refuses to report a final quote unless the downstream response is market verified.
 - Service-token headers are covered by unit tests.
 - Live contract tests use service credentials only.

@@ -1,11 +1,11 @@
 # Contrato de datos — el nivel `restricted` de Selva
 
 **Para quien consume Selva** (equipos de producto del ecosistema) y para
-quien tiene que responderle a un cliente, a una familia o a una autoridad
-qué pasa exactamente con un dato sensible.
+quien tiene que responderle a un cliente, al titular de los datos o a una
+autoridad qué pasa exactamente con un dato sensible.
 
 Escrito en español llano a propósito: si una frase de aquí no se puede
-sostener frente a la madre de un menor atendido, está mal escrita o el
+sostener frente a la persona cuyos datos se tratan, está mal escrita o el
 sistema está mal hecho.
 
 ---
@@ -49,10 +49,10 @@ el dato a la nube más barata».
    WARNING en la bitácora.
 
    *Esto no era así antes.* El ruteo por `task_type` se evaluaba primero
-   y ganaba. El MAP de Crea Tu Mundo se salvaba de casualidad, porque los
-   nombres que usa (`summarization`, `family-feedback`) no estaban en el
-   catálogo interno de tipos de tarea. Estaba protegido por el nombre que
-   eligió, no por una garantía. Ahora es una garantía.
+   y ganaba. Un consumidor `restricted` se salvaba de casualidad, porque
+   los tipos de tarea que usaba no estaban en el catálogo interno. Estaba
+   protegido por el nombre que eligió, no por una garantía. Ahora es una
+   garantía.
 
 3. **Si no hay modelo local, la llamada falla.** Devuelve **503** con el
    código `local_backend_unavailable`. Nunca se sirve desde la nube «para
@@ -94,28 +94,21 @@ el dato a la nube más barata».
 
 ---
 
-## 3. Por qué esto importa legalmente (caso CTM/MAP)
+## 3. Por qué esto importa legalmente
 
-El MAP de Crea Tu Mundo trata datos personales sensibles de menores.
-Existe un Anexo A firmado que es un acuerdo de **encargado** bajo la
-LFPDPPP. Bajo esa ley, que un encargado trate el dato no es una
+Cuando MADFAM trata datos personales de un cliente como **encargado**
+bajo la LFPDPPP, que el encargado trate el dato no es una
 *transferencia* sino una *remisión*.
 
-El aviso de privacidad que leen las familias dice que **no se transfieren
-sus datos a terceros**. Esa frase es defendible **mientras la inferencia
-se sirva dentro de la cadena de encargado** — es decir, dentro del
-perímetro, no en un proveedor de nube externo.
+Un aviso de privacidad que dice que **no se transfieren los datos a
+terceros** es defendible **mientras la inferencia se sirva dentro de la
+cadena de encargado** — es decir, dentro del perímetro, no en un
+proveedor de nube externo.
 
 Si `restricted` alguna vez se sirviera desde un tercero, esa frase
-quedaría en falso frente a las familias, con datos sensibles de menores.
-De ahí que la regla sea estructural en el código y no una convención, y
-que la falla sea cerrada (503) en vez de abierta.
-
-**Pendiente que no es de Selva:** el aviso de privacidad del MAP no
-menciona hoy que hay apoyo automatizado en la redacción. No es un
-incumplimiento evidente —sigue siendo tratamiento para la misma
-finalidad, la terapeuta decide, y el texto no se guarda— pero conviene
-cerrarlo con una línea explícita en el aviso, no con silencio.
+quedaría en falso frente a los titulares de los datos. De ahí que la
+regla sea estructural en el código y no una convención, y que la falla
+sea cerrada (503) en vez de abierta.
 
 ---
 
@@ -133,10 +126,11 @@ Content-Type: application/json
 Reglas para el llamador:
 
 1. **Fija el literal en el código.** Que ninguna superficie pueda bajar
-   el nivel por descuido: una constante, no un parámetro. (`crea-map`
-   lo hace bien: `const SELVA_SENSITIVITY = 'restricted'`.)
+   el nivel por descuido: una constante, no un parámetro (por ejemplo,
+   `const SELVA_SENSITIVITY = 'restricted'`).
 2. **Manda tu propio `AbortSignal`**, un poco por encima del deadline del
-   servidor (45 s de cliente contra 40 s de servidor, para CTM).
+   servidor (p. ej., 45 s de cliente contra un deadline de servidor de
+   40 s).
 3. **Recorta la entrada** antes de mandarla. No dependas del tope del
    servidor.
 4. **Degrada con gracia.** Si Selva no está configurado o responde 503,
@@ -171,8 +165,8 @@ simplemente no funciona: no hay un plan B que mande el dato afuera.
 El texto que se manda al modelo y el que el modelo responde no se
 guardan. Sólo se registra cuánto se usó (cuántos tokens, qué modelo,
 cuánto costó) para poder facturar y vigilar el gasto. El resultado que la
-profesional decida conservar se guarda en el expediente del sistema que
-lo pidió —no en Selva— y siempre después de que ella lo revise.
+persona usuaria decida conservar se guarda en el sistema que lo pidió
+—no en Selva— y siempre después de que lo revise.
 
 **«¿La IA decide algo?»**
 No. Redacta un borrador. Siempre hay una persona que lo lee, lo corrige
@@ -182,7 +176,8 @@ y decide si se usa.
 
 ## 6. Referencias
 
-- Runbook de encendido para CTM: [RUNBOOK_SELVA_CTM.md](RUNBOOK_SELVA_CTM.md)
+- Runbook de encendido de un tenant `restricted`: se conserva en el
+  repositorio privado de operaciones.
 - Ruteo y proveedores: [INFERENCE_PROVIDERS.md](INFERENCE_PROVIDERS.md)
 - Residencia por tenant (borrador): [rfcs/0020-per-tenant-data-residency.md](rfcs/0020-per-tenant-data-residency.md)
 - Código: `packages/inference/madfam_inference/router.py` (frontera de
