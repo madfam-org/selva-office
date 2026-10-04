@@ -459,7 +459,7 @@ spec:
     # contacting any third-party vendor. Manifest lives at
     # infra/k8s/production/optional/ollama.yaml and is NOT yet in the
     # production kustomization (its image must first be mirrored to an
-    # approved registry — see docs/RUNBOOK_SELVA_CTM.md § 1). Until then
+    # approved registry — see the restricted-tier operator runbook (private operations repo) § 1). Until then
     # the backend is absent and every restricted call fails closed with a
     # 503 that names this variable — which is the intended behaviour.
     - name: OLLAMA_BASE_URL

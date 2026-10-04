@@ -618,7 +618,7 @@ async def chat_completions(
                     f"'{sensitivity.value}' data. This request is refused rather "
                     "than routed to a third-party provider. Operator: deploy the "
                     "local model backend and set OLLAMA_BASE_URL "
-                    "(see docs/RUNBOOK_SELVA_CTM.md)."
+                    "(see the restricted-tier operator runbook)."
                 ),
                 "local_backend_unavailable",
                 "server_error",

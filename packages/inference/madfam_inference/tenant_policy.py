@@ -7,9 +7,8 @@ budgeted to do.
 
 Why it exists
 -------------
-Before this, a tenant handling regulated data (Crea Tu Mundo's MAP holds
-clinical notes about minors) depended entirely on its own client code
-sending ``X-Sensitivity: restricted`` on every call. A dropped header, a
+Before this, a tenant handling regulated personal data depended entirely
+on its own client code sending ``X-Sensitivity: restricted`` on every call. A dropped header, a
 proxy that strips it, or a new surface that forgets it, and the request
 silently degraded to ``public`` and went to a cloud vendor. The header is
 now mandatory (the proxy rejects a request without it), and on top of that

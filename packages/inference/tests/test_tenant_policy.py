@@ -17,8 +17,8 @@ from madfam_inference.tenant_policy import (
 )
 from madfam_inference.types import Sensitivity
 
-# The org id Crea Tu Mundo's MAP sends as X-Selva-Tenant-Org.
-CREA_ORG_ID = "e6cbd51d-8329-4c4e-8c74-aba643ab4575"
+# The org id the restricted vCTO tenant's app sends as X-Selva-Tenant-Org.
+RESTRICTED_TENANT_ORG_ID = "e6cbd51d-8329-4c4e-8c74-aba643ab4575"
 
 
 class TestApplyFloor:
@@ -61,9 +61,9 @@ class TestPolicyBook:
 
     def test_tenant_overrides_defaults(self) -> None:
         policy = TenantPolicy(
-            org_id=CREA_ORG_ID, request_timeout_seconds=30.0, max_tokens_cap=1500
+            org_id=RESTRICTED_TENANT_ORG_ID, request_timeout_seconds=30.0, max_tokens_cap=1500
         )
-        book = TenantPolicyBook(tenants={CREA_ORG_ID: policy})
+        book = TenantPolicyBook(tenants={RESTRICTED_TENANT_ORG_ID: policy})
         assert book.timeout_for(policy) == 30.0
         assert book.max_tokens_for(policy) == 1500
 
@@ -80,15 +80,15 @@ class TestLoadFromYaml:
         book = load_tenant_policies(tmp_path / "nope.yaml")
         assert book.tenants == {}
 
-    def test_loads_crea_tenant_as_mapping(self, tmp_path: Path) -> None:
+    def test_loads_restricted_tenant_as_mapping(self, tmp_path: Path) -> None:
         path = self._write(
             tmp_path,
             f"""
             default_request_timeout_seconds: 45
             default_max_tokens_cap: 4096
             tenants:
-              "{CREA_ORG_ID}":
-                display_name: Crea Tu Mundo
+              "{RESTRICTED_TENANT_ORG_ID}":
+                display_name: vCTO client (restricted)
                 sensitivity_floor: restricted
                 allowed_task_types: [summarization, family-feedback]
                 max_tokens_cap: 1500
@@ -98,9 +98,9 @@ class TestLoadFromYaml:
             """,
         )
         book = load_tenant_policies(path)
-        policy = book.for_org(CREA_ORG_ID)
+        policy = book.for_org(RESTRICTED_TENANT_ORG_ID)
         assert policy is not None
-        assert policy.display_name == "Crea Tu Mundo"
+        assert policy.display_name == "vCTO client (restricted)"
         assert policy.sensitivity_floor is Sensitivity.RESTRICTED
         assert policy.allowed_task_types == ["summarization", "family-feedback"]
         assert policy.max_tokens_cap == 1500
@@ -112,12 +112,12 @@ class TestLoadFromYaml:
             tmp_path,
             f"""
             tenants:
-              - org_id: "{CREA_ORG_ID}"
+              - org_id: "{RESTRICTED_TENANT_ORG_ID}"
                 sensitivity_floor: confidential
             """,
         )
         book = load_tenant_policies(path)
-        assert book.for_org(CREA_ORG_ID).sensitivity_floor is Sensitivity.CONFIDENTIAL
+        assert book.for_org(RESTRICTED_TENANT_ORG_ID).sensitivity_floor is Sensitivity.CONFIDENTIAL
 
     def test_malformed_entry_is_skipped_not_fatal(self, tmp_path: Path) -> None:
         """A bad entry must not take out the whole book — but the good
@@ -128,20 +128,20 @@ class TestLoadFromYaml:
             tenants:
               broken:
                 sensitivity_floor: not-a-level
-              "{CREA_ORG_ID}":
+              "{RESTRICTED_TENANT_ORG_ID}":
                 sensitivity_floor: restricted
             """,
         )
         book = load_tenant_policies(path)
         assert "broken" not in book.tenants
-        assert book.for_org(CREA_ORG_ID).sensitivity_floor is Sensitivity.RESTRICTED
+        assert book.for_org(RESTRICTED_TENANT_ORG_ID).sensitivity_floor is Sensitivity.RESTRICTED
 
     def test_unparseable_file_yields_empty_book(self, tmp_path: Path) -> None:
         path = self._write(tmp_path, "tenants: [ this is: not: valid: yaml")
         book = load_tenant_policies(path)
         assert book.tenants == {}
 
-    def test_shipped_production_policy_file_declares_crea(self) -> None:
+    def test_shipped_production_policy_file_declares_the_restricted_tenant(self) -> None:
         """The manifest that actually ships must carry the Crea tenant with
         a restricted floor — a drift check, not a mock."""
         repo_root = Path(__file__).resolve().parents[3]
@@ -164,8 +164,8 @@ class TestLoadFromYaml:
                 for org_id, body in yaml.safe_load(embedded)["tenants"].items()
             },
         )
-        policy = book.for_org(CREA_ORG_ID)
-        assert policy is not None, "Crea Tu Mundo tenant absent from production policy"
+        policy = book.for_org(RESTRICTED_TENANT_ORG_ID)
+        assert policy is not None, "restricted vCTO tenant absent from production policy"
         assert policy.sensitivity_floor is Sensitivity.RESTRICTED
         assert policy.rate_limit_per_minute is not None
         assert policy.daily_usd_budget is not None
