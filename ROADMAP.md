@@ -812,7 +812,6 @@ MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 ├── 🔍 Forgesight (forgesight/) — Code Analysis
 ├── 📜 Bloom Scroll (bloom-scroll/) — Document Platform
 ├── 🧪 Sim4D (sim4d/) — Simulation Engine
-├── 🏪 Tablaco (tablaco/) — Marketplace
 ├── 🛤️ Routecraft (routecraft/) — Logistics
 ├── 🎯 Zavlo (zavlo/) — Task Management
 ├── 🔧 Blueprint Harvester (blueprint-harvester/) — Schema Extraction
@@ -872,7 +871,7 @@ MADFAM Ecosystem (Innovaciones MADFAM SAS de CV)
 
 ---
 
-## Verified Tablaco Quote Flow (Selva -> Yantra4D -> Cotiza -> ForgeSight)
+## Verified Client Quote Flow (Selva -> Yantra4D -> Cotiza -> ForgeSight)
 
 Selva agents must only return client-facing fabrication quotes when the downstream services prove the quote is tenant-scoped, project-specific, and market verified.
 
@@ -881,13 +880,13 @@ Selva agents must only return client-facing fabrication quotes when the downstre
 1. `[ ]` **Agent identity wiring** — Provide Selva workers with the Janua/Yantra4D and Cotiza tenant credentials needed to call the production quote path without bypassing access control.
 2. `[ ]` **Strict quote tool contract** — Default client-ready quote generation to `require_market_verified=true`.
 3. `[ ]` **Verification guard** — Refuse to return a successful client quote unless Yantra4D/Cotiza/ForgeSight response data includes `market_verified=true`.
-4. `[ ]` **Tablaco E2E test** — Exercise `project_slug=tablaco`, `mode=unit`, PLA/FDM, MXN, and a safe test client.
+4. `[ ]` **Reference-project E2E test** — Exercise a reference client project slug, `mode=unit`, PLA/FDM, MXN, and a safe test client.
 5. `[ ]` **Dependency hygiene** — Ensure local and CI environments install the Selva tool dependencies required for quote-tool execution.
 6. `[ ]` **Runbook** — Document the quote flow, expected failures, credentials, and Enclii verification commands.
 
 ### Acceptance Gate
 
-The Selva quote tool returns success for Tablaco only when the final response contains a verified ForgeSight market context. Otherwise, Selva must return a non-client-ready failure with the exact blocker.
+The Selva quote tool returns success for a client quote only when the final response contains a verified ForgeSight market context. Otherwise, Selva must return a non-client-ready failure with the exact blocker.
 
 ---
 
