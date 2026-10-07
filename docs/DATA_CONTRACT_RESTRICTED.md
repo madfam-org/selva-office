@@ -71,7 +71,9 @@ el dato a la nube más barata».
    `restricted`, aunque una llamada llegue marcada como `public` —header
    perdido en un salto, proxy que lo borra, superficie nueva que se
    olvidó de ponerlo— se trata como `restricted`. El piso sube, nunca
-   baja: quien pida más protección que su piso, la conserva.
+   baja: quien pida más protección que su piso, la conserva. La única
+   manera de quedar por debajo del piso es una **excepción por tarea**,
+   explícita, autorizada y acotada (sección 6).
 
 ### Lo que no
 
@@ -90,7 +92,10 @@ el dato a la nube más barata».
 4. **No hay afirmación de «cero retención» (ZDR) con proveedores de
    nube.** No existe hoy, ni documentada ni aplicada. El sustituto
    arquitectónico es la localidad: por eso el dato regulado se sirve
-   localmente en lugar de confiar en la promesa de un tercero.
+   localmente en lugar de confiar en la promesa de un tercero. La
+   excepción de la sección 6 sí depende de los términos de dos
+   proveedores, y por eso lista qué hay que confirmar antes de
+   encenderla.
 
 ---
 
@@ -174,15 +179,148 @@ y decide si se usa.
 
 ---
 
-## 6. Referencias
+## 6. Excepción: una tarea seudonimizada
+
+Hay **una** excepción al piso `restricted`, para **un** tenant y **una**
+tarea. Existe porque el cliente, como responsable de los datos, autorizó
+que los borradores de la tarea `family-feedback` los redacten Anthropic
+(Claude) u OpenAI **sólo con texto seudonimizado**: sin nombres. El dueño
+de MADFAM registró esa decisión el 2026-10-07. Nada más cambia: las
+minutas (`summarization`), cualquier otra tarea y cualquier llamada que
+no cumpla todo lo de abajo siguen siendo sólo modelo local.
+
+### Cuándo aplica
+
+Sólo si se cumple **todo** esto a la vez:
+
+1. la llamada es del tenant que tiene la excepción en
+   `infra/k8s/production/tenant-policies.yaml`;
+2. `X-Task-Type` es la tarea exceptuada (`family-feedback`);
+3. `X-Sensitivity` es exactamente `internal`. Ni `public` (no abre la
+   excepción: se le aplica el piso), ni `restricted`/`confidential` (quien
+   pide más protección la conserva);
+4. lleva `X-Pseudonymized: true`, la constancia del cliente de que
+   seudonimizó el texto.
+
+Si falta cualquiera, se aplica el piso como si la excepción no existiera.
+Y si una llamada manda `X-Pseudonymized` pero no encaja en una excepción
+válida —otra tarea, otro tenant, configuración rota o ausente— se trata
+como `restricted`: nunca como el `internal` que declaró.
+
+```http
+POST /v1/chat/completions
+Authorization: Bearer <token>
+X-Selva-Tenant-Org: <org id>
+X-Task-Type: family-feedback
+X-Sensitivity: internal            ← sólo en esta llamada
+X-Pseudonymized: true              ← sólo si de verdad se seudonimizó
+Content-Type: application/json
+```
+
+### Qué hace Selva dentro de la excepción
+
+- **Sólo dos proveedores, en orden.** Anthropic (`claude-sonnet-4-6`)
+  primero; OpenAI (`gpt-4o`) sólo si Anthropic falla por una causa
+  transitoria (caída, saturación, 429, 5xx, saldo insuficiente). Un error
+  de credenciales o de modelo inexistente no salta al otro: se
+  reporta. Ningún otro proveedor —ni Groq, ni OpenRouter, ni DeepInfra, ni
+  Gemini, ni Grok, ni otro— puede recibir la llamada: el conjunto es la
+  lista de la excepción intersectada con el conjunto `internal` del
+  ruteador, y ni la configuración de la organización ni las asignaciones
+  por tarea pueden ampliarlo. El modelo lo fija la excepción; el campo
+  `model` que mande el cliente se ignora. Si ninguno de los dos responde,
+  la llamada falla con **503 `exception_providers_unavailable`**; no se
+  busca a otro.
+- **Una última revisión, burda a propósito.** Antes de enviar, Selva
+  rechaza con **400 `direct_identifier_detected`** la llamada que traiga
+  un correo, un teléfono, una CURP, un RFC o contenido que no sea texto
+  (una imagen no se puede revisar). No envía nada a ningún proveedor y en
+  la bitácora sólo queda el tipo de dato encontrado, nunca el dato. No
+  detecta nombres: eso le toca al cliente.
+- **Los mismos límites del tenant.** Tope de salida, plazo, límite de
+  peticiones por minuto y presupuesto siguen igual.
+- **Nada se guarda.** Igual que en `restricted`: ni el texto enviado ni
+  la respuesta. La bitácora de consumo registra organización, servicio
+  que llamó, tarea, proveedor, modelo, tokens, costo y latencia.
+- **Si la configuración está mal, no aplica.** Una excepción inválida se
+  descarta al arrancar con un ERROR en la bitácora y el piso sigue
+  vigente. Al arrancar, el gateway escribe una línea `task exception in
+  force` por cada excepción activa: así se confirma que está —o que ya no
+  está—.
+
+### Obligaciones del cliente
+
+1. **Seudonimizar antes de llamar.** Quitar todo nombre (de la persona
+   usuaria, de su familia, del personal) y todo identificador directo
+   (correo, teléfono, CURP, RFC, domicilio, número de expediente) y
+   sustituirlos por marcadores (`[PERSONA_1]`).
+2. **Verificar antes de enviar.** Si queda un nombre conocido, **no se
+   envía**. El cliente falla cerrado; no «manda casi todo».
+3. **Atestiguar con verdad.** `X-Pseudonymized: true` va sólo en la
+   llamada que pasó los pasos 1 y 2. Nunca como constante del cliente.
+4. **Declarar `internal` sólo ahí.** Todo lo demás sigue con
+   `X-Sensitivity: restricted` fijo.
+5. **Sólo texto.** Nada de imágenes ni adjuntos.
+6. **Reinsertar los nombres localmente.** La respuesta vuelve con
+   marcadores; el cliente pone los nombres de vuelta en su lado, y la
+   tabla marcador ↔ nombre vive sólo en la memoria de esa petición: no se
+   envía, no se registra, no se guarda.
+7. **Tratar las respuestas nuevas como lo que son.** `400
+   direct_identifier_detected` es un defecto de la seudonimización del
+   cliente: no se reintenta el mismo texto, se alerta. `503
+   exception_providers_unavailable` es «IA no disponible»: se esconde la
+   superficie.
+
+### Términos de los proveedores que el dueño confirma antes de encender
+
+Esto **no está en el código** y Selva no puede verificarlo. Lo confirma el
+dueño de MADFAM con cada proveedor —Anthropic y OpenAI— antes de encender
+la excepción y cada vez que cambien sus términos, y lo deja registrado en
+el repositorio privado de operaciones:
+
+- **Sin entrenamiento:** que los datos enviados por la API no se usan
+  para entrenar modelos.
+- **Retención:** cuánto tiempo conserva el proveedor entradas y salidas
+  de la API y con qué excepciones (p. ej., revisión por abuso o por
+  incumplimiento de sus políticas).
+- **Cero retención (ZDR) donde exista:** si la cuenta de MADFAM tiene, o
+  puede tener, retención cero para el endpoint que usa Selva (chat
+  completions en OpenAI, Messages en Anthropic) y, si no, cuál es la
+  retención estándar. Selva no pide almacenamiento: en OpenAI no envía el
+  parámetro `store`.
+- **Acuerdo de tratamiento de datos (DPA) y lugar de procesamiento:** que
+  esté aceptado y en qué país se procesan los datos.
+
+Que el texto vaya seudonimizado no lo vuelve anónimo: el responsable
+conserva la correspondencia y puede re-identificarlo. Que su aviso de
+privacidad y sus contratos reflejen este envío a proveedores externos le
+corresponde al responsable y a su asesoría; el código no lo resuelve.
+
+### Cómo se apaga
+
+Se borra el bloque `task_exceptions` del tenant en
+`infra/k8s/production/tenant-policies.yaml` y se reinician los pods del
+inference-gateway. Desde ese momento todas las llamadas de esa tarea
+vuelven al piso `restricted` (sólo modelo local) y ninguna llega a un
+proveedor de nube. Para quitar sólo a un proveedor, se borra de
+`allowed_providers` y de `models`.
+
+---
+
+## 7. Referencias
 
 - Runbook de encendido de un tenant `restricted`: se conserva en el
   repositorio privado de operaciones.
 - Ruteo y proveedores: [INFERENCE_PROVIDERS.md](INFERENCE_PROVIDERS.md)
 - Residencia por tenant (borrador): [rfcs/0020-per-tenant-data-residency.md](rfcs/0020-per-tenant-data-residency.md)
 - Código: `packages/inference/madfam_inference/router.py` (frontera de
-  sensibilidad), `madfam_inference/tenant_policy.py` (pisos y topes),
+  sensibilidad), `madfam_inference/tenant_policy.py` (pisos, topes y
+  excepciones por tarea), `madfam_inference/identifier_guard.py` (la
+  revisión de identificadores),
   `apps/nexus-api/nexus_api/routers/inference_proxy.py` (validación).
 - Pruebas que sostienen cada afirmación de este documento:
   `packages/inference/tests/test_router_sensitivity_precedence.py`,
-  `apps/nexus-api/tests/test_inference_proxy_sensitivity.py`.
+  `apps/nexus-api/tests/test_inference_proxy_sensitivity.py` y, para la
+  sección 6, `packages/inference/tests/test_tenant_task_exception.py`,
+  `packages/inference/tests/test_identifier_guard.py` y
+  `apps/nexus-api/tests/test_inference_proxy_task_exception.py`.

@@ -91,7 +91,7 @@ data:
         #   if a known name remains, and re-inserts names locally. Owner
         #   decision recorded 2026-10-07. Before enabling, the owner confirms
         #   each provider's API data terms (see docs/DATA_CONTRACT_RESTRICTED.md
-        #   section 7).
+        #   section 6).
         # TO TURN IT OFF: delete the whole `task_exceptions:` block below and
         #   roll the gateway (restart the inference-gateway pods). Every
         #   family-feedback request then gets the restricted floor again; the
@@ -116,4 +116,4 @@ data:
             notes: >-
               Excepción de redacción seudonimizada autorizada por el cliente
               (responsable de los datos). Sólo esta tarea, sólo estos dos
-              proveedores. Ver docs/DATA_CONTRACT_RESTRICTED.md, sección 7.
+              proveedores. Ver docs/DATA_CONTRACT_RESTRICTED.md, sección 6.

@@ -491,13 +491,20 @@ jobs:
       # (was: silent downgrade to `public`), sensitivity outranks task_type
       # (was: a model_assignments entry could route restricted clinical data
       # to a cloud vendor), and no prompt/completion is ever persisted or
-      # logged. See docs/DATA_CONTRACT_RESTRICTED.md.
+      # logged. The pseudonymized-task exception suites hold the one narrow
+      # way below a floor to its conditions: one tenant, one task, declared
+      # `internal`, X-Pseudonymized attested, named providers only, an
+      # identifier guard, and fail-closed config. See
+      # docs/DATA_CONTRACT_RESTRICTED.md.
       - name: inference sensitivity + tenant policy critical paths
         run: |
           uv run pytest \
             packages/inference/tests/test_router_sensitivity_precedence.py \
             packages/inference/tests/test_tenant_policy.py \
+            packages/inference/tests/test_tenant_task_exception.py \
+            packages/inference/tests/test_identifier_guard.py \
             apps/nexus-api/tests/test_inference_proxy_sensitivity.py \
+            apps/nexus-api/tests/test_inference_proxy_task_exception.py \
             -q
         env:
           ENVIRONMENT: development
