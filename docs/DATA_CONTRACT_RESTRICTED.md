@@ -250,10 +250,10 @@ Content-Type: application/json
 
 ### Obligaciones del cliente
 
-1. **Seudonimizar antes de llamar.** Quitar todo nombre (de la persona
-   usuaria, de su familia, del personal) y todo identificador directo
-   (correo, teléfono, CURP, RFC, domicilio, número de expediente) y
-   sustituirlos por marcadores (`[PERSONA_1]`).
+1. **Seudonimizar antes de llamar.** Quitar todo nombre de persona, sea
+   de quien sea, y todo identificador directo (correo, teléfono, CURP,
+   RFC, domicilio, número de expediente) y sustituirlos por marcadores
+   (`[PERSONA_1]`).
 2. **Verificar antes de enviar.** Si queda un nombre conocido, **no se
    envía**. El cliente falla cerrado; no «manda casi todo».
 3. **Atestiguar con verdad.** `X-Pseudonymized: true` va sólo en la

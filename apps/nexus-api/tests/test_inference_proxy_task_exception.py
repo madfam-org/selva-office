@@ -448,7 +448,7 @@ class TestExceptionDoesNotApply:
 
 # kind -> (synthetic identifier, label the refusal must use)
 IDENTIFIERS = {
-    "email": ("tutor.prueba@example.com", "an email address"),
+    "email": ("contacto.prueba@example.com", "an email address"),
     "phone": ("777 123 4567", "a phone number"),
     "curp": ("GODE561231HDFRRN09", "a CURP"),
     "rfc": ("GODE561231AB1", "an RFC"),
@@ -490,7 +490,7 @@ class TestIdentifierGuard:
             resp = await _post(
                 EXCEPTION_HEADERS,
                 messages=[
-                    {"role": "system", "content": "Firma como tutor.prueba@example.com"},
+                    {"role": "system", "content": "Firma como contacto.prueba@example.com"},
                     {"role": "user", "content": PSEUDONYMIZED_TEXT},
                 ],
             )

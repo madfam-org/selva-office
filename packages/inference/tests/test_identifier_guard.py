@@ -36,7 +36,7 @@ class TestFindsObviousIdentifiers:
         "text",
         [
             "Escribe a ana.lopez@example.com cuando puedas",
-            "contacto: tutor+retro@correo.example.mx",
+            "contacto: equipo+borradores@correo.example.mx",
             "MAYUSCULAS@EXAMPLE.ORG",
         ],
     )
