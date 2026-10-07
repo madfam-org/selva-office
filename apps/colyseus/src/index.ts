@@ -5,10 +5,10 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 dotenv.config(); // CWD fallback for Docker/production
 
 import { createServer } from "node:http";
-import express from "express";
 import { Server } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { createLogger } from "@selva/config/logging";
+import { createApp } from "./app";
 import { OfficeRoom } from "./rooms/OfficeRoom";
 
 const logger = createLogger({ service: "colyseus" });
@@ -16,11 +16,7 @@ const logger = createLogger({ service: "colyseus" });
 const PORT = Number(process.env.COLYSEUS_PORT ?? 4303);
 const NEXUS_API_URL = process.env.NEXUS_API_URL ?? "http://localhost:4300";
 
-const app = express();
-
-app.get("/health", (_req, res) => {
-  res.json({ status: "healthy", service: "colyseus" });
-});
+const app = createApp();
 
 // The http server must NOT be pre-listened (`app.listen(...)`): the matchmake
 // HTTP routes (`/matchmake/joinOrCreate/...`) are only bound inside
