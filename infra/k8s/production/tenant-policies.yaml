@@ -108,9 +108,16 @@ data:
             # Order matters: first = primary, the rest = fallback, in order.
             allowed_providers: [anthropic, openai]
             requires_header: "X-Pseudonymized: true"
-            # The models this repo already prices and routes for each vendor.
+            # anthropic: the current Sonnet, priced in
+            #   madfam_budget_gate.cost_model ($2 / $10 per 1M tokens). It
+            #   rejects a non-default temperature, so the Anthropic adapter
+            #   leaves temperature out for it.
+            # openai: gpt-4o, the newest OpenAI model Selva both prices and
+            #   can call (o1 / o1-mini are priced but reject the adapter's
+            #   max_tokens and temperature; gpt-4o-mini is the smaller tier
+            #   of the same generation).
             models:
-              anthropic: claude-sonnet-4-6
+              anthropic: claude-sonnet-5-5
               openai: gpt-4o
             authorized_on: 2026-10-07
             notes: >-

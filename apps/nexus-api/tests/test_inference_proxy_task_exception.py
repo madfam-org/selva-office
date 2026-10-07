@@ -51,7 +51,7 @@ from nexus_api.routers import inference_proxy
 RESTRICTED_TENANT_ORG_ID = "e6cbd51d-8329-4c4e-8c74-aba643ab4575"
 OTHER_TENANT_ORG_ID = "dhanam"
 EXCEPTED_TASK = "family-feedback"
-ANTHROPIC_MODEL = "claude-sonnet-4-6"
+ANTHROPIC_MODEL = "claude-sonnet-5-5"
 OPENAI_MODEL = "gpt-4o"
 
 # A pseudonymized draft request: placeholders where the names were.
@@ -648,3 +648,30 @@ class TestNoContentPersisted:
             columns
         )
         assert not columns & {"prompt", "completion", "content", "messages", "response", "text"}
+
+
+class TestPinnedModelsArePriced:
+    def test_shipped_exception_models_have_exact_prices(self, tmp_path: Path) -> None:
+        """The ledger prices every call with the budget-gate cost model. Each
+        model the shipped exception pins needs its own row there; the generic
+        family row or the conservative fallback would misstate the tenant's
+        spend against its daily budget."""
+        import yaml
+
+        from madfam_budget_gate.cost_model import estimate_cost
+
+        repo_root = Path(__file__).resolve().parents[3]
+        manifest = repo_root / "infra" / "k8s" / "production" / "tenant-policies.yaml"
+        path = tmp_path / "tenant-policies.yaml"
+        path.write_text(yaml.safe_load(manifest.read_text())["data"]["tenant-policies.yaml"])
+        policy = load_tenant_policies(path).for_org(RESTRICTED_TENANT_ORG_ID)
+        assert policy is not None
+        models = policy.task_exceptions[EXCEPTED_TASK].models
+        assert models == {"anthropic": ANTHROPIC_MODEL, "openai": OPENAI_MODEL}
+
+        # USD for 1M input + 1M output tokens: $2 + $10 and $2.50 + $10.
+        per_million = {
+            provider: estimate_cost(provider, model, 1_000_000, 1_000_000)
+            for provider, model in models.items()
+        }
+        assert per_million == pytest.approx({"anthropic": 12.0, "openai": 12.5})

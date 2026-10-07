@@ -12,6 +12,17 @@ ANTHROPIC_API_URL = "https://api.anthropic.com/v1"
 DEFAULT_MODEL = "claude-sonnet-4-6"
 ANTHROPIC_VERSION = "2023-06-01"
 
+# Models that answer a non-default sampling value (temperature / top_p /
+# top_k) with a 400. Selva sends ``temperature`` on every call (0.7 unless
+# the caller sets one), so for these models it is left out and the model's
+# own default applies. Prefix match, so dated variants are covered.
+NO_SAMPLING_MODEL_PREFIXES: tuple[str, ...] = ("claude-sonnet-5-5",)
+
+
+def accepts_sampling_params(model: str) -> bool:
+    """Whether ``model`` accepts a caller-chosen ``temperature``."""
+    return not model.startswith(NO_SAMPLING_MODEL_PREFIXES)
+
 
 class AnthropicProvider(InferenceProvider):
     """Inference provider for the Anthropic Messages API."""
@@ -112,6 +123,8 @@ class AnthropicProvider(InferenceProvider):
             "temperature": request.policy.temperature,
             "messages": messages,
         }
+        if not accepts_sampling_params(model):
+            del body["temperature"]
         if request.system_prompt:
             body["system"] = request.system_prompt
         if request.tools:

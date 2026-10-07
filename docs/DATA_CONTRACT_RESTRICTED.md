@@ -219,7 +219,7 @@ Content-Type: application/json
 
 ### Qué hace Selva dentro de la excepción
 
-- **Sólo dos proveedores, en orden.** Anthropic (`claude-sonnet-4-6`)
+- **Sólo dos proveedores, en orden.** Anthropic (`claude-sonnet-5-5`)
   primero; OpenAI (`gpt-4o`) sólo si Anthropic falla por una causa
   transitoria (caída, saturación, 429, 5xx, saldo insuficiente). Un error
   de credenciales o de modelo inexistente no salta al otro: se

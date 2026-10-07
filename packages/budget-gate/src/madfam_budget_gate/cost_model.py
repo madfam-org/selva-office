@@ -34,6 +34,10 @@ _PRICE_TABLE: dict[str, list[tuple[str, _Price]]] = {
     "anthropic": [
         ("claude-opus-4-7", _Price(15.0, 75.0)),
         ("claude-opus-4", _Price(15.0, 75.0)),
+        # Claude Sonnet 5.5: $2 / $10 per 1M tokens (Anthropic first-party
+        # API rate, 2026-09). Without this row it fell through to the generic
+        # "claude-sonnet" entry and was over-attributed by 50%.
+        ("claude-sonnet-5-5", _Price(2.0, 10.0)),
         ("claude-sonnet-4-6", _Price(3.0, 15.0)),
         ("claude-sonnet-4", _Price(3.0, 15.0)),
         ("claude-haiku-4-5", _Price(0.80, 4.0)),

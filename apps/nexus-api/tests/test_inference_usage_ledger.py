@@ -116,7 +116,7 @@ async def test_records_task_type_and_latency_metadata() -> None:
         org_id="o",
         caller="c",
         provider="anthropic",
-        model="claude-sonnet-4-6",
+        model="claude-sonnet-5-5",
         prompt_tokens=40,
         completion_tokens=12,
         task_type="family-feedback",
@@ -124,6 +124,8 @@ async def test_records_task_type_and_latency_metadata() -> None:
     )
     assert entry.task_type == "family-feedback"
     assert entry.latency_ms == 812
+    # Priced at the model's own row: 40 * $2/1M + 12 * $10/1M.
+    assert entry.cost_usd == Decimal("0.0002")
 
 
 @pytest.mark.asyncio

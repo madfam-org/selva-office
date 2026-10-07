@@ -30,6 +30,7 @@ from pydantic import ValidationError
 
 from madfam_inference.base import InferenceProvider, UsageCallback
 from madfam_inference.org_config import ModelAssignment, OrgConfig, TaskType
+from madfam_inference.providers.anthropic import AnthropicProvider
 from madfam_inference.router import CLOUD_PRIORITY, ModelRouter
 from madfam_inference.tenant_policy import (
     PSEUDONYMIZATION_REQUIREMENT,
@@ -51,7 +52,7 @@ from madfam_inference.types import (
 
 RESTRICTED_TENANT_ORG_ID = "e6cbd51d-8329-4c4e-8c74-aba643ab4575"
 EXCEPTED_TASK = "family-feedback"
-ANTHROPIC_MODEL = "claude-sonnet-4-6"
+ANTHROPIC_MODEL = "claude-sonnet-5-5"
 OPENAI_MODEL = "gpt-4o"
 
 
@@ -600,3 +601,39 @@ class TestRouterUnderAnException:
         response = await router.complete(request)
         assert response.provider == CLOUD_PRIORITY[0]
         assert providers[CLOUD_PRIORITY[0]].calls == ["client-model"]
+
+
+# ---------------------------------------------------------------------------
+# 5. The pinned Anthropic model is callable through Selva's adapter
+# ---------------------------------------------------------------------------
+
+
+def _anthropic_body(model: str | None, *, stream: bool = False) -> dict[str, Any]:
+    request = InferenceRequest(
+        messages=[{"role": "user", "content": "texto seudonimizado"}],
+        system_prompt="Eres asistente de redacción.",
+        policy=RoutingPolicy(
+            sensitivity=Sensitivity.INTERNAL, max_tokens=1500, temperature=0.7, model_override=model
+        ),
+    )
+    return AnthropicProvider(api_key="test-key")._build_body(request, stream=stream)
+
+
+class TestPinnedAnthropicModelIsCallable:
+    """The pinned model rejects a non-default `temperature` with a 400, and
+    Selva sends one on every call. Without this, every excepted call would
+    fail on Anthropic and silently land on the fallback."""
+
+    @pytest.mark.parametrize("stream", [False, True])
+    def test_temperature_is_left_out_for_the_pinned_model(self, stream: bool) -> None:
+        body = _anthropic_body(ANTHROPIC_MODEL, stream=stream)
+        assert body["model"] == ANTHROPIC_MODEL
+        assert "temperature" not in body
+        assert body["max_tokens"] == 1500
+        assert body["system"] == "Eres asistente de redacción."
+
+    @pytest.mark.parametrize("model", ["claude-sonnet-4-6", None])
+    def test_other_anthropic_models_keep_their_temperature(self, model: str | None) -> None:
+        """Every other model's request body is exactly as before."""
+        body = _anthropic_body(model)
+        assert body["temperature"] == 0.7
