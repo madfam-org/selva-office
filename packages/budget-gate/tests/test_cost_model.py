@@ -23,6 +23,14 @@ def test_anthropic_sonnet_pricing() -> None:
     assert cost == pytest.approx(18.0)
 
 
+def test_anthropic_sonnet_5_5_has_its_own_price() -> None:
+    # $2 / $10 per 1M — not the generic "claude-sonnet" row ($3 / $15).
+    cost = estimate_cost("anthropic", "claude-sonnet-5-5", 1_000_000, 1_000_000)
+    assert cost == pytest.approx(12.0)
+    dated = estimate_cost("anthropic", "claude-sonnet-5-5-20260901", 1_000_000, 0)
+    assert dated == pytest.approx(2.0)
+
+
 def test_anthropic_haiku_pricing() -> None:
     cost = estimate_cost("anthropic", "claude-haiku-4-5", 1_000_000, 1_000_000)
     assert cost == pytest.approx(4.80)

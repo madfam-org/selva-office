@@ -8,7 +8,7 @@ from typing import Any
 
 from .base import InferenceProvider, UsageCallback
 from .caching import PromptCacheManager
-from .types import InferenceRequest, InferenceResponse, Sensitivity, StreamUsage
+from .types import InferenceRequest, InferenceResponse, RoutingPolicy, Sensitivity, StreamUsage
 
 logger = logging.getLogger(__name__)
 _cache_manager = PromptCacheManager()
@@ -163,6 +163,10 @@ class ModelRouter:
        ``restricted`` / ``confidential`` -> ``[LOCAL_PROVIDER]`` only;
        ``internal`` -> CLOUD_PRIORITY; ``public`` -> CHEAPEST_PRIORITY.
        ``require_local=True`` narrows the set to the local provider.
+       A server-set ``provider_allowlist`` (a tenant task exception)
+       narrows a cloud-eligible request to the allowlist intersected with
+       CLOUD_PRIORITY, in the allowlist's order; it never applies to
+       ``restricted`` / ``confidential`` / ``require_local``.
     2. ``task_type`` — if the org config has a model assignment for the
        request's task type **and that assignment's provider is inside the
        allowed set**, jump to it and override the model name. An
@@ -170,9 +174,12 @@ class ModelRouter:
        WARNING) and routing falls through to the sensitivity-derived
        candidates. This is what stops a ``model_assignments`` entry from
        silently sending clinical ``restricted`` data to a cloud vendor.
+       Under a ``provider_allowlist`` assignments are not consulted at all:
+       the exception pins its own providers, order and models.
     3. Otherwise take the first registered provider in the allowed set.
     4. ``prefer_local=True`` moves the local provider first *within* the
-       allowed set (it can never add it to a set that excludes it).
+       allowed set (it can never add it to a set that excludes it). It is
+       ignored under a ``provider_allowlist``, which is exact.
 
     If no provider in the allowed set is registered, the router raises —
     it never widens the set to find something that answers.
@@ -232,6 +239,19 @@ class ModelRouter:
             # local model only, data never leaves the perimeter.
             return [LOCAL_PROVIDER]
 
+        if policy.provider_allowlist is not None:
+            # A tenant task exception (set server-side by the gateway, see
+            # tenant_policy.TaskException). The set is the allowlist
+            # INTERSECTED with the router's canonical ``internal`` set, in
+            # the allowlist's order. Deliberately NOT the org-config
+            # ``cloud_priority`` (a cost-preference list that production
+            # pins to one vendor) and never the local provider: the
+            # exception names exactly where the data may go, and nothing —
+            # prefer_local, a priority list, a client-sent model — adds to it.
+            return [
+                name for name in dict.fromkeys(policy.provider_allowlist) if name in CLOUD_PRIORITY
+            ]
+
         cloud_priority, cheapest_priority = self._priority_lists()
         if policy.sensitivity == Sensitivity.INTERNAL:
             candidates = list(cloud_priority)
@@ -247,6 +267,31 @@ class ModelRouter:
             candidates.insert(0, LOCAL_PROVIDER)
 
         return candidates
+
+    @staticmethod
+    def _is_narrowed(policy: RoutingPolicy) -> bool:
+        """True when a server-set ``provider_allowlist`` governs this request.
+
+        Mirrors the precedence in :meth:`allowed_providers_for`: the local-only
+        rules come first, so an allowlist on a restricted/confidential or
+        ``require_local`` request is inert.
+        """
+        return (
+            policy.provider_allowlist is not None
+            and not policy.require_local
+            and policy.sensitivity not in LOCAL_ONLY_SENSITIVITIES
+        )
+
+    def _pin_model(self, policy: RoutingPolicy, provider_name: str) -> None:
+        """Pin the exception's model for ``provider_name`` before calling it.
+
+        Done per attempt: ``model_override`` is one field shared by the
+        whole request, so without this the fallback provider would be sent
+        the primary's model id (or a client-chosen one). Outside an
+        allowlist this is a no-op and routing behaves exactly as before.
+        """
+        if self._is_narrowed(policy):
+            policy.model_override = policy.provider_models.get(provider_name)
 
     def _task_type_assignment(self, request: InferenceRequest) -> Any | None:
         """Return the org-config ``ModelAssignment`` for the request, if any."""
@@ -275,7 +320,11 @@ class ModelRouter:
         candidates = self.allowed_providers_for(request)
 
         # ── 2. Task-type routing, constrained to the allowed set ──────
-        assignment = self._task_type_assignment(request)
+        # Under a tenant task exception the org-config model_assignments
+        # are not consulted at all: the exception pins providers, order and
+        # models, so an assignment can neither widen the set nor swap the
+        # model or raise the token cap.
+        assignment = None if self._is_narrowed(policy) else self._task_type_assignment(request)
         if assignment is not None:
             if assignment.provider not in candidates:
                 # THE bypass this guard exists to close: an org-config
@@ -330,6 +379,7 @@ class ModelRouter:
         for name in candidates:
             provider = self._providers.get(name)
             if provider is not None:
+                self._pin_model(policy, name)
                 return provider
 
         raise RuntimeError(
@@ -347,7 +397,9 @@ class ModelRouter:
         Fallback is drawn from the SAME sensitivity-allowed set as primary
         selection, so a restricted/confidential request can never fall back
         to a cloud vendor — for those levels the only allowed provider is
-        the primary, so the list is empty by construction.
+        the primary, so the list is empty by construction. Under a
+        ``provider_allowlist`` the chain is the rest of the allowlist, in
+        order, and nothing else.
         """
         policy = request.policy
         if policy.sensitivity in LOCAL_ONLY_SENSITIVITIES or policy.require_local:
@@ -471,6 +523,7 @@ class ModelRouter:
         for name in self._get_fallback_candidates(request, exclude=provider):
             try:
                 logger.info("Falling back to provider: %s", name)
+                self._pin_model(request.policy, name)
                 return await self._providers[name].complete(request)
             except Exception as exc:
                 # Fallback chain: only stop early on a hard-failure
@@ -598,6 +651,7 @@ class ModelRouter:
         for name in self._get_fallback_candidates(request, exclude=provider):
             fallback = self._providers[name]
             emitted_any = False
+            self._pin_model(request.policy, name)
             try:
                 logger.info("Falling back streaming inference to provider: %s", name)
                 async for chunk in fallback.stream(

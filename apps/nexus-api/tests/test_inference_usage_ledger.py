@@ -102,3 +102,62 @@ async def test_negative_tokens_are_floored_not_raised() -> None:
     )
     assert entry.amount == 20  # -5 floored to 0
     assert entry.cost_usd >= Decimal("0")
+
+
+@pytest.mark.asyncio
+async def test_records_task_type_and_latency_metadata() -> None:
+    """The proxy's routing metadata reaches the row: task label and latency."""
+    db = MagicMock()
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+
+    entry = await record_inference_usage(
+        db,
+        org_id="o",
+        caller="c",
+        provider="anthropic",
+        model="claude-sonnet-5-5",
+        prompt_tokens=40,
+        completion_tokens=12,
+        task_type="family-feedback",
+        latency_ms=812,
+    )
+    assert entry.task_type == "family-feedback"
+    assert entry.latency_ms == 812
+    # Priced at the model's own row: 40 * $2/1M + 12 * $10/1M.
+    assert entry.cost_usd == Decimal("0.0002")
+
+
+@pytest.mark.asyncio
+async def test_task_type_and_latency_are_optional_and_bounded() -> None:
+    db = MagicMock()
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+
+    legacy = await record_inference_usage(
+        db,
+        org_id="o",
+        caller="c",
+        provider="openai",
+        model="gpt-4o",
+        prompt_tokens=1,
+        completion_tokens=1,
+    )
+    assert legacy.task_type is None
+    assert legacy.latency_ms is None
+
+    # X-Task-Type is caller-chosen: an oversized label is cut to the column
+    # width instead of failing the write; a negative latency floors to 0.
+    bounded = await record_inference_usage(
+        db,
+        org_id="o",
+        caller="c",
+        provider="openai",
+        model="gpt-4o",
+        prompt_tokens=1,
+        completion_tokens=1,
+        task_type="x" * 500,
+        latency_ms=-3,
+    )
+    assert bounded.task_type == "x" * 100
+    assert bounded.latency_ms == 0

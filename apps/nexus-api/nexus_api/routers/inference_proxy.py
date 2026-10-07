@@ -17,9 +17,21 @@ which made "the cheapest cloud vendor" the failure mode for a dropped
 header. See ``docs/DATA_CONTRACT_RESTRICTED.md``.
 
 Neither prompts nor completions are persisted or logged anywhere in this
-module: the usage ledger stores token counts and USD only, and every log
-line below carries routing metadata (org, task type, sensitivity) but
-never message content.
+module: the usage ledger stores routing metadata, token counts, USD and
+latency only, and every log line below carries routing metadata (org, task
+type, sensitivity) but never message content.
+
+Pseudonymized-task exceptions
+-----------------------------
+A tenant policy may declare a ``TaskException`` (see
+``madfam_inference.tenant_policy``): for ONE task type, a request that
+declares ``internal`` and attests ``X-Pseudonymized: true`` may be served by
+a named list of cloud providers instead of the tenant floor. Every other
+request from that tenant keeps the floor. On top of the client's
+attestation the gateway refuses (400) an excepted request that carries an
+obvious direct identifier or non-text content, and a request that sends
+``X-Pseudonymized`` without matching a valid exception is served as
+``restricted``, never as the ``internal`` it declared.
 """
 
 from __future__ import annotations
@@ -228,6 +240,8 @@ async def _record_stream_usage(user: dict, captured: dict) -> None:
                 model=captured.get("model"),
                 prompt_tokens=usage["prompt_tokens"],
                 completion_tokens=usage["completion_tokens"],
+                task_type=captured.get("task_type"),
+                latency_ms=captured.get("duration_ms"),
             )
             await db.commit()
         _emit_proxy_event(
@@ -251,6 +265,7 @@ async def _stream_chunks(
     user: dict,
     *,
     timeout_seconds: float | None = None,
+    task_type: str | None = None,
 ):
     """Yield SSE chunks in OpenAI streaming format, then meter the stream.
 
@@ -343,6 +358,7 @@ async def _stream_chunks(
         # errored after some tokens, as long as the provider reported usage.
         if captured.get("usage"):
             captured["duration_ms"] = int((time.monotonic() - started) * 1000)
+            captured["task_type"] = task_type
             await _record_stream_usage(user, captured)
 
 
@@ -376,12 +392,16 @@ async def _record_usage(
     provider: str,
     model: str,
     usage: dict[str, int],
+    *,
+    task_type: str | None = None,
+    latency_ms: int | None = None,
 ) -> None:
     """Write the durable, USD-priced, org-attributed inference-usage ledger
     entry (RFC 0034 P1). Fail-SAFE not fail-open: a write error is logged at
     WARNING and the call degrades to 'spend not recorded for this call' — it is
     never silently dropped like the old event emit, and it never fails the
-    user's inference response."""
+    user's inference response. Routing metadata only: tenant, caller, task
+    type, provider, model, tokens, cost and latency — never content."""
     try:
         await record_inference_usage(
             db,
@@ -391,6 +411,8 @@ async def _record_usage(
             model=model,
             prompt_tokens=usage.get("prompt_tokens", 0),
             completion_tokens=usage.get("completion_tokens", 0),
+            task_type=task_type,
+            latency_ms=latency_ms,
         )
         await db.commit()
     except Exception:
@@ -413,14 +435,23 @@ async def chat_completions(
     db: AsyncSession = Depends(get_db),
     x_task_type: str | None = Header(None, alias="X-Task-Type"),
     x_sensitivity: str | None = Header(None, alias="X-Sensitivity"),
+    x_pseudonymized: str | None = Header(None, alias="X-Pseudonymized"),
 ):
     """OpenAI-compatible chat completion endpoint.
 
     ``X-Sensitivity`` is required. Absent or invalid ⇒ 400: the header is
     the only thing that tells the gateway whether a payload may leave the
     perimeter, so guessing it is not an option.
+
+    ``X-Pseudonymized: true`` is the client's attestation for a tenant's
+    pseudonymized-task exception; it has no effect on its own.
     """
-    from madfam_inference.tenant_policy import apply_floor
+    from madfam_inference.identifier_guard import KIND_LABELS, find_direct_identifiers
+    from madfam_inference.tenant_policy import (
+        apply_floor,
+        pseudonymization_header_sent,
+        resolve_task_exception,
+    )
     from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
 
     org_id = user.get("org_id", "platform")
@@ -469,7 +500,25 @@ async def chat_completions(
     policies = _get_tenant_policies()
     tenant_policy = policies.for_org(org_id)
 
-    if tenant_policy is not None:
+    # A pseudonymized-task exception replaces the floor for THIS request
+    # only, and only when every condition holds (tenant, task type, declared
+    # `internal`, attestation). Anything short of that: the floor, as before.
+    task_exception = resolve_task_exception(
+        tenant_policy,
+        task_type=x_task_type,
+        declared=sensitivity,
+        pseudonymized=x_pseudonymized,
+    )
+    if task_exception is not None:
+        logger.info(
+            "Tenant %s: pseudonymized-task exception applies to task_type=%s; "
+            "served at %s via %s only",
+            org_id,
+            x_task_type,
+            sensitivity.value,
+            ", ".join(task_exception.allowed_providers),
+        )
+    elif tenant_policy is not None:
         floored = apply_floor(sensitivity, tenant_policy.sensitivity_floor)
         if floored is not sensitivity:
             logger.info(
@@ -480,6 +529,24 @@ async def chat_completions(
             )
             sensitivity = floored
 
+    if task_exception is None and pseudonymization_header_sent(x_pseudonymized):
+        # Fail closed. The caller is on the pseudonymized path but no valid
+        # exception matched — wrong task, missing or broken config, a policy
+        # file that did not load. It declared `internal` only because it
+        # expected the exception's narrow provider list, so it is served as
+        # restricted rather than routed to the whole internal set.
+        raised = apply_floor(sensitivity, Sensitivity.RESTRICTED)
+        if raised is not sensitivity:
+            logger.warning(
+                "Tenant %s: X-Pseudonymized sent but no pseudonymized-task exception "
+                "applies (task_type=%s, declared=%s); served as restricted",
+                org_id,
+                x_task_type or "-",
+                sensitivity.value,
+            )
+            sensitivity = raised
+
+    if tenant_policy is not None:
         if (
             tenant_policy.allowed_task_types
             and x_task_type
@@ -521,6 +588,32 @@ async def chat_completions(
             limited.headers["Retry-After"] = str(retry_after)
             return limited
 
+    # ── 2b. Excepted requests: the gateway's own look for identifiers ──
+    # Defense in depth behind the client's pseudonymization. Only the KINDS
+    # found are logged and returned — never the matching text — and nothing
+    # is sent to any provider.
+    if task_exception is not None:
+        found = find_direct_identifiers(body.messages)
+        if found:
+            logger.warning(
+                "Inference refused: pseudonymized-task request carries %s "
+                "(org=%s, task_type=%s); content not logged",
+                ", ".join(found),
+                org_id,
+                x_task_type,
+            )
+            return _error(
+                400,
+                (
+                    "Request refused: the payload contains "
+                    f"{'; '.join(KIND_LABELS[kind] for kind in found)}. A request under a "
+                    "pseudonymized-task exception must be text only, with no email "
+                    "address, phone number, CURP or RFC. Nothing was sent to any provider."
+                ),
+                "direct_identifier_detected",
+                "invalid_request_error",
+            )
+
     # ── 3. Build routing policy with tenant-capped limits ──────────────
     # Router construction happens after validation so a rejected request
     # never pays to build (or lazily initialise) the provider set.
@@ -537,6 +630,12 @@ async def chat_completions(
         task_type=x_task_type,
         model_override=model_override,
     )
+    if task_exception is not None:
+        # The exception names the providers, their order and their models;
+        # a client-sent `model` is ignored so it cannot steer the call.
+        policy.model_override = None
+        policy.provider_allowlist = list(task_exception.allowed_providers)
+        policy.provider_models = dict(task_exception.models)
 
     # Extract system prompt from messages if present
     system_prompt = None
@@ -567,6 +666,7 @@ async def chat_completions(
                 completion_id,
                 user,
                 timeout_seconds=timeout_seconds,
+                task_type=x_task_type,
             ),
             media_type="text/event-stream",
             headers={
@@ -607,6 +707,21 @@ async def chat_completions(
             sensitivity.value,
             exc,
         )
+        if task_exception is not None:
+            # Fail-closed like the local tier: the exception names where this
+            # data may go, so "none of those answered" is an outage, never a
+            # reason to try the rest of the internal set.
+            return _error(
+                503,
+                (
+                    f"No authorized provider is available for task type {x_task_type!r} "
+                    "under its pseudonymized-task exception (allowed: "
+                    f"{', '.join(task_exception.allowed_providers)}). This request is "
+                    "refused rather than routed to any other provider."
+                ),
+                "exception_providers_unavailable",
+                "server_error",
+            )
         if sensitivity in (Sensitivity.RESTRICTED, Sensitivity.CONFIDENTIAL):
             # Fail-closed by design: regulated data may only be served by
             # the local backend, so "no local backend" is an outage, never
@@ -634,7 +749,15 @@ async def chat_completions(
 
     usage = _normalize_usage(response.usage)
     _emit_proxy_event(user, response.provider, response.model, usage, duration_ms)
-    await _record_usage(db, user, response.provider, response.model, usage)
+    await _record_usage(
+        db,
+        user,
+        response.provider,
+        response.model,
+        usage,
+        task_type=x_task_type,
+        latency_ms=duration_ms,
+    )
 
     return _openai_response(
         completion_id=completion_id,

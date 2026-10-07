@@ -43,6 +43,20 @@ class RoutingPolicy(BaseModel):
     require_local: bool = False
     task_type: str | None = None
     model_override: str | None = None
+    #: Server-side provider narrowing, set only by the gateway when a tenant
+    #: task exception applies (``tenant_policy.TaskException``) — never from
+    #: a client-supplied value. When set, the request may be served ONLY by
+    #: these providers, in this order (first = primary, the rest = fallback),
+    #: and only by those that are also in the router's ``internal`` set. It
+    #: can only narrow: ``restricted`` / ``confidential`` and
+    #: ``require_local`` still resolve to the local provider, and an empty
+    #: list means "no provider" (the router raises).
+    provider_allowlist: list[str] | None = None
+    #: The model pinned for each provider in ``provider_allowlist``
+    #: (provider name -> model id). Applied per attempt, so a fallback
+    #: provider never receives the primary's model name. A provider absent
+    #: from this mapping uses its adapter default.
+    provider_models: dict[str, str] = Field(default_factory=dict)
 
 
 class InferenceRequest(BaseModel):

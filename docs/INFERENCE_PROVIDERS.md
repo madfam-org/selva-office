@@ -266,6 +266,7 @@ curl http://nexus-api:4300/v1/chat/completions \
 | `X-Sensitivity` | **YES** | Data classification. Drives provider eligibility. | `public`, `internal`, `confidential`, `restricted` |
 | `X-Task-Type` | no | Org-config model assignment, *within* what the sensitivity allows | `crm`, `coding`, `research` |
 | `X-Selva-Tenant-Org` | for worker-token callers | Tenant scope; selects the per-tenant policy | a Janua org id |
+| `X-Pseudonymized` | only for a pseudonymized-task exception | The client's attestation that it stripped every name. Opens a tenant's task exception when everything else matches; sent without a matching exception, the request is served as `restricted` | `true` |
 
 **`X-Sensitivity` is mandatory and fails closed.** A request without the
 header, or with a value outside the enum, is rejected with **400** and
@@ -306,10 +307,25 @@ by `infra/k8s/production/tenant-policies.yaml`) declares, per
 - `allowed_task_types` — anything else is a 400.
 - `max_tokens_cap`, `request_timeout_seconds`, `rate_limit_per_minute`,
   `daily_usd_budget`.
+- `task_exceptions` — the one deliberate way below the floor, per task
+  type. It applies only when the request's tenant, `X-Task-Type`, a
+  declared `X-Sensitivity: internal` and `X-Pseudonymized: true` all
+  match; the request is then served by the exception's
+  `allowed_providers` (in order, intersected with `CLOUD_PRIORITY`, each
+  with its pinned `models` entry) and refused with **400
+  `direct_identifier_detected`** if it carries an e-mail, phone number,
+  CURP, RFC or non-text content. None of those providers available ⇒
+  **503 `exception_providers_unavailable`**, never another provider.
+  An invalid exception is dropped at startup with an ERROR and the floor
+  stays; each valid one logs `task exception in force`. See
+  [DATA_CONTRACT_RESTRICTED.md § 6](DATA_CONTRACT_RESTRICTED.md).
 
 A tenant with no entry keeps the gateway defaults; the file only ever
-tightens. A parse failure logs at ERROR and leaves **no floors in
-force** — verify the startup line `tenant policy: loaded N tenant(s)`.
+tightens (a task exception narrows the provider set for its one task and
+never applies to anything else). A parse failure logs at ERROR and leaves
+**no floors in force** — verify the startup line `tenant policy: loaded N
+tenant(s)`. Even then, a request carrying `X-Pseudonymized` is served as
+`restricted`, never as `internal`.
 
 ### Timeouts
 
