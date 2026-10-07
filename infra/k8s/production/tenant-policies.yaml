@@ -69,3 +69,51 @@ data:
           Tier restringido para un cliente vCTO con contrato de encargado.
           No se persiste prompt ni respuesta. Ver docs/DATA_CONTRACT_RESTRICTED.md;
           el runbook del operador vive en el repositorio privado de operaciones.
+
+        # ── The ONE exception to the floor above ──────────────────────
+        # WHAT: `family-feedback` drafts may be served by Anthropic (primary)
+        #   or OpenAI (fallback) and by NO other provider, but only for a
+        #   request that carries ALL of:
+        #     X-Task-Type: family-feedback
+        #     X-Sensitivity: internal          (exactly; not public, not more)
+        #     X-Pseudonymized: true            (the client's attestation)
+        #   Everything else from this tenant keeps the restricted floor,
+        #   i.e. local model only: `summarization`, any other task, any
+        #   request without the attestation, and any request that declares
+        #   restricted or confidential. On an excepted request the gateway
+        #   also refuses (400 direct_identifier_detected, nothing logged but
+        #   the kind) any email, phone number, CURP, RFC or non-text content.
+        #   The output cap, deadline, rate limit and budget above still
+        #   apply, and nothing is persisted but the usage-ledger metadata.
+        # WHY: the client, as data controller, authorized name-free
+        #   (pseudonymized) drafting of this task by these two providers
+        #   only. Its app strips every name before calling, refuses to send
+        #   if a known name remains, and re-inserts names locally. Owner
+        #   decision recorded 2026-10-07. Before enabling, the owner confirms
+        #   each provider's API data terms (see docs/DATA_CONTRACT_RESTRICTED.md
+        #   section 7).
+        # TO TURN IT OFF: delete the whole `task_exceptions:` block below and
+        #   roll the gateway (restart the inference-gateway pods). Every
+        #   family-feedback request then gets the restricted floor again; the
+        #   client sees 503s (or local-model drafts once a local backend
+        #   exists) and nothing reaches a cloud provider. To drop just one
+        #   provider, remove it from `allowed_providers` AND from `models`.
+        # An invalid block logs an ERROR at startup and is NOT applied (the
+        # floor stays). After a rollout, confirm the startup line
+        # `tenant policy: <org> task exception in force: task_type=family-feedback ...`
+        # — or, after turning it off, that the line is gone.
+        task_exceptions:
+          family-feedback:
+            sensitivity_floor: internal
+            # Order matters: first = primary, the rest = fallback, in order.
+            allowed_providers: [anthropic, openai]
+            requires_header: "X-Pseudonymized: true"
+            # The models this repo already prices and routes for each vendor.
+            models:
+              anthropic: claude-sonnet-4-6
+              openai: gpt-4o
+            authorized_on: 2026-10-07
+            notes: >-
+              Excepción de redacción seudonimizada autorizada por el cliente
+              (responsable de los datos). Sólo esta tarea, sólo estos dos
+              proveedores. Ver docs/DATA_CONTRACT_RESTRICTED.md, sección 7.

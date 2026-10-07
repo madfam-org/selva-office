@@ -31,6 +31,9 @@ from ..models import ComputeTokenLedger
 
 logger = logging.getLogger(__name__)
 
+# Matches the column width; X-Task-Type is a caller-chosen routing label.
+_TASK_TYPE_MAX_LEN = 100
+
 
 async def record_inference_usage(
     db: AsyncSession,
@@ -41,12 +44,17 @@ async def record_inference_usage(
     model: str | None,
     prompt_tokens: int,
     completion_tokens: int,
+    task_type: str | None = None,
+    latency_ms: int | None = None,
 ) -> ComputeTokenLedger:
     """Write one durable, USD-priced ledger entry for an inference-proxy call.
 
     `amount` is total tokens (keeps the existing token-budget semantics);
-    `cost_usd` is the real provider-priced dollar cost. Returns the entry
-    (not yet committed — the caller owns the transaction).
+    `cost_usd` is the real provider-priced dollar cost; `task_type` is the
+    request's X-Task-Type routing label and `latency_ms` the wall-clock time
+    of the provider call. Metadata only — there is no column a prompt or a
+    completion could be written to. Returns the entry (not yet committed —
+    the caller owns the transaction).
     """
     total_tokens = max(0, prompt_tokens) + max(0, completion_tokens)
     cost_usd = Decimal(
@@ -61,6 +69,8 @@ async def record_inference_usage(
         org_id=org_id or "platform",
         caller=caller or "unknown",
         cost_usd=cost_usd,
+        task_type=task_type[:_TASK_TYPE_MAX_LEN] if task_type else None,
+        latency_ms=max(0, int(latency_ms)) if latency_ms is not None else None,
     )
     db.add(entry)
     await db.flush()

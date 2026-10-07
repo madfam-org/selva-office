@@ -321,6 +321,11 @@ class ComputeTokenLedger(Base):
     # The calling service/product identity (JWT sub of the caller) so per-product
     # AI spend/margin is computable. Nullable for legacy rows.
     caller: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # Inference-proxy routing metadata (migration 0042): the X-Task-Type label
+    # and the provider call's wall-clock latency. Never content. Nullable for
+    # legacy rows and for non-proxy debits.
+    task_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
