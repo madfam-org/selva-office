@@ -66,7 +66,10 @@ class SubgraphNodeHandler:
             # langgraph stubs type ``invoke`` against ``StateT`` (the generic
             # state schema); we use a plain ``dict`` as the runtime state
             # container — see the ``StateGraph(dict)`` ignore in compiler.py.
-            result = compiled_graph.invoke(state)  # type: ignore[arg-type]
+            # In langgraph 1.2 ``invoke`` is overloaded on ``version``, so the
+            # mismatch reports as call-overload; the default ("v1") overload
+            # still returns the state dict.
+            result = compiled_graph.invoke(state)  # type: ignore[call-overload]
 
             # Merge subgraph result back
             merged = {**state, **result, "current_node_id": node.id}
