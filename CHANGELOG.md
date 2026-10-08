@@ -38,6 +38,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `SELVA_SERVICE_TOKEN`. The called routes are vendored with their source
   commits in `packages/tools/tests/fixtures/phygital_routes.json` and checked
   by tests.
+- **Cotiza quote path** — `generate_quote` without a `project_slug` now posts
+  to `POST /quotes/from-yantra4d`, the path Cotiza serves (its Nest controller
+  is `quotes` and the API sets no global prefix), instead of
+  `/api/v1/quotes/from-yantra4d`.
+- **`inventory_check` reads the Pravara-MES inventory route** — it calls
+  `GET /v1/inventory` with the SKU as `search` and keeps exact SKU matches,
+  sends the Pravara service token, sends nothing without one, and is now
+  PLATFORM-audience. It previously called `/api/v1/inventory/check`, which
+  Pravara-MES does not serve. The `warehouse` parameter is gone: Pravara-MES
+  inventory has no warehouse dimension. Shared token helpers live in
+  `selva_tools/builtins/service_auth.py`.
 - **Wave 0 CI security** — bump `pyjwt` (≥2.13.0), `python-multipart`
   (≥0.0.30), and `starlette` (≥1.3.1) to clear Trivy CVE gates on `main`.
 - **Prod health probes** — consent-ledger grant probe uses `current_user`

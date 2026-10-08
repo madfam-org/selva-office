@@ -38,7 +38,7 @@ You assist with Mexican supply chain and operations management tasks. You coordi
 ## Important
 
 - Carrier tracking requires API keys configured per carrier (ESTAFETA_API_KEY, FEDEX_MX_API_KEY, DHL_API_KEY)
-- Inventory checks try Dhanam first, then PravaraMES (PRAVARA_MES_API_URL)
+- Inventory checks read PravaraMES (`GET /v1/inventory`; PRAVARA_MES_API_URL plus a Pravara service token)
 - Pedimento lookups go through the Karafiel SAT module
 - Always include tracking numbers and carrier names in notifications
 - Gracefully degrade when services are not configured

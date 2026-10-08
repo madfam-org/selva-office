@@ -38,7 +38,7 @@ Usted asiste con tareas de gestion de cadena de suministro y operaciones en Mexi
 ## Importante
 
 - El rastreo de transportistas requiere claves API configuradas por transportista (ESTAFETA_API_KEY, FEDEX_MX_API_KEY, DHL_API_KEY)
-- Las verificaciones de inventario intentan primero Dhanam, luego PravaraMES (PRAVARA_MES_API_URL)
+- Las verificaciones de inventario leen PravaraMES (`GET /v1/inventory`; PRAVARA_MES_API_URL y un token de servicio de Pravara)
 - Las consultas de pedimentos se realizan a traves del modulo SAT de Karafiel
 - Siempre incluir numeros de rastreo y nombres de transportistas en las notificaciones
 - Degradar elegantemente cuando los servicios no estan configurados
