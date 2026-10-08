@@ -12,7 +12,8 @@ request against it:
   (Yantra4D ``POST /api/render``).
 - Run Yantra4D's wall-thickness and overhang analyses on a project's latest
   render (``POST /api/projects/<slug>/analyze/thickness`` and ``.../overhang``).
-- Request a fabrication quote through Yantra4D or Cotiza.
+- Request a fabrication quote through Yantra4D or Cotiza
+  (Cotiza ``POST /quotes/from-yantra4d``).
 - Read a Pravara-MES production order (``GET /v1/orders/:id``).
 
 Selva does not create production orders. Cotiza prices, Dhanam bills and
@@ -36,27 +37,15 @@ import httpx
 
 from ..audience import Audience
 from ..base import BaseTool, ToolResult
+from .service_auth import COTIZA_TOKEN_ENV as _COTIZA_TOKEN_ENV
+from .service_auth import PRAVARA_TOKEN_ENV as _PRAVARA_TOKEN_ENV
+from .service_auth import YANTRA4D_TOKEN_ENV as _YANTRA4D_TOKEN_ENV
+from .service_auth import first_env as _first_env
+from .service_auth import http_error_detail as _http_error_detail
+from .service_auth import missing_token as _missing_token
+from .service_auth import service_auth_headers as _service_auth_headers
 
 logger = logging.getLogger(__name__)
-
-# Service token variables, in precedence order.
-_YANTRA4D_TOKEN_ENV = ("YANTRA4D_API_TOKEN", "SELVA_YANTRA4D_SERVICE_TOKEN", "SELVA_SERVICE_TOKEN")
-_COTIZA_TOKEN_ENV = ("COTIZA_API_TOKEN", "SELVA_COTIZA_SERVICE_TOKEN", "SELVA_SERVICE_TOKEN")
-_PRAVARA_TOKEN_ENV = (
-    "PRAVARA_MES_API_TOKEN",
-    "SELVA_PRAVARA_SERVICE_TOKEN",
-    "SELVA_SERVICE_TOKEN",
-)
-
-
-def _first_env(names: tuple[str, ...]) -> str:
-    """Return the first non-empty environment variable among ``names``."""
-    for name in names:
-        value = os.environ.get(name)
-        if value:
-            return value
-    return ""
-
 
 YANTRA4D_API_URL = os.environ.get("YANTRA4D_API_URL", "")
 PRAVARA_MES_API_URL = os.environ.get("PRAVARA_MES_API_URL", "")
@@ -75,47 +64,6 @@ _ANALYSIS_SAMPLE_KEYS = ("thicknesses", "points", "angles")
 _RENDER_TIMEOUT_S = 120.0
 _ANALYSIS_TIMEOUT_S = 60.0
 _LOOKUP_TIMEOUT_S = 15.0
-
-
-def _service_auth_headers(token: str) -> dict[str, str]:
-    token = str(token or "").strip()
-    if not token:
-        return {}
-    return {
-        "Authorization": f"Bearer {token}",
-        "X-Service-Actor": "selva-agent",
-    }
-
-
-def _missing_token(service: str, env_names: tuple[str, ...]) -> ToolResult:
-    return ToolResult(
-        success=False,
-        error=(
-            f"{service} service token not configured (set {' or '.join(env_names)}); "
-            "no request was sent."
-        ),
-    )
-
-
-def _http_error_detail(exc: httpx.HTTPError) -> str:
-    """Describe an HTTP failure, using the service's own error text when present."""
-    if not isinstance(exc, httpx.HTTPStatusError):
-        return str(exc) or exc.__class__.__name__
-    response = exc.response
-    try:
-        body = response.json()
-    except ValueError:
-        body = None
-    messages: list[str] = []
-    if isinstance(body, dict):
-        for key in ("error", "message", "detail"):
-            value = body.get(key)
-            if value and str(value) not in messages:
-                messages.append(str(value))
-    if not messages and response.text:
-        messages.append(response.text[:300])
-    detail = " - ".join(messages)
-    return f"HTTP {response.status_code}: {detail}" if detail else f"HTTP {response.status_code}"
 
 
 async def _send(
@@ -489,7 +437,9 @@ class GenerateQuoteTool(BaseTool):
                     error="project is required for Cotiza quote requests without project_slug",
                 )
             api_url = COTIZA_API_URL.rstrip("/")
-            endpoint = f"{api_url}/api/v1/quotes/from-yantra4d"
+            # Served path: the Nest controller is quotes + from-yantra4d and Cotiza
+            # sets no global prefix (see tests/fixtures/phygital_routes.json).
+            endpoint = f"{api_url}/quotes/from-yantra4d"
             process_map = {
                 "fdm": "3d_fff",
                 "fff": "3d_fff",

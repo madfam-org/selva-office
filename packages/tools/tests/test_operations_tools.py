@@ -88,12 +88,11 @@ class TestInventoryCheckSchema:
         assert "sku" in schema["properties"]
         assert "sku" in schema["required"]
 
-    def test_schema_has_optional_warehouse(self) -> None:
+    def test_schema_has_no_warehouse(self) -> None:
+        # Pravara-MES inventory has no warehouse dimension.
         tool = InventoryCheckTool()
         schema = tool.parameters_schema()
-        assert "warehouse" in schema["properties"]
-        # warehouse should NOT be in required
-        assert "warehouse" not in schema.get("required", [])
+        assert "warehouse" not in schema["properties"]
 
 
 # -- Execution tests ----------------------------------------------------------
@@ -104,7 +103,7 @@ async def test_pedimento_lookup_empty_numero() -> None:
     tool = PedimentoLookupTool()
     result = await tool.execute(numero="")
     assert not result.success
-    assert "required" in result.error.lower()
+    assert "required" in (result.error or "").lower()
 
 
 @pytest.mark.asyncio
@@ -112,7 +111,7 @@ async def test_carrier_tracking_missing_fields() -> None:
     tool = CarrierTrackingTool()
     result = await tool.execute(carrier="", tracking_number="")
     assert not result.success
-    assert "required" in result.error.lower()
+    assert "required" in (result.error or "").lower()
 
 
 @pytest.mark.asyncio
@@ -120,7 +119,7 @@ async def test_carrier_tracking_invalid_carrier() -> None:
     tool = CarrierTrackingTool()
     result = await tool.execute(carrier="invalid", tracking_number="12345")
     assert not result.success
-    assert "unsupported" in result.error.lower()
+    assert "unsupported" in (result.error or "").lower()
 
 
 @pytest.mark.asyncio
@@ -139,7 +138,7 @@ async def test_inventory_check_empty_sku() -> None:
     tool = InventoryCheckTool()
     result = await tool.execute(sku="")
     assert not result.success
-    assert "required" in result.error.lower()
+    assert "required" in (result.error or "").lower()
 
 
 @pytest.mark.asyncio

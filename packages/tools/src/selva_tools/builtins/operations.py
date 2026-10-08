@@ -6,7 +6,17 @@ import logging
 import os
 from typing import Any
 
+import httpx
+
+from ..audience import Audience
 from ..base import BaseTool, ToolResult
+from .service_auth import (
+    PRAVARA_TOKEN_ENV,
+    first_env,
+    http_error_detail,
+    missing_token,
+    service_auth_headers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +144,20 @@ class CarrierTrackingTool(BaseTool):
 
 
 class InventoryCheckTool(BaseTool):
+    """Read a SKU's stock level from Pravara-MES (read-only).
+
+    Calls ``GET /v1/inventory?search=<sku>`` (Pravara matches name or SKU) and
+    keeps the items whose SKU matches exactly. Pravara-MES has no warehouse
+    dimension. Its machine route table does not list ``/v1/inventory``, so it
+    refuses Janua service tokens there; today only people and API keys with
+    the wildcard scope can read inventory.
+
+    PLATFORM audience: the read uses Selva's own Pravara identity.
+    """
+
     name = "inventory_check"
-    description = "Check inventory levels (via Dhanam or PravaraMES if configured)"
+    description = "Check the stock level of a SKU in Pravara-MES (read-only)."
+    audience = Audience.PLATFORM
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -145,61 +167,79 @@ class InventoryCheckTool(BaseTool):
                     "type": "string",
                     "description": "Product SKU to check",
                 },
-                "warehouse": {
-                    "type": "string",
-                    "description": "Warehouse code (optional, defaults to all)",
-                },
             },
             "required": ["sku"],
         }
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        sku: str = kwargs.get("sku", "").strip()
-        warehouse: str = kwargs.get("warehouse", "").strip()
-
+        sku = str(kwargs.get("sku") or "").strip()
         if not sku:
             return ToolResult(success=False, error="sku is required")
 
-        # NOTE: a previous version tried ``DhanamAdapter().get_inventory(...)``
-        # but Dhanam is the billing/economic-data adapter and never had an
-        # inventory method. The AttributeError was silently swallowed, making
-        # the tool look like it was "trying Dhanam first" when in reality it
-        # always fell through to PravaraMES. Removed.
-        # Try PravaraMES
         pravara_url = os.environ.get("PRAVARA_MES_API_URL", "")
-        if pravara_url:
-            try:
-                import httpx
+        if not pravara_url:
+            return ToolResult(
+                success=True,
+                output=f"Inventory for SKU {sku}: inventory service not configured",
+                data={
+                    "sku": sku,
+                    "status": "inventory_service_not_configured",
+                    "message": (
+                        "Set PRAVARA_MES_API_URL and a Pravara service token to enable "
+                        "inventory checks."
+                    ),
+                },
+            )
 
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    params: dict[str, str] = {"sku": sku}
-                    if warehouse:
-                        params["warehouse"] = warehouse
-                    resp = await client.get(
-                        f"{pravara_url.rstrip('/')}/api/v1/inventory/check",
-                        params=params,
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
-                    return ToolResult(
-                        success=True,
-                        output=f"Inventory for SKU {sku}: {data.get('quantity', 'N/A')} units",
-                        data=data,
-                    )
-            except Exception as exc:
-                logger.warning("PravaraMES inventory check failed: %s", exc)
-                return ToolResult(success=False, error=str(exc))
+        headers = service_auth_headers(first_env(PRAVARA_TOKEN_ENV))
+        if not headers:
+            return missing_token("Pravara-MES", PRAVARA_TOKEN_ENV)
 
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    f"{pravara_url.rstrip('/')}/v1/inventory",
+                    params={"search": sku, "limit": "100"},
+                    headers=headers,
+                )
+                resp.raise_for_status()
+                body = resp.json()
+        except httpx.HTTPError as exc:
+            error = f"Pravara inventory read failed: {http_error_detail(exc)}"
+            if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 403:
+                error += (
+                    ". Pravara-MES does not list /v1/inventory in its machine route table, "
+                    "so it refuses Janua service tokens there; API keys need the wildcard scope."
+                )
+            return ToolResult(success=False, error=error)
+        except ValueError:
+            return ToolResult(
+                success=False, error="Pravara inventory read failed: response is not JSON"
+            )
+
+        items = body.get("data") if isinstance(body, dict) else None
+        matches = (
+            [item for item in items if isinstance(item, dict) and item.get("sku") == sku]
+            if isinstance(items, list)
+            else []
+        )
+        if not matches:
+            return ToolResult(
+                success=True,
+                output=f"No Pravara-MES inventory item has SKU {sku}.",
+                data={"sku": sku, "status": "not_found", "items": []},
+            )
+        item = matches[0]
+        output = (
+            f"Inventory for SKU {sku}: {item.get('quantity_available', 'N/A')} "
+            f"{item.get('unit') or 'units'} available "
+            f"({item.get('quantity_on_hand', 'N/A')} on hand, "
+            f"{item.get('quantity_reserved', 'N/A')} reserved)."
+        )
+        if kwargs.get("warehouse"):
+            output += " Pravara-MES has no warehouse dimension; these are totals."
         return ToolResult(
             success=True,
-            output=f"Inventory for SKU {sku}: inventory service not configured",
-            data={
-                "sku": sku,
-                "warehouse": warehouse or "all",
-                "status": "inventory_service_not_configured",
-                "message": (
-                    "Set PRAVARA_MES_API_URL or install madfam-inference with "
-                    "Dhanam adapter to enable inventory checks."
-                ),
-            },
+            output=output,
+            data={"sku": sku, "status": "found", "items": matches},
         )

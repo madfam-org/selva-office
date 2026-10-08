@@ -1,5 +1,5 @@
 {
-  "description": "Routes the phygital tools call, vendored from each service's origin/main. Path placeholders use the service's own syntax (Flask <name>, Gin :name). test_phygital_tools.py checks every request a phygital tool sends against this list.",
+  "description": "Routes the phygital and MES tools call, vendored from each service's origin/main. Path placeholders use the service's own syntax (Flask <name>, Gin :name). test_phygital_tools.py checks every request these tools send against this list.",
   "read_on": "2026-10-07",
   "services": {
     "yantra4d": {
@@ -52,9 +52,9 @@
       "tool": "generate_quote",
       "service": "cotiza",
       "method": "POST",
-      "path": "/api/v1/quotes/from-yantra4d",
+      "path": "/quotes/from-yantra4d",
       "source": "apps/api/src/modules/quotes/yantra4d-import.controller.ts",
-      "notes": "Controller quotes + @Post('from-yantra4d'). Yantra4D's cotiza_export.py calls the same /api/v1 path."
+      "notes": "Served path. @Controller('quotes') (yantra4d-import.controller.ts:34) + @Post('from-yantra4d') (:51); no setGlobalPrefix or enableVersioning anywhere in the repo; controllers that want /api/v1 spell it in their own decorator (geo.controller.ts:50, guest-quote.controller.ts:34, users.controller.ts:8); the web proxy maps /api/:path to the bare API origin (apps/web/next.config.js:25-26, infra/k8s/production/web-deployment.yaml:43-44)."
     },
     {
       "tool": "get_production_order_status",
@@ -63,6 +63,14 @@
       "path": "/v1/orders/:id",
       "source": "apps/pravara-api/internal/api/routes.go",
       "notes": "Machine tokens need pravara-mes:read or pravara-mes:jobs (internal/api/route_scopes.go). :id is the order UUID."
+    },
+    {
+      "tool": "inventory_check",
+      "service": "pravara-mes",
+      "method": "GET",
+      "path": "/v1/inventory",
+      "source": "apps/pravara-api/internal/api/routes.go",
+      "notes": "Query search (name or sku, ILIKE) and limit. Not listed in MachineRouteScopes (internal/api/route_scopes.go): Janua service tokens get 403; API keys need the wildcard scope."
     }
   ]
 }

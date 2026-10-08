@@ -12,7 +12,8 @@ import pytest
 
 from selva_tools.audience import Audience
 from selva_tools.base import BaseTool
-from selva_tools.builtins import get_builtin_tools, phygital_tools
+from selva_tools.builtins import get_builtin_tools, phygital_tools, service_auth
+from selva_tools.builtins.operations import InventoryCheckTool
 from selva_tools.builtins.phygital_tools import (
     GenerateParametricModelTool,
     GenerateQuoteTool,
@@ -38,6 +39,11 @@ TOKEN_ATTRS = {
     "yantra4d": "YANTRA4D_API_TOKEN",
     "cotiza": "COTIZA_API_TOKEN",
     "pravara-mes": "PRAVARA_MES_API_TOKEN",
+}
+TOKEN_ENVS = {
+    "yantra4d": service_auth.YANTRA4D_TOKEN_ENV,
+    "cotiza": service_auth.COTIZA_TOKEN_ENV,
+    "pravara-mes": service_auth.PRAVARA_TOKEN_ENV,
 }
 ORDER_ID = "7b0c6c2e-3f5d-4a8e-9c1b-2d4e6f8a0b1c"
 GEOMETRY = {
@@ -83,6 +89,21 @@ OVERHANG_BODY = {
     },
 }
 ORDER_BODY = {"id": ORDER_ID, "status": "in_progress"}
+INVENTORY_BODY = {
+    "data": [
+        {"sku": "SKU-0010", "quantity_available": 99, "unit": "pcs"},
+        {
+            "sku": "SKU-001",
+            "unit": "pcs",
+            "quantity_on_hand": 10,
+            "quantity_reserved": 3,
+            "quantity_available": 7,
+        },
+    ],
+    "total": 2,
+    "limit": 100,
+    "offset": 0,
+}
 QUOTE_BODY = {
     "quoteId": "q_123",
     "totalPrice": 125.5,
@@ -100,6 +121,8 @@ def _default_body(url: str) -> dict[str, Any]:
         return OVERHANG_BODY
     if "/v1/orders/" in url:
         return ORDER_BODY
+    if url.endswith("/v1/inventory"):
+        return INVENTORY_BODY
     return QUOTE_BODY
 
 
@@ -120,9 +143,17 @@ class _RecordingClient:
         return None
 
     def _respond(
-        self, method: str, url: str, payload: Any, headers: dict[str, str] | None
+        self,
+        method: str,
+        url: str,
+        payload: Any,
+        headers: dict[str, str] | None,
+        params: dict[str, str] | None = None,
     ) -> httpx.Response:
-        self.calls.append({"method": method, "url": url, "json": payload, "headers": headers})
+        call = {"method": method, "url": url, "json": payload, "headers": headers}
+        if params is not None:
+            call["params"] = params
+        self.calls.append(call)
         status, body = 200, _default_body(url)
         for suffix, response in self.responses.items():
             if url.endswith(suffix):
@@ -135,9 +166,13 @@ class _RecordingClient:
         return self._respond("POST", url, json, headers)
 
     async def get(
-        self, url: str, headers: dict[str, str] | None = None, **_: Any
+        self,
+        url: str,
+        headers: dict[str, str] | None = None,
+        params: dict[str, str] | None = None,
+        **_: Any,
     ) -> httpx.Response:
-        return self._respond("GET", url, None, headers)
+        return self._respond("GET", url, None, headers, params)
 
 
 @pytest.fixture(autouse=True)
@@ -149,6 +184,12 @@ def _configured(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(phygital_tools, "PRAVARA_MES_API_URL", BASE_URLS["pravara-mes"])
     for service, attr in TOKEN_ATTRS.items():
         monkeypatch.setattr(phygital_tools, attr, TOKENS[service])
+    # inventory_check reads its configuration from the environment at call time.
+    for names in TOKEN_ENVS.values():
+        for name in names:
+            monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("PRAVARA_MES_API_URL", BASE_URLS["pravara-mes"])
+    monkeypatch.setenv("PRAVARA_MES_API_TOKEN", TOKENS["pravara-mes"])
     monkeypatch.setattr(phygital_tools.httpx, "AsyncClient", _RecordingClient)
 
 
@@ -195,6 +236,7 @@ INVOCATIONS: list[tuple[type[BaseTool], dict[str, Any], str]] = [
     (GenerateQuoteTool, {"project_slug": "demo"}, "yantra4d"),
     (GenerateQuoteTool, {"geometry": GEOMETRY, "project": {"name": "Bracket"}}, "cotiza"),
     (GetProductionOrderStatusTool, {"order_id": ORDER_ID}, "pravara-mes"),
+    (InventoryCheckTool, {"sku": "SKU-001"}, "pravara-mes"),
 ]
 INVOCATION_IDS = [
     "render",
@@ -202,6 +244,7 @@ INVOCATION_IDS = [
     "quote-via-yantra4d",
     "quote-via-cotiza",
     "order-status",
+    "inventory",
 ]
 
 
@@ -269,6 +312,8 @@ class TestRouteContract:
         service: str,
     ) -> None:
         monkeypatch.setattr(phygital_tools, TOKEN_ATTRS[service], "")
+        for name in TOKEN_ENVS[service]:
+            monkeypatch.delenv(name, raising=False)
 
         result = await tool_cls().execute(**kwargs)
 
@@ -504,6 +549,64 @@ class TestGetProductionOrderStatusTool:
         )
 
 
+class TestInventoryCheckTool:
+    def test_is_read_only_platform_tool(self) -> None:
+        tool = InventoryCheckTool()
+        assert tool.audience is Audience.PLATFORM
+        assert set(tool.parameters_schema()["properties"]) == {"sku"}
+
+    @pytest.mark.asyncio
+    async def test_reads_inventory_and_keeps_the_exact_sku(self) -> None:
+        result = await InventoryCheckTool().execute(sku="SKU-001")
+
+        assert result.success
+        assert _RecordingClient.calls == [
+            {
+                "method": "GET",
+                "url": "https://pravara.test/v1/inventory",
+                "json": None,
+                "headers": _expected_headers("pravara-mes"),
+                "params": {"search": "SKU-001", "limit": "100"},
+            }
+        ]
+        assert result.output == (
+            "Inventory for SKU SKU-001: 7 pcs available (10 on hand, 3 reserved)."
+        )
+        assert result.data["status"] == "found"
+        assert [item["sku"] for item in result.data["items"]] == ["SKU-001"]
+
+    @pytest.mark.asyncio
+    async def test_reports_unknown_sku(self) -> None:
+        result = await InventoryCheckTool().execute(sku="SKU-404")
+
+        assert result.success
+        assert result.data == {"sku": "SKU-404", "status": "not_found", "items": []}
+
+    @pytest.mark.asyncio
+    async def test_explains_machine_token_refusal(self) -> None:
+        _RecordingClient.responses = {
+            "/v1/inventory": (
+                403,
+                {"error": "forbidden", "message": "This route does not accept machine credentials"},
+            )
+        }
+
+        result = await InventoryCheckTool().execute(sku="SKU-001")
+
+        assert not result.success
+        assert "HTTP 403" in (result.error or "")
+        assert "does not list /v1/inventory in its machine route table" in (result.error or "")
+
+    @pytest.mark.asyncio
+    async def test_unconfigured_url_sends_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("PRAVARA_MES_API_URL")
+
+        result = await InventoryCheckTool().execute(sku="SKU-001")
+
+        assert result.data["status"] == "inventory_service_not_configured"
+        assert _RecordingClient.calls == []
+
+
 class TestRegistry:
     def test_phygital_tools_registered_without_an_order_creator(self) -> None:
         names = {tool.name for tool in get_builtin_tools()}
@@ -558,7 +661,7 @@ class TestGenerateQuoteTool:
         assert _RecordingClient.calls == [
             {
                 "method": "POST",
-                "url": "https://cotiza.test/api/v1/quotes/from-yantra4d",
+                "url": "https://cotiza.test/quotes/from-yantra4d",
                 "json": {
                     "source": "yantra4d",
                     "geometry": GEOMETRY,
