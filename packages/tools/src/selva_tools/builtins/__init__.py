@@ -122,9 +122,9 @@ from .meta_harness import get_meta_harness_tools
 from .npm_registry import get_npm_registry_tools
 from .operations import CarrierTrackingTool, InventoryCheckTool, PedimentoLookupTool
 from .phygital_tools import (
-    CreateWorkOrderTool,
     GenerateParametricModelTool,
     GenerateQuoteTool,
+    GetProductionOrderStatusTool,
     RunDFMAnalysisTool,
 )
 from .phyndcrm_campaign_authorizations import get_phyndcrm_campaign_authorization_tools
@@ -367,11 +367,13 @@ def get_builtin_tools() -> list[BaseTool]:
         # linkedin_post is the automated counterpart to the manual draft
         # tool above (see linkedin_post_tool.py for the disclosure rationale).
         *_get_armed_social_post_tools(),
-        # Phygital tools (Yantra4D Engine Node)
+        # Phygital tools (Yantra4D Engine Node). Selva has no tool that creates
+        # production orders: a person orders the Cotiza quote and Cotiza
+        # dispatches the order to Pravara-MES; Selva only reads its status.
         GenerateParametricModelTool(),
         RunDFMAnalysisTool(),
         GenerateQuoteTool(),
-        CreateWorkOrderTool(),
+        GetProductionOrderStatusTool(),
         # Infrastructure tools (Orchestration Node — SecOps gated)
         EncliiExecTool(),
         EncliiRestartTool(),
