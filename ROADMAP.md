@@ -585,7 +585,7 @@ Bundle Cotiza + Yantra4D + PravaraMES for digital fabrication shops:
   - Yantra4D: customer uploads parametric design, Selva renders + generates BOM
   - Cotiza: auto-quotes based on BOM + ForgeSight market pricing
   - Customer approval (HITL gate in browser at app.selva.town)
-  - PravaraMES: creates work order, tracks production
+  - PravaraMES: receives the production order through Cotiza's signed dispatch once the quote is ordered, tracks production (Selva reads status only)
   - Dhanam: generates invoice, CFDI stamp via Karafiel
   - Logistics: shipment tracking (Estafeta/FedEx MX integration — future)
 - `[ ]` End-to-end demo: parametric design → physical product delivered

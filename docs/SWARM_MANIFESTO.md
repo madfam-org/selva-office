@@ -47,7 +47,7 @@ We do not build businesses; we engineer operational hyperobjects. The purpose of
 
 ### Implementation
 - **Digital:** PlaybookGuard enforces token + dollar budgets per execution. Dead-letter queues catch failures.
-- **Physical:** Phygital graph requires `simulate` node success before `create_work_order`. No fabrication without digital twin validation.
+- **Physical:** Selva cannot create production orders. A person orders the Cotiza quote and Cotiza dispatches the order to Pravara-MES; Selva only reads its status. No fabrication without digital twin validation.
 
 ---
 
@@ -77,7 +77,7 @@ We extract capital from the digital economy to build the physical tools of local
 
 ### FaaP Protocol Implementation
 - **Digital Twin Gate:** No physical fabrication without successful simulation (Axiom III)
-- **Parametric Pipeline:** Yantra4D → DFM Analysis → Cotiza Quote → HITL Review → Pravara-MES Work Order
+- **Parametric Pipeline:** Yantra4D render → Yantra4D thickness/overhang analysis (latest render) → Cotiza Quote → a person orders the quote → Cotiza dispatches the production order to Pravara-MES
 - **Materials:** Carbon-Fiber Nylon, PEEK, TPU, PLA (engineering-grade, multi-material)
 - **Target:** Node 001, Cuernavaca, Morelos, Mexico
 
