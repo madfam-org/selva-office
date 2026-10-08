@@ -2,11 +2,15 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
 // Mock livekit-server-sdk before any imports
 vi.mock("livekit-server-sdk", () => ({
-  AccessToken: vi.fn().mockImplementation(() => ({
-    addGrant: vi.fn(),
-    ttl: "",
-    toJwt: vi.fn().mockResolvedValue("mock-jwt-token"),
-  })),
+  // `function`, not an arrow: the handler calls `new AccessToken(...)`, and
+  // Vitest 4 only lets a mock be constructed when its implementation can be.
+  AccessToken: vi.fn().mockImplementation(function () {
+    return {
+      addGrant: vi.fn(),
+      ttl: "",
+      toJwt: vi.fn().mockResolvedValue("mock-jwt-token"),
+    };
+  }),
 }));
 
 describe("LiveKit handler", () => {

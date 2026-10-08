@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePlayerStatus } from '../usePlayerStatus';
 
 describe('usePlayerStatus', () => {
-  let sendStatus: ReturnType<typeof vi.fn>;
+  let sendStatus: Mock<(status: string) => void>;
 
   beforeEach(() => {
-    sendStatus = vi.fn();
+    sendStatus = vi.fn<(status: string) => void>();
     vi.useFakeTimers();
   });
 

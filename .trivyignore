@@ -3,3 +3,39 @@
 # Each entry MUST cite (1) why the upstream fix is unavailable or unworkable
 # and (2) the specific reason this codebase is not exposed to the
 # vulnerability's preconditions. Re-evaluate every entry on every CI failure.
+
+# Added 2026-10-08 from a `trivy fs . --include-dev-deps --severity CRITICAL,HIGH,MEDIUM`
+# pass. The CI gate (CRITICAL,HIGH, no dev dependencies) was already green; these four are
+# the findings that remain after every fix that exists was applied, so they only show up in
+# scans that include dev dependencies or MEDIUM. Entries match by advisory id for the whole
+# repo, hence the short expiry: each one is re-read on 2026-12-31 at the latest.
+
+# braces <= 3.0.3, GHSA-vfj7-8cjw-p6xm (HIGH): stack exhaustion on deeply nested brace patterns.
+# (1) No fix: 3.0.3 is the latest release and the advisory lists no patched version.
+# (2) Not exposed: dev-only. It is reached through shadcn > fast-glob > micromatch,
+#     tailwindcss > chokidar and typescript-eslint > globby > fast-glob, which expand glob
+#     patterns written in this repo's own config, never request data. It is absent from
+#     every runtime closure, so the CI gate never reports it. Drop this entry and bump as
+#     soon as braces publishes a patched release.
+CVE-2026-93687 exp:2026-12-31
+
+# postcss-selector-parser 6.1.2, GHSA-rj75-hqrm-r3gf (MEDIUM): quadratic parse of a flat selector.
+# (1) The 6.x line has no patch (7.1.6 is the first fixed release) and tailwindcss 3.4.19, the
+#     last 3.x release, declares ^6.1.2. Forcing a new major into Tailwind's internals for a
+#     build-time finding is not worth the risk; the Tailwind 4 migration retires this copy.
+#     The 7.x copy (shadcn) is already forced to 7.1.6 by a pnpm override.
+# (2) Not exposed: dev/build-time only. The advisory needs attacker-supplied selectors parsed
+#     in a request path; Tailwind parses this repo's own CSS and content globs during
+#     `next build`.
+CVE-2026-104844 exp:2026-12-31
+
+# oauthlib 3.3.1, GHSA-hj66-6f7g-4r5v and GHSA-xpv3-w29h-x7cv (MEDIUM): JSONP callback injection
+# in RevocationEndpoint(enable_jsonp=True), and a non-constant-time PKCE code_verifier compare.
+# (1) Fixed only in oauthlib 4.0.0, and `uv lock --upgrade-package oauthlib==4.0.0` fails:
+#     tweepy>=4.14 (the selva-tools[x] extra) requires oauthlib>=3.2.0,<4. Re-check when
+#     tweepy lifts that cap.
+# (2) Not exposed: both are oauthlib's server-side provider code. Nothing in this repo imports
+#     oauthlib; it is only the OAuth client helper pulled in by tweepy and by
+#     kubernetes > requests-oauthlib, which never run a revocation endpoint or a PKCE grant.
+CVE-2026-49264 exp:2026-12-31
+CVE-2026-49265 exp:2026-12-31

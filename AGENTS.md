@@ -1102,7 +1102,25 @@ block pattern (see any existing platform module for template).
     `[tool.uv] constraint-dependencies`: `pyjwt>=2.15.1`, `urllib3>=2.8.0`,
     `starlette>=1.3.1`, `cryptography>=48.0.1` and others (#301).
   - The fast-uri and brace-expansion floors are pnpm overrides in
-    `package.json`.
+    `package.json`. Transitive npm advisories are pinned the same way, as
+    version-keyed overrides (`pkg@<vulnerable>: <first patched>`), so an entry
+    goes inert once nothing resolves to the vulnerable version; prune them when
+    the parent moves. Regenerating the lockfile with pnpm 9.15.4 also refreshes
+    registry metadata on unrelated snapshots (`libc:` lines on `@next/swc-*`
+    and `@rollup/*`, `deprecated:` texts); keep those out of security PRs,
+    `libc:` changes which optional native packages install on Linux.
+  - Findings with no available fix live in `.trivyignore` with an `exp:` date
+    (braces, postcss-selector-parser 6.x, oauthlib on 2026-10-08). CI's Trivy
+    step skips dev dependencies; `trivy fs . --include-dev-deps --severity
+    CRITICAL,HIGH,MEDIUM` is the wider view.
+  - Test runner: vitest 4 on vite 7. vitest 4 requires `vite` as a peer, so it
+    is an explicit devDependency beside `vitest` (7.x because
+    `@vitejs/plugin-react` 4.x declares vite <= 7). Vitest 3+ no longer
+    excludes `dist/`; packages whose `tsc` output holds compiled tests set
+    `exclude: [...configDefaults.exclude, '**/dist/**']`.
+  - turbo shares its local cache across git worktrees, so `pnpm test` in a
+    fresh worktree can replay another worktree's logs. Use `TURBO_FORCE=true`
+    (or `--force`) when you need a real run.
   - SQLAlchemy is locked at 2.0.48 but has **no `<2.1` upper bound**
     (`sqlalchemy[asyncio]>=2.0.36`). The images install with
     `uv sync --frozen`, so they stay on 2.0.x until someone relocks. Add
