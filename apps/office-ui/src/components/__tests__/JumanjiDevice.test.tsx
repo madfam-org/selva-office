@@ -119,8 +119,14 @@ describe('useJumanjiState — state machine', () => {
 });
 
 describe('useJumanjiState — reduced motion', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('reflects prefers-reduced-motion: reduce', () => {
-    const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    // jsdom does not implement matchMedia, and Vitest 3+ refuses to spy on a
+    // method that does not exist, so stub the global instead of spying on it.
+    vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query.includes('reduce'),
       media: query,
       onchange: null,
@@ -132,7 +138,6 @@ describe('useJumanjiState — reduced motion', () => {
     }));
     const { result } = renderHook(() => useJumanjiState());
     expect(result.current.reducedMotion).toBe(true);
-    matchMediaSpy.mockRestore();
   });
 });
 

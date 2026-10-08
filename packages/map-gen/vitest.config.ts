@@ -1,12 +1,7 @@
 import { configDefaults, defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [react()],
   test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/__tests__/setup.ts'],
     // `tsc` emits the compiled tests into dist/, and Vitest 3+ no longer
     // excludes dist/ by default, so every test would run twice (and the
     // compiled copy fails to resolve its sources).
