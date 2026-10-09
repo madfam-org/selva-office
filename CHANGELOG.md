@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Janua machine tokens for the phygital tools** — Yantra4D and Pravara-MES
+  calls can carry short-lived Janua `client_credentials` tokens. With
+  `SELVA_YANTRA4D_CLIENT_ID` / `SELVA_YANTRA4D_CLIENT_SECRET` (scope
+  `yantra4d:render`) or `SELVA_PRAVARA_CLIENT_ID` / `SELVA_PRAVARA_CLIENT_SECRET`
+  (scope `pravara-mes:read`) set, the tools mint a token at `JANUA_ISSUER_URL` +
+  `/api/v1/oauth/token`, reuse it until 60 seconds before it expires, and fail
+  closed with the reason when Janua issues none. Without client credentials
+  they use the static-token variables as before; Cotiza keeps its static token.
+- **Phygital tools are platform-only** — `generate_parametric_model`,
+  `run_dfm_analysis` and `generate_quote` act with Selva's own service
+  identity, which is not scoped to one tenant, so tenant swarms can no longer
+  see or execute them.
 - **`docs/WAVE1_OPERATOR_RUNBOOK.md`** — step-by-step Wave 1 operator guide (OTel,
   Sentry, Run 4b, DR drill, gate bundle).
 - **`POST /api/v1/health/sentry-probe`** — worker-token-gated synthetic Sentry
