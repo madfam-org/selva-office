@@ -111,6 +111,10 @@ class GenerateParametricModelTool(BaseTool):
     projects it already has; it does not build models from free-form specs,
     and physical settings (material, infill, layer height, nozzle) are not
     generator inputs.
+
+    PLATFORM audience: the call carries Selva's own Yantra4D service
+    identity, which is not scoped to one tenant, so tenant swarms must not
+    render through it.
     """
 
     name = "generate_parametric_model"
@@ -120,6 +124,7 @@ class GenerateParametricModelTool(BaseTool):
         "existing project; parameters are the geometry parameters declared in that "
         "project's manifest. Material, infill, layer height and nozzle are not render inputs."
     )
+    audience = Audience.PLATFORM
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -220,6 +225,10 @@ class RunDFMAnalysisTool(BaseTool):
     parameters supplied here, so render with ``generate_parametric_model``
     first. Both routes require the ``pro`` tier or above. Results are
     statistics; they do not certify that a part can be manufactured.
+
+    PLATFORM audience: the call carries Selva's own Yantra4D service
+    identity, which is not scoped to one tenant, so tenant swarms must not
+    analyse through it.
     """
 
     name = "run_dfm_analysis"
@@ -229,6 +238,7 @@ class RunDFMAnalysisTool(BaseTool):
         "its server, not parameters passed here, so render with generate_parametric_model "
         "first. Returns statistics, not a pass/fail certificate."
     )
+    audience = Audience.PLATFORM
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -347,13 +357,19 @@ def _summarize(check: str, result: dict[str, Any]) -> str:
 
 
 class GenerateQuoteTool(BaseTool):
-    """Generate a fabrication quote using the Yantra/Cotiza quote contract."""
+    """Generate a fabrication quote using the Yantra/Cotiza quote contract.
+
+    PLATFORM audience: the call carries Selva's own Yantra4D and Cotiza service
+    identity, which is not scoped to one tenant, so tenant swarms must not
+    quote through it.
+    """
 
     name = "generate_quote"
     description = (
         "Generate a fabrication price quote for a 3D model. "
         "Uses Cotiza/Forgesight pricing intelligence for accurate estimates."
     )
+    audience = Audience.PLATFORM
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
