@@ -188,6 +188,12 @@ def _configured(monkeypatch: pytest.MonkeyPatch) -> None:
     for names in TOKEN_ENVS.values():
         for name in names:
             monkeypatch.delenv(name, raising=False)
+    # These tests exercise the static-token path; machine-edge client
+    # credentials are covered in test_service_auth.py.
+    for edge in (service_auth.YANTRA4D_EDGE, service_auth.PRAVARA_EDGE):
+        monkeypatch.delenv(edge.client_id_env, raising=False)
+        monkeypatch.delenv(edge.client_secret_env, raising=False)
+    service_auth.reset_token_cache()
     monkeypatch.setenv("PRAVARA_MES_API_URL", BASE_URLS["pravara-mes"])
     monkeypatch.setenv("PRAVARA_MES_API_TOKEN", TOKENS["pravara-mes"])
     monkeypatch.setattr(phygital_tools.httpx, "AsyncClient", _RecordingClient)
@@ -587,7 +593,7 @@ class TestInventoryCheckTool:
         _RecordingClient.responses = {
             "/v1/inventory": (
                 403,
-                {"error": "forbidden", "message": "This route does not accept machine credentials"},
+                {"error": "forbidden", "message": "Token does not contain tenant information"},
             )
         }
 
@@ -595,7 +601,8 @@ class TestInventoryCheckTool:
 
         assert not result.success
         assert "HTTP 403" in (result.error or "")
-        assert "does not list /v1/inventory in its machine route table" in (result.error or "")
+        assert "Token does not contain tenant information" in (result.error or "")
+        assert "hold pravara-mes:read and are bound to an organization" in (result.error or "")
 
     @pytest.mark.asyncio
     async def test_unconfigured_url_sends_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -703,3 +710,13 @@ class TestGenerateQuoteTool:
 
         assert not result.success
         assert "not market verified" in (result.error or "")
+
+
+@pytest.mark.parametrize(
+    "tool_cls", [GenerateParametricModelTool, RunDFMAnalysisTool, GenerateQuoteTool]
+)
+def test_tools_acting_with_selvas_service_identity_are_platform_only(
+    tool_cls: type[BaseTool],
+) -> None:
+    """The identity is not scoped to one tenant, so tenant swarms must not use it."""
+    assert tool_cls.audience is Audience.PLATFORM

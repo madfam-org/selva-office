@@ -20,9 +20,12 @@ Selva does not create production orders. Cotiza prices, Dhanam bills and
 Pravara executes: an order reaches Pravara when a person orders a Cotiza
 quote, through Cotiza's signed dispatch to Pravara.
 
-Every request carries the service token (``Authorization: Bearer`` plus
-``X-Service-Actor: selva-agent``). Without a token a tool returns an error
-and sends nothing.
+Every request carries a bearer token (``Authorization: Bearer`` plus
+``X-Service-Actor: selva-agent``). Yantra4D and Pravara-MES calls use a Janua
+machine token minted from Selva's client credentials for that edge, or a
+static token when the edge has none; Cotiza calls use a static token (see
+``service_auth``). Without a credential a tool returns an error and sends
+nothing.
 """
 
 from __future__ import annotations
@@ -38,10 +41,13 @@ import httpx
 from ..audience import Audience
 from ..base import BaseTool, ToolResult
 from .service_auth import COTIZA_TOKEN_ENV as _COTIZA_TOKEN_ENV
+from .service_auth import PRAVARA_EDGE as _PRAVARA_EDGE
 from .service_auth import PRAVARA_TOKEN_ENV as _PRAVARA_TOKEN_ENV
+from .service_auth import YANTRA4D_EDGE as _YANTRA4D_EDGE
 from .service_auth import YANTRA4D_TOKEN_ENV as _YANTRA4D_TOKEN_ENV
 from .service_auth import first_env as _first_env
 from .service_auth import http_error_detail as _http_error_detail
+from .service_auth import machine_auth_headers as _machine_auth_headers
 from .service_auth import missing_token as _missing_token
 from .service_auth import service_auth_headers as _service_auth_headers
 
@@ -105,6 +111,10 @@ class GenerateParametricModelTool(BaseTool):
     projects it already has; it does not build models from free-form specs,
     and physical settings (material, infill, layer height, nozzle) are not
     generator inputs.
+
+    PLATFORM audience: the call carries Selva's own Yantra4D service
+    identity, which is not scoped to one tenant, so tenant swarms must not
+    render through it.
     """
 
     name = "generate_parametric_model"
@@ -114,6 +124,7 @@ class GenerateParametricModelTool(BaseTool):
         "existing project; parameters are the geometry parameters declared in that "
         "project's manifest. Material, infill, layer height and nozzle are not render inputs."
     )
+    audience = Audience.PLATFORM
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -166,9 +177,9 @@ class GenerateParametricModelTool(BaseTool):
             )
         mode = str(kwargs.get("mode") or "").strip()
 
-        headers = _service_auth_headers(YANTRA4D_API_TOKEN)
-        if not headers:
-            return _missing_token("Yantra4D", _YANTRA4D_TOKEN_ENV)
+        headers, refusal = await _machine_auth_headers(_YANTRA4D_EDGE, YANTRA4D_API_TOKEN)
+        if refusal is not None:
+            return refusal
 
         payload: dict[str, Any] = {
             "project": project_slug,
@@ -214,6 +225,10 @@ class RunDFMAnalysisTool(BaseTool):
     parameters supplied here, so render with ``generate_parametric_model``
     first. Both routes require the ``pro`` tier or above. Results are
     statistics; they do not certify that a part can be manufactured.
+
+    PLATFORM audience: the call carries Selva's own Yantra4D service
+    identity, which is not scoped to one tenant, so tenant swarms must not
+    analyse through it.
     """
 
     name = "run_dfm_analysis"
@@ -223,6 +238,7 @@ class RunDFMAnalysisTool(BaseTool):
         "its server, not parameters passed here, so render with generate_parametric_model "
         "first. Returns statistics, not a pass/fail certificate."
     )
+    audience = Audience.PLATFORM
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -268,9 +284,9 @@ class RunDFMAnalysisTool(BaseTool):
                 return ToolResult(success=False, error="threshold_deg must be a number")
             overhang_body["threshold_deg"] = threshold_deg
 
-        headers = _service_auth_headers(YANTRA4D_API_TOKEN)
-        if not headers:
-            return _missing_token("Yantra4D", _YANTRA4D_TOKEN_ENV)
+        headers, refusal = await _machine_auth_headers(_YANTRA4D_EDGE, YANTRA4D_API_TOKEN)
+        if refusal is not None:
+            return refusal
 
         base = f"{YANTRA4D_API_URL.rstrip('/')}/api/projects/{quote(project_slug, safe='')}/analyze"
         results: dict[str, Any] = {}
@@ -341,13 +357,19 @@ def _summarize(check: str, result: dict[str, Any]) -> str:
 
 
 class GenerateQuoteTool(BaseTool):
-    """Generate a fabrication quote using the Yantra/Cotiza quote contract."""
+    """Generate a fabrication quote using the Yantra/Cotiza quote contract.
+
+    PLATFORM audience: the call carries Selva's own Yantra4D and Cotiza service
+    identity, which is not scoped to one tenant, so tenant swarms must not
+    quote through it.
+    """
 
     name = "generate_quote"
     description = (
         "Generate a fabrication price quote for a 3D model. "
         "Uses Cotiza/Forgesight pricing intelligence for accurate estimates."
     )
+    audience = Audience.PLATFORM
 
     def parameters_schema(self) -> dict[str, Any]:
         return {
@@ -475,9 +497,9 @@ class GenerateQuoteTool(BaseTool):
             }
 
         if project_slug:
-            headers = _service_auth_headers(YANTRA4D_API_TOKEN)
-            if not headers:
-                return _missing_token("Yantra4D", _YANTRA4D_TOKEN_ENV)
+            headers, refusal = await _machine_auth_headers(_YANTRA4D_EDGE, YANTRA4D_API_TOKEN)
+            if refusal is not None:
+                return refusal
         else:
             headers = _service_auth_headers(COTIZA_API_TOKEN)
             if not headers:
@@ -563,9 +585,9 @@ class GetProductionOrderStatusTool(BaseTool):
         except ValueError:
             return ToolResult(success=False, error="order_id must be a Pravara order UUID")
 
-        headers = _service_auth_headers(PRAVARA_MES_API_TOKEN)
-        if not headers:
-            return _missing_token("Pravara-MES", _PRAVARA_TOKEN_ENV)
+        headers, refusal = await _machine_auth_headers(_PRAVARA_EDGE, PRAVARA_MES_API_TOKEN)
+        if refusal is not None:
+            return refusal
 
         try:
             data = await _send(

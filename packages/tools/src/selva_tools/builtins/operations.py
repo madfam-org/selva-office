@@ -10,13 +10,7 @@ import httpx
 
 from ..audience import Audience
 from ..base import BaseTool, ToolResult
-from .service_auth import (
-    PRAVARA_TOKEN_ENV,
-    first_env,
-    http_error_detail,
-    missing_token,
-    service_auth_headers,
-)
+from .service_auth import PRAVARA_EDGE, http_error_detail, machine_auth_headers
 
 logger = logging.getLogger(__name__)
 
@@ -148,9 +142,9 @@ class InventoryCheckTool(BaseTool):
 
     Calls ``GET /v1/inventory?search=<sku>`` (Pravara matches name or SKU) and
     keeps the items whose SKU matches exactly. Pravara-MES has no warehouse
-    dimension. Its machine route table does not list ``/v1/inventory``, so it
-    refuses Janua service tokens there; today only people and API keys with
-    the wildcard scope can read inventory.
+    dimension. Its machine route table serves ``GET /v1/inventory`` to Janua
+    machine tokens holding ``pravara-mes:read``, and it reads only the
+    inventory of the organization the token is bound to.
 
     PLATFORM audience: the read uses Selva's own Pravara identity.
     """
@@ -185,15 +179,15 @@ class InventoryCheckTool(BaseTool):
                     "sku": sku,
                     "status": "inventory_service_not_configured",
                     "message": (
-                        "Set PRAVARA_MES_API_URL and a Pravara service token to enable "
+                        "Set PRAVARA_MES_API_URL and Pravara service credentials to enable "
                         "inventory checks."
                     ),
                 },
             )
 
-        headers = service_auth_headers(first_env(PRAVARA_TOKEN_ENV))
-        if not headers:
-            return missing_token("Pravara-MES", PRAVARA_TOKEN_ENV)
+        headers, refusal = await machine_auth_headers(PRAVARA_EDGE)
+        if refusal is not None:
+            return refusal
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -208,8 +202,9 @@ class InventoryCheckTool(BaseTool):
             error = f"Pravara inventory read failed: {http_error_detail(exc)}"
             if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 403:
                 error += (
-                    ". Pravara-MES does not list /v1/inventory in its machine route table, "
-                    "so it refuses Janua service tokens there; API keys need the wildcard scope."
+                    ". Pravara-MES serves /v1/inventory to machine tokens that hold "
+                    "pravara-mes:read and are bound to an organization; API keys need "
+                    "pravara-mes:read or the wildcard scope."
                 )
             return ToolResult(success=False, error=error)
         except ValueError:
