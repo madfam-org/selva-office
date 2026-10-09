@@ -19,6 +19,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `run_dfm_analysis` and `generate_quote` act with Selva's own service
   identity, which is not scoped to one tenant, so tenant swarms can no longer
   see or execute them.
+- **Yantra4D machine-edge client delivered to the workers** — the workers read
+  `SELVA_YANTRA4D_CLIENT_ID` / `SELVA_YANTRA4D_CLIENT_SECRET` from the new
+  `selva-service-clients` ExternalSecret (`secret/selva`, written by the OIDC
+  provisioner), with a Reloader annotation for rotation. The staging overlay
+  deletes it, because staging renders the production base.
+  It also carries the Pravara-MES pair (`SELVA_PRAVARA_CLIENT_ID` /
+  `SELVA_PRAVARA_CLIENT_SECRET`, `selva-pravara-mes-madfam-ecosystem`).
 - **`docs/WAVE1_OPERATOR_RUNBOOK.md`** — step-by-step Wave 1 operator guide (OTel,
   Sentry, Run 4b, DR drill, gate bundle).
 - **`POST /api/v1/health/sentry-probe`** — worker-token-gated synthetic Sentry
