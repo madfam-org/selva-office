@@ -83,6 +83,10 @@ patches:
     target:
       kind: ExternalSecret
       name: postgres-backup-credentials
+  - path: patch-delete-service-clients-externalsecret.yaml
+    target:
+      kind: ExternalSecret
+      name: selva-service-clients
   - path: patch-delete-inference-gateway.yaml
     target:
       kind: Deployment

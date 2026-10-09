@@ -7,6 +7,10 @@ metadata:
     app.kubernetes.io/name: workers
     app.kubernetes.io/part-of: selva-office
     app.kubernetes.io/component: worker
+  annotations:
+    # Roll the workers when the machine-edge client credentials change
+    # (a provision re-run rotates the secret); env is read only at start.
+    secret.reloader.stakater.com/reload: "selva-service-clients"
 spec:
   replicas: 1
   strategy:
@@ -56,6 +60,13 @@ spec:
           envFrom:
             - configMapRef:
                 name: selva-config
+            # Janua machine-edge client credentials (SELVA_YANTRA4D_CLIENT_ID /
+            # SELVA_YANTRA4D_CLIENT_SECRET) from service-clients-external-secret.yaml.
+            # Optional: absent, the phygital tools fall back to static tokens and
+            # fail closed without one.
+            - secretRef:
+                name: selva-service-clients
+                optional: true
           env:
             - name: ENVIRONMENT
               value: production
