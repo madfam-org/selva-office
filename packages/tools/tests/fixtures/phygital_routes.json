@@ -1,6 +1,6 @@
 {
   "description": "Routes the phygital and MES tools call, vendored from each service's origin/main. Path placeholders use the service's own syntax (Flask <name>, Gin :name). test_phygital_tools.py checks every request these tools send against this list.",
-  "read_on": "2026-10-07",
+  "read_on": "2026-10-08",
   "services": {
     "yantra4d": {
       "repo": "madfam-org/yantra4d",
@@ -12,7 +12,7 @@
     },
     "pravara-mes": {
       "repo": "madfam-org/pravara-mes",
-      "commit": "d5ba9436af2c6e9f78bd7ffe77896f2eccea720d"
+      "commit": "1e07c1349338da1b2d1be10a3ff69b8e463b5a6a"
     }
   },
   "routes": [
@@ -70,7 +70,7 @@
       "method": "GET",
       "path": "/v1/inventory",
       "source": "apps/pravara-api/internal/api/routes.go",
-      "notes": "Query search (name or sku, ILIKE) and limit. Not listed in MachineRouteScopes (internal/api/route_scopes.go): Janua service tokens get 403; API keys need the wildcard scope."
+      "notes": "Query search (name or sku, ILIKE) and limit. Machine tokens need pravara-mes:read (internal/api/route_scopes.go) and a tenant_id claim, which Janua sets only on organization-bound clients (internal/middleware/auth.go); reads stay inside that tenant."
     }
   ]
 }
