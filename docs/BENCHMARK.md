@@ -106,7 +106,7 @@ No competitor has: a 10-agent AI workforce, autonomous task dispatch via CRM-dri
 | Compliance automation | ❌ | ✅ **Karafiel — SAT/CFDI tax defense** |
 | 3D design platform | ❌ | ✅ **Yantra4D — parametric OpenSCAD** |
 | Fabrication quoting | ❌ | ✅ **Cotiza — digital fabrication pricing** |
-| Manufacturing execution | ❌ | ✅ **PravaraMES — work orders** |
+| Manufacturing execution | ❌ | ✅ **PravaraMES — production orders dispatched from Cotiza** |
 | Pricing intelligence | ❌ | ✅ **Forgesight — 500+ vendor pricing** |
 | Referral program | ❌ | ✅ **Cross-product referrals + ambassador tiers** |
 | **Total ecosystem services** | **0** | **14 integrated platforms** |

@@ -1,6 +1,6 @@
 # Selva truthful quote orchestration roadmap
 
-Last updated: 2026-05-14
+Last updated: 2026-10-07
 
 ## Scope
 
@@ -12,6 +12,9 @@ Selva agents must be able to generate client quotes through Yantra4D/Cotiza with
 - Unit tests prove the tool routes project slugs to Yantra and structured geometry to Cotiza.
 - The tool requires `market_verified=true` by default and fails closed when a downstream quote is not market verified.
 - 2026-05-14 update adds service-token propagation for Yantra and Cotiza calls.
+- 2026-10-07 update: the phygital tools call only the routes vendored in
+  `packages/tools/tests/fixtures/phygital_routes.json`, send the service token on
+  every request, and send nothing when no token is configured.
 
 ## Production gap
 
@@ -20,9 +23,9 @@ Selva still needs provisioned Janua/Enclii-backed service credentials with the m
 ## Remediation plan
 
 1. Create a dedicated Selva quote service account.
-2. Grant only the required scopes: `yantra4d:quote`, `cotiza:quote`, `forgesight:read`, and later `phynd:engagement.write`.
+2. Grant only the required scopes: `yantra4d:quote`, `yantra4d:render` (Yantra4D checks it on the render routes for machine tokens), `cotiza:quote`, `forgesight:read`, `pravara-mes:read` (production-order status), and later `phynd:engagement.write`.
 3. Store service credentials through Enclii secrets, not human accounts.
-4. Configure `SELVA_YANTRA4D_SERVICE_TOKEN` and `SELVA_COTIZA_SERVICE_TOKEN`.
+4. Configure `SELVA_YANTRA4D_SERVICE_TOKEN`, `SELVA_COTIZA_SERVICE_TOKEN` and `SELVA_PRAVARA_SERVICE_TOKEN` (or the shared `SELVA_SERVICE_TOKEN`).
 5. Keep `require_market_verified=true` as the default.
 6. Map downstream failures to agent-actionable messages: auth missing, tier denied, market data unavailable, quote needs review, and client-ready.
 7. Add staging/live contract tests once the service account exists.

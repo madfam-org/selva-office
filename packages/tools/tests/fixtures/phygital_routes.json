@@ -1,0 +1,76 @@
+{
+  "description": "Routes the phygital and MES tools call, vendored from each service's origin/main. Path placeholders use the service's own syntax (Flask <name>, Gin :name). test_phygital_tools.py checks every request these tools send against this list.",
+  "read_on": "2026-10-07",
+  "services": {
+    "yantra4d": {
+      "repo": "madfam-org/yantra4d",
+      "commit": "8c334bd06c3adf8cdbdc01e2538403c226766c59"
+    },
+    "cotiza": {
+      "repo": "madfam-org/digifab-quoting",
+      "commit": "18f32109b9a36497023f2f2d27ed7008b2b39135"
+    },
+    "pravara-mes": {
+      "repo": "madfam-org/pravara-mes",
+      "commit": "d5ba9436af2c6e9f78bd7ffe77896f2eccea720d"
+    }
+  },
+  "routes": [
+    {
+      "tool": "generate_parametric_model",
+      "service": "yantra4d",
+      "method": "POST",
+      "path": "/api/render",
+      "source": "apps/api/routes/engine/render.py",
+      "notes": "Body {project, mode?, parameters, export_format?}. Machine tokens need the yantra4d:render scope when Yantra4D enforces it; export formats are tier-gated."
+    },
+    {
+      "tool": "run_dfm_analysis",
+      "service": "yantra4d",
+      "method": "POST",
+      "path": "/api/projects/<slug>/analyze/thickness",
+      "source": "apps/api/routes/engine/analysis.py",
+      "notes": "require_tier(\"pro\"); analyses the project's latest stored render."
+    },
+    {
+      "tool": "run_dfm_analysis",
+      "service": "yantra4d",
+      "method": "POST",
+      "path": "/api/projects/<slug>/analyze/overhang",
+      "source": "apps/api/routes/engine/analysis.py",
+      "notes": "require_tier(\"pro\"); analyses the project's latest stored render."
+    },
+    {
+      "tool": "generate_quote",
+      "service": "yantra4d",
+      "method": "POST",
+      "path": "/api/projects/<slug>/cotiza-quote-request",
+      "source": "apps/api/routes/integrations/cotiza_export.py",
+      "notes": "require_tier(\"pro\")."
+    },
+    {
+      "tool": "generate_quote",
+      "service": "cotiza",
+      "method": "POST",
+      "path": "/quotes/from-yantra4d",
+      "source": "apps/api/src/modules/quotes/yantra4d-import.controller.ts",
+      "notes": "Served path. @Controller('quotes') (yantra4d-import.controller.ts:34) + @Post('from-yantra4d') (:51); no setGlobalPrefix or enableVersioning anywhere in the repo; controllers that want /api/v1 spell it in their own decorator (geo.controller.ts:50, guest-quote.controller.ts:34, users.controller.ts:8); the web proxy maps /api/:path to the bare API origin (apps/web/next.config.js:25-26, infra/k8s/production/web-deployment.yaml:43-44)."
+    },
+    {
+      "tool": "get_production_order_status",
+      "service": "pravara-mes",
+      "method": "GET",
+      "path": "/v1/orders/:id",
+      "source": "apps/pravara-api/internal/api/routes.go",
+      "notes": "Machine tokens need pravara-mes:read or pravara-mes:jobs (internal/api/route_scopes.go). :id is the order UUID."
+    },
+    {
+      "tool": "inventory_check",
+      "service": "pravara-mes",
+      "method": "GET",
+      "path": "/v1/inventory",
+      "source": "apps/pravara-api/internal/api/routes.go",
+      "notes": "Query search (name or sku, ILIKE) and limit. Not listed in MachineRouteScopes (internal/api/route_scopes.go): Janua service tokens get 403; API keys need the wildcard scope."
+    }
+  ]
+}

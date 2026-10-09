@@ -185,6 +185,9 @@ PLATFORM_TOOL_NAMES: frozenset[str] = frozenset(
         "karafiel_org_create",
         "karafiel_sat_cert_upload",
         "karafiel_pac_register",
+        # Pravara-MES reads use Selva's own service identity.
+        "get_production_order_status",
+        "inventory_check",
     }
 )
 

@@ -25,6 +25,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   sequencing, and leadership scorecard.
 
 ### Fixed
+- **Phygital tools call real service routes** — `generate_parametric_model`
+  renders an existing Yantra4D project through `POST /api/render`, and
+  `run_dfm_analysis` runs Yantra4D's thickness and overhang analyses
+  (`POST /api/projects/<slug>/analyze/{thickness,overhang}`) and says they use
+  the project's latest render. `create_work_order`, which posted to a route
+  Pravara-MES does not serve, is replaced by the read-only PLATFORM tool
+  `get_production_order_status` (`GET /v1/orders/:id`): production orders reach
+  Pravara-MES when a person orders a Cotiza quote. Every phygital request
+  carries the service token and none is sent without one; Pravara reads use
+  `PRAVARA_MES_API_TOKEN`, then `SELVA_PRAVARA_SERVICE_TOKEN`, then
+  `SELVA_SERVICE_TOKEN`. The called routes are vendored with their source
+  commits in `packages/tools/tests/fixtures/phygital_routes.json` and checked
+  by tests.
+- **Cotiza quote path** — `generate_quote` without a `project_slug` now posts
+  to `POST /quotes/from-yantra4d`, the path Cotiza serves (its Nest controller
+  is `quotes` and the API sets no global prefix), instead of
+  `/api/v1/quotes/from-yantra4d`.
+- **`inventory_check` reads the Pravara-MES inventory route** — it calls
+  `GET /v1/inventory` with the SKU as `search` and keeps exact SKU matches,
+  sends the Pravara service token, sends nothing without one, and is now
+  PLATFORM-audience. It previously called `/api/v1/inventory/check`, which
+  Pravara-MES does not serve. The `warehouse` parameter is gone: Pravara-MES
+  inventory has no warehouse dimension. Shared token helpers live in
+  `selva_tools/builtins/service_auth.py`.
 - **Wave 0 CI security** — bump `pyjwt` (≥2.13.0), `python-multipart`
   (≥0.0.30), and `starlette` (≥1.3.1) to clear Trivy CVE gates on `main`.
 - **Prod health probes** — consent-ledger grant probe uses `current_user`

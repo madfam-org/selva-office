@@ -104,8 +104,8 @@ services, agents, tools, graphs, and external systems in the MADFAM ecosystem.
 | Agent | Espectro (L7, MES Supervisor) |
 | Department | Physical-Digital Bridge |
 | Services | Yantra4D (parametric design), Pravara-MES (manufacturing execution), Cotiza (quoting), Sim4D (CAD) |
-| Key Tools | GenerateParametricModelTool, RunDFMAnalysisTool, CreateWorkOrderTool, GenerateQuoteTool |
-| Graph | `phygital` (validate->generate->dfm->simulate->quote->HITL->fabricate) |
+| Key Tools | GenerateParametricModelTool (renders an existing Yantra4D project), RunDFMAnalysisTool (Yantra4D thickness + overhang analyses on the project's latest render), GenerateQuoteTool (Yantra4D/Cotiza), GetProductionOrderStatusTool (read-only Pravara-MES order lookup) |
+| Graph | `phygital` planned (Program Phase 3). Selva does not create production orders: a person orders the Cotiza quote and Cotiza dispatches the order to Pravara-MES. |
 | Principle | Axiom III: no extrusion until the digital twin has succeeded. |
 
 ---
@@ -167,7 +167,7 @@ Actions within a playbook's `allowed_actions` execute autonomously if:
 - `file_write` -- code modifications
 - `git_push` -- publishing changes
 - `deploy` -- production deployments
-- Physical fabrication (phygital graph has mandatory HITL gate before `create_work_order`)
+- Physical fabrication: Selva has no tool that creates production orders. A person orders the Cotiza quote and Cotiza dispatches the order to Pravara-MES.
 
 ### Circuit Breakers
 - **Token budget:** Per-playbook execution cap (default 50 tokens)
