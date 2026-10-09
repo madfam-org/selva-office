@@ -710,3 +710,13 @@ class TestGenerateQuoteTool:
 
         assert not result.success
         assert "not market verified" in (result.error or "")
+
+
+@pytest.mark.parametrize(
+    "tool_cls", [GenerateParametricModelTool, RunDFMAnalysisTool, GenerateQuoteTool]
+)
+def test_tools_acting_with_selvas_service_identity_are_platform_only(
+    tool_cls: type[BaseTool],
+) -> None:
+    """The identity is not scoped to one tenant, so tenant swarms must not use it."""
+    assert tool_cls.audience is Audience.PLATFORM
