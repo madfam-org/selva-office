@@ -43,6 +43,13 @@ export function useCheckout(): CheckoutState {
           return;
         }
 
+        if (resp.status === 401) {
+          // Checkout runs for a signed-in tenant; the public /pricing page
+          // reaches this for anonymous visitors.
+          addToast('Sign in to choose a plan.', 'info');
+          return;
+        }
+
         if (!resp.ok) {
           addToast('Could not start checkout. Please try again.', 'error');
           return;
