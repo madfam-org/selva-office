@@ -44,7 +44,7 @@ describe('ecosystem banner links (2026-10-11 fix)', () => {
           surface: 'banner',
           originHost,
           ownedDomains: MADFAM_OWNED_DOMAINS,
-        })
+        }),
       ).toEqual({ href: 'https://forgesight.app', rel: 'noopener' });
     }
   });
@@ -55,7 +55,7 @@ describe('ecosystem banner links (2026-10-11 fix)', () => {
         surface: 'banner',
         originHost: 'karafiel.mx',
         ownedDomains: MADFAM_OWNED_DOMAINS,
-      })
+      }),
     ).toEqual({ href: 'https://github.com/madfam-org', rel: 'noopener noreferrer' });
   });
 });
