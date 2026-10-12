@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { CRAWL_FILE_PATHS } from '@/lib/seo/crawl';
 
 /**
  * URL scheme:
@@ -10,7 +11,18 @@ const APP_HOST = 'app.selva.town';
 const LANDING_HOST = 'selva.town';
 const WWW_HOST = 'www.selva.town';
 
-const PUBLIC_PATHS = ['/', '/login', '/guest', '/demo', '/pricing', '/api/health', '/api/auth'];
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/guest',
+  '/demo',
+  '/pricing',
+  '/api/health',
+  '/api/auth',
+  // robots.txt, sitemap.xml, llms.txt: public so the auth redirect never
+  // answers them with the login page. They still pass the www redirect.
+  ...CRAWL_FILE_PATHS,
+];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
