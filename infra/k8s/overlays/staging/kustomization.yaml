@@ -52,7 +52,7 @@ images:
   - name: ghcr.io/madfam-org/selva-nexus-api
     digest: sha256:5306bfa16ebeb4bc4c1468bd5325fab1a084cdd7bf3cedb8246084d886c9de7b
   - name: ghcr.io/madfam-org/selva-office-ui
-    digest: sha256:c3d88ad2c9fa2866ea99bd93e61680e6d07f2e90cd83a9cda9e858989b063510
+    digest: sha256:683da01db0b30d6b60a7741a8e725b3d00e3bb550ac719a407977a32532171c2
   - name: ghcr.io/madfam-org/selva-colyseus
     digest: sha256:d4291ee42ac274ff2c9f8b2fe40b1cb21c4b8ad9b56fafee664cbab843d225a2
   - name: ghcr.io/madfam-org/selva-admin
