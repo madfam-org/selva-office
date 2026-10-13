@@ -43,12 +43,18 @@ data:
         # served as `restricted`, i.e. local-model only. There is no
         # code path that can lower this.
         sensitivity_floor: restricted
-        # The tenant's two AI surfaces today map to these task types.
+        # Governed surfaces map to these task types.
         # Anything else is a 400 — a new surface must be added here
         # deliberately.
         allowed_task_types:
           - summarization
           - family-feedback
+          # Synthetic MAP training only, through the org-bound gateway.
+          # No task exception: restricted/local-only and every cap below apply.
+          # Source entitlement is not proof of live org membership, model
+          # availability, commercial model rights or tool-call capacity.
+          # See docs/DATA_CONTRACT_RESTRICTED.md, section 7.
+          - crea-sim-training
         # These outputs are short notes. Capping output bounds both cost
         # and the time a person waits.
         max_tokens_cap: 1500

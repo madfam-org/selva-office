@@ -307,7 +307,58 @@ proveedor de nube. Para quitar sólo a un proveedor, se borra de
 
 ---
 
-## 7. Referencias
+## 7. Capacitación sintética: `crea-sim-training`
+
+La política del tenant candidato incluye esta tarea para la capacitación MAP
+solicitada por el dueño. Es un permiso de superficie revisado en código: no
+acredita que la organización del cliente ya esté vinculada ni que exista un
+modelo local listo. El operador verifica la organización real antes de emitir
+o habilitar la credencial del gateway privado.
+
+Esta tarea conserva el piso `restricted`, el tope de **1500 tokens**, el
+deadline de **40 segundos**, el límite de **30 solicitudes por minuto por
+réplica** y el presupuesto diario informativo de **USD 2**. No tiene una
+excepción por tarea; `X-Pseudonymized: true` no permite usar proveedores de nube.
+La excepción existente de `family-feedback` conserva sus condiciones propias.
+Sin backend local disponible, la capacitación asistida por modelo queda
+indisponible; la lección manual debe seguir disponible.
+
+El consumidor autorizado es el gateway de capacitación, con una identidad M2M
+separada, ligada a la organización verificada, audiencia `selva-office` y scope
+`selva:infer`. Fija `X-Task-Type: crea-sim-training` y `X-Sensitivity: restricted`;
+no reenvía tokens humanos de UI o MCP a inferencia. La entrada se limita al
+ejercicio sintético y las acciones permitidas; no incluye expedientes reales,
+secretos, cookies ni credenciales. La respuesta del modelo propone acciones:
+el gateway y MAP conservan la validación, los permisos y la autoría nativa.
+La política de Selva por sí sola no implementa ese transporte ni habilita la
+ejecución de herramientas.
+
+Antes de anunciar o habilitar el modo automático, el operador conserva evidencia
+privada de:
+
+- La organización y su pertenencia verificadas, la credencial M2M y sus límites,
+  y la política efectiva cargada por el gateway tras el despliegue Enclii.
+- El modelo **realmente instalado**, su identificador, digest, cuantización,
+  versión del servidor y licencia/versiones de términos aplicables a ese artefacto.
+  La autorización de uso comercial y sus condiciones deben quedar revisadas y
+  registradas; una etiqueta de configuración no acredita esos derechos.
+- La capacidad medida del modelo instalado para producir llamadas a herramientas
+  estructuradas en el contrato esperado: argumentos válidos, rechazos ante acciones
+  no permitidas, cancelación y respuesta dentro de los topes. Que el adaptador de
+  Ollama acepte `tools` o devuelva `tool_calls` no demuestra esa capacidad del modelo.
+- El resultado de una prueba autorizada con fixtures sintéticos y sin efectos
+  externos, con sólo metadatos de consumo/ruteo y referencias de resultados nativos.
+  Ni un `200`, ni cargar una URL, ni la propia respuesta del modelo certifican una
+  lección completada o una acción guardada.
+
+Este cambio no descarga pesos, concede una licencia, verifica acceso en vivo ni
+ejecuta inferencia. Para retirar la superficie se elimina sólo
+`crea-sim-training` de `allowed_task_types` y se publica la política por el
+carril Enclii normal; los otros permisos y la excepción existente se conservan.
+
+---
+
+## 8. Referencias
 
 - Runbook de encendido de un tenant `restricted`: se conserva en el
   repositorio privado de operaciones.
