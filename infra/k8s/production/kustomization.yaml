@@ -11,6 +11,9 @@ namespace: selva
 # Cross-path read of phynd's HMAC/bearer values (secret/phynd-crm already
 # exists), so selva signs exactly what phynd verifies. Consumer mounts in
 # nexus-api are optional:true; safe to include pre-consumer.
+# service-clients-external-secret.yaml: the workers' Janua machine-edge client
+# credentials (secret/selva). The workers read it optional:true; staging
+# deletes it.
 # ollama.yaml — DELIBERADAMENTE NO LISTADO. Vive en optional/ollama.yaml.
 #
 # El Deployment de Ollama fue bloqueado en admisión por la ClusterPolicy
@@ -54,6 +57,7 @@ resources:
 - keda-trigger-auth.yaml
 - selva-secret-writer-sa.yaml
 - phynd-external-secret.yaml
+- service-clients-external-secret.yaml
 
 commonLabels:
   app.kubernetes.io/managed-by: kustomize

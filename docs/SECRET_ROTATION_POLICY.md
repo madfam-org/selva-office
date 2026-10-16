@@ -41,6 +41,7 @@ and never rotated."
 - **GitHub PAT (`GITHUB_TOKEN`)** — rotate via GitHub
 - **Cloudflare tunnel tokens** — rotate via Cloudflare Zero Trust dashboard
 - **Porkbun API credentials (`PORKBUN_API_KEY`, `PORKBUN_SECRET_KEY`)** — rotate via Porkbun account API keys, then update `selva-secrets`
+- **Janua machine-edge clients (`SELVA_YANTRA4D_CLIENT_ID` / `SELVA_YANTRA4D_CLIENT_SECRET`)** — rotate by re-running `enclii secrets provision oidc --platform selva-yantra4d` under the operator's Janua admin session; it files the new pair at `secret/selva`, the `selva-service-clients` ExternalSecret syncs it, and Reloader rolls the workers
 
 If any of those are compromised, follow the vendor's procedure AND
 rotate them in `selva-secrets` so the K8s pods see the new values.
