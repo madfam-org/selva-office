@@ -23,7 +23,7 @@ class ActionClassifier:
     3. ``BUILTIN_TOOL_CATEGORY_MAP`` -- the explicit per-tool policy for
        every built-in Selva tool (``selva_permissions.tool_policy``).
     4. Substring heuristics (``_FALLBACK_RULES``).
-    5. Default for unrecognised tools.
+    5. ``UNCLASSIFIED_TOOL`` (ASK) for unrecognised tools.
     """
 
     TOOL_CATEGORY_MAP: dict[str, ActionCategory] = {
@@ -127,7 +127,9 @@ class ActionClassifier:
             if substring in normalised:
                 return category
 
-        return ActionCategory.API_CALL
+        # Fail closed: an unrecognised tool needs a human until it is given
+        # an explicit entry in tool_policy.BUILTIN_TOOL_POLICY.
+        return ActionCategory.UNCLASSIFIED_TOOL
 
     @staticmethod
     def _classify_http(normalised: str, params: dict | None) -> ActionCategory | None:

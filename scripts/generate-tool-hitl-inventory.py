@@ -187,6 +187,8 @@ social-post, outbound-send, infra-mutating and secret-mutating tools.
 - `http_request` and `graphql_query` are classified from their arguments:
   GET/HEAD/OPTIONS and GraphQL queries are `api_call`; other methods,
   mutations and subscriptions are `external_write` (ASK).
+- Tools that match nothing now resolve to `unclassified_tool` (ASK) instead of
+  `api_call` (ALLOW); that flip is its own commit so it can be reverted alone.
 - Effective decisions below use the default matrix only. Role matrices,
   context rules, playbooks and skill overrides can still escalate (or, for a
   skill that grants a category, relax) at run time.
@@ -207,6 +209,18 @@ social-post, outbound-send, infra-mutating and secret-mutating tools.
 Newly gated: {newly}.
 
 Read-only but kept ASK (relax candidates for the owner): {relax}.
+
+## Blast radius of the default flip
+
+No production graph calls `permission_check` today: it is defined in
+`graphs/base.py` and exercised by tests, while the coding, CRM and deployment
+graphs call `check_permission()` with a fixed category string and the
+research graph calls the web-search provider directly (no registry tool, no
+classifier). Built-in registry tools are executed directly only by the
+approved-post executor and the warm-up job, which never consult the
+classifier. So the flip changes no graph's behaviour today; it makes the
+classifier fail closed for whoever wires it next (a new tool, an MCP or
+Coupler proxy tool, or a future tool-calling loop).
 
 ## Inventory
 

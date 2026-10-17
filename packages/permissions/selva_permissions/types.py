@@ -71,6 +71,10 @@ class ActionCategory(StrEnum):
     # (webhook POSTs, non-GET HTTP, A2A task hand-off, Sentry issue edits).
     # ASK by default; see selva_permissions.tool_policy.
     EXTERNAL_WRITE = "external_write"
+    # A tool name no classifier rule recognises. Fails closed (ASK) so a new
+    # side-effecting tool cannot run unattended just because nobody listed
+    # it. Give the tool an entry in selva_permissions.tool_policy instead.
+    UNCLASSIFIED_TOOL = "unclassified_tool"
 
 
 class PermissionResult(BaseModel):

@@ -29,6 +29,8 @@ social-post, outbound-send, infra-mutating and secret-mutating tools.
 - `http_request` and `graphql_query` are classified from their arguments:
   GET/HEAD/OPTIONS and GraphQL queries are `api_call`; other methods,
   mutations and subscriptions are `external_write` (ASK).
+- Tools that match nothing now resolve to `unclassified_tool` (ASK) instead of
+  `api_call` (ALLOW); that flip is its own commit so it can be reverted alone.
 - Effective decisions below use the default matrix only. Role matrices,
   context rules, playbooks and skill overrides can still escalate (or, for a
   skill that grants a category, relax) at run time.
@@ -58,6 +60,18 @@ social-post, outbound-send, infra-mutating and secret-mutating tools.
 Newly gated: `argocd_refresh_app`, `argocd_sync_app`, `bluesky_post`, `call_external_agent`, `cf_saas_hostname_add`, `cf_saas_hostname_delete`, `cf_tunnel_put_ingress`, `cfdi_generate`, `cfdi_stamp`, `complemento_pago`, `config_delete_configmap_key`, `config_set_configmap_value`, `db_dump_to_r2`, `db_mask_and_copy`, `db_restore_from_r2`, `dhanam_subscription_update`, `discord_send_embed`, `discord_send_message`, `enclii_restart`, `enclii_scale`, `enclii_secrets`, `factory_manifest_publish`, `file_delete`, `generate_quote`, `github_admin_set_branch_protection`, `github_admin_set_team_membership`, `janua_oauth_client_delete`, `janua_oauth_client_rotate_secret`, `janua_oauth_client_update`, `karafiel_pac_register`, `karafiel_sat_cert_upload`, `kill_background_process`, `kustomize_set_image`, `linkedin_post`, `mastodon_post`, `meeting_schedule`, `package_install`, `pgbackrest_backup`, `porkbun_delete_dns_record`, `porkbun_delete_url_forwarding`, `porkbun_update_nameservers`, `r2_bucket_delete`, `r2_cors_set`, `read_credential_file`, `reddit_post`, `resend_domain_add`, `resend_domain_delete`, `selva_npm_rotate_token`, `selva_npm_update_github_secrets`, `selva_office_seat_assign_department`, `selva_office_seat_revoke`, `selva_vault_delete`, `selva_vault_retrieve`, `selva_vault_rotate`, `selva_vault_store`, `send_notification`, `sentry_issue_update`, `slack_message`, `sms_send`, `sms_send_template`, `spei_transfer_initiate`, `start_background_process`, `stripe_connect_account_link`, `telegram_send_message`, `telegram_send_photo`, `update_lead_status`, `voice_call_make`, `voice_call_say`, `webhook_send`, `webhooks_janua_register_oidc_redirect`, `webhooks_stripe_delete`, `whatsapp_send_template`, `x_post`.
 
 Read-only but kept ASK (relax candidates for the owner): `deploy_preflight`, `deploy_status`, `dhanam_credit_ledger_query`, `phyndcrm_campaign_authorization_preview`, `phyndcrm_campaign_authorizations_pending`, `phyndcrm_tenant_config_get`.
+
+## Blast radius of the default flip
+
+No production graph calls `permission_check` today: it is defined in
+`graphs/base.py` and exercised by tests, while the coding, CRM and deployment
+graphs call `check_permission()` with a fixed category string and the
+research graph calls the web-search provider directly (no registry tool, no
+classifier). Built-in registry tools are executed directly only by the
+approved-post executor and the warm-up job, which never consult the
+classifier. So the flip changes no graph's behaviour today; it makes the
+classifier fail closed for whoever wires it next (a new tool, an MCP or
+Coupler proxy tool, or a future tool-calling loop).
 
 ## Inventory
 
