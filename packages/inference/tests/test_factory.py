@@ -96,3 +96,20 @@ model_assignments:
         )
         assert "anthropic" in router.available_providers
         load_org_config.cache_clear()
+
+
+def test_anthropic_timeout_reads_env(monkeypatch):
+    from madfam_inference import factory
+
+    monkeypatch.setenv("ANTHROPIC_TIMEOUT_SECONDS", "600")
+    assert factory._anthropic_timeout_seconds() == 600.0
+
+
+def test_anthropic_timeout_defaults_and_rejects_bad_values(monkeypatch):
+    from madfam_inference import factory
+
+    monkeypatch.delenv("ANTHROPIC_TIMEOUT_SECONDS", raising=False)
+    assert factory._anthropic_timeout_seconds() == factory.DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
+    for bad in ("abc", "0", "-5"):
+        monkeypatch.setenv("ANTHROPIC_TIMEOUT_SECONDS", bad)
+        assert factory._anthropic_timeout_seconds() == factory.DEFAULT_ANTHROPIC_TIMEOUT_SECONDS

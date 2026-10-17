@@ -9,6 +9,7 @@ stays testable and independent of any specific Settings class.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from .base import InferenceProvider
@@ -22,6 +23,29 @@ from .router import ModelRouter
 
 logger = logging.getLogger(__name__)
 
+
+
+ENV_ANTHROPIC_TIMEOUT = "ANTHROPIC_TIMEOUT_SECONDS"
+DEFAULT_ANTHROPIC_TIMEOUT_SECONDS = 120.0
+
+
+def _anthropic_timeout_seconds() -> float:
+    """Read timeout for Anthropic calls (``ANTHROPIC_TIMEOUT_SECONDS``).
+
+    A non-streaming Messages call sends no bytes until the whole answer is
+    generated, so long outputs (and adaptive thinking) need more than the
+    120 s default or they die as an empty ``ReadTimeout``. Invalid or
+    non-positive values fall back to the default.
+    """
+    raw = os.environ.get(ENV_ANTHROPIC_TIMEOUT, "").strip()
+    if not raw:
+        return DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning("Ignoring invalid %s=%r", ENV_ANTHROPIC_TIMEOUT, raw)
+        return DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
+    return value if value > 0 else DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
 
 def _resolve_api_key(env_name: str) -> str | None:
     import os
@@ -61,7 +85,9 @@ def build_router_from_env(
     providers: dict[str, InferenceProvider] = {}
 
     if anthropic_api_key:
-        providers["anthropic"] = AnthropicProvider(api_key=anthropic_api_key)
+        providers["anthropic"] = AnthropicProvider(
+            api_key=anthropic_api_key, timeout=_anthropic_timeout_seconds()
+        )
     if openai_api_key:
         providers["openai"] = OpenAIProvider(api_key=openai_api_key)
     if openrouter_api_key:

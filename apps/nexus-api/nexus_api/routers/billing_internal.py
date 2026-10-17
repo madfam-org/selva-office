@@ -23,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user
-from ..database import get_db
+from ..database import _set_session_org_id, get_db
 from ..models import ComputeTokenLedger
 
 logger = logging.getLogger(__name__)
@@ -115,6 +115,11 @@ async def record_usage(
     not be able to debit another tenant's bucket.
     """
     org_id = _resolve_caller_org(user, body.org_id)
+    # ``get_db`` resolves before ``get_current_user`` and stamps the session's
+    # RLS org from the auth context while it is still unset; re-stamp it now
+    # that the caller's org is known, or the insert violates the
+    # compute_token_ledger RLS policy for any org other than the empty one.
+    await _set_session_org_id(db)
     entry = ComputeTokenLedger(
         action=body.action,
         amount=body.amount,
@@ -148,6 +153,8 @@ async def check_budget(
     another tenant's spend position.
     """
     org_id = _resolve_caller_org(user, body.get("org_id"))
+    # Same dependency-order RLS issue as ``record_usage``: re-stamp the org.
+    await _set_session_org_id(db)
     from ..services.tier_limits import resolve_org_daily_limit
 
     daily_limit = await resolve_org_daily_limit(db, org_id)
