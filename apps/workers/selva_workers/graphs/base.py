@@ -204,7 +204,7 @@ def permission_check(state: BaseGraphState) -> BaseGraphState:
     if tool_calls:
         for call in tool_calls:
             tool_name = call.get("name", "unknown")
-            category = _classifier.classify(tool_name)
+            category = _classifier.classify(tool_name, call.get("args"))
             result = engine.evaluate(category, context=perm_context)
 
             if result.level == PermissionLevel.DENY:

@@ -39,4 +39,5 @@ DEFAULT_PERMISSION_MATRIX: dict[ActionCategory, PermissionLevel] = {
     # override to ALLOW at the call site.
     ActionCategory.WEBHOOK_MANAGEMENT: PermissionLevel.ASK,
     ActionCategory.PRICING_PROPOSAL: PermissionLevel.ASK,
+    ActionCategory.EXTERNAL_WRITE: PermissionLevel.ASK,
 }
