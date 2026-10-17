@@ -85,11 +85,16 @@ def targets_for(raw_fanout: Any, item_id: str) -> list[Target]:
 
 
 def estimate_calls(
-    n_targets: int, refine_rounds: int, *, mode: str = "generate", candidates: int = 4
+    n_targets: int,
+    refine_rounds: int,
+    *,
+    mode: str = "generate",
+    candidates: int = 4,
+    judges: int = 1,
 ) -> int:
     """Upper-bound call count for an item (used for docs and planning)."""
     if mode == "benchmark":
-        return n_targets * (candidates + 1)
+        return n_targets * (candidates + judges)
     if mode == "dispatch":
         return 3
     return n_targets * (1 + 2 * max(0, refine_rounds))
@@ -224,6 +229,12 @@ class ModelStats:
     qualities: list[float] = field(default_factory=list)
     latencies_ms: list[int] = field(default_factory=list)
     costs_usd: list[float] = field(default_factory=list)
+    #: Scores from secondary judges, per judge tier.
+    alt_qualities: dict[str, list[float]] = field(default_factory=dict)
+
+    def alt_mean(self, judge: str) -> float | None:
+        values = self.alt_qualities.get(judge) or []
+        return statistics.fmean(values) if values else None
 
     @property
     def n(self) -> int:
@@ -263,7 +274,44 @@ def aggregate(rows: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, ModelSta
         stats.qualities.append(float(row["quality"]))
         stats.latencies_ms.append(int(row.get("latency_ms") or 0))
         stats.costs_usd.append(float(row.get("cost_usd") or 0.0))
+        for judge, value in (row.get("quality_by_judge") or {}).items():
+            if value is not None:
+                stats.alt_qualities.setdefault(str(judge), []).append(float(value))
     return table
+
+
+def judge_agreement(
+    rows: Iterable[Mapping[str, Any]], judges: Sequence[str]
+) -> dict[str, dict[str, float]]:
+    """Per task type: agreement between the primary judge and each other judge.
+
+    Returns ``{task_type: {"<judge>_n", "<judge>_mean_abs_diff",
+    "<judge>_within_0_2", "<judge>_pearson"}}`` over answers both scored.
+    """
+    if len(judges) < 2:
+        return {}
+    primary = judges[0]
+    pairs: dict[tuple[str, str], list[tuple[float, float]]] = {}
+    for row in rows:
+        by_judge = row.get("quality_by_judge") or {}
+        p = by_judge.get(primary)
+        for other in judges[1:]:
+            o = by_judge.get(other)
+            if p is not None and o is not None:
+                pairs.setdefault((str(row["task_type"]), other), []).append((float(p), float(o)))
+    out: dict[str, dict[str, float]] = {}
+    for (tt, other), values in sorted(pairs.items()):
+        diffs = [abs(a - b) for a, b in values]
+        entry = out.setdefault(tt, {})
+        entry[f"{other}_n"] = float(len(values))
+        entry[f"{other}_mean_abs_diff"] = round(statistics.fmean(diffs), 4)
+        entry[f"{other}_within_0_2"] = round(sum(d <= 0.2 for d in diffs) / len(diffs), 4)
+        xs, ys = [a for a, _ in values], [b for _, b in values]
+        try:
+            entry[f"{other}_pearson"] = round(statistics.correlation(xs, ys), 4)
+        except statistics.StatisticsError:
+            entry[f"{other}_pearson"] = float("nan")
+    return out
 
 
 def propose_assignments(
@@ -286,22 +334,41 @@ def render_report(
     table: Mapping[str, Mapping[str, ModelStats]],
     proposal: Mapping[str, Mapping[str, str]],
     org_key: str,
+    *,
+    agreement: Mapping[str, Mapping[str, float]] | None = None,
+    judges: Sequence[str] = ("opus",),
 ) -> str:
     """Markdown table + proposed org_overrides YAML (the benchmark deliverable)."""
     import yaml
 
+    alt = list(judges[1:])
     lines = [
-        "| task type | candidate | model | n | quality | p50 latency (ms) | USD total | USD/call "
-        "| quality per USD |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| task type | candidate | model | n | quality | "
+        + "".join(f"quality ({j} judge) | " for j in alt)
+        + "p50 latency (ms) | USD total | USD/call | quality per USD |",
+        "|---|---|---|---|---|" + "---|" * len(alt) + "---|---|---|---|",
     ]
     for tt, by_cand in sorted(table.items()):
         for s in sorted(by_cand.values(), key=lambda x: -x.mean_quality):
             qpd = f"{s.quality_per_dollar:.1f}" if s.quality_per_dollar is not None else "n/a"
+            alt_cells = "".join(
+                f"{m:.3f} | " if (m := s.alt_mean(j)) is not None else "n/a | " for j in alt
+            )
             lines.append(
-                f"| {tt} | {s.candidate} | {s.model} | {s.n} | {s.mean_quality:.3f} | "
+                f"| {tt} | {s.candidate} | {s.model} | {s.n} | {s.mean_quality:.3f} | {alt_cells}"
                 f"{s.p50_latency_ms:.0f} | {s.total_usd:.4f} | {s.mean_usd:.5f} | {qpd} |"
             )
+    if agreement:
+        lines += ["", f"### Inter-judge agreement (primary: {judges[0]})", ""]
+        lines.append("| task type | judge | n | mean abs diff | within 0.2 | pearson |")
+        lines.append("|---|---|---|---|---|---|")
+        for tt, entry in sorted(agreement.items()):
+            for j in alt:
+                if f"{j}_n" in entry:
+                    lines.append(
+                        f"| {tt} | {j} | {entry[f'{j}_n']:.0f} | {entry[f'{j}_mean_abs_diff']:.3f}"
+                        f" | {entry[f'{j}_within_0_2']:.2f} | {entry[f'{j}_pearson']:.2f} |"
+                    )
     overrides = {"org_overrides": {org_key: {"model_assignments": dict(proposal)}}}
     return (
         "## Routing benchmark\n\n" + "\n".join(lines) + "\n\n## Proposed org-config override "

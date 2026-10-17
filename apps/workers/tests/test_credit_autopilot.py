@@ -65,8 +65,8 @@ def test_repo_backlog_is_valid_and_public_safe() -> None:
     assert len(items) >= 10
     assert {i.line for i in items} >= {"software", "geometry", "physical", "faap"}
     assert sum(i.budget_share for i in items) <= 1.0
-    # Priority (a) first: the manifest schema leads the queue.
-    assert sorted(items, key=lambda i: i.rank)[0].id == "fm-schema-v1"
+    # Highest value first: security + correctness review sweeps lead the queue.
+    assert sorted(items, key=lambda i: i.rank)[0].id.startswith("review-")
     text = BACKLOG.read_text(encoding="utf-8")
     assert "$" not in text and "amount_usd" not in text
 

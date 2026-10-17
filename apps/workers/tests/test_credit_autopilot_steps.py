@@ -29,6 +29,7 @@ from selva_workers.jobs.credit_autopilot_steps import (
     blind_labels,
     estimate_calls,
     extract_json,
+    judge_agreement,
     parse_judge_scores,
     propose_assignments,
     render_report,
@@ -387,7 +388,7 @@ def test_backlog_rejects_unknown_dependency_and_benchmark_without_source() -> No
         )
 
 
-def test_repo_backlog_scale() -> None:
+def test_repo_backlog_scale_and_value_order() -> None:
     from pathlib import Path
 
     import yaml
@@ -397,12 +398,90 @@ def test_repo_backlog_scale() -> None:
     calls = 0
     for it in items:
         if it.mode == "benchmark":
-            per_type = int(dict(it.benchmark).get("per_task_type", 20))
-            calls += estimate_calls(per_type * 6, 0, mode="benchmark")
+            cfg = dict(it.benchmark)
+            calls += estimate_calls(
+                int(cfg.get("per_task_type", 20)) * 6,
+                0,
+                mode="benchmark",
+                judges=len(cfg.get("judges", ["opus"])),
+            )
         else:
             calls += estimate_calls(len(it.targets()), it.refine_rounds, mode=it.mode)
-    assert 600 <= calls <= 900
+    assert 1500 <= calls <= 2500
+    ranked = sorted(items, key=lambda i: i.rank)
+    reviews = [i for i in ranked if i.id.startswith("review-")]
+    assert ranked[: len(reviews)] == reviews and len(reviews) == 5
+    files = {c for r in reviews for t in r.targets() for c in t.context}
+    assert len(files) >= 120
+    assert all(r.tiers == ("opus",) and r.refine_rounds == 2 for r in reviews)
+    assert [i.id for i in ranked[-2:]] == ["positioning-internal", "research-factory-landscape"]
     eval_item = next(i for i in items if i.id == "eval-set-text-routing")
-    assert eval_item.json_min_items >= 20 and len(eval_item.targets()) == 6
+    assert eval_item.json_min_items >= 40 and len(eval_item.targets()) == 6
     bench_item = next(i for i in items if i.mode == "benchmark")
     assert bench_item.depends_on == ("eval-set-text-routing",)
+    assert dict(bench_item.benchmark)["judges"] == ["opus", "sonnet"]
+    assert dict(bench_item.benchmark)["per_task_type"] == 40
+    tests = next(i for i in items if i.id == "test-gap-drafts")
+    assert len(tests.targets()) == 30
+    for iid in ("fm-manifests-software", "skills-factory-lines"):
+        it = next(i for i in items if i.id == iid)
+        assert it.tiers == ("opus", "sonnet") and it.refine_rounds == 2
+
+
+def test_judge_agreement_and_two_judge_report() -> None:
+    rows = []
+    for n in range(4):
+        rows.append(
+            {
+                "task_type": "coding",
+                "candidate": "opus",
+                "provider": "anthropic",
+                "model": "claude-opus-5-5",
+                "quality": 0.8 + n * 0.05,
+                "quality_by_judge": {"opus": 0.8 + n * 0.05, "sonnet": 0.75 + n * 0.05},
+                "latency_ms": 100,
+                "cost_usd": 0.02,
+            }
+        )
+        rows.append(
+            {
+                "task_type": "coding",
+                "candidate": "haiku",
+                "provider": "anthropic",
+                "model": "claude-haiku-5-5",
+                "quality": 0.4,
+                "quality_by_judge": {"opus": 0.4, "sonnet": 0.9},
+                "latency_ms": 50,
+                "cost_usd": 0.001,
+            }
+        )
+    agreement = judge_agreement(rows, ["opus", "sonnet"])
+    entry = agreement["coding"]
+    assert entry["sonnet_n"] == 8
+    assert entry["sonnet_mean_abs_diff"] == pytest.approx((4 * 0.05 + 4 * 0.5) / 8)
+    assert entry["sonnet_within_0_2"] == pytest.approx(0.5)
+    assert judge_agreement(rows, ["opus"]) == {}
+    table = aggregate(rows)
+    assert table["coding"]["haiku"].alt_mean("sonnet") == pytest.approx(0.9)
+    report = render_report(table, {}, "madfam", agreement=agreement, judges=("opus", "sonnet"))
+    assert "quality (sonnet judge)" in report and "Inter-judge agreement" in report
+
+
+def test_bench_prompt_runs_both_judges(monkeypatch: pytest.MonkeyPatch) -> None:
+    candidates = {
+        "opus": ("anthropic", "claude-opus-5-5"),
+        "haiku": ("anthropic", "claude-haiku-5-5"),
+    }
+    labels = blind_labels("crm-001", list(candidates))
+    inv = {v: k for k, v in labels.items()}
+    reply = json.dumps({"scores": {inv["opus"]: 0.8, inv["haiku"]: 0.6}})
+    model = FakeModel(cost=0.01, replies={"You grade an": reply})
+    run = make_run(
+        make_item(mode="benchmark", benchmark=(("source_item", "ev"),)), monkeypatch, model
+    )
+    ev = {"id": "crm-001", "task_type": "crm", "prompt": "p", "rubric": "r"}
+    asyncio.run(bench.bench_prompt(run, ev, candidates, ("opus", "sonnet")))
+    judge_models = [c["model"] for c in model.calls if c["system"].startswith("You grade")]
+    assert judge_models == [TIER_MODELS["opus"], TIER_MODELS["sonnet"]]
+    rows = run.saved["crm-001"]["result"]["rows"]  # type: ignore[attr-defined]
+    assert all(set(r["quality_by_judge"]) == {"opus", "sonnet"} for r in rows)

@@ -56,8 +56,8 @@ logger = logging.getLogger(__name__)
 LABEL = "credit-autopilot"
 GENERATE_GRAPH_TYPE = "credit_generate"
 LOCK_KEY = "selva:credit-autopilot:leader"
-CONTEXT_FILE_MAX_BYTES = 60_000
-CONTEXT_TOTAL_MAX_BYTES = 180_000
+CONTEXT_FILE_MAX_BYTES = 120_000
+CONTEXT_TOTAL_MAX_BYTES = 240_000
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _DEFAULT_BACKLOG = _REPO_ROOT / "data" / "credit-investment" / "backlog.yaml"
 
