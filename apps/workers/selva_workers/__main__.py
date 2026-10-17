@@ -1260,6 +1260,14 @@ async def main() -> None:
     _active_tasks.add(kanban_overdue_task)
     kanban_overdue_task.add_done_callback(_active_tasks.discard)
 
+    # Credit-investment autopilot (MADFAM tenant only). Returns at once
+    # unless CREDIT_AUTOPILOT_ENABLED=true; see jobs/credit_autopilot.py.
+    from .jobs.credit_autopilot import periodic_loop as _credit_autopilot_loop
+
+    credit_autopilot_task = asyncio.create_task(_credit_autopilot_loop(_shutdown))
+    _active_tasks.add(credit_autopilot_task)
+    credit_autopilot_task.add_done_callback(_active_tasks.discard)
+
     # Log available inference providers at startup.
     from .inference import validate_providers
 

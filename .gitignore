@@ -58,6 +58,10 @@ next-env.d.ts
 data/*
 !data/workflow-templates/
 !data/org-config-template.yaml
+# Versioned, public-safe inputs (no amounts): factory-lines roster and the
+# credit-investment backlog read by the workers autopilot.
+!data/factory-lines/
+!data/credit-investment/
 
 # Org config (secrets outside repo)
 .selva/

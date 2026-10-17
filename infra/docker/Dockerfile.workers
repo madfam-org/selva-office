@@ -25,6 +25,9 @@ LABEL org.opencontainers.image.source=https://github.com/madfam-org/selva-office
 COPY --from=builder /app/.venv /app/.venv
 COPY apps/workers/ apps/workers/
 COPY packages/ packages/
+# Credit-investment backlog + factory-lines roster read by the autopilot.
+COPY data/credit-investment/ data/credit-investment/
+COPY data/factory-lines/ data/factory-lines/
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1

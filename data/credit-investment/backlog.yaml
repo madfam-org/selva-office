@@ -1,0 +1,304 @@
+# Credit-investment backlog — work Selva's own MADFAM tenant runs on a
+# time-boxed provider credit grant (see docs/CREDIT_AUTOPILOT.md).
+#
+# PUBLIC FILE: no amounts, balances or dates. Budgets are `budget_share`
+# fractions of the grant ceiling (the real grant lives only in Vault).
+#
+# Every item is read/draft only. Outputs land as reviewable records in
+# MADFAM's own Selva tenant (the swarm task's result, labelled
+# `credit-autopilot`), never as pushes, sends, posts, CRM, billing or
+# production data writes.
+#
+# Fields
+#   id            stable id (dedupe key: an item is dispatched at most once
+#                 unless its previous run failed and attempts remain)
+#   rank          lower runs first
+#   line          software | geometry | physical | faap
+#   objective     why the item makes Selva better at running the lines
+#   deliverable   what the reviewable output must contain
+#   mode          generate  -> single-shot router call; the autopilot pins the
+#                              provider + model tier and stores the output
+#                 dispatch  -> swarm task on selva:task-stream (graph below);
+#                              the model follows the org's task-type
+#                              assignment, so `tiers` is advisory there
+#   graph         graph type for dispatch mode (read-only graphs only)
+#   tiers         allowed model tiers, preferred first (opus | sonnet | haiku)
+#   budget_share  fraction of the grant ceiling this item is expected to use
+#   max_output_tokens  cap per generate call
+#   context       public madfam-org repo files fetched read-only as input
+#                 (generate mode); missing context is reported, not invented
+#   allowed_tools tools the item may use (generate mode uses none)
+#   acceptance    criteria a reviewer checks the output against
+
+schema: selva.credit-investment-backlog/v1
+forbidden_tools: # never allowed for any item, whatever its list says
+  - send_email
+  - send_marketing_email
+  - send_notification
+  - sms_send
+  - whatsapp_send_template
+  - telegram_send_message
+  - discord_send_message
+  - bluesky_post
+  - linkedin_post
+  - mastodon_post
+  - reddit_post
+  - x_post
+  - crm_update
+  - create_lead
+  - update_lead_status
+  - git_push
+  - git_commit
+  - git_create_pr
+  - deploy_trigger
+  - generate_quote
+  - factory_manifest_publish
+  - create_checkout_link
+  - dhanam_subscription_create
+  - dhanam_subscription_update
+  - spei_transfer_initiate
+  - cfdi_stamp
+
+items:
+  # ── (a) Factory-manifest schema v1 + draft manifests ──────────────────
+  - id: fm-schema-v1
+    rank: 10
+    line: faap
+    objective: >-
+      One factory-manifest contract for every MADFAM service, so Selva can
+      discover, verify and route work to each factory line.
+    deliverable: >-
+      A JSON Schema (draft 2020-12) for `selva.factory-manifest/v1` that
+      reconciles the repo build-shape manifest (`.factory/manifest.json`:
+      name, version, build, test) with Routecraft's product-facing
+      `.factory-manifest.json` (factory_id, inputs/outputs schema, price,
+      sla, endpoint, dependencies). Sections: identity, line, capabilities,
+      inputs, outputs, SLAs, price references (catalog SKU ids from the
+      Tulana/Dhanam catalog, never literal prices), consent/data class,
+      build/test. Include a field-by-field mapping table from both sources,
+      the served location (`/.well-known/factory-manifest.json` plus repo
+      copy) and a migration note for `factory_manifest_verify`.
+    mode: generate
+    tiers: [opus, sonnet]
+    budget_share: 0.08
+    max_output_tokens: 12000
+    context:
+      - {repo: selva-office, path: packages/tools/src/selva_tools/builtins/factory_manifest.py}
+      - {repo: routecraft, path: .factory-manifest.json}
+    allowed_tools: []
+    acceptance:
+      - Valid JSON Schema that parses; every Routecraft key and every build-shape key is mapped or explicitly dropped with a reason.
+      - Prices appear only as catalog references (SKU/plan ids), never as amounts.
+      - Consent/data-classification section present.
+
+  - id: fm-drafts-software
+    rank: 20
+    line: software
+    objective: Draft manifests for the software line against schema v1.
+    deliverable: >-
+      Draft `selva.factory-manifest/v1` JSON for enclii, janua and selva,
+      each with capabilities, inputs, outputs, SLA targets marked
+      "proposed", catalog price refs marked "to confirm", and a list of
+      open questions per service.
+    mode: generate
+    tiers: [sonnet, opus, haiku]
+    budget_share: 0.05
+    max_output_tokens: 10000
+    context:
+      - {repo: enclii, path: README.md}
+      - {repo: janua, path: README.md}
+      - {repo: selva-office, path: README.md}
+    allowed_tools: []
+    acceptance:
+      - One JSON document per service; no invented endpoints (unknowns go to open questions).
+
+  - id: fm-drafts-geometry
+    rank: 21
+    line: geometry
+    objective: Draft manifests for the geometry line against schema v1.
+    deliverable: >-
+      Draft manifests for yantra4d, geom-core, pliego, fashion-cabinet and
+      ceq (generative 3D only), same rules as the software drafts.
+    mode: generate
+    tiers: [sonnet, opus, haiku]
+    budget_share: 0.05
+    max_output_tokens: 10000
+    context:
+      - {repo: yantra4d, path: README.md}
+      - {repo: geom-core, path: README.md}
+      - {repo: pliego, path: README.md}
+    allowed_tools: []
+    acceptance:
+      - One JSON document per service; ceq limited to generative image/3D (no text inference, which is Selva's).
+
+  - id: fm-drafts-physical
+    rank: 22
+    line: physical
+    objective: Draft manifests for the physical-goods line against schema v1.
+    deliverable: >-
+      Draft manifests for cotiza, pravara-mes and forgesight, keeping the
+      ruled ownership: Cotiza quotes, Pravara dispatches and runs MADFAM
+      machines, Selva only reads production status.
+    mode: generate
+    tiers: [sonnet, opus, haiku]
+    budget_share: 0.05
+    max_output_tokens: 10000
+    context:
+      - {repo: cotiza, path: README.md}
+      - {repo: pravara-mes, path: README.md}
+      - {repo: forgesight, path: README.md}
+    allowed_tools: []
+    acceptance:
+      - Ownership boundaries match the ruled SoC; market-verified price contract preserved for Cotiza.
+
+  # ── (b) Factory-line skills + phygital graph design ───────────────────
+  - id: skills-factory-lines
+    rank: 30
+    line: faap
+    objective: Give each factory line a first-party skill so agents get the right tools.
+    deliverable: >-
+      Three SKILL.md drafts (software-factory, geometry-factory,
+      physical-goods-factory) in the repo's frontmatter format (name,
+      description, audience: platform, allowed_tools, metadata) plus the
+      instruction body, en and es-MX. allowed_tools limited to read/draft
+      tools and HITL-gated writes; never send/post/CRM/billing/push tools.
+    mode: generate
+    tiers: [opus, sonnet]
+    budget_share: 0.06
+    max_output_tokens: 12000
+    context:
+      - {repo: selva-office, path: packages/skills/skill-definitions/cluster-triage/SKILL.md}
+      - {repo: selva-office, path: packages/tools/src/selva_tools/builtins/phygital_tools.py}
+    allowed_tools: []
+    acceptance:
+      - Frontmatter parses and matches existing SKILL.md shape; every listed tool exists in Selva.
+      - No forbidden tool appears in any allowed_tools list.
+
+  - id: phygital-graph-design
+    rank: 31
+    line: physical
+    objective: Design the missing graphs/phygital.py (ROADMAP F-series).
+    deliverable: >-
+      A design doc: state shape, nodes (design -> run_dfm_analysis ->
+      generate_quote with require_market_verified -> HITL -> read Pravara
+      status), interrupt points, failure modes (fail visible), tests
+      against the vendored route fixtures, and a rewired 3d-modeling
+      workflow template. Design only, no code to merge.
+    mode: generate
+    tiers: [opus, sonnet]
+    budget_share: 0.06
+    max_output_tokens: 12000
+    context:
+      - {repo: selva-office, path: packages/tools/src/selva_tools/builtins/phygital_tools.py}
+      - {repo: selva-office, path: docs/rfcs/phygital-quote-truth-contract.md}
+      - {repo: selva-office, path: apps/workers/selva_workers/graphs/coding.py}
+    allowed_tools: []
+    acceptance:
+      - generate_quote sits behind a HITL interrupt; Pravara access is read-only.
+      - Every node lists its failure behaviour; no placeholder fallbacks.
+
+  # ── (c) Routing benchmark eval set ────────────────────────────────────
+  - id: eval-set-text-routing
+    rank: 40
+    line: faap
+    objective: A Selva-side benchmark so model routing is chosen on value per dollar.
+    deliverable: >-
+      An eval set per task type (planning, coding, review, research, crm,
+      support): 15 items each as JSONL lines {id, task_type, prompt,
+      reference_points, rubric}, built only from MADFAM public material (no
+      client data), plus a grading rubric (0-1 scale) and a runner outline
+      over ModelRouter per task type.
+    mode: generate
+    tiers: [opus, sonnet]
+    budget_share: 0.10
+    max_output_tokens: 16000
+    context:
+      - {repo: selva-office, path: infra/k8s/production/org-config.yaml}
+    allowed_tools: []
+    acceptance:
+      - 90 items total, 15 per task type; every item has a rubric with observable criteria.
+      - No personal or client data.
+
+  # ── (d) Code-review sweeps of public trifecta repos ───────────────────
+  - id: review-cotiza-quote-path
+    rank: 50
+    line: physical
+    objective: Find correctness/security defects on the quote hot path.
+    deliverable: >-
+      A findings report (severity, file:line, evidence, suggested fix) for
+      the provided files. Findings only; no PR comments.
+    mode: generate
+    tiers: [opus, sonnet]
+    budget_share: 0.05
+    max_output_tokens: 8000
+    context:
+      - {repo: cotiza, path: README.md}
+    allowed_tools: []
+    acceptance:
+      - Every finding cites a line in the provided context; "no findings" is a valid answer.
+
+  - id: review-selva-dispatch-path
+    rank: 51
+    line: software
+    objective: Defense-in-depth review of Selva's own dispatch path.
+    deliverable: >-
+      Findings report for swarm dispatch (tenant scoping of agent
+      auto-select, audience gate shadow mode, outbox), with severity and
+      suggested fixes.
+    mode: generate
+    tiers: [opus, sonnet]
+    budget_share: 0.05
+    max_output_tokens: 8000
+    context:
+      - {repo: selva-office, path: apps/nexus-api/nexus_api/routers/swarms.py}
+    allowed_tools: []
+    acceptance:
+      - Each finding cites file:line from the provided file.
+
+  - id: review-yantra4d-render-path
+    rank: 52
+    line: geometry
+    objective: Review the render/analyze surface Selva's phygital tools call.
+    deliverable: Findings report for the provided files (render, DFM analyze, quote request).
+    mode: generate
+    tiers: [opus, sonnet]
+    budget_share: 0.04
+    max_output_tokens: 8000
+    context:
+      - {repo: yantra4d, path: README.md}
+    allowed_tools: []
+    acceptance:
+      - Each finding cites file:line from the provided context.
+
+  # ── (e) Internal positioning drafts ───────────────────────────────────
+  - id: positioning-internal
+    rank: 60
+    line: faap
+    objective: Internal factory-of-factories positioning for the messaging house.
+    deliverable: >-
+      Internal positioning brief (en + es-MX): the three lines,
+      Factory-as-a-Product as the offer, proof points that exist today vs
+      gaps, and copy candidates for the messaging house to rule on. Marked
+      INTERNAL — held by R130, not for any public surface.
+    mode: generate
+    tiers: [sonnet, opus, haiku]
+    budget_share: 0.03
+    max_output_tokens: 6000
+    context:
+      - {repo: selva-office, path: docs/drafts/factory-of-factories-positioning.md}
+    allowed_tools: []
+    acceptance:
+      - Claims are limited to capabilities that exist; gaps are labelled as gaps.
+
+  - id: research-factory-landscape
+    rank: 70
+    line: faap
+    objective: Landscape of factory-as-a-product / distributed manufacturing offers.
+    deliverable: A research report with sources (research graph, read-only web search).
+    mode: dispatch
+    graph: research
+    tiers: [opus, sonnet]
+    budget_share: 0.04
+    allowed_tools: [web_search, file_read]
+    acceptance:
+      - Every claim has a cited source; no outreach of any kind.
