@@ -10,6 +10,8 @@ from typing import Any
 
 import structlog
 
+from selva_observability.redaction import redact_credentials_processor
+
 
 def configure_logging(
     service_name: str = "unknown",
@@ -49,9 +51,17 @@ def configure_logging(
         cache_logger_on_first_use=True,
     )
 
+    # The formatter chain runs for BOTH structlog-native events and stdlib
+    # ``logging`` records, so credential redaction lives here (defense in
+    # depth behind call-site ``redact_url``). ``format_exc_info`` renders a
+    # stdlib record's exc_info to text first, so exception messages that embed
+    # a DSN (e.g. a URL parse error) are redacted too; it is a no-op for
+    # structlog-native events, which already ran it in ``shared_processors``.
     formatter = structlog.stdlib.ProcessorFormatter(
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.processors.format_exc_info,
+            redact_credentials_processor,
             renderer,
         ],
     )

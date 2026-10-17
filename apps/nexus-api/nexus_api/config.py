@@ -9,6 +9,8 @@ from typing import Annotated
 from pydantic import AliasChoices, BeforeValidator, Field, model_validator
 from pydantic_settings import BaseSettings, NoDecode
 
+from selva_observability import redact_url
+
 # Resolve project root so env_file works regardless of CWD.
 # config.py -> nexus_api -> nexus-api -> apps -> project root
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -267,6 +269,9 @@ class Settings(BaseSettings):
         "env_file": (str(_PROJECT_ROOT / ".env"), ".env"),
         "env_file_encoding": "utf-8",
         "extra": "ignore",
+        # A failed validation must not echo every env-sourced value (DSNs,
+        # API keys) into the crash log via pydantic's ``input_value=...``.
+        "hide_input_in_errors": True,
         "populate_by_name": True,
     }
 
@@ -283,13 +288,13 @@ class Settings(BaseSettings):
         if not self.database_url.startswith(("postgresql", "sqlite")):
             raise ValueError(
                 f"DATABASE_URL must start with 'postgresql' or 'sqlite', "
-                f"got: {self.database_url[:20]}..."
+                f"got: {redact_url(self.database_url)}"
             )
 
         if not self.redis_url.startswith("redis"):
             raise ValueError(
                 f"REDIS_URL must start with 'redis://' or 'rediss://', "
-                f"got: {self.redis_url[:20]}..."
+                f"got: {redact_url(self.redis_url)}"
             )
 
         if self.colyseus_secret == "change-me-in-production" and self.environment != "development":
