@@ -574,3 +574,55 @@ class TestRouterHook:
             _req(task_type="planning")
         )
         assert resp.provider == "anthropic" and anth.calls == ["claude-opus-5-5"]
+
+
+class TestOrgOverrideInteraction:
+    """LP's per-org overrides (#326) + the grant guard."""
+
+    def _router(self, guard: g.GrantGuard, **providers: _Provider) -> ModelRouter:
+        from madfam_inference.org_config import OrgOverride
+
+        org = OrgConfig(
+            cloud_priority=["deepinfra"],
+            model_assignments={
+                TaskType.PLANNING: ModelAssignment(provider="deepinfra", model="global-llama"),
+            },
+            org_overrides={
+                "madfam": OrgOverride(
+                    cloud_priority=["anthropic", "deepinfra"],
+                    model_assignments={
+                        TaskType.PLANNING: ModelAssignment(
+                            provider="anthropic", model="claude-opus-5-5"
+                        ),
+                    },
+                )
+            },
+        )
+        return ModelRouter(providers=dict(providers), org_config=org, grant_guard=guard)
+
+    async def test_override_used_under_live_grant(self, redis: Any) -> None:
+        guard = _guard(redis, _grant_dict())
+        anth, deep = _Provider("anthropic"), _Provider("deepinfra")
+        resp = await self._router(guard, anthropic=anth, deepinfra=deep).complete(
+            _req(task_type="planning")
+        )
+        assert resp.provider == "anthropic" and anth.calls == ["claude-opus-5-5"]
+
+    async def test_dead_grant_falls_back_to_global_assignment_model(self, redis: Any) -> None:
+        guard = _guard(redis, _grant_dict(), clock=_Clock(NOW + timedelta(days=3)))
+        anth, deep = _Provider("anthropic"), _Provider("deepinfra")
+        resp = await self._router(guard, anthropic=anth, deepinfra=deep).complete(
+            _req(task_type="planning")
+        )
+        assert resp.provider == "deepinfra"
+        assert anth.calls == [] and deep.calls == ["global-llama"]
+
+    async def test_other_tenant_untouched(self, redis: Any) -> None:
+        guard = _guard(redis, _grant_dict())
+        anth, deep = _Provider("anthropic"), _Provider("deepinfra")
+        resp = await self._router(guard, anthropic=anth, deepinfra=deep).complete(
+            _req(task_type="planning", org="tenant-x")
+        )
+        assert resp.provider == "deepinfra" and deep.calls == ["global-llama"]
+        [status] = await guard.statuses()
+        assert status.spent_usd == 0.0
