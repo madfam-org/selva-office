@@ -76,6 +76,63 @@ data:
     cheapest_priority:
       - deepinfra
 
+    # ── Per-org overrides ─────────────────────────────────────────────────
+    # ONLY the named org (or an alias) routes differently; every other tenant
+    # uses the global assignments + priority lists above, unchanged.
+    # madfam = Selva's own tenant (PLATFORM_ORG_ID). Its Anthropic routes are
+    # usable only under a provider credit grant (PROVIDER_GRANTS_* — see the
+    # grants loader): without a valid grant for this org, or without
+    # ANTHROPIC_API_KEY mounted, Anthropic is unavailable for the call and
+    # the request falls back to the global DeepInfra assignment for the same
+    # task type. Add the org's Janua org UUID under `aliases` so tasks
+    # dispatched with a Janua token (org_id = the Janua org UUID) match too.
+    org_overrides:
+      madfam:
+        aliases: []
+        # deepinfra first: untyped requests keep today's default provider;
+        # only the task types assigned below go to Anthropic.
+        cloud_priority:
+          - deepinfra
+          - anthropic
+        cheapest_priority:
+          - deepinfra
+          - anthropic
+        model_assignments:
+          planning:
+            provider: anthropic
+            model: claude-opus-5-5
+            max_tokens: 8192
+          coding:
+            provider: anthropic
+            model: claude-opus-5-5
+            max_tokens: 8192
+          review:
+            provider: anthropic
+            model: claude-opus-5-5
+            max_tokens: 4096
+          research:
+            provider: anthropic
+            model: claude-opus-5-5
+            max_tokens: 8192
+          fast_coding:
+            provider: anthropic
+            model: claude-sonnet-5-5
+            max_tokens: 4096
+          crm:
+            provider: anthropic
+            model: claude-sonnet-5-5
+            max_tokens: 4096
+          support:
+            provider: anthropic
+            model: claude-sonnet-5-5
+            max_tokens: 2048
+          vision:
+            provider: anthropic
+            model: claude-sonnet-5-5
+            max_tokens: 4096
+          # embedding: not overridden — stays on the global DeepInfra model.
+        notes: "MADFAM tenant routes to Anthropic only under a provider credit grant; DeepInfra is the fallback."
+
     # ── External service accounts ─────────────────────────────────────────
     services:
       resend:
@@ -98,16 +155,17 @@ data:
         service_type: llm
         api_key_env: ANTHROPIC_API_KEY
         plan: pay_as_you_go
-        plan_details: "Pay-per-token. Opus 4.7, Sonnet 4.6, Haiku 4.5 available."
+        plan_details: "Pay-per-token. Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5 available."
         payment_method: credit_card
         capacity:
           models:
-            - claude-opus-4-7
-            - claude-sonnet-4-6
-            - claude-haiku-4-5-20251001
+            - claude-fable-5-1
+            - claude-opus-5-5
+            - claude-sonnet-5-5
+            - claude-haiku-5-5
         consumption_tracking: true
-        status: disabled
-        notes: "Disabled in Selva production while credits are unavailable; do not mount ANTHROPIC_API_KEY until funded capacity is restored."
+        status: active
+        notes: "Usable ONLY under a provider credit grant (PROVIDER_GRANTS_REQUIRED_FOR=anthropic): no valid, unexpired, unexhausted grant for the request's org means Anthropic is unavailable for that call. Routed for the madfam tenant only (org_overrides.madfam); every other tenant stays on DeepInfra."
 
       deepinfra:
         provider: deepinfra
@@ -218,7 +276,7 @@ data:
       - topic: verified_domains
         fact: "Verified sender domains: madfam.io, janua.dev. Pending: selva.town, karafiel.mx, dhan.am, tezca.mx, forj.design, cotiza.studio, fortuna.tube, yantra4d.com."
       - topic: llm_providers
-        fact: "Primary LLM: DeepInfra for planning, coding, review, research, CRM, support, vision, and embeddings while other providers have no active credits. All ecosystem inference centralized through Selva nexus-api /v1 proxy."
+        fact: "Primary LLM: DeepInfra for planning, coding, review, research, CRM, support, vision, and embeddings for every tenant. MADFAM's own tenant routes planning/coding/review/research to Claude Opus 5.5 and fast_coding/CRM/support/vision to Claude Sonnet 5.5 only while a provider credit grant is valid, falling back to DeepInfra. All ecosystem inference centralized through Selva nexus-api /v1 proxy."
       - topic: billing_infrastructure
         fact: "Stripe Mexico (MXN) via Dhanam. 6 products, 15 prices. Checkout domains: selva.town, karafiel.mx, tezca.mx, fortuna.tube, forgesight.quest, avala.studio, cotiza.studio, forj.design, yantra4d.com."
 

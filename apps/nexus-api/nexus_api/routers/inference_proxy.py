@@ -629,6 +629,8 @@ async def chat_completions(
         temperature=body.temperature if body.temperature is not None else 0.7,
         task_type=x_task_type,
         model_override=model_override,
+        # The authenticated tenant: selects org-config ``org_overrides``.
+        org_id=org_id,
     )
     if task_exception is not None:
         # The exception names the providers, their order and their models;
