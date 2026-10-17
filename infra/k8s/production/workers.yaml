@@ -63,6 +63,16 @@ spec:
             # on the provider grant in Vault. Idle unless both are set.
             - name: CREDIT_AUTOPILOT_ENABLED
               value: "true"
+            # Long Opus generations send no bytes until done; 120 s killed them
+            # as empty ReadTimeouts. The grant reservation must outlive the
+            # call so an in-flight call stays counted against the ceiling.
+            - name: ANTHROPIC_TIMEOUT_SECONDS
+              value: "600"
+            - name: PROVIDER_GRANTS_RESERVATION_TTL_SECONDS
+              value: "660"
+            # Items that failed on the old timeout get two more attempts.
+            - name: CREDIT_AUTOPILOT_MAX_ATTEMPTS
+              value: "4"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
