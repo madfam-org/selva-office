@@ -828,10 +828,10 @@ class ModelRouter:
                 return
             if captured:
                 last = captured[-1]
-                await res.settle(
-                    last.model or request.policy.model_override,
-                    {"input_tokens": last.input_tokens, "output_tokens": last.output_tokens},
-                )
+                # Every integer usage field (incl. cache read/write tokens when
+                # the provider reports them) prices the settle.
+                usage = {k: v for k, v in last.model_dump().items() if isinstance(v, int)}
+                await res.settle(last.model or request.policy.model_override, usage)
             elif emitted:
                 await res.settle_worst_case()
             else:
