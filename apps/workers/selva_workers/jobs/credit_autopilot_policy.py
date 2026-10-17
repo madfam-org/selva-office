@@ -24,6 +24,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from .credit_autopilot_steps import Target, targets_for
+
 #: Model id per tier (current Anthropic ids).
 TIER_MODELS: dict[str, str] = {
     "opus": "claude-opus-5-5",
@@ -40,7 +42,7 @@ IN_FLIGHT_STATUSES = frozenset({"pending", "queued", "running"})
 DONE_STATUSES = frozenset({"completed"})
 #: Graphs the autopilot may dispatch: read-only (LLM + search) only.
 SAFE_DISPATCH_GRAPHS = frozenset({"research"})
-SUPPORTED_MODES = frozenset({"generate", "dispatch"})
+SUPPORTED_MODES = frozenset({"generate", "dispatch", "benchmark"})
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,17 @@ class BacklogItem:
     context: tuple[tuple[str, str], ...] = ()
     allowed_tools: tuple[str, ...] = ()
     acceptance: tuple[str, ...] = ()
+    #: Multi-step fields (see credit_autopilot_steps).
+    fanout: tuple[Target, ...] = ()
+    refine_rounds: int = 0
+    depends_on: tuple[str, ...] = ()
+    output: str = "markdown"
+    json_min_items: int = 0
+    parallel: int = 2
+    benchmark: tuple[tuple[str, Any], ...] = ()
+
+    def targets(self) -> list[Target]:
+        return list(self.fanout) or [Target(id=self.id)]
 
 
 @dataclass(frozen=True)
@@ -83,7 +96,7 @@ class ItemState:
 @dataclass(frozen=True)
 class AutopilotConfig:
     floor_usd: float = 2.0
-    max_concurrency: int = 2
+    max_concurrency: int = 6
     max_attempts: int = 2
     min_seconds_to_expiry: float = 900.0
     short_time_seconds: float = 3600.0
@@ -245,6 +258,12 @@ def plan_dispatch(
             if state.attempts >= cfg.max_attempts:
                 decision.skipped[item.id] = "max attempts reached"
                 continue
+        unmet = [
+            d for d in item.depends_on if (states.get(d) is None or states[d].status != "completed")
+        ]
+        if unmet:
+            decision.skipped[item.id] = f"waiting on {', '.join(unmet)}"
+            continue
         if item.mode not in SUPPORTED_MODES:
             decision.skipped[item.id] = f"unsupported mode {item.mode}"
             continue
@@ -311,6 +330,16 @@ def parse_backlog(data: Any) -> list[BacklogItem]:
         mode = str(raw.get("mode") or "")
         if mode not in SUPPORTED_MODES:
             raise BacklogError(f"{item_id}: mode must be one of {sorted(SUPPORTED_MODES)}")
+        try:
+            fanout = tuple(targets_for(raw.get("fanout"), item_id)) if raw.get("fanout") else ()
+        except ValueError as exc:
+            raise BacklogError(str(exc)) from exc
+        output = str(raw.get("output") or "markdown")
+        if output not in {"markdown", "json"}:
+            raise BacklogError(f"{item_id}: output must be markdown or json")
+        bench = raw.get("benchmark") or {}
+        if mode == "benchmark" and not (isinstance(bench, Mapping) and bench.get("source_item")):
+            raise BacklogError(f"{item_id}: benchmark mode needs benchmark.source_item")
         context = tuple(
             (str(c["repo"]), str(c["path"]))
             for c in raw.get("context") or []
@@ -331,8 +360,20 @@ def parse_backlog(data: Any) -> list[BacklogItem]:
                 context=context,
                 allowed_tools=tools,
                 acceptance=tuple(str(a) for a in raw.get("acceptance") or []),
+                fanout=fanout,
+                refine_rounds=max(0, min(3, int(raw.get("refine_rounds", 0) or 0))),
+                depends_on=tuple(str(d) for d in raw.get("depends_on") or []),
+                output=output,
+                json_min_items=int(raw.get("json_min_items") or 0),
+                parallel=max(1, min(6, int(raw.get("parallel") or 2))),
+                benchmark=tuple(sorted(bench.items())) if isinstance(bench, Mapping) else (),
             )
         )
+    known = {i.id for i in items}
+    for it in items:
+        missing = [d for d in it.depends_on if d not in known]
+        if missing:
+            raise BacklogError(f"{it.id}: depends_on unknown item(s) {missing}")
     if total_share > 1.0 + 1e-9:
         raise BacklogError(f"budget shares add up to {total_share:.2f} (> 1.0)")
     return items

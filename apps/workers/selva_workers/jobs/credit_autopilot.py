@@ -90,7 +90,7 @@ def load_config() -> AutopilotConfig:
 
     return AutopilotConfig(
         floor_usd=num("CREDIT_AUTOPILOT_FLOOR_USD", 2.0),
-        max_concurrency=max(1, int(num("CREDIT_AUTOPILOT_MAX_CONCURRENCY", 2))),
+        max_concurrency=max(1, int(num("CREDIT_AUTOPILOT_MAX_CONCURRENCY", 6))),
         max_attempts=max(1, int(num("CREDIT_AUTOPILOT_MAX_ATTEMPTS", 2))),
     )
 
@@ -136,9 +136,10 @@ _STATES_SQL = """
 SELECT id::text AS id, status,
        (payload::jsonb -> 'credit_autopilot' ->> 'item_id') AS item_id,
        (status IN ('pending', 'queued', 'running')
-        AND updated_at < NOW() - INTERVAL '45 minutes') AS stale
+        AND updated_at < NOW() - INTERVAL '60 minutes') AS stale
   FROM swarm_tasks
  WHERE org_id = :org
+   AND parent_task_id IS NULL
    AND labels::jsonb ? :label
 """
 
@@ -255,7 +256,9 @@ async def _create_task(
                 "payload": json.dumps(payload),
                 "status": "running" if generate else "pending",
                 "kanban_status": "in_progress" if generate else "todo",
-                "labels": json.dumps([LABEL, f"line:{sel.item.line}", sel.item.id]),
+                "labels": json.dumps(
+                    [LABEL, f"line:{sel.item.line}", sel.item.id, f"item:{sel.item.id}"]
+                ),
                 "org": org,
                 "started_at": datetime.now(UTC) if generate else None,
             },
@@ -309,15 +312,17 @@ async def _finish_task(
 # -- generate mode -------------------------------------------------------------
 
 
-async def fetch_context(item: BacklogItem) -> tuple[list[tuple[str, str]], list[str]]:
-    """Fetch the item's public madfam-org files (read-only). Returns (files, missing)."""
+async def fetch_context(
+    context: tuple[tuple[str, str], ...],
+) -> tuple[list[tuple[str, str]], list[str]]:
+    """Fetch public madfam-org files (read-only). Returns (files, missing)."""
     import httpx
 
     files: list[tuple[str, str]] = []
     missing: list[str] = []
     total = 0
     async with httpx.AsyncClient(timeout=15.0, follow_redirects=False) as client:
-        for repo, path in item.context:
+        for repo, path in context:
             label = f"{repo}/{path}"
             if "/" in repo or ".." in path or path.startswith("/"):
                 missing.append(f"{label} (rejected path)")
@@ -359,81 +364,6 @@ def _load_line_context(line_id: str) -> str:
     except Exception:
         logger.debug("factory-lines roster unavailable", exc_info=True)
     return ""
-
-
-async def run_generate(sel: Selection, org: str, task_id: str, provider: str) -> dict[str, Any]:
-    """One router call with the provider and model pinned. Raises on failure."""
-    from madfam_inference.types import InferenceRequest, RoutingPolicy, Sensitivity
-
-    from ..inference import get_model_router
-    from ..metering import meter_inference_call
-
-    files, missing = await fetch_context(sel.item)
-    if sel.item.context and not files:
-        raise RuntimeError(f"no context could be fetched: {', '.join(missing)}")
-
-    context_block = "\n\n".join(f"### FILE {label}\n```\n{body}\n```" for label, body in files)
-    acceptance = "\n".join(f"- {a}" for a in sel.item.acceptance)
-    prompt = (
-        f"{_load_line_context(sel.item.line)}\n\nObjective: {sel.item.objective}\n\n"
-        f"Deliverable: {sel.item.deliverable}\n\nAcceptance criteria:\n{acceptance}\n\n"
-        + (f"Missing context (say so, do not invent): {', '.join(missing)}\n\n" if missing else "")
-        + (f"Context files:\n\n{context_block}" if context_block else "")
-    )
-    system = (
-        "You are a senior engineer in MADFAM's own Selva tenant producing a reviewable "
-        "draft. Output only the deliverable in Markdown (JSON/YAML in fenced blocks). "
-        "Never invent endpoints, prices, customers or facts not in the context; list "
-        "unknowns as open questions. Do not include monetary amounts."
-    )
-    policy_fields: dict[str, Any] = {
-        "sensitivity": Sensitivity.INTERNAL,
-        "max_tokens": sel.item.max_output_tokens,
-        "temperature": 0.3,
-        "provider_allowlist": [provider],
-        "provider_models": {provider: sel.model},
-    }
-    if "org_id" in RoutingPolicy.model_fields:
-        policy_fields["org_id"] = org
-    request = InferenceRequest(
-        messages=[{"role": "user", "content": prompt}],
-        system_prompt=system,
-        policy=RoutingPolicy(**policy_fields),
-    )
-    response = await get_model_router().complete(request)
-    if not (response.content or "").strip():
-        raise RuntimeError("empty completion")
-    usage = dict(response.usage or {})
-    if usage:
-        await meter_inference_call(
-            usage=usage,
-            provider=response.provider,
-            model=response.model,
-            task_id=task_id,
-            org_id=org,
-        )
-    return {
-        "content": response.content,
-        "provider": response.provider,
-        "model": response.model,
-        "usage": usage,
-        "context_files": [label for label, _ in files],
-        "missing_context": missing,
-    }
-
-
-async def _run_generate_item(engine: Any, org: str, sel: Selection, grant: Any) -> None:
-    task_id, payload = await _create_task(engine, org, sel, grant.id, generate=True)
-    try:
-        result = await run_generate(sel, org, task_id, grant.provider)
-    except Exception as exc:
-        logger.warning("credit autopilot item %s failed: %s", sel.item.id, exc)
-        payload["result"] = {"error": f"{exc.__class__.__name__}: {exc}"[:2000]}
-        await _finish_task(engine, org, task_id, payload, ok=False, error=str(exc))
-        return
-    payload["result"] = result
-    await _finish_task(engine, org, task_id, payload, ok=True)
-    logger.info("credit autopilot item %s completed (task %s)", sel.item.id, task_id)
 
 
 # -- tick ----------------------------------------------------------------------
@@ -504,7 +434,9 @@ async def _run_generate_in_own_engine(db_url: str, org: str, sel: Selection, gra
 
     engine = create_async_engine(db_url, pool_pre_ping=True)
     try:
-        await _run_generate_item(engine, org, sel, grant)
+        from .credit_autopilot_exec import run_item
+
+        await run_item(engine, org, sel, grant)
     except Exception:
         logger.exception("credit autopilot generate item %s crashed", sel.item.id)
     finally:

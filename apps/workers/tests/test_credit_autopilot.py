@@ -301,5 +301,5 @@ def test_idle_when_no_autopilot_grant(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_fetch_context_rejects_paths_outside_org() -> None:
     bad = item(context=(("other/repo", "README.md"), ("selva-office", "../etc/passwd")))
-    files, missing = asyncio.run(ap.fetch_context(bad))
+    files, missing = asyncio.run(ap.fetch_context(bad.context))
     assert files == [] and len(missing) == 2 and all("rejected" in m for m in missing)
