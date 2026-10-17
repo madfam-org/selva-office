@@ -485,3 +485,13 @@ def test_bench_prompt_runs_both_judges(monkeypatch: pytest.MonkeyPatch) -> None:
     assert judge_models == [TIER_MODELS["opus"], TIER_MODELS["sonnet"]]
     rows = run.saved["crm-001"]["result"]["rows"]  # type: ignore[attr-defined]
     assert all(set(r["quality_by_judge"]) == {"opus", "sonnet"} for r in rows)
+
+
+def test_step_cost_uses_current_prices_and_cache_args() -> None:
+    m = 1_000_000
+    assert ex.step_cost("anthropic", "claude-opus-5-5", {"input_tokens": m}) == pytest.approx(4.0)
+    assert ex.step_cost("anthropic", "claude-sonnet-5-5", {"output_tokens": m}) == pytest.approx(
+        10.0
+    )
+    cached = ex.step_cost("anthropic", "claude-opus-5-5", {"cache_read_input_tokens": m})
+    assert cached == pytest.approx(0.20)

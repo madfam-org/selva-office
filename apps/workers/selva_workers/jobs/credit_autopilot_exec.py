@@ -92,12 +92,24 @@ SELECT payload FROM swarm_tasks
 
 def step_cost(provider: str, model: str, usage: dict[str, Any]) -> float:
     inp, out = int(usage.get("input_tokens", 0) or 0), int(usage.get("output_tokens", 0) or 0)
+    cache_read = int(usage.get("cache_read_input_tokens", 0) or 0)
+    cache_write = int(usage.get("cache_creation_input_tokens", 0) or 0)
     try:
         from madfam_budget_gate.cost_model import estimate_cost
 
-        return float(estimate_cost(provider, model, inp, out))
+        return float(
+            estimate_cost(
+                provider,
+                model,
+                inp,
+                out,
+                cache_read_tokens=cache_read,
+                cache_creation_tokens=cache_write,
+            )
+        )
     except Exception:
-        return (inp * _FALLBACK_PRICE[0] + out * _FALLBACK_PRICE[1]) / 1_000_000
+        billable_in = inp + cache_read + cache_write
+        return (billable_in * _FALLBACK_PRICE[0] + out * _FALLBACK_PRICE[1]) / 1_000_000
 
 
 async def call_model(
@@ -125,7 +137,9 @@ async def call_model(
         "provider_allowlist": [provider],
         "provider_models": {provider: model} if model else {},
     }
-    if org is not None and "org_id" in RoutingPolicy.model_fields:
+    if org is not None:
+        # The tenant org (LP's RoutingPolicy.org_id): selects the org override
+        # and lets the grant guard admit the call. None = global routing.
         fields["org_id"] = org
     request = InferenceRequest(
         messages=[{"role": "user", "content": prompt}],
@@ -146,6 +160,7 @@ async def call_model(
             model=response.model,
             task_id=task_id,
             org_id=meter_org,
+            task_type=task_type,
         )
     return {
         "content": response.content,
