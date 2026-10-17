@@ -79,6 +79,28 @@ class ServiceConfig(BaseModel):
     notes: str = ""
 
 
+class OrgOverride(BaseModel):
+    """Routing overrides for ONE tenant org (``org_overrides.<org>``).
+
+    Only the named org (and its ``aliases``) is affected; every other
+    tenant keeps the global ``model_assignments`` and priority lists
+    exactly as they are. Task types not listed here use the global
+    assignment. Sensitivity precedence is unchanged: an override
+    assignment whose provider is outside the request's sensitivity-allowed
+    set is refused like any other assignment.
+    """
+
+    #: Other org ids that are the same tenant (e.g. the org's Janua UUID
+    #: next to the platform slug ``madfam``).
+    aliases: list[str] = []
+    model_assignments: dict[TaskType, ModelAssignment] = {}
+    #: Replace the global lists for this org only. Must still include the
+    #: global provider so the org can fall back to it.
+    cloud_priority: list[str] | None = None
+    cheapest_priority: list[str] | None = None
+    notes: str = ""
+
+
 class OrgConfig(BaseModel):
     """Top-level org configuration loaded from YAML."""
 
@@ -90,6 +112,19 @@ class OrgConfig(BaseModel):
     services: dict[str, ServiceConfig] = {}
     embedding_provider: str = "openai"
     embedding_model: str = "text-embedding-3-small"
+    org_overrides: dict[str, OrgOverride] = {}
+
+    def override_for(self, org_id: str | None) -> OrgOverride | None:
+        """Return the ``org_overrides`` entry for ``org_id`` (key or alias)."""
+        if not org_id or not self.org_overrides:
+            return None
+        direct = self.org_overrides.get(org_id)
+        if direct is not None:
+            return direct
+        for override in self.org_overrides.values():
+            if org_id in override.aliases:
+                return override
+        return None
 
 
 def _resolve_api_key(env_var_name: str) -> str | None:
@@ -97,18 +132,42 @@ def _resolve_api_key(env_var_name: str) -> str | None:
     return os.environ.get(env_var_name)
 
 
-def _parse_yaml(raw: dict[str, Any]) -> OrgConfig:
-    """Parse a raw YAML dict into an OrgConfig, handling TaskType key conversion."""
-    # Convert string task-type keys to TaskType enums
-    if "model_assignments" in raw and isinstance(raw["model_assignments"], dict):
+def _convert_assignments(section: dict[str, Any]) -> None:
+    """Convert string task-type keys of ``section["model_assignments"]`` in place."""
+    if "model_assignments" in section and isinstance(section["model_assignments"], dict):
         converted: dict[TaskType, Any] = {}
-        for key, value in raw["model_assignments"].items():
+        for key, value in section["model_assignments"].items():
             try:
                 converted[TaskType(key)] = value
             except ValueError:
                 logger.warning("Unknown task type in org config: %s", key)
-        raw["model_assignments"] = converted
-    return OrgConfig(**raw)
+        section["model_assignments"] = converted
+
+
+def _parse_yaml(raw: dict[str, Any]) -> OrgConfig:
+    """Parse a raw YAML dict into an OrgConfig, handling TaskType key conversion."""
+    _convert_assignments(raw)
+    # Per-org overrides are validated one by one and an invalid entry is
+    # DROPPED (logged at ERROR): a typo in one tenant's override must never
+    # take down the global routing every other tenant depends on, and a
+    # dropped override means that org simply gets the global routing.
+    overrides = raw.pop("org_overrides", None)
+    parsed: dict[str, OrgOverride] = {}
+    if isinstance(overrides, dict):
+        for org, section in overrides.items():
+            if not isinstance(section, dict):
+                logger.error("org_overrides.%s is not a mapping — ignored", org)
+                continue
+            _convert_assignments(section)
+            try:
+                parsed[str(org)] = OrgOverride(**section)
+            except Exception as exc:
+                logger.error("org_overrides.%s is invalid and was NOT applied: %s", org, exc)
+    elif overrides is not None:
+        logger.error("org_overrides must be a mapping — ignored")
+    config = OrgConfig(**raw)
+    config.org_overrides = parsed
+    return config
 
 
 @lru_cache(maxsize=1)

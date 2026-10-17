@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import contextvars
 import logging
 from collections.abc import Coroutine
 from datetime import UTC
@@ -41,8 +42,11 @@ def run_async(coro: Coroutine[Any, Any, _T]) -> _T:  # noqa: UP047
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
+    # Copy the caller's context into the helper thread so task-scoped
+    # ContextVars (the task org for call_llm, the swarm audience) survive.
+    ctx = contextvars.copy_context()
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
+        return pool.submit(ctx.run, asyncio.run, coro).result()
 
 
 # -- Real permission engine and classifier ------------------------------------

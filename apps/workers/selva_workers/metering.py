@@ -20,13 +20,23 @@ async def meter_inference_call(
     agent_id: str | None = None,
     task_id: str | None = None,
     org_id: str = "default",
+    task_type: str | None = None,
 ) -> None:
     """POST token usage to the nexus-api billing record endpoint.
+
+    Sends the input/output/cache token split and the task type so nexus-api
+    prices the call (``cost_usd``) with the shared cost model.
 
     This is a fire-and-forget operation -- failures are logged but do not
     propagate so that inference calls are never blocked by metering issues.
     """
-    total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+    input_tokens = int(usage.get("input_tokens", 0) or 0)
+    output_tokens = int(usage.get("output_tokens", 0) or 0)
+    cache_read = int(usage.get("cache_read_input_tokens", 0) or 0)
+    cache_creation = int(usage.get("cache_creation_input_tokens", 0) or 0)
+    # ``amount`` keeps its meaning (uncached input + output tokens, which the
+    # per-org token budgets count); cache tokens travel separately for USD.
+    total_tokens = input_tokens + output_tokens
     if total_tokens <= 0:
         return
 
@@ -39,6 +49,11 @@ async def meter_inference_call(
         "agent_id": agent_id,
         "task_id": task_id,
         "org_id": org_id,
+        "task_type": task_type,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_tokens": cache_read,
+        "cache_creation_tokens": cache_creation,
     }
 
     try:
