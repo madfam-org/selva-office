@@ -33,9 +33,10 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from madfam_inference.grants import GrantStatus, get_default_guard, get_grant_statuses
 from selva_redis_pool import get_redis_pool
 
 from ..auth import CurrentUser, require_roles
@@ -176,3 +177,63 @@ async def get_provider_balances(
         )
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Provider credit grants (madfam_inference.grants, contract C2)
+# ---------------------------------------------------------------------------
+
+
+def _require_platform_admin(
+    user: CurrentUser = Depends(require_roles(["admin", "platform"])),
+) -> CurrentUser:
+    """Platform operators only: the ``platform`` role, or ``admin`` in the platform org.
+
+    Grant amounts are MADFAM-private, so a tenant org's admin is refused.
+    """
+    from selva_permissions import is_platform_audience
+
+    roles = user.get("roles", [])
+    if "platform" in roles or is_platform_audience(user.get("org_id")):
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Provider credit grants are visible to platform administrators only",
+    )
+
+
+class ProviderGrantsResponse(BaseModel):
+    """``GET /providers/grants`` payload."""
+
+    required_for: list[str] = Field(
+        ..., description="Providers usable only under a grant (PROVIDER_GRANTS_REQUIRED_FOR)."
+    )
+    config_source: str = Field(..., description="Where the grant config was read from.")
+    config_error: str | None = Field(
+        None, description="Set when the config is invalid; guarded providers are then unavailable."
+    )
+    grants: list[GrantStatus]
+
+
+@router.get("/grants", response_model=ProviderGrantsResponse)
+async def get_provider_grants(
+    _user: CurrentUser = Depends(_require_platform_admin),
+) -> ProviderGrantsResponse:
+    """Status of every declared provider credit grant (contract C2).
+
+    Fields per grant: ceiling / spent / reserved / remaining USD, window,
+    seconds to expiry, USD burned over the last 60 minutes, the USD/hour
+    needed to use the rest before expiry, ``pace_status`` and ``autopilot``.
+    ``meter_ok: false`` (amounts null, ``pace_status: unknown``) means the
+    Redis meter could not be read — and while that lasts, grant-guarded
+    providers are unavailable. 200 even then: surface the gap, don't hide it.
+    """
+    guard = get_default_guard()
+    state = guard.state()
+    return ProviderGrantsResponse(
+        required_for=sorted(guard.required),
+        config_source=state.source,
+        config_error=state.error,
+        grants=await get_grant_statuses(),
+    )
+

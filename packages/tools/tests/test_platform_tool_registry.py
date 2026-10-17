@@ -188,6 +188,8 @@ PLATFORM_TOOL_NAMES: frozenset[str] = frozenset(
         # Pravara-MES reads use Selva's own service identity.
         "get_production_order_status",
         "inventory_check",
+        # Provider credit-grant status — MADFAM-private amounts.
+        "inference_budget_status",
     }
 )
 

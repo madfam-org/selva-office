@@ -54,6 +54,9 @@ resources:
 - keda-trigger-auth.yaml
 - selva-secret-writer-sa.yaml
 - phynd-external-secret.yaml
+# Provider credit grants + grant-funded Anthropic key (secret/selva). Parks in
+# SecretSyncError until the Vault properties exist; consumers are optional.
+- provider-grants-external-secret.yaml
 
 commonLabels:
   app.kubernetes.io/managed-by: kustomize

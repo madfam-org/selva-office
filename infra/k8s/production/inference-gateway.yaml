@@ -6,8 +6,10 @@
 # Env mirrors nexus-api: the gateway imports the same Settings, whose
 # production validators refuse startup unless SECRET_KEY, WORKER_API_TOKEN,
 # CONSENT_LEDGER_SIGNING_SECRET, and COLYSEUS_SECRET are real (even though the
-# gateway itself never uses Colyseus). No Redis env is fine — but the settings
-# come from selva-config like nexus-api so provider config stays identical.
+# gateway itself never uses Colyseus). REDIS_URL is mounted optional and read
+# only by the provider credit-grant meter (fail-closed per guarded provider);
+# the settings come from selva-config like nexus-api so provider config stays
+# identical.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -119,6 +121,32 @@ spec:
                   optional: true
             - name: ORG_CONFIG_PATH
               value: "/etc/selva/org-config.yaml"
+            # Read ONLY by the provider credit-grant meter. Optional: without
+            # it grant-guarded providers fail closed; nothing else here uses
+            # Redis, so a Redis outage still cannot take the gateway down.
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: selva-secrets
+                  key: redis-url
+                  optional: true
+            # Provider credit grants (docs/PROVIDER_CREDIT_GRANTS.md). The key
+            # is the existing selva-llm-secrets entry (provisioned outside this
+            # repo, like DEEPINFRA_API_KEY); the grant file comes from
+            # selva-provider-grants (Vault secret/selva, optional until seeded).
+            # Mounting the key is safe on its own: REQUIRED_FOR makes Anthropic
+            # usable ONLY under a valid, unexpired, unexhausted grant for the
+            # caller's org — with no grant file it stays unusable (fail closed).
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: selva-llm-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: PROVIDER_GRANTS_PATH
+              value: "/etc/selva/provider-grants/provider-grants.json"
+            - name: PROVIDER_GRANTS_REQUIRED_FOR
+              value: "anthropic"
             # Per-tenant floors, caps, and rate limits (tenant-policies.yaml).
             # Absent file ⇒ no floors in force; the startup log says which
             # tenants loaded. See the restricted-tier operator runbook (private operations repo).
@@ -147,6 +175,9 @@ spec:
             - name: tenant-policies
               mountPath: /etc/selva/tenant-policies
               readOnly: true
+            - name: provider-grants
+              mountPath: /etc/selva/provider-grants
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
@@ -159,6 +190,13 @@ spec:
           configMap:
             name: selva-tenant-policies
             optional: true
+        - name: provider-grants
+          secret:
+            secretName: selva-provider-grants
+            optional: true
+            items:
+              - key: provider-grants.json
+                path: provider-grants.json
 ---
 apiVersion: v1
 kind: Service

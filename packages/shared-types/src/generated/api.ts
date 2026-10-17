@@ -4222,6 +4222,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/providers/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Provider Grants
+         * @description Status of every declared provider credit grant (contract C2).
+         *
+         *     Fields per grant: ceiling / spent / reserved / remaining USD, window,
+         *     seconds to expiry, USD burned over the last 60 minutes, the USD/hour
+         *     needed to use the rest before expiry, ``pace_status`` and ``autopilot``.
+         *     ``meter_ok: false`` (amounts null, ``pace_status: unknown``) means the
+         *     Redis meter could not be read — and while that lasts, grant-guarded
+         *     providers are unavailable. 200 even then: surface the gap, don't hide it.
+         */
+        get: operations["get_provider_grants_api_v1_providers_grants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hitl/decisions": {
         parameters: {
             query?: never;
@@ -5583,6 +5610,51 @@ export interface components {
             /** Sanitized Html */
             sanitized_html: string;
         };
+        /**
+         * GrantStatus
+         * @description Grant status (contract C2). Amounts are private: platform-admin surfaces only.
+         */
+        GrantStatus: {
+            /** Id */
+            id: string;
+            /** Provider */
+            provider: string;
+            /** Ceiling Usd */
+            ceiling_usd: number;
+            /** Spent Usd */
+            spent_usd: number | null;
+            /** Reserved Usd */
+            reserved_usd: number | null;
+            /** Remaining Usd */
+            remaining_usd: number | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Seconds To Expiry */
+            seconds_to_expiry: number;
+            /** Burn Usd Per Hour 60M */
+            burn_usd_per_hour_60m: number | null;
+            /** Required Usd Per Hour */
+            required_usd_per_hour: number | null;
+            /**
+             * Pace Status
+             * @enum {string}
+             */
+            pace_status: "behind" | "on_pace" | "ahead" | "exhausted" | "expired" | "unknown";
+            /** Autopilot */
+            autopilot: boolean;
+            /** Active */
+            active: boolean;
+            /** Meter Ok */
+            meter_ok: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -6307,6 +6379,29 @@ export interface components {
              * @description One of 'ok' / 'low' / 'critical' / 'unknown'.
              */
             alert: string;
+        };
+        /**
+         * ProviderGrantsResponse
+         * @description ``GET /providers/grants`` payload.
+         */
+        ProviderGrantsResponse: {
+            /**
+             * Required For
+             * @description Providers usable only under a grant (PROVIDER_GRANTS_REQUIRED_FOR).
+             */
+            required_for: string[];
+            /**
+             * Config Source
+             * @description Where the grant config was read from.
+             */
+            config_source: string;
+            /**
+             * Config Error
+             * @description Set when the config is invalid; guarded providers are then unavailable.
+             */
+            config_error?: string | null;
+            /** Grants */
+            grants: components["schemas"]["GrantStatus"][];
         };
         /**
          * ProviderSummary
@@ -14016,6 +14111,26 @@ export interface operations {
                     "application/json": {
                         [key: string]: components["schemas"]["ProviderBalance"];
                     };
+                };
+            };
+        };
+    };
+    get_provider_grants_api_v1_providers_grants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderGrantsResponse"];
                 };
             };
         };

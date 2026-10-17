@@ -93,6 +93,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.run_sync(lambda _conn: None)  # connection check
     logger.info("Database engine initialized")
 
+    # Provider credit grants: a cold Redis meter seeds from the USD ledger.
+    from .services.provider_grants import register_ledger_seeder
+
+    register_ledger_seeder()
+
     # Initialize Redis pool and verify connectivity.
     pool = get_redis_pool(url=settings.redis_url)
     if await pool.ping():

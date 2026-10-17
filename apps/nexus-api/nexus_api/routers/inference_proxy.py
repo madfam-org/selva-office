@@ -344,12 +344,22 @@ async def _stream_chunks(
         yield "data: [DONE]\n\n"
     except Exception as exc:
         logger.error("Streaming error: %s", exc, exc_info=True)
+        from madfam_inference.grants import ProviderGrantUnavailableError
+
         error_chunk = {
-            "error": {
-                "message": "Streaming error occurred",
-                "type": "server_error",
-                "code": "internal_error",
-            }
+            "error": (
+                {
+                    "message": str(exc),
+                    "type": "server_error",
+                    "code": "provider_grant_unavailable",
+                }
+                if isinstance(exc, ProviderGrantUnavailableError)
+                else {
+                    "message": "Streaming error occurred",
+                    "type": "server_error",
+                    "code": "internal_error",
+                }
+            )
         }
         yield f"data: {json.dumps(error_chunk)}\n\n"
         yield "data: [DONE]\n\n"
@@ -629,7 +639,8 @@ async def chat_completions(
         temperature=body.temperature if body.temperature is not None else 0.7,
         task_type=x_task_type,
         model_override=model_override,
-        # The authenticated tenant: selects org-config ``org_overrides``.
+        # The authenticated tenant: selects org-config ``org_overrides`` and
+        # is the org the provider credit-grant guard checks (allowed_orgs).
         org_id=org_id,
     )
     if task_exception is not None:
@@ -709,6 +720,18 @@ async def chat_completions(
             sensitivity.value,
             exc,
         )
+        from madfam_inference.grants import ProviderGrantUnavailableError
+
+        if isinstance(exc, ProviderGrantUnavailableError):
+            # A pinned model whose provider is credit-grant-guarded and
+            # unavailable (no grant for this org, expired, at its ceiling,
+            # or the meter is down). Say so instead of swapping models.
+            return _error(
+                503,
+                str(exc),
+                "provider_grant_unavailable",
+                "server_error",
+            )
         if task_exception is not None:
             # Fail-closed like the local tier: the exception names where this
             # data may go, so "none of those answered" is an outage, never a

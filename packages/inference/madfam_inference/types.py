@@ -62,6 +62,9 @@ class RoutingPolicy(BaseModel):
     #: by the worker (from the task row) or the gateway (from the
     #: authenticated caller). It selects the org-config ``org_overrides``
     #: entry, if any; ``None`` means the global routing applies unchanged.
+    #: Also read by the provider credit-grant guard (``madfam_inference.grants``):
+    #: a grant-guarded provider is usable only when this org is in the grant's
+    #: ``allowed_orgs``; None ⇒ no grant applies. Never widens routing.
     org_id: str | None = None
 
 

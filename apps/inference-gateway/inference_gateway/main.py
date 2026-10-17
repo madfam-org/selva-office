@@ -37,12 +37,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     Redis is intentionally NOT required — the gateway does not touch real-time
     room state; a Redis outage must not take the inference chokepoint down.
+    The one Redis reader is the provider credit-grant meter, and it fails
+    closed per provider: Redis down ⇒ only grant-guarded providers are
+    skipped, every other route keeps serving.
     """
     settings = get_settings()
     logger.info("Inference gateway starting on port %d", settings.port)
     async with engine.begin() as conn:
         await conn.run_sync(lambda _conn: None)
     logger.info("Database engine initialized (usage ledger ready)")
+    # Provider credit grants: a cold Redis meter seeds from the USD ledger.
+    # The meter itself needs REDIS_URL; without it grant-guarded providers
+    # are unavailable (fail closed) and everything else is unaffected.
+    from nexus_api.services.provider_grants import register_ledger_seeder
+
+    register_ledger_seeder()
     yield
     await engine.dispose()
     logger.info("Inference gateway shut down")
