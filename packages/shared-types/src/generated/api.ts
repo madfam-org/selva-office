@@ -6413,6 +6413,16 @@ export interface components {
             task_id?: string | null;
             /** Org Id */
             org_id?: string | null;
+            /** Task Type */
+            task_type?: string | null;
+            /** Input Tokens */
+            input_tokens?: number | null;
+            /** Output Tokens */
+            output_tokens?: number | null;
+            /** Cache Read Tokens */
+            cache_read_tokens?: number | null;
+            /** Cache Creation Tokens */
+            cache_creation_tokens?: number | null;
         };
         /** RequestFreshRequest */
         RequestFreshRequest: {

@@ -160,9 +160,9 @@ async def test_record_estimates_cost_when_not_supplied(
         now=now,
     )
     status = await gate.status(scope, now=now)
-    # haiku-4-5 = $0.80 / $4.00 per 1M.  Default 30/70 split → 300k input + 700k output.
-    # cost = (300_000 * 0.80 + 700_000 * 4.0) / 1M = 0.24 + 2.80 = $3.04
-    assert status["daily"]["used_usd"] == pytest.approx(3.04, rel=0.01)
+    # haiku-4-5 = $1.00 / $5.00 per 1M.  Default 30/70 split → 300k input + 700k output.
+    # cost = (300_000 * 1.0 + 700_000 * 5.0) / 1M = 0.30 + 3.50 = $3.80
+    assert status["daily"]["used_usd"] == pytest.approx(3.80, rel=0.01)
 
 
 @pytest.mark.asyncio

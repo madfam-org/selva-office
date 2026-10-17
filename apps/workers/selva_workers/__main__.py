@@ -52,6 +52,7 @@ from .graphs.project import build_project_graph
 from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.research import build_research_graph
 from .graphs.sales import build_sales_graph
+from .inference import with_task_org
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
 
@@ -565,7 +566,13 @@ async def process_task(task_data: dict) -> None:
             if isinstance(raw_user_jwt, str) and raw_user_jwt.strip()
             else None
         )
-        with with_coupler_user_jwt(task_user_jwt), with_audience(task_audience):
+        # with_task_org binds the task's tenant for every call_llm in the
+        # graph (LLM spend + per-org routing) and collects failed LLM calls.
+        with (
+            with_coupler_user_jwt(task_user_jwt),
+            with_audience(task_audience),
+            with_task_org(task_org_id or None) as llm_failures,
+        ):
             if graph_type == "custom":
                 # Stream node progress for custom workflows
                 result = await asyncio.wait_for(
@@ -585,6 +592,24 @@ async def process_task(task_data: dict) -> None:
         else:
             api_status = "failed"
         api_result = _state_dict(result, "result") or {}
+        if llm_failures:
+            # Fail visible: a graph that "completed" on top of failed LLM
+            # calls (each node's own fallback text) is reported as failed,
+            # and the errors ride on the task result either way.
+            logger.error(
+                "Task %s: %d LLM call(s) failed during graph %s",
+                task_id,
+                len(llm_failures),
+                graph_type,
+            )
+            api_result = {
+                **api_result,
+                "llm_errors": llm_failures[:10],
+                "llm_error_count": len(llm_failures),
+            }
+            if api_status == "completed":
+                api_status = "failed"
+                graph_status = "error"
         if graph_type == "deployment":
             api_result = {
                 **api_result,

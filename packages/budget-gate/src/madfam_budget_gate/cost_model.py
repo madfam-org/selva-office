@@ -6,8 +6,9 @@ maintainable lookup — providers rarely add public price tiers and
 when they do we want a code review on the bump.
 
 When a (provider, model) pair is not found we **fall back to a
-conservative high default** (Claude Opus rate) rather than 0 — the
-gate must err on the side of overestimating spend, never under.
+conservative high default** rather than 0 — the gate must err on the
+side of overestimating spend, never under.  An unknown *Anthropic*
+model is priced as claude-fable-5-1, the most expensive current model.
 """
 
 from __future__ import annotations
@@ -21,30 +22,50 @@ logger = logging.getLogger(__name__)
 class _Price(NamedTuple):
     input_per_1m_usd: float
     output_per_1m_usd: float
+    #: Prompt-cache read rate. ``None`` means "0.1x input", the provider's
+    #: standard cache-read ratio, for rows whose list price does not state it.
+    cache_read_per_1m_usd: float | None = None
+
+
+#: Prompt-cache write (5-minute TTL) costs 1.25x the input rate.
+CACHE_WRITE_MULTIPLIER = 1.25
+#: Default cache-read ratio when a row does not state its own rate.
+CACHE_READ_DEFAULT_RATIO = 0.1
 
 
 # Lower-cased provider, lower-cased model fragment (matched as prefix on the
 # normalised model string) → price.  We match on prefix so the table covers
 # minor model-name variants like "claude-opus-4-7-20260301" or
-# "anthropic.claude-opus-4-7-v1:0".
+# "anthropic.claude-opus-4-7-v1:0" (a leading "anthropic." / "anthropic/"
+# vendor prefix is stripped before matching).
 #
 # IMPORTANT: order matters within a provider — longer / more specific
 # prefixes must come BEFORE shorter ones.  Iteration uses first-match.
 _PRICE_TABLE: dict[str, list[tuple[str, _Price]]] = {
+    # Anthropic first-party list prices, USD per 1M tokens (input / output
+    # / cache read). There are deliberately NO family catch-alls such as
+    # "claude-opus": an Anthropic model this table does not name is priced
+    # at the worst case (claude-fable-5-1) with a WARNING, so a spend
+    # ceiling built on these numbers can only over-count, never under-count.
     "anthropic": [
-        ("claude-opus-4-7", _Price(15.0, 75.0)),
+        ("claude-fable-5-1", _Price(10.0, 50.0, 0.25)),
+        ("claude-fable-5", _Price(10.0, 50.0, 0.25)),
+        ("claude-opus-5-5", _Price(4.0, 20.0, 0.20)),
+        ("claude-opus-5", _Price(5.0, 25.0)),
+        ("claude-opus-4-8", _Price(5.0, 25.0)),
+        ("claude-opus-4-7", _Price(5.0, 25.0)),
+        ("claude-opus-4-6", _Price(5.0, 25.0)),
+        ("claude-opus-4-5", _Price(5.0, 25.0)),
+        # Opus 4 / 4.1 (legacy list price).
         ("claude-opus-4", _Price(15.0, 75.0)),
-        # Claude Sonnet 5.5: $2 / $10 per 1M tokens (Anthropic first-party
-        # API rate, 2026-09). Without this row it fell through to the generic
-        # "claude-sonnet" entry and was over-attributed by 50%.
-        ("claude-sonnet-5-5", _Price(2.0, 10.0)),
+        ("claude-sonnet-5-5", _Price(2.0, 10.0, 0.20)),
+        ("claude-sonnet-5", _Price(2.0, 10.0)),
         ("claude-sonnet-4-6", _Price(3.0, 15.0)),
         ("claude-sonnet-4", _Price(3.0, 15.0)),
-        ("claude-haiku-4-5", _Price(0.80, 4.0)),
-        ("claude-haiku-4", _Price(0.80, 4.0)),
-        ("claude-haiku", _Price(0.25, 1.25)),
-        ("claude-sonnet", _Price(3.0, 15.0)),
-        ("claude-opus", _Price(15.0, 75.0)),
+        # Haiku 5.5 lists $0.50 / $2.50 above 100K prompt tokens; the base
+        # tier is priced here (prompts that long are rare in Selva).
+        ("claude-haiku-5-5", _Price(0.10, 0.50, 0.01)),
+        ("claude-haiku-4-5", _Price(1.0, 5.0)),
     ],
     "openai": [
         ("gpt-4o-mini", _Price(0.15, 0.60)),
@@ -83,11 +104,17 @@ _PRICE_TABLE: dict[str, list[tuple[str, _Price]]] = {
     ],
 }
 
-# Conservative fallback when the table doesn't know the model.  Picked
-# to be the highest mainstream price (Claude Opus) so the gate never
-# *under*-estimates spend.  Configurable via an env var if ops want to
-# be even more conservative.
+# Conservative fallback when the table doesn't know the provider at all.
+# Picked to be the highest mainstream price (legacy Claude Opus) so the gate
+# never *under*-estimates spend.
 _DEFAULT_FALLBACK = _Price(15.0, 75.0)
+
+#: Worst-case price for an Anthropic model the table does not name: the most
+#: expensive current model (claude-fable-5-1), so a provider-credit ceiling
+#: stays safe when Anthropic ships a new id before this table learns it.
+ANTHROPIC_UNKNOWN_MODEL_PRICE = _Price(10.0, 50.0, 0.25)
+
+_VENDOR_PREFIXES = ("anthropic.", "anthropic/", "us.anthropic.", "eu.anthropic.")
 
 
 def estimate_cost(
@@ -95,20 +122,49 @@ def estimate_cost(
     model: str | None,
     input_tokens: int,
     output_tokens: int,
+    *,
+    cache_read_tokens: int = 0,
+    cache_creation_tokens: int = 0,
 ) -> float:
     """Estimate USD cost of a single LLM call.
 
     Both ``provider`` and ``model`` are case-insensitive.  Unknown
-    combinations fall back to the Claude Opus rate (a deliberately
-    high baseline) and emit a debug log so ops can backfill the
-    table if it becomes a hot path.
+    providers fall back to a deliberately high baseline; unknown
+    Anthropic models are priced as claude-fable-5-1 (the worst case) and
+    logged at WARNING so ops can backfill the table.
+
+    ``input_tokens`` are the *uncached* prompt tokens (Anthropic's
+    ``usage.input_tokens`` already excludes cache reads and writes).
+    ``cache_read_tokens`` are billed at the row's cache-read rate (0.1x
+    input when the row does not state one) and ``cache_creation_tokens``
+    at 1.25x input (5-minute TTL).
     """
     if input_tokens < 0 or output_tokens < 0:
         raise ValueError("token counts cannot be negative")
+    if cache_read_tokens < 0 or cache_creation_tokens < 0:
+        raise ValueError("cache token counts cannot be negative")
 
     price = _lookup(provider, model)
-    cost = (input_tokens * price.input_per_1m_usd + output_tokens * price.output_per_1m_usd) / 1_000_000
+    cache_read_rate = (
+        price.cache_read_per_1m_usd
+        if price.cache_read_per_1m_usd is not None
+        else price.input_per_1m_usd * CACHE_READ_DEFAULT_RATIO
+    )
+    cost = (
+        input_tokens * price.input_per_1m_usd
+        + output_tokens * price.output_per_1m_usd
+        + cache_read_tokens * cache_read_rate
+        + cache_creation_tokens * price.input_per_1m_usd * CACHE_WRITE_MULTIPLIER
+    ) / 1_000_000
     return round(cost, 6)
+
+
+def _normalise_model(model: str) -> str:
+    m = model.strip().lower()
+    for prefix in _VENDOR_PREFIXES:
+        if m.startswith(prefix):
+            return m[len(prefix) :]
+    return m
 
 
 def _lookup(provider: str | None, model: str | None) -> _Price:
@@ -117,7 +173,7 @@ def _lookup(provider: str | None, model: str | None) -> _Price:
         return _DEFAULT_FALLBACK
 
     p = provider.strip().lower()
-    m = model.strip().lower()
+    m = _normalise_model(model)
     table = _PRICE_TABLE.get(p)
     if table is None:
         logger.debug("cost_model: unknown provider %r, using fallback rate", provider)
@@ -125,6 +181,13 @@ def _lookup(provider: str | None, model: str | None) -> _Price:
     for prefix, price in table:
         if m.startswith(prefix.lower()):
             return price
+    if p == "anthropic":
+        logger.warning(
+            "cost_model: unknown Anthropic model %r — pricing it as claude-fable-5-1 "
+            "(worst case) until the price table names it",
+            model,
+        )
+        return ANTHROPIC_UNKNOWN_MODEL_PRICE
     logger.debug(
         "cost_model: unknown model %r for provider %r, using fallback rate", model, provider
     )

@@ -76,6 +76,11 @@ def _is_hard_failure(exc: BaseException) -> bool:
     an extra provider hop is far smaller than the cost of returning a
     placeholder string to a worker that will then ship it.
     """
+    # Adapter errors that are an answer, not an outage (e.g. a model
+    # refusal): re-sending to another vendor would launder the refusal.
+    if getattr(exc, "no_fallback", False):
+        return True
+
     try:
         import httpx
     except ImportError:  # pragma: no cover — httpx is a hard dep elsewhere
@@ -101,6 +106,35 @@ def _is_hard_failure(exc: BaseException) -> bool:
     )
     quota_signal = "rate" in msg or "credit" in msg or "quota" in msg
     return auth_signal and not quota_signal
+
+
+def _cache_cost_kwargs(
+    provider: str | None,
+    model: str | None,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_tokens: int,
+    cache_creation_tokens: int,
+) -> dict[str, float]:
+    """``actual_cost_usd`` for ``gate.record`` when the call used the prompt cache.
+
+    Without cache tokens this returns ``{}`` and the gate estimates the cost
+    itself, exactly as before.
+    """
+    if cache_read_tokens <= 0 and cache_creation_tokens <= 0:
+        return {}
+    from madfam_budget_gate import estimate_cost  # only reached with the gate armed
+
+    return {
+        "actual_cost_usd": estimate_cost(
+            provider,
+            model,
+            input_tokens,
+            output_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_creation_tokens=cache_creation_tokens,
+        )
+    }
 
 
 def _is_fallback_eligible(exc: BaseException) -> bool:
@@ -206,7 +240,18 @@ class ModelRouter:
     def available_providers(self) -> list[str]:
         return list(self._providers.keys())
 
-    def _priority_lists(self) -> tuple[list[str], list[str]]:
+    def _org_override(self, policy: RoutingPolicy) -> Any | None:
+        """Return the org-config ``org_overrides`` entry for the request's org.
+
+        ``None`` for every org without an entry, so their routing is exactly
+        the global routing.
+        """
+        if self._org_config is None or not policy.org_id:
+            return None
+        override_for = getattr(self._org_config, "override_for", None)
+        return override_for(policy.org_id) if callable(override_for) else None
+
+    def _priority_lists(self, policy: RoutingPolicy | None = None) -> tuple[list[str], list[str]]:
         """Return ``(cloud_priority, cheapest_priority)`` honouring org config."""
         cloud_priority = list(CLOUD_PRIORITY)
         cheapest_priority = list(CHEAPEST_PRIORITY)
@@ -217,6 +262,12 @@ class ModelRouter:
                 cloud_priority = list(org_cloud)
             if org_cheap:
                 cheapest_priority = list(org_cheap)
+        override = self._org_override(policy) if policy is not None else None
+        if override is not None:
+            if override.cloud_priority:
+                cloud_priority = list(override.cloud_priority)
+            if override.cheapest_priority:
+                cheapest_priority = list(override.cheapest_priority)
         return cloud_priority, cheapest_priority
 
     def allowed_providers_for(self, request: InferenceRequest) -> list[str]:
@@ -252,7 +303,7 @@ class ModelRouter:
                 name for name in dict.fromkeys(policy.provider_allowlist) if name in CLOUD_PRIORITY
             ]
 
-        cloud_priority, cheapest_priority = self._priority_lists()
+        cloud_priority, cheapest_priority = self._priority_lists(policy)
         if policy.sensitivity == Sensitivity.INTERNAL:
             candidates = list(cloud_priority)
         else:
@@ -292,21 +343,61 @@ class ModelRouter:
         """
         if self._is_narrowed(policy):
             policy.model_override = policy.provider_models.get(provider_name)
+            return
+        # Org override fallback: when an org-override assignment points at
+        # provider A but this attempt goes to provider B (A failed, or is
+        # unregistered / unavailable for this call), send B the GLOBAL
+        # assignment's model and limits for the task type — never A's model
+        # id. Orgs without an override never reach past this check.
+        override_assignment = self._override_assignment(policy)
+        if override_assignment is None or override_assignment.provider == provider_name:
+            return
+        base = self._global_assignment(policy)
+        if base is not None and base.provider == provider_name:
+            policy.model_override = base.model
+            if base.max_tokens:
+                policy.max_tokens = base.max_tokens
+            if base.temperature is not None:
+                policy.temperature = base.temperature
+        else:
+            policy.model_override = None
 
-    def _task_type_assignment(self, request: InferenceRequest) -> Any | None:
-        """Return the org-config ``ModelAssignment`` for the request, if any."""
-        policy = request.policy
-        if not policy.task_type or self._org_config is None:
+    @staticmethod
+    def _task_enum(policy: RoutingPolicy) -> Any | None:
+        if not policy.task_type:
             return None
         from .org_config import TaskType
 
         try:
-            task_enum = TaskType(policy.task_type)
+            return TaskType(policy.task_type)
         except ValueError:
             # Unknown task type — default routing applies.
             return None
+
+    def _global_assignment(self, policy: RoutingPolicy) -> Any | None:
+        """The org-config ``model_assignments`` entry (ignores org overrides)."""
+        task_enum = self._task_enum(policy)
+        if task_enum is None or self._org_config is None:
+            return None
         assignments = getattr(self._org_config, "model_assignments", {})
         return assignments.get(task_enum)
+
+    def _override_assignment(self, policy: RoutingPolicy) -> Any | None:
+        """The request org's ``org_overrides`` assignment for the task type."""
+        override = self._org_override(policy)
+        task_enum = self._task_enum(policy)
+        if override is None or task_enum is None:
+            return None
+        return override.model_assignments.get(task_enum)
+
+    def _task_type_assignment(self, request: InferenceRequest) -> Any | None:
+        """Return the org-config ``ModelAssignment`` for the request, if any.
+
+        The request org's override wins for the task types it lists; every
+        other case is the global assignment.
+        """
+        policy = request.policy
+        return self._override_assignment(policy) or self._global_assignment(policy)
 
     def _select_provider(self, request: InferenceRequest) -> InferenceProvider:
         """Determine which provider to use for the given request.
@@ -444,6 +535,14 @@ class ModelRouter:
                     output_tokens=output_tokens,
                     provider=response.provider,
                     model=response.model,
+                    **_cache_cost_kwargs(
+                        response.provider,
+                        response.model,
+                        input_tokens,
+                        output_tokens,
+                        int(usage.get("cache_read_input_tokens", 0)),
+                        int(usage.get("cache_creation_input_tokens", 0)),
+                    ),
                 )
             except Exception as exc:
                 logger.warning("budget-gate: record() raised: %s", exc)
@@ -481,15 +580,11 @@ class ModelRouter:
     async def _complete_inner(self, request: InferenceRequest) -> InferenceResponse:
         provider = self._select_provider(request)
 
-        # Gap 7: Apply Anthropic prefix-cache breakpoints if applicable. The
-        # cache manager may return a structured content-block list for the
-        # system prompt; only the Anthropic provider consumes that form, and
-        # plumbing the structured form through pydantic ``InferenceRequest``
-        # would require schema work beyond this hot-path. For now we keep the
-        # raw string on the request and let the Anthropic provider re-derive
-        # cache breakpoints from the system prompt via ``_cache_manager``
-        # directly. This also means the cache logic is idempotent if the
-        # router is called twice on the same request.
+        # Gap 7: prompt caching. The system prompt stays a raw string on the
+        # request (so a fallback to another vendor gets plain text); the
+        # Anthropic adapter turns it into a ``cache_control: ephemeral``
+        # content block when it builds the request body (``_build_body``),
+        # which is what actually reaches the API.
         self._apply_prompt_cache_breakpoints(request, provider)
 
         # Try primary provider with 1 retry — but only retry when the
@@ -621,6 +716,14 @@ class ModelRouter:
                     output_tokens=usage.output_tokens,
                     provider=usage.provider,
                     model=usage.model,
+                    **_cache_cost_kwargs(
+                        usage.provider,
+                        usage.model,
+                        usage.input_tokens,
+                        usage.output_tokens,
+                        usage.cache_read_input_tokens,
+                        usage.cache_creation_input_tokens,
+                    ),
                 )
             except Exception as exc:
                 logger.warning("budget-gate: record() raised for stream: %s", exc)

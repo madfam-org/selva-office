@@ -632,8 +632,10 @@ class TestPinnedAnthropicModelIsCallable:
         assert body["max_tokens"] == 1500
         assert body["system"] == "Eres asistente de redacción."
 
-    @pytest.mark.parametrize("model", ["claude-sonnet-4-6", None])
+    @pytest.mark.parametrize("model", ["claude-sonnet-4-6", "claude-opus-4-6"])
     def test_other_anthropic_models_keep_their_temperature(self, model: str | None) -> None:
-        """Every other model's request body is exactly as before."""
+        """Legacy models that accept sampling params keep their temperature.
+
+        (The adapter default is now a current model, which does not.)"""
         body = _anthropic_body(model)
         assert body["temperature"] == 0.7
