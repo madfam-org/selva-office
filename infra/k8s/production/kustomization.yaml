@@ -33,6 +33,8 @@ namespace: selva
 #   3. Re-agregar `- optional/ollama.yaml` a esta lista.
 # Hasta entonces `restricted`/`confidential` siguen fallando cerrado con
 # 503 `local_backend_unavailable`, que es el comportamiento correcto.
+# Provider credit grants + grant-funded Anthropic key (secret/selva). Parks in
+# SecretSyncError until the Vault properties exist; consumers are optional.
 resources:
 - configmap.yaml
 - org-config.yaml
@@ -54,8 +56,6 @@ resources:
 - keda-trigger-auth.yaml
 - selva-secret-writer-sa.yaml
 - phynd-external-secret.yaml
-# Provider credit grants + grant-funded Anthropic key (secret/selva). Parks in
-# SecretSyncError until the Vault properties exist; consumers are optional.
 - provider-grants-external-secret.yaml
 
 commonLabels:
@@ -85,25 +85,25 @@ commonLabels:
 # observed in a ready production ReplicaSet after the newer audit-derived
 # digest failed to pull.
 images:
-- digest: sha256:c44d22c74608952221c555a6d397fd944ab3e026d64fcd91555e153366872fdd
+- digest: sha256:2f0c771e63e9141efcc215ab425ad6529b76424abb12768d87b4f8e4e8d54d26
   name: ghcr.io/madfam-org/selva-admin
   newName: ghcr.io/madfam-org/selva-admin
-- digest: sha256:ab1e0d0cd05c21507fe599b5d3a4ac76b6d2ad9322f30d02ee12c7403c2aaf37
+- digest: sha256:8ca54cffe54bbe4eb1d6dce6d54c141d8e321adfa9a1d764848428a8c87388fe
   name: ghcr.io/madfam-org/selva-colyseus
   newName: ghcr.io/madfam-org/selva-colyseus
-- digest: sha256:e210cc8cc19a29a557533ca4a5f63dba50a5b8e352bdd9e4e635784f11787b1c
+- digest: sha256:0356cd5eded8c4aed571dcb6d6ba458f573accbb386b3404d34f63033ae65991
   name: ghcr.io/madfam-org/selva-gateway
   newName: ghcr.io/madfam-org/selva-gateway
-- digest: sha256:7c3d004751fa2a7074deb36986af906063f8d8c005aa9dc8d7534316a0b3ea2f
+- digest: sha256:23df9752a46d94932126638b1b8314a7283be7f3dc7b8800d6bb5d0338437b8b
   name: ghcr.io/madfam-org/selva-inference-gateway
   newName: ghcr.io/madfam-org/selva-inference-gateway
-- digest: sha256:22450145a4de35c6dd3f41b964e35c449a11ce1b89f79c0ef188eaf77def75db
+- digest: sha256:eb2e8aa5f7633661e4d3b56ae11e3c67a98fb7f62056f7281b5807959aa1d8e7
   name: ghcr.io/madfam-org/selva-nexus-api
   newName: ghcr.io/madfam-org/selva-nexus-api
-- digest: sha256:f6d5bc006b4db3dd3d63a44f21bd7d82ea50a7a848c71349570f4f05266968e7
+- digest: sha256:efe243cc34a9c5f092ddbeead0a27644a7acd78935bde9c6f0b33a4075dd3f8b
   name: ghcr.io/madfam-org/selva-office-ui
   newName: ghcr.io/madfam-org/selva-office-ui
-- digest: sha256:0c34a517fb1ec22fa8c5dfa70af362c79184982863e3f6601118a656ffb935b8
+- digest: sha256:7d93f4300eac6e0afa1f86bb797efb128b7da53d64a67e5b3c30590385fc917d
   name: ghcr.io/madfam-org/selva-workers
   newName: ghcr.io/madfam-org/selva-workers
 
