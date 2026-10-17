@@ -36,6 +36,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from madfam_inference.grants import GrantStatus, get_default_guard, get_grant_statuses
 from selva_redis_pool import get_redis_pool
 
 from ..auth import CurrentUser, require_roles
@@ -201,10 +202,23 @@ def _require_platform_admin(
     )
 
 
-@router.get("/grants")
+class ProviderGrantsResponse(BaseModel):
+    """``GET /providers/grants`` payload."""
+
+    required_for: list[str] = Field(
+        ..., description="Providers usable only under a grant (PROVIDER_GRANTS_REQUIRED_FOR)."
+    )
+    config_source: str = Field(..., description="Where the grant config was read from.")
+    config_error: str | None = Field(
+        None, description="Set when the config is invalid; guarded providers are then unavailable."
+    )
+    grants: list[GrantStatus]
+
+
+@router.get("/grants", response_model=ProviderGrantsResponse)
 async def get_provider_grants(
     _user: CurrentUser = Depends(_require_platform_admin),
-) -> dict[str, Any]:
+) -> ProviderGrantsResponse:
     """Status of every declared provider credit grant (contract C2).
 
     Fields per grant: ceiling / spent / reserved / remaining USD, window,
@@ -214,15 +228,12 @@ async def get_provider_grants(
     Redis meter could not be read — and while that lasts, grant-guarded
     providers are unavailable. 200 even then: surface the gap, don't hide it.
     """
-    from madfam_inference.grants import get_default_guard, get_grant_statuses
-
     guard = get_default_guard()
     state = guard.state()
-    statuses = await get_grant_statuses()
-    return {
-        "required_for": sorted(guard.required),
-        "config_source": state.source,
-        "config_error": state.error,
-        "grants": [s.model_dump(mode="json") for s in statuses],
-    }
+    return ProviderGrantsResponse(
+        required_for=sorted(guard.required),
+        config_source=state.source,
+        config_error=state.error,
+        grants=await get_grant_statuses(),
+    )
 
