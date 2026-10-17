@@ -59,6 +59,10 @@ spec:
           env:
             - name: ENVIRONMENT
               value: production
+            # Key 1 of 2 for the credit autopilot; key 2 is `autopilot: true`
+            # on the provider grant in Vault. Idle unless both are set.
+            - name: CREDIT_AUTOPILOT_ENABLED
+              value: "true"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
