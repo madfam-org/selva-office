@@ -6,6 +6,7 @@ import os
 from collections.abc import AsyncIterator
 from typing import Any
 
+from . import grants as _grants
 from .base import InferenceProvider, UsageCallback
 from .caching import PromptCacheManager
 from .types import InferenceRequest, InferenceResponse, RoutingPolicy, Sensitivity, StreamUsage
@@ -225,9 +226,14 @@ class ModelRouter:
         org_config: object | None = None,
         *,
         budget_gate: Any | None = None,
+        grant_guard: _grants.GrantGuard | None = None,
     ) -> None:
         self._providers = providers
         self._org_config = org_config
+        # Provider credit-grant guard (madfam_inference.grants). None ⇒ the
+        # process-wide guard built from env; it is inert (``enabled`` False)
+        # unless a grant is declared or PROVIDER_GRANTS_REQUIRED_FOR is set.
+        self._grant_guard = grant_guard
         # Budget gate is opt-in: a caller can pass an instance, or the
         # router builds one on the first ``complete()`` call when the
         # ``BUDGET_GATE_ENABLED`` env flag is set and the package is
@@ -399,16 +405,23 @@ class ModelRouter:
         policy = request.policy
         return self._override_assignment(policy) or self._global_assignment(policy)
 
-    def _select_provider(self, request: InferenceRequest) -> InferenceProvider:
+    def _select_provider(
+        self, request: InferenceRequest, exclude: dict[str, str] | None = None
+    ) -> InferenceProvider:
         """Determine which provider to use for the given request.
 
         Order is load-bearing: the sensitivity-allowed set is computed
-        FIRST, and every later decision picks inside it.
+        FIRST, and every later decision picks inside it. ``exclude`` (provider
+        name -> reason) holds grant-guarded providers that are unavailable
+        for this call; it can only remove candidates, never add one.
         """
         policy = request.policy
+        exclude = exclude or {}
 
         # ── 1. Sensitivity gate (never overridable) ───────────────────
         candidates = self.allowed_providers_for(request)
+        if exclude:
+            candidates = [n for n in candidates if n not in exclude]
 
         # ── 2. Task-type routing, constrained to the allowed set ──────
         # Under a tenant task exception the org-config model_assignments
@@ -416,7 +429,15 @@ class ModelRouter:
         # models, so an assignment can neither widen the set nor swap the
         # model or raise the token cap.
         assignment = None if self._is_narrowed(policy) else self._task_type_assignment(request)
-        if assignment is not None:
+        if assignment is not None and assignment.provider in exclude:
+            logger.info(
+                "Task-type routing: %s is assigned to grant-guarded provider %s, "
+                "unavailable for this call (%s); using the next allowed provider.",
+                policy.task_type,
+                assignment.provider,
+                exclude[assignment.provider],
+            )
+        elif assignment is not None:
             if assignment.provider not in candidates:
                 # THE bypass this guard exists to close: an org-config
                 # model_assignments entry must never be able to send
@@ -473,10 +494,107 @@ class ModelRouter:
                 self._pin_model(policy, name)
                 return provider
 
+        grant_note = (
+            " Grant-guarded and unavailable: "
+            + ", ".join(f"{n} ({r})" for n, r in exclude.items())
+            + "."
+            if exclude
+            else ""
+        )
         raise RuntimeError(
             f"No available provider for sensitivity={policy.sensitivity.value}. "
-            f"Tried: {candidates}. Registered: {self.available_providers}"
+            f"Tried: {candidates}. Registered: {self.available_providers}.{grant_note}"
         )
+
+    # ── Provider credit grants (madfam_inference.grants) ──────────────
+
+    def _active_grant_guard(self) -> _grants.GrantGuard | None:
+        guard = self._grant_guard or _grants.get_default_guard()
+        return guard if guard.enabled else None
+
+    def _provider_name(self, provider: InferenceProvider) -> str:
+        for name, registered in self._providers.items():
+            if registered is provider:
+                return name
+        return getattr(provider, "name", type(provider).__name__.lower())
+
+    async def _select_provider_guarded(
+        self, request: InferenceRequest
+    ) -> tuple[InferenceProvider, _grants.Reservation | None, dict[str, str]]:
+        """``_select_provider`` plus the grant guard.
+
+        When the chosen provider is grant-guarded, reserve the call's worst
+        case on its grant. On denial the provider is excluded and selection
+        re-runs from the caller's original policy (so an org assignment's
+        model never leaks to the next provider). A model the CALLER pinned
+        that would have gone to the denied provider raises
+        ``ProviderGrantUnavailableError`` instead of being silently swapped.
+        """
+        guard = self._active_grant_guard()
+        if guard is None:
+            return self._select_provider(request), None, {}
+        policy = request.policy
+        original = policy.model_copy(deep=True)
+        excluded: dict[str, str] = {}
+        while True:
+            provider = self._select_provider(request, excluded)
+            name = self._provider_name(provider)
+            decision = await guard.reserve(name, policy.org_id, policy.model_override, request)
+            if decision.allowed:
+                return provider, decision.reservation, excluded
+            caller_model = original.model_override
+            if (
+                caller_model
+                and policy.model_override == caller_model
+                and _grants.is_pinned_to(name, caller_model)
+            ):
+                raise _grants.ProviderGrantUnavailableError(
+                    f"Model {caller_model!r} runs on provider {name!r}, which is "
+                    f"grant-guarded and unavailable for this call ({decision.reason}). "
+                    "The pinned model is not swapped for another provider's."
+                )
+            excluded[name] = decision.reason
+            for field_name in type(policy).model_fields:
+                setattr(policy, field_name, getattr(original, field_name))
+
+    async def _call_complete(
+        self,
+        provider: InferenceProvider,
+        request: InferenceRequest,
+        reservation: _grants.Reservation | None,
+    ) -> InferenceResponse:
+        """``provider.complete`` with grant settle (success) / release (error)."""
+        if reservation is None:
+            return await provider.complete(request)
+        try:
+            response = await provider.complete(request)
+        except asyncio.CancelledError:
+            # A timed-out call may still be billed upstream: count the worst case.
+            reservation.guard.settle_in_background(reservation)
+            raise
+        except BaseException:
+            await reservation.release()
+            raise
+        await reservation.settle(response.model, response.usage)
+        return response
+
+    async def _reserve_attempt(
+        self, name: str, request: InferenceRequest, excluded: dict[str, str]
+    ) -> tuple[bool, _grants.Reservation | None]:
+        """Reserve for a retry / fallback attempt. ``(False, None)`` ⇒ skip ``name``."""
+        if name in excluded:
+            return False, None
+        guard = self._active_grant_guard()
+        if guard is None:
+            return True, None
+        decision = await guard.reserve(
+            name, request.policy.org_id, request.policy.model_override, request
+        )
+        if not decision.allowed:
+            excluded[name] = decision.reason
+            logger.info("Skipping grant-guarded provider %s: %s", name, decision.reason)
+            return False, None
+        return True, decision.reservation
 
     def _get_fallback_candidates(
         self,
@@ -578,7 +696,8 @@ class ModelRouter:
         request.messages = new_messages
 
     async def _complete_inner(self, request: InferenceRequest) -> InferenceResponse:
-        provider = self._select_provider(request)
+        provider, reservation, excluded = await self._select_provider_guarded(request)
+        provider_name = self._provider_name(provider)
 
         # Gap 7: prompt caching. The system prompt stays a raw string on the
         # request (so a fallback to another vendor gets plain text); the
@@ -592,9 +711,14 @@ class ModelRouter:
         # surfaced immediately so ops sees the real cause.
         last_exc: Exception | None = None
         for attempt in range(2):
+            if attempt > 0 and reservation is None:
+                ok, reservation = await self._reserve_attempt(provider_name, request, excluded)
+                if not ok:
+                    break
             try:
-                return await provider.complete(request)
+                return await self._call_complete(provider, request, reservation)
             except Exception as exc:
+                reservation = None
                 last_exc = exc
                 eligible = _is_fallback_eligible(exc)
                 logger.warning(
@@ -616,10 +740,13 @@ class ModelRouter:
         # primary's failure was fallback-eligible (otherwise we re-raised
         # above), so unconditional fall-through is correct.
         for name in self._get_fallback_candidates(request, exclude=provider):
+            ok, fb_reservation = await self._reserve_attempt(name, request, excluded)
+            if not ok:
+                continue
             try:
                 logger.info("Falling back to provider: %s", name)
                 self._pin_model(request.policy, name)
-                return await self._providers[name].complete(request)
+                return await self._call_complete(self._providers[name], request, fb_reservation)
             except Exception as exc:
                 # Fallback chain: only stop early on a hard-failure
                 # (e.g. 401 from a misconfigured fallback key) AND log
@@ -688,10 +815,27 @@ class ModelRouter:
         inference is billed like non-streamed inference.
         """
         gate, scope = await self._check_budget_preflight(request)
-        provider = self._select_provider(request)
+        provider, reservation, excluded = await self._select_provider_guarded(request)
         self._apply_prompt_cache_breakpoints(request, provider)
 
         captured: list[StreamUsage] = []
+
+        async def _finish_grant(res: _grants.Reservation | None, *, emitted: bool) -> None:
+            # Settle on actual usage; a stream that emitted but reported no
+            # usage (or broke mid-way) settles the worst case. Nothing
+            # emitted and failed ⇒ release.
+            if res is None:
+                return
+            if captured:
+                last = captured[-1]
+                await res.settle(
+                    last.model or request.policy.model_override,
+                    {"input_tokens": last.input_tokens, "output_tokens": last.output_tokens},
+                )
+            elif emitted:
+                await res.settle_worst_case()
+            else:
+                await res.release()
 
         def _make_capture(provider_name: str) -> UsageCallback:
             def _capture(usage: StreamUsage) -> None:
@@ -736,9 +880,15 @@ class ModelRouter:
             ):
                 emitted_any = True
                 yield chunk
+            await _finish_grant(reservation, emitted=True)
             await _record_captured()
             return
+        except asyncio.CancelledError:
+            if reservation is not None:
+                reservation.guard.settle_in_background(reservation)
+            raise
         except Exception as exc:
+            await _finish_grant(reservation, emitted=emitted_any)
             last_exc = exc
             eligible = _is_fallback_eligible(exc)
             logger.warning(
@@ -754,6 +904,9 @@ class ModelRouter:
         for name in self._get_fallback_candidates(request, exclude=provider):
             fallback = self._providers[name]
             emitted_any = False
+            ok, fb_reservation = await self._reserve_attempt(name, request, excluded)
+            if not ok:
+                continue
             self._pin_model(request.policy, name)
             try:
                 logger.info("Falling back streaming inference to provider: %s", name)
@@ -762,9 +915,15 @@ class ModelRouter:
                 ):
                     emitted_any = True
                     yield chunk
+                await _finish_grant(fb_reservation, emitted=True)
                 await _record_captured()
                 return
+            except asyncio.CancelledError:
+                if fb_reservation is not None:
+                    fb_reservation.guard.settle_in_background(fb_reservation)
+                raise
             except Exception as exc:
+                await _finish_grant(fb_reservation, emitted=emitted_any)
                 last_exc = exc
                 logger.warning(
                     "Streaming fallback provider %s failed "
