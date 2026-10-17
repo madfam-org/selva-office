@@ -159,3 +159,37 @@ class TestClassifyAndEvaluate:
         assert result.action_category == ActionCategory.DEPLOY
         assert result.level == PermissionLevel.ASK
         assert result.requires_approval is True
+
+
+class TestFactoryLineSideEffectTools:
+    """Factory-line tools with side effects must not fall through to ALLOW.
+
+    ``generate_quote`` creates a Cotiza quote record and
+    ``factory_manifest_publish`` writes files; neither name matches a
+    fallback substring, so before the explicit mapping both classified as
+    ``API_CALL`` and ran without human approval.
+    """
+
+    def test_generate_quote_is_pricing_proposal(self, classifier: ActionClassifier) -> None:
+        assert classifier.classify("generate_quote") == ActionCategory.PRICING_PROPOSAL
+
+    def test_factory_manifest_publish_is_file_write(self, classifier: ActionClassifier) -> None:
+        assert classifier.classify("factory_manifest_publish") == ActionCategory.FILE_WRITE
+
+    @pytest.mark.parametrize("tool_name", ["generate_quote", "factory_manifest_publish"])
+    def test_requires_approval_by_default(
+        self, classifier: ActionClassifier, tool_name: str
+    ) -> None:
+        result = classifier.classify_and_evaluate(tool_name, engine=PermissionEngine())
+        assert result.level == PermissionLevel.ASK
+        assert result.requires_approval is True
+
+    @pytest.mark.parametrize(
+        "tool_name",
+        ["factory_manifest_get_for_repo", "factory_manifest_verify", "get_production_order_status"],
+    )
+    def test_read_side_factory_tools_unchanged(
+        self, classifier: ActionClassifier, tool_name: str
+    ) -> None:
+        # Read/verify tools keep their previous classification (no new gate).
+        assert classifier.classify(tool_name) == ActionCategory.API_CALL

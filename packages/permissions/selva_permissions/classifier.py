@@ -47,6 +47,14 @@ class ActionClassifier:
         "deploy_status": ActionCategory.DEPLOY,
         "kubectl": ActionCategory.DEPLOY,
         "terraform": ActionCategory.DEPLOY,
+        # Side-effecting factory-line tools whose names match no fallback
+        # substring and would otherwise default to API_CALL (= ALLOW).
+        # ``generate_quote`` creates a Cotiza quote record (a priced
+        # commitment), so it is gated like any pricing proposal;
+        # ``factory_manifest_publish`` writes files ("publish" does not
+        # contain "push" or "write"). Both resolve to ASK by default.
+        "generate_quote": ActionCategory.PRICING_PROPOSAL,
+        "factory_manifest_publish": ActionCategory.FILE_WRITE,
         # API / HTTP
         "http_request": ActionCategory.API_CALL,
         "fetch": ActionCategory.API_CALL,
