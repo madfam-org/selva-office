@@ -134,6 +134,23 @@ spec:
                   key: TULANA_SELVA_WEBHOOK_SECRET
             - name: ORG_CONFIG_PATH
               value: "/etc/selva/org-config.yaml"
+            # Provider credit grants (docs/PROVIDER_CREDIT_GRANTS.md). The key
+            # is the existing selva-llm-secrets entry (provisioned outside this
+            # repo, like DEEPINFRA_API_KEY); the grant file comes from
+            # selva-provider-grants (Vault secret/selva, optional until seeded).
+            # Mounting the key is safe on its own: REQUIRED_FOR makes Anthropic
+            # usable ONLY under a valid, unexpired, unexhausted grant for the
+            # caller's org — with no grant file it stays unusable (fail closed).
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: selva-llm-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: PROVIDER_GRANTS_PATH
+              value: "/etc/selva/provider-grants/provider-grants.json"
+            - name: PROVIDER_GRANTS_REQUIRED_FOR
+              value: "anthropic"
           workingDir: /data
           volumeMounts:
             - name: tmp
@@ -143,6 +160,9 @@ spec:
             - name: org-config
               mountPath: /etc/selva
               readOnly: true
+            - name: provider-grants
+              mountPath: /etc/selva/provider-grants
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
@@ -151,6 +171,13 @@ spec:
         - name: org-config
           configMap:
             name: selva-org-config
+        - name: provider-grants
+          secret:
+            secretName: selva-provider-grants
+            optional: true
+            items:
+              - key: provider-grants.json
+                path: provider-grants.json
 ---
 apiVersion: v1
 kind: Service

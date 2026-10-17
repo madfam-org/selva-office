@@ -503,6 +503,7 @@ jobs:
             packages/inference/tests/test_tenant_policy.py \
             packages/inference/tests/test_tenant_task_exception.py \
             packages/inference/tests/test_identifier_guard.py \
+            packages/inference/tests/test_provider_grants.py \
             apps/nexus-api/tests/test_inference_proxy_sensitivity.py \
             apps/nexus-api/tests/test_inference_proxy_task_exception.py \
             -q
