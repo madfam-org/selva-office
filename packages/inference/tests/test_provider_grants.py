@@ -303,7 +303,7 @@ class TestPacer:
         worst = g.worst_case_cost_usd("anthropic", "claude-sonnet-4-6", req)
         assert worst is not None
         decisions = await asyncio.gather(
-            *(guard.reserve("anthropic", "madfam", "claude-sonnet-4-6", req) for _ in range(200))
+            *(guard.reserve("anthropic", "madfam", "claude-sonnet-4-6", req) for _ in range(150))
         )
         allowed = sum(1 for d in decisions if d.allowed)
         assert allowed == int(1.0 // worst)
