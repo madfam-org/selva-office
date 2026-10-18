@@ -3,13 +3,13 @@
 Reference for LLM inference providers integrated into Selva, their pricing,
 model catalogs, and routing configuration.
 
-*Last updated: 2026-03-14*
+*Last updated: 2026-10-18 (Anthropic rows; earlier rows as of 2026-03-14)*
 
 ## Provider Overview
 
 | Provider | Type | API Format | Default Model | Vision Support |
 |----------|------|------------|---------------|----------------|
-| Anthropic | Proprietary | Anthropic Messages | claude-sonnet-4-20250514 | Yes |
+| Anthropic | Proprietary | Anthropic Messages | per org override (claude-opus-5-5 / claude-sonnet-5-5) | Yes |
 | OpenAI | Proprietary | OpenAI Chat | gpt-4o | Yes |
 | Groq | Open-source host | OpenAI-compat | llama-3.3-70b-versatile | No |
 | Mistral | Proprietary | OpenAI-compat | mistral-large-latest | Yes |
@@ -32,9 +32,20 @@ model catalogs, and routing configuration.
 | Mistral | ~$2.00 | ~$6.00 | Mistral Large pricing (proprietary) |
 | OpenRouter | Varies | Varies | Aggregator markup over underlying provider |
 | OpenAI | ~$2.50 | ~$10.00 | GPT-4o pricing (proprietary) |
-| Anthropic | ~$3.00 | ~$15.00 | Claude Sonnet 4 pricing (proprietary) |
+| Anthropic | $2.00–$4.00 | $10.00–$20.00 | Sonnet 5.5 / Opus 5.5 (Haiku 5.5: $0.10 / $0.50); `cost_model.py` is the source of truth |
 
 Pricing as of March 2026. Check provider dashboards for current rates.
+
+### Anthropic in production
+
+Anthropic is registered whenever `ANTHROPIC_API_KEY` is mounted, but production
+lists it in `PROVIDER_GRANTS_REQUIRED_FOR`, so it serves a call only under a
+valid provider credit grant for the request's org (`docs/PROVIDER_CREDIT_GRANTS.md`).
+Only the platform org routes to it (`org_overrides.madfam` in the org config);
+every other tenant keeps the global DeepInfra assignments. The adapter sends no
+sampling parameters or `thinking` to current models, caches stable system
+prompts, and raises on `stop_reason: refusal`. `ANTHROPIC_TIMEOUT_SECONDS`
+(default 120) sets its read timeout; production workers use 600.
 
 ## Model Catalog Breadth
 

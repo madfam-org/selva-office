@@ -35,10 +35,13 @@ data. The only things it writes are its own task records.
 3. **Workers.** `CREDIT_AUTOPILOT_ENABLED=true` is set on the workers Deployment (`infra/k8s/production/workers.yaml`). This is key 1 of 2. The loop idles until key 2, the grant's `autopilot` flag, is also set.
 4. **Optional tuning.** These env vars adjust the loop:
    - `CREDIT_AUTOPILOT_INTERVAL_SECONDS` (default 180)
-   - `CREDIT_AUTOPILOT_MAX_CONCURRENCY` (default 6 items in flight)
+   - `CREDIT_AUTOPILOT_MAX_CONCURRENCY` (default 6 items in flight; production sets 8)
    - `CREDIT_AUTOPILOT_FLOOR_USD` (default 2)
-   - `CREDIT_AUTOPILOT_MAX_ATTEMPTS` (default 2)
+   - `CREDIT_AUTOPILOT_MAX_ATTEMPTS` (default 2; production sets 9)
+   - `CREDIT_AUTOPILOT_FRONT_LOAD` (default off; production sets `true`): keep starting work while `ahead` of pace. For an expiring grant whose backlog is larger than the ceiling, idling only risks leaving credit unused. The ceiling, floor, expiry cut-off and an unreadable meter still stop new work.
    - `CREDIT_AUTOPILOT_BACKLOG_PATH`
+
+   Workers also set `ANTHROPIC_TIMEOUT_SECONDS=600` (long non-streaming Opus calls send no bytes until they finish) and `PROVIDER_GRANTS_RESERVATION_TTL_SECONDS=660`, so an in-flight call stays counted against the ceiling for its whole life.
 
    `CREDIT_AUTOPILOT_ORG_ID` may restate the platform org, but if it names any other org the loop refuses to run.
 
@@ -50,10 +53,10 @@ On each tick, the loop works through these steps in order:
 
 1. It picks the soonest-expiring live grant that has `autopilot: true`, for the `anthropic` provider.
 2. It starts no new work if any of these hold:
-   - the pace is `ahead`, `exhausted` or `expired`;
+   - the pace is `exhausted`, `expired` or `unknown`, or `ahead` without `CREDIT_AUTOPILOT_FRONT_LOAD`;
    - the remaining budget is at or below the floor;
    - expiry is less than 15 minutes away.
-3. It frees slots up to `max_concurrency`. A row that is still in flight with no update for 45 minutes counts as a failed attempt.
+3. It frees slots up to `max_concurrency`. A row that is still in flight with no update for 60 minutes counts as a failed attempt.
 4. It walks the backlog in rank order. It skips items that are done or in flight, and items that have reached the maximum number of attempts.
 5. It picks a model tier for each item from the item's own `tiers`:
    - It starts at the item's preferred tier.
@@ -88,3 +91,14 @@ The grant guard (lane LG) remains the hard stop. Calls past the ceiling or after
 - **Live per-item status:** `payload.credit_autopilot.progress` on the parent task is rewritten after every target. It holds: `targets_total`, `targets_done`, `targets_failed`, `targets_skipped_budget`, `calls`, `spend_usd`, `budget_usd`, `budget_reached`. Each target's output sits on its child task. I chose this over a new endpoint because it needs no API model change, and the task view already renders payloads.
 - **What each dollar bought:** `compute_token_ledger` rows carry `task_id`. Summing `cost_usd` by `task_id` gives the spend per item.
 - Artifact files are not used: worker artifact storage is pod-local `/tmp`. The task row is the durable record.
+
+## Operating notes (first production run, 2026-10)
+
+What the first run taught, so the next grant goes further:
+
+- **Empty completions.** On large code contexts, Opus 5.5's adaptive thinking can use the whole `max_output_tokens` budget, so no text block comes back and the target fails with `empty completion`. Those tokens are still billed. Review-style items now get 24k output tokens, but the largest review prompts still came back empty at 24k. Before the next run: record `stop_reason` and usage on empty completions, stream long generations, send `output_config.effort` explicitly, and keep each call's context smaller.
+- **Refusals.** Acceptance criteria that asked for exploit scenarios drew model refusals (`AnthropicRefusalError`). Ask for a failure scenario and a patch instead.
+- **Completed with failures.** An item that finishes with some targets done is `completed` and is never retried. To rerun only the failed targets, add a `*-topup` item that lists just those targets (the backlog test checks that a top-up only reruns a subset of its source item).
+- **Restarts orphan work.** A workers rollout kills in-flight items. Their rows stay `running` and hold slots until the 60-minute staleness window passes. A rollout can also restart twice (the manifest env first, then the image digest commit). With a single workers replica, rows created before the current pod started cannot be live; an operator can mark them `failed` so the next tick re-dispatches them (the one-off script lives in the private operations repo). Avoid merging workers changes while items are in flight.
+- **Meter versus provider billing.** The grant meter is Selva's own estimate. Compare it with the provider's console (or, later, its cost-report API) during the run and adjust `safety_margin_usd` in the grant; see `docs/PROVIDER_CREDIT_GRANTS.md` → Reconciling with the provider.
+

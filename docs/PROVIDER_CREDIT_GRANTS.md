@@ -57,7 +57,7 @@ Other env:
 | `PROVIDER_GRANTS_PATH` | unset | Grants file (production: the path above). |
 | `PROVIDER_GRANTS_REQUIRED_FOR` | unset | Comma list of providers that may ONLY run under a grant (production: `anthropic`). |
 | `PROVIDER_GRANTS_REDIS_URL` | `REDIS_URL` | Meter Redis. |
-| `PROVIDER_GRANTS_RESERVATION_TTL_SECONDS` | `150` | How long an in-flight hold lives if its pod dies. |
+| `PROVIDER_GRANTS_RESERVATION_TTL_SECONDS` | `150` | How long an in-flight hold lives if its pod dies. Keep it above the provider read timeout: production workers set `660` with `ANTHROPIC_TIMEOUT_SECONDS=600`. |
 
 ## The fail-closed guarantee
 
@@ -87,7 +87,10 @@ overshoot. After the call it settles the actual USD from usage; on error it
 releases; on timeout or a stream with no usage it settles the worst case.
 Reservations expire on their own. A cold Redis seeds `spent` from the USD
 ledger (`compute_token_ledger`, provider + window) in nexus-api and the gateway;
-workers cannot reach the ledger and seed 0 (logged).
+workers cannot reach the ledger and seed 0 (logged). The guard keeps one
+Redis meter per running event loop: an asyncio Redis client is bound to the
+loop that created it, and workers run graph code in more than one loop. All
+meters share the same Redis keys, so the ceiling holds across them.
 
 With no grant declared and `PROVIDER_GRANTS_REQUIRED_FOR` empty the guard is
 inert and routing is unchanged.
@@ -109,6 +112,17 @@ and `meter_ok`.
   The amount series disappear (not zero) while the meter is unreadable.
 - Agent tool: `inference_budget_status` (PLATFORM audience only).
 - Python: `await madfam_inference.grants.get_grant_statuses()`.
+
+## Reconciling with the provider
+
+The meter prices calls with Selva's cost model; the provider bills what it
+actually served. In the first production run the meter read low by a roughly
+fixed amount (requests that timed out on the client were still billed) plus a
+few percent of drift (worst-case input estimates on very large contexts, cache
+writes). Read the provider's usage during the run and, if the meter is low,
+raise `safety_margin_usd` in the grant (Vault edit plus a sync; no restart).
+If the meter runs high, lower the margin to use the full balance. A job that
+reconciles against the provider's cost-report API is a planned follow-up.
 
 ## Owner steps
 
