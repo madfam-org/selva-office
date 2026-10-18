@@ -626,3 +626,38 @@ class TestOrgOverrideInteraction:
         assert resp.provider == "deepinfra" and deep.calls == ["global-llama"]
         [status] = await guard.statuses()
         assert status.spent_usd == 0.0
+
+
+def test_guard_builds_one_meter_per_event_loop() -> None:
+    """An asyncio Redis client is loop-bound; each running loop gets its own meter."""
+    import asyncio
+
+    from madfam_inference.grants import GrantGuard
+
+    built: list[object] = []
+
+    class _Meter:
+        def __init__(self) -> None:
+            self.seeder = None
+
+        def set_seeder(self, seeder: object) -> None:
+            self.seeder = seeder
+
+    def factory() -> object:
+        m = _Meter()
+        built.append(m)
+        return m
+
+    guard = GrantGuard(required=["anthropic"], meter_factory=factory, platform_orgs=["madfam"])
+
+    async def same_loop_twice() -> tuple[object, object]:
+        return guard.meter(), guard.meter()
+
+    a, b = asyncio.run(same_loop_twice())
+    assert a is b
+    (c, _) = asyncio.run(same_loop_twice())
+    assert c is not a
+    assert len(built) == 2
+    # Outside any loop the guard keeps a single fallback meter.
+    assert guard.meter() is guard.meter()
+    assert all(isinstance(m, _Meter) for m in guard.all_meters())

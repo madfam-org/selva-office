@@ -685,6 +685,11 @@ class GrantGuard:
         self._required = frozenset(required) if required is not None else required_providers()
         self._meter = meter
         self._meter_factory = meter_factory
+        # One meter per running event loop: an asyncio Redis client is bound
+        # to the loop that created its connections, and workers run graph code
+        # in more than one loop (``run_async`` helper threads). Sharing one
+        # client across loops raised RuntimeError and failed the guard closed.
+        self._loop_meters: dict[int, tuple[asyncio.AbstractEventLoop, GrantMeter | None]] = {}
         self._platform_orgs = (
             frozenset(platform_orgs) if platform_orgs is not None else platform_org_ids()
         )
@@ -738,14 +743,43 @@ class GrantGuard:
 
     # -- meter -------------------------------------------------------------
 
+    def _build_meter(self) -> GrantMeter | None:
+        assert self._meter_factory is not None
+        try:
+            return self._meter_factory()
+        except Exception as exc:
+            self._log_error("meter", "provider grants: cannot build the Redis meter: %s", exc)
+            return None
+
     def meter(self) -> GrantMeter | None:
-        if self._meter is None and self._meter_factory is not None:
-            try:
-                self._meter = self._meter_factory()
-            except Exception as exc:
-                self._log_error("meter", "provider grants: cannot build the Redis meter: %s", exc)
-                self._meter = None
-        return self._meter
+        if self._meter_factory is None:
+            return self._meter
+        try:
+            loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is None:
+            if self._meter is None:
+                self._meter = self._build_meter()
+            return self._meter
+        entry = self._loop_meters.get(id(loop))
+        if entry is not None and entry[0] is loop:
+            return entry[1]
+        for key, (other, _) in list(self._loop_meters.items()):
+            if other.is_closed():
+                del self._loop_meters[key]
+        meter = self._build_meter()
+        self._loop_meters[id(loop)] = (loop, meter)
+        if self._meter is None:
+            self._meter = meter
+        return meter
+
+    def all_meters(self) -> list[GrantMeter]:
+        """Every meter this guard has built (for re-wiring, e.g. a new seeder)."""
+        meters = [m for _, m in self._loop_meters.values() if m is not None]
+        if self._meter is not None and all(self._meter is not m for m in meters):
+            meters.append(self._meter)
+        return meters
 
     # -- decisions ---------------------------------------------------------
 
@@ -793,8 +827,9 @@ class GrantGuard:
             try:
                 ok, rid = await meter.try_reserve(grant, worst, now)
             except Exception as exc:
-                self._log_error("redis", "provider grants: Redis meter error (%s) — guarded "
-                                "provider %s unavailable", type(exc).__name__, provider_name)
+                self._log_error("redis", "provider grants: Redis meter error (%s: %s) — guarded "
+                                "provider %s unavailable", type(exc).__name__,
+                                str(exc)[:200], provider_name)
                 return GuardDecision(False, "meter_unavailable", grant_id=grant.id)
             if ok and rid is not None:
                 return GuardDecision(
@@ -917,8 +952,9 @@ def set_ledger_seeder(seeder: LedgerSeeder | None) -> None:
     global _ledger_seeder  # noqa: PLW0603
     _ledger_seeder = seeder
     guard = _default_guard
-    if guard is not None and guard._meter is not None:
-        guard._meter.set_seeder(seeder)
+    if guard is not None:
+        for meter in guard.all_meters():
+            meter.set_seeder(seeder)
 
 
 async def get_grant_statuses() -> list[GrantStatus]:
