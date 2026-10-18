@@ -52,7 +52,7 @@ images:
   - name: ghcr.io/madfam-org/selva-nexus-api
     digest: sha256:448c2922b33f9529b90b30bbc0d1aa09fb8843a9634c64a068f6048682dc090e
   - name: ghcr.io/madfam-org/selva-office-ui
-    digest: sha256:e3c22818ad0ca50aceca8d076836f162a34f4d20a4db665bccca67a8dbfbe1cb
+    digest: sha256:2434ea9a21181a32ff603058d33349742104b54a67312a706c65c32d4c7fa4ee
   - name: ghcr.io/madfam-org/selva-colyseus
     digest: sha256:e5625c144f4ce354ad0860bfb28a9a7ed8d5cf80e5bc08605e3e733861d547db
   - name: ghcr.io/madfam-org/selva-admin
@@ -60,7 +60,7 @@ images:
   - name: ghcr.io/madfam-org/selva-gateway
     digest: sha256:1c0a9cd8a1b3407e98eea460951d6a0872c8b73d5c8378550d1de338904f18eb
   - name: ghcr.io/madfam-org/selva-workers
-    digest: sha256:bebfd478c0a075ac8765da1967a81cec8e5118e558a9b0be635e26e2338308e4
+    digest: sha256:4e35eb641779b5a655ae840e9d29376a4e0eafba38c6a51fb5ea7b1ab3ebb085
 
 # Per-deployment strategic-merge-patches. Each file is a single-doc
 # patch with explicit `metadata.name` so kustomize's patch matcher
