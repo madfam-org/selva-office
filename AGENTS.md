@@ -521,6 +521,10 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
 - `packages/inference/madfam_inference/org_config.py` -- Org-level config (task types, model assignments, services)
 - `packages/inference/madfam_inference/router.py` -- LLM model routing logic
 - `packages/inference/madfam_inference/factory.py` -- Shared `build_router_from_env()` (worker + proxy)
+- `packages/inference/madfam_inference/grants.py` -- Provider credit grants: fail-closed guard, Redis meter, status (`docs/PROVIDER_CREDIT_GRANTS.md`)
+- `apps/workers/selva_workers/jobs/credit_autopilot.py` -- Credit-investment autopilot for the platform org (`docs/CREDIT_AUTOPILOT.md`; backlog `data/credit-investment/`, roster `data/factory-lines/`)
+- `packages/permissions/selva_permissions/tool_policy.py` -- Explicit HITL policy for every built-in tool (`docs/TOOL_HITL_INVENTORY.md`)
+- `packages/observability/src/selva_observability/redaction.py` -- Credential redaction for connection URLs in logs
 - `apps/nexus-api/nexus_api/routers/inference_proxy.py` -- OpenAI-compatible `/v1/` proxy (ecosystem gateway)
 - `apps/nexus-api/nexus_api/routers/intelligence.py` -- Intelligence config API
 - `apps/nexus-api/nexus_api/routers/chat.py` -- Chat history persistence API
@@ -629,8 +633,10 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
   from the single `scrapeCRM()` call.
 - **Email Validation**: RFC-compliant regex (`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
   in `SendEmailTool`, `SendMarketingEmailTool`, and CRM graph `send()`.
-- **LLM Placeholder Abort**: CRM graph aborts email send when LLM returns
-  `"[LLM unavailable"` placeholder (e.g. due to $0 provider credits).
+- **LLM Failure Abort**: `call_llm` raises `LLMCallError` instead of returning
+  a placeholder (since PR #326), so a failed draft fails the CRM task and no
+  email is sent. The old `"[LLM unavailable"` string check in the CRM graph is
+  legacy and never matches now.
 - **HTML Sanitisation**: `_sanitize_email_html()` strips script, iframe,
   object, embed, form, style tags, `on*` event handlers, and
   `javascript:`/`data:` URLs from email body before template injection.
