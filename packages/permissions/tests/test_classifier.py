@@ -56,16 +56,24 @@ class TestClassifyEmail:
 
 
 class TestClassifyUnknownDefaults:
-    """Unrecognised tool names should fall back to API_CALL."""
+    """Unrecognised tool names fail closed to UNCLASSIFIED_TOOL (ASK)."""
 
     def test_classify_completely_unknown(self, classifier: ActionClassifier) -> None:
-        assert classifier.classify("unknown_tool") == ActionCategory.API_CALL
+        assert classifier.classify("unknown_tool") == ActionCategory.UNCLASSIFIED_TOOL
 
     def test_classify_random_string(self, classifier: ActionClassifier) -> None:
-        assert classifier.classify("xyzzy_widget") == ActionCategory.API_CALL
+        assert classifier.classify("xyzzy_widget") == ActionCategory.UNCLASSIFIED_TOOL
 
     def test_classify_empty_string(self, classifier: ActionClassifier) -> None:
-        assert classifier.classify("") == ActionCategory.API_CALL
+        assert classifier.classify("") == ActionCategory.UNCLASSIFIED_TOOL
+
+    def test_brand_new_tool_name_requires_approval(self, classifier: ActionClassifier) -> None:
+        # A tool added tomorrow with no policy entry and no matching
+        # substring must not run unattended.
+        result = classifier.classify_and_evaluate("brand_new_payout_tool_v9")
+        assert result.action_category == ActionCategory.UNCLASSIFIED_TOOL
+        assert result.level == PermissionLevel.ASK
+        assert result.requires_approval is True
 
 
 class TestClassifyCaseSensitivity:
@@ -146,13 +154,11 @@ class TestClassifyAndEvaluate:
         assert result.level == PermissionLevel.ALLOW
         assert result.requires_approval is False
 
-    def test_full_flow_unknown_tool_defaults_to_api_call(
-        self, classifier: ActionClassifier
-    ) -> None:
+    def test_full_flow_unknown_tool_requires_approval(self, classifier: ActionClassifier) -> None:
         result = classifier.classify_and_evaluate("totally_unknown")
-        assert result.action_category == ActionCategory.API_CALL
-        # API_CALL is ALLOW by default
-        assert result.level == PermissionLevel.ALLOW
+        assert result.action_category == ActionCategory.UNCLASSIFIED_TOOL
+        # Unknown tools fail closed (ASK)
+        assert result.level == PermissionLevel.ASK
 
     def test_full_flow_deploy_requires_approval(self, classifier: ActionClassifier) -> None:
         result = classifier.classify_and_evaluate("deploy")
