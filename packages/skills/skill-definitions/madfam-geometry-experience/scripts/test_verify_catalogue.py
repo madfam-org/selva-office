@@ -6,10 +6,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 spec = importlib.util.spec_from_file_location(
     "catalogue_audit", Path(__file__).with_name("verify-catalogue.py")
 )
+if spec is None or spec.loader is None:
+    raise ImportError("cannot load verify-catalogue.py")
 v = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(v)
 
@@ -66,13 +69,13 @@ class CatalogueBOMTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.fields = ["id", "quantity", "unit", "material"]
-        self.doc = {
+        self.doc: dict[str, Any] = {
             "artifacts": [{"path": "bill-of-materials.csv"}, {"path": "native-bom.json"}],
             "bom": [
                 {"id": "outer", "quantity": 2, "unit": "cut", "material": "textile-unassigned"}
             ],
         }
-        self.pattern = {"bom": [{"item": "outer", "qty": 2, "unit": "count"}]}
+        self.pattern: dict[str, Any] = {"bom": [{"item": "outer", "qty": 2, "unit": "count"}]}
         self.write_csv(self.doc["bom"])
         (self.root / "native-bom.json").write_text(json.dumps(self.pattern["bom"]))
 
