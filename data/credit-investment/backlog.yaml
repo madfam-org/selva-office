@@ -70,15 +70,17 @@ forbidden_tools:
 - spei_transfer_initiate
 - cfdi_stamp
 items:
+# Top-up (2026-10-17): the *-topup items rerun only the targets that failed on
+# empty completions (adaptive thinking used the whole 12k output budget) or on
+# the earlier timeout / meter faults; review items now get 24k output tokens.
 - id: review-janua-auth
   rank: 10
   line: software
   mode: generate
-  objective: Security + correctness of Janua's auth, OIDC, token and org-claim paths every MADFAM product
-    trusts.
-  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent
-    module. Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a
-    proposed patch (unified diff). Findings only; nothing is posted or pushed.'
+  objective: Security + correctness of Janua's auth, OIDC, token and org-claim paths every MADFAM product trusts.
+  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent module.
+    Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a proposed patch (unified
+    diff). Findings only; nothing is posted or pushed.'
   tiers:
   - opus
   refine_rounds: 2
@@ -88,10 +90,10 @@ items:
   acceptance: &id001
   - 'Concrete security or correctness findings only (no style nits): each has severity (critical/high/medium/low),
     file:line, the quoted code, the exploit or failure scenario, and a proposed patch as a unified diff.'
-  - Auth, tenancy, money, permission and control-plane invariants are checked explicitly (who can call
-    it, which org/tenant it acts on, what it charges or changes).
-  - The critique rounds drop any finding the quoted code does not support; 'no findings' with the invariants
-    checked is a valid answer.
+  - Auth, tenancy, money, permission and control-plane invariants are checked explicitly (who can call it, which
+    org/tenant it acts on, what it charges or changes).
+  - The critique rounds drop any finding the quoted code does not support; 'no findings' with the invariants checked
+    is a valid answer.
   fanout:
   - id: janua:jwt-and-tenant-context
     context:
@@ -182,16 +184,16 @@ items:
   rank: 11
   line: software
   mode: generate
-  objective: 'Security + correctness of Enclii''s control plane: auth/RBAC, API tokens, secrets intake,
-    deploy, webhooks, tenant admin.'
-  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent
-    module. Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a
-    proposed patch (unified diff). Findings only; nothing is posted or pushed.'
+  objective: 'Security + correctness of Enclii''s control plane: auth/RBAC, API tokens, secrets intake, deploy,
+    webhooks, tenant admin.'
+  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent module.
+    Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a proposed patch (unified
+    diff). Findings only; nothing is posted or pushed.'
   tiers:
   - opus
   refine_rounds: 2
   parallel: 3
-  max_output_tokens: 12000
+  max_output_tokens: 24000
   allowed_tools: []
   acceptance: *id001
   fanout:
@@ -302,16 +304,16 @@ items:
   rank: 12
   line: software
   mode: generate
-  objective: Security + correctness of Selva's inference router and gateway auth, budget gate, permissions,
-    workers HITL, tool audience, billing and dispatch.
-  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent
-    module. Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a
-    proposed patch (unified diff). Findings only; nothing is posted or pushed.'
+  objective: Security + correctness of Selva's inference router and gateway auth, budget gate, permissions, workers
+    HITL, tool audience, billing and dispatch.
+  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent module.
+    Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a proposed patch (unified
+    diff). Findings only; nothing is posted or pushed.'
   tiers:
   - opus
   refine_rounds: 2
   parallel: 3
-  max_output_tokens: 12000
+  max_output_tokens: 24000
   allowed_tools: []
   acceptance: *id001
   fanout:
@@ -420,16 +422,16 @@ items:
   rank: 13
   line: geometry
   mode: generate
-  objective: 'Security + correctness of the geometry line: Yantra4D auth/render/integrations, geom-core
-    analysis, Pliego API/render, hyperobjects graph engine.'
-  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent
-    module. Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a
-    proposed patch (unified diff). Findings only; nothing is posted or pushed.'
+  objective: 'Security + correctness of the geometry line: Yantra4D auth/render/integrations, geom-core analysis,
+    Pliego API/render, hyperobjects graph engine.'
+  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent module.
+    Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a proposed patch (unified
+    diff). Findings only; nothing is posted or pushed.'
   tiers:
   - opus
   refine_rounds: 2
   parallel: 3
-  max_output_tokens: 12000
+  max_output_tokens: 24000
   allowed_tools: []
   acceptance: *id001
   fanout:
@@ -520,14 +522,14 @@ items:
   mode: generate
   objective: Security + correctness of Pravara MES auth/orders/dispatch/billing/webhooks, ceq auth/billing/jobs,
     and solarpunk-foundry shared auth/contracts.
-  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent
-    module. Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a
-    proposed patch (unified diff). Findings only; nothing is posted or pushed.'
+  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent module.
+    Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a proposed patch (unified
+    diff). Findings only; nothing is posted or pushed.'
   tiers:
   - opus
   refine_rounds: 2
   parallel: 3
-  max_output_tokens: 12000
+  max_output_tokens: 24000
   allowed_tools: []
   acceptance: *id001
   fanout:
@@ -606,13 +608,13 @@ items:
   rank: 20
   line: faap
   objective: A Selva-side eval set so model routing is chosen on value per dollar.
-  deliverable: 'Per task type: at least 44 eval items as JSON {prompt, reference_points, rubric} drawn
-    from MADFAM''s public engineering and operations domain (no client or personal data). Prompts are
-    self-contained, varied in difficulty, and gradeable; rubrics give observable 0-1 criteria.'
+  deliverable: 'Per task type: at least 44 eval items as JSON {prompt, reference_points, rubric} drawn from MADFAM''s
+    public engineering and operations domain (no client or personal data). Prompts are self-contained, varied in
+    difficulty, and gradeable; rubrics give observable 0-1 criteria.'
   tiers:
   - opus
   - sonnet
-  budget_share: 0.019
+  budget_share: 0.005
   max_output_tokens: 32000
   output: json
   json_min_items: 40
@@ -637,14 +639,14 @@ items:
   rank: 21
   line: faap
   mode: benchmark
-  objective: 'Evidence for routing: quality, latency and USD per task type for opus, sonnet, haiku and
-    the tenant''s current route.'
+  objective: 'Evidence for routing: quality, latency and USD per task type for opus, sonnet, haiku and the tenant''s
+    current route.'
   deliverable: Per-task-type table (quality, p50 latency, USD, quality per USD) and a proposed org_overrides/model_assignments
     YAML (cheapest model within 0.05 of the best quality). Scores from a second blind judge (claude-sonnet-5-5)
     are reported alongside the primary opus judge, with inter-judge agreement per task type.
   tiers:
   - opus
-  budget_share: 0.134
+  budget_share: 0.02
   parallel: 4
   depends_on:
   - eval-set-text-routing
@@ -669,15 +671,14 @@ items:
   id: fm-schema-v1
   rank: 30
   line: faap
-  objective: One factory-manifest contract for every MADFAM service, so Selva can discover, verify and
-    route work to each factory line.
-  deliverable: 'A JSON Schema (draft 2020-12) for selva.factory-manifest/v1 reconciling the repo build-shape
-    manifest (.factory/manifest.json: name, version, build, test) with Routecraft''s product-facing .factory-manifest.json
-    (known keys: factory_id, inputs schema, outputs schema, price, sla, endpoint, dependencies; the rest
-    is not visible from Selva). Sections: identity, line, capabilities, inputs, outputs, SLAs, price references
-    (Tulana/Dhanam catalog SKU ids, never literal prices), consent/data class, build/test. Include a field
-    mapping table, the served location (/.well-known/factory-manifest.json plus repo copy) and a migration
-    note for factory_manifest_verify.'
+  objective: One factory-manifest contract for every MADFAM service, so Selva can discover, verify and route work
+    to each factory line.
+  deliverable: 'A JSON Schema (draft 2020-12) for selva.factory-manifest/v1 reconciling the repo build-shape manifest
+    (.factory/manifest.json: name, version, build, test) with Routecraft''s product-facing .factory-manifest.json
+    (known keys: factory_id, inputs schema, outputs schema, price, sla, endpoint, dependencies; the rest is not
+    visible from Selva). Sections: identity, line, capabilities, inputs, outputs, SLAs, price references (Tulana/Dhanam
+    catalog SKU ids, never literal prices), consent/data class, build/test. Include a field mapping table, the served
+    location (/.well-known/factory-manifest.json plus repo copy) and a migration note for factory_manifest_verify.'
   tiers:
   - opus
   - sonnet
@@ -688,8 +689,7 @@ items:
   - repo: selva-office
     path: packages/tools/src/selva_tools/builtins/factory_manifest.py
   acceptance:
-  - Valid JSON Schema; every build-shape key and every known Routecraft key is mapped or dropped with
-    a reason.
+  - Valid JSON Schema; every build-shape key and every known Routecraft key is mapped or dropped with a reason.
   - Prices only as catalog references, never amounts.
   - Consent/data-classification section present.
 - mode: generate
@@ -698,9 +698,9 @@ items:
   rank: 31
   line: software
   objective: Draft one selva.factory-manifest/v1 per software-line service.
-  deliverable: 'Per target: a draft manifest JSON (capabilities, inputs, outputs, SLA targets marked proposed,
-    catalog price refs marked to-confirm, consent/data class) plus open questions. Unknowns become open
-    questions, never invented endpoints.'
+  deliverable: 'Per target: a draft manifest JSON (capabilities, inputs, outputs, SLA targets marked proposed, catalog
+    price refs marked to-confirm, consent/data class) plus open questions. Unknowns become open questions, never
+    invented endpoints.'
   tiers:
   - opus
   - sonnet
@@ -714,8 +714,8 @@ items:
     - repo: enclii
       path: README.md
   - id: fragua
-    brief: Fragua is incubating and has no public repo; draft from the Enclii platform context and mark
-      every capability proposed.
+    brief: Fragua is incubating and has no public repo; draft from the Enclii platform context and mark every capability
+      proposed.
     context:
     - repo: enclii
       path: README.md
@@ -723,15 +723,16 @@ items:
     context:
     - repo: janua
       path: README.md
-  - id: selva
+  - &id002
+    id: selva
     context:
     - repo: selva-office
       path: README.md
     - repo: selva-office
       path: llms.txt
   - id: routecraft
-    brief: Routecraft's repo is private; draft only from what Selva knows (the manifest tool and the known
-      keys) and list everything else as open questions.
+    brief: Routecraft's repo is private; draft only from what Selva knows (the manifest tool and the known keys)
+      and list everything else as open questions.
     context:
     - repo: selva-office
       path: packages/tools/src/selva_tools/builtins/factory_manifest.py
@@ -745,9 +746,9 @@ items:
   rank: 32
   line: geometry
   objective: Draft one selva.factory-manifest/v1 per geometry-line service.
-  deliverable: 'Per target: a draft manifest JSON (capabilities, inputs, outputs, SLA targets marked proposed,
-    catalog price refs marked to-confirm, consent/data class) plus open questions. Unknowns become open
-    questions, never invented endpoints.'
+  deliverable: 'Per target: a draft manifest JSON (capabilities, inputs, outputs, SLA targets marked proposed, catalog
+    price refs marked to-confirm, consent/data class) plus open questions. Unknowns become open questions, never
+    invented endpoints.'
   tiers:
   - opus
   - sonnet
@@ -764,7 +765,8 @@ items:
     context:
     - repo: geom-core
       path: README.md
-  - id: hyperobjects-spec
+  - &id003
+    id: hyperobjects-spec
     context:
     - repo: hyperobjects-spec
       path: README.md
@@ -773,8 +775,7 @@ items:
     - repo: pliego
       path: README.md
   - id: fashion-cabinet
-    brief: Fashion Cabinet's repo is private; draft from the geometry-line context only and list open
-      questions.
+    brief: Fashion Cabinet's repo is private; draft from the geometry-line context only and list open questions.
     context:
     - repo: hyperobjects-spec
       path: README.md
@@ -793,9 +794,9 @@ items:
   rank: 33
   line: physical
   objective: Draft one selva.factory-manifest/v1 per physical-line service.
-  deliverable: 'Per target: a draft manifest JSON (capabilities, inputs, outputs, SLA targets marked proposed,
-    catalog price refs marked to-confirm, consent/data class) plus open questions. Unknowns become open
-    questions, never invented endpoints.'
+  deliverable: 'Per target: a draft manifest JSON (capabilities, inputs, outputs, SLA targets marked proposed, catalog
+    price refs marked to-confirm, consent/data class) plus open questions. Unknowns become open questions, never
+    invented endpoints.'
   tiers:
   - opus
   - sonnet
@@ -805,8 +806,8 @@ items:
   parallel: 3
   fanout:
   - id: cotiza
-    brief: Cotiza (repo digifab-quoting) is private; draft from Selva's phygital tool contract and the
-      quote-truth RFC.
+    brief: Cotiza (repo digifab-quoting) is private; draft from Selva's phygital tool contract and the quote-truth
+      RFC.
     context:
     - repo: selva-office
       path: packages/tools/src/selva_tools/builtins/phygital_tools.py
@@ -818,8 +819,7 @@ items:
     - repo: pravara-mes
       path: README.md
   - id: forgesight
-    brief: Forgesight's repo is private; draft from how Cotiza's market_context uses it in Selva's phygital
-      tools.
+    brief: Forgesight's repo is private; draft from how Cotiza's market_context uses it in Selva's phygital tools.
     context:
     - repo: selva-office
       path: packages/tools/src/selva_tools/builtins/phygital_tools.py
@@ -832,11 +832,10 @@ items:
   id: skills-factory-lines
   rank: 34
   line: faap
-  objective: Give every factory-line agent and line a first-party skill so agents get the right tools
-    and instructions.
-  deliverable: 'Per target: a SKILL.md draft in the repo''s frontmatter format (name, description, audience:
-    platform, allowed_tools, metadata) plus the instruction body in en and es-MX. allowed_tools limited
-    to existing read/draft tools and HITL-gated writes.'
+  objective: Give every factory-line agent and line a first-party skill so agents get the right tools and instructions.
+  deliverable: 'Per target: a SKILL.md draft in the repo''s frontmatter format (name, description, audience: platform,
+    allowed_tools, metadata) plus the instruction body in en and es-MX. allowed_tools limited to existing read/draft
+    tools and HITL-gated writes.'
   tiers:
   - opus
   - sonnet
@@ -884,8 +883,8 @@ items:
   line: physical
   objective: Design the missing graphs/phygital.py (ROADMAP F-series).
   deliverable: 'A design doc: state shape, nodes (design -> run_dfm_analysis -> generate_quote with require_market_verified
-    -> HITL -> read Pravara status), interrupt points, failure modes (fail visible), tests against the
-    vendored route fixtures, and a rewired 3d-modeling workflow template. Design only.'
+    -> HITL -> read Pravara status), interrupt points, failure modes (fail visible), tests against the vendored
+    route fixtures, and a rewired 3d-modeling workflow template. Design only.'
   tiers:
   - opus
   - sonnet
@@ -906,12 +905,11 @@ items:
   rank: 40
   line: faap
   mode: generate
-  objective: Close test gaps on the most critical public-repo modules so regressions in auth, money and
-    control paths are caught.
-  deliverable: 'Per module group: the missing test cases as complete test files in the repo''s own framework
-    and layout (path + full file content in fenced blocks), covering authz denials, tenant isolation,
-    money/limit edge cases, error paths and the invariants the code relies on. Draft text only; nothing
-    is pushed.'
+  objective: Close test gaps on the most critical public-repo modules so regressions in auth, money and control
+    paths are caught.
+  deliverable: 'Per module group: the missing test cases as complete test files in the repo''s own framework and
+    layout (path + full file content in fenced blocks), covering authz denials, tenant isolation, money/limit edge
+    cases, error paths and the invariants the code relies on. Draft text only; nothing is pushed.'
   tiers:
   - opus
   refine_rounds: 2
@@ -919,8 +917,7 @@ items:
   max_output_tokens: 14000
   allowed_tools: []
   acceptance:
-  - Tests target real functions/handlers present in the provided files, in the repo's own framework and
-    conventions.
+  - Tests target real functions/handlers present in the provided files, in the repo's own framework and conventions.
   - Each test names the invariant it protects; no tests of trivial getters or styling.
   - Files are complete and syntactically plausible; external services are faked, never called.
   fanout:
@@ -1266,16 +1263,15 @@ items:
       path: apps/api/security.py
     - repo: pliego
       path: apps/api/cors.py
-  budget_share: 0.252
+  budget_share: 0.07
 - mode: generate
   allowed_tools: []
   id: positioning-internal
   rank: 90
   line: faap
   objective: Internal factory-of-factories positioning for the messaging house.
-  deliverable: 'Internal positioning brief (en + es-MX): the three lines, Factory-as-a-Product as the
-    offer, proof points that exist today vs gaps, copy candidates for the messaging house. Marked INTERNAL
-    (R130 hold).'
+  deliverable: 'Internal positioning brief (en + es-MX): the three lines, Factory-as-a-Product as the offer, proof
+    points that exist today vs gaps, copy candidates for the messaging house. Marked INTERNAL (R130 hold).'
   tiers:
   - sonnet
   - opus
@@ -1304,3 +1300,507 @@ items:
   - file_read
   acceptance:
   - Every claim has a cited source; no outreach of any kind.
+- id: review-janua-auth-topup
+  rank: 15
+  line: software
+  mode: generate
+  objective: Security + correctness of Janua's auth, OIDC, token and org-claim paths every MADFAM product trusts.
+  deliverable: 'Per module group: a security + correctness review of the provided files as one coherent module.
+    Findings report with severity, file:line, quoted evidence, failure/exploit scenario and a proposed patch (unified
+    diff). Findings only; nothing is posted or pushed.'
+  tiers:
+  - opus
+  refine_rounds: 1
+  parallel: 3
+  max_output_tokens: 24000
+  allowed_tools: []
+  acceptance:
+  - 'Concrete security or correctness findings only (no style nits): each has severity (critical/high/medium/low),
+    file:line, the quoted code, the exploit or failure scenario, and a proposed patch as a unified diff.'
+  - Auth, tenancy, money, permission and control-plane invariants are checked explicitly (who can call it, which
+    org/tenant it acts on, what it charges or changes).
+  - The critique rounds drop any finding the quoted code does not support; 'no findings' with the invariants checked
+    is a valid answer.
+  fanout:
+  - id: janua:jwt-and-tenant-context
+    context:
+    - repo: janua
+      path: apps/api/app/core/jwt_manager.py
+    - repo: janua
+      path: apps/api/app/core/tenant_context.py
+    - repo: janua
+      path: apps/api/app/core/oauth_metadata.py
+    - repo: janua
+      path: apps/api/app/core/reserved_oauth_boundaries.py
+  - id: janua:auth-router-sessions
+    context:
+    - repo: janua
+      path: apps/api/app/auth/router.py
+    - repo: janua
+      path: apps/api/app/auth/router_completed.py
+    - repo: janua
+      path: apps/api/app/auth/sessions_cookie.py
+    - repo: janua
+      path: apps/api/app/auth/sso_cookie.py
+  - id: janua:oauth-provider
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth_provider.py
+  - id: janua:auth-router-v1
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/auth.py
+  - id: janua:oauth-clients-and-scopes
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth.py
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth_clients.py
+    - repo: janua
+      path: apps/api/app/routers/v1/internal_oauth_client_scopes.py
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth_on_behalf.py
+  - id: janua:org-claims-and-roles
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/organizations.py
+    - repo: janua
+      path: apps/api/app/routers/v1/organization_app_roles.py
+    - repo: janua
+      path: apps/api/app/routers/v1/organization_members.py
+    - repo: janua
+      path: apps/api/app/routers/v1/internal_org_entitlements.py
+  - id: janua:org-domain-and-membership
+    context:
+    - repo: janua
+      path: apps/api/app/organizations/domain/services/membership_service.py
+    - repo: janua
+      path: apps/api/app/organizations/domain/models/membership.py
+    - repo: janua
+      path: apps/api/app/organizations/infrastructure/repositories/organization_repository.py
+    - repo: janua
+      path: apps/api/app/organizations/interfaces/rest/organization_controller.py
+    - repo: janua
+      path: apps/api/app/organizations/application/commands/invite_member.py
+  - id: janua:api-keys-and-consent
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/api_keys.py
+    - repo: janua
+      path: apps/api/app/middleware/api_key_auth.py
+    - repo: janua
+      path: apps/api/app/routers/v1/connections_consent.py
+    - repo: janua
+      path: apps/api/app/core/consent_purposes.py
+  budget_share: 0.04
+- mode: generate
+  allowed_tools: []
+  id: eval-set-text-routing-topup
+  rank: 22
+  line: faap
+  objective: A Selva-side eval set so model routing is chosen on value per dollar.
+  deliverable: 'Per task type: at least 44 eval items as JSON {prompt, reference_points, rubric} drawn from MADFAM''s
+    public engineering and operations domain (no client or personal data). Prompts are self-contained, varied in
+    difficulty, and gradeable; rubrics give observable 0-1 criteria.'
+  tiers:
+  - sonnet
+  - opus
+  budget_share: 0.01
+  max_output_tokens: 24000
+  output: json
+  json_min_items: 40
+  parallel: 3
+  fanout:
+  - id: planning
+    brief: 'Task type: planning.'
+  - id: coding
+    brief: 'Task type: coding.'
+  - id: review
+    brief: 'Task type: review.'
+  - id: research
+    brief: 'Task type: research.'
+  - id: support
+    brief: 'Task type: support.'
+  acceptance:
+  - At least 40 valid items per task type (validated on parse).
+  - No personal or client data; prompts self-contained.
+- id: routing-benchmark-topup
+  rank: 23
+  line: faap
+  mode: benchmark
+  objective: 'Evidence for routing: quality, latency and USD per task type for opus, sonnet, haiku and the tenant''s
+    current route.'
+  deliverable: Per-task-type table (quality, p50 latency, USD, quality per USD) and a proposed org_overrides/model_assignments
+    YAML (cheapest model within 0.05 of the best quality). Scores from a second blind judge (claude-sonnet-5-5)
+    are reported alongside the primary opus judge, with inter-judge agreement per task type.
+  tiers:
+  - opus
+  budget_share: 0.05
+  parallel: 4
+  depends_on:
+  - eval-set-text-routing-topup
+  benchmark:
+    source_item: eval-set-text-routing-topup
+    models:
+    - opus
+    - sonnet
+    - haiku
+    tenant_default: true
+    per_task_type: 40
+    judges:
+    - opus
+    - sonnet
+  allowed_tools: []
+  acceptance:
+  - Every task type has at least 5 judged prompts per candidate.
+  - The proposal names one provider/model per task type.
+  - Inter-judge agreement (mean abs diff, within-0.2 rate, Pearson) reported per task type.
+- mode: generate
+  allowed_tools: []
+  id: fm-manifests-topup
+  rank: 36
+  line: software
+  objective: Draft one selva.factory-manifest/v1 per software-line service.
+  deliverable: 'Per target: a draft manifest JSON (capabilities, inputs, outputs, SLA targets marked proposed, catalog
+    price refs marked to-confirm, consent/data class) plus open questions. Unknowns become open questions, never
+    invented endpoints.'
+  tiers:
+  - opus
+  - sonnet
+  budget_share: 0.01
+  max_output_tokens: 24000
+  refine_rounds: 1
+  parallel: 3
+  fanout:
+  - *id002
+  - *id003
+  acceptance:
+  - One JSON manifest per service, valid against the v1 sections.
+  - No invented endpoints or prices; unknowns listed as open questions.
+  - Ownership boundaries respect the ruled separation of concerns.
+- id: test-gap-drafts-topup
+  rank: 41
+  line: faap
+  mode: generate
+  objective: Close test gaps on the most critical public-repo modules so regressions in auth, money and control
+    paths are caught.
+  deliverable: 'Per module group: the missing test cases as complete test files in the repo''s own framework and
+    layout (path + full file content in fenced blocks), covering authz denials, tenant isolation, money/limit edge
+    cases, error paths and the invariants the code relies on. Draft text only; nothing is pushed.'
+  tiers:
+  - opus
+  refine_rounds: 1
+  parallel: 3
+  max_output_tokens: 24000
+  allowed_tools: []
+  acceptance:
+  - Tests target real functions/handlers present in the provided files, in the repo's own framework and conventions.
+  - Each test names the invariant it protects; no tests of trivial getters or styling.
+  - Files are complete and syntactically plausible; external services are faked, never called.
+  fanout:
+  - id: janua:jwt-and-tenant-context
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/core/jwt_manager.py
+    - repo: janua
+      path: apps/api/app/core/tenant_context.py
+    - repo: janua
+      path: apps/api/app/core/oauth_metadata.py
+    - repo: janua
+      path: apps/api/app/core/reserved_oauth_boundaries.py
+  - id: janua:auth-router-sessions
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/auth/router.py
+    - repo: janua
+      path: apps/api/app/auth/router_completed.py
+    - repo: janua
+      path: apps/api/app/auth/sessions_cookie.py
+    - repo: janua
+      path: apps/api/app/auth/sso_cookie.py
+  - id: janua:oauth-provider
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth_provider.py
+  - id: janua:auth-router-v1
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/auth.py
+  - id: janua:oauth-clients-and-scopes
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth.py
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth_clients.py
+    - repo: janua
+      path: apps/api/app/routers/v1/internal_oauth_client_scopes.py
+    - repo: janua
+      path: apps/api/app/routers/v1/oauth_on_behalf.py
+  - id: janua:org-claims-and-roles
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/organizations.py
+    - repo: janua
+      path: apps/api/app/routers/v1/organization_app_roles.py
+    - repo: janua
+      path: apps/api/app/routers/v1/organization_members.py
+    - repo: janua
+      path: apps/api/app/routers/v1/internal_org_entitlements.py
+  - id: janua:org-domain-and-membership
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/organizations/domain/services/membership_service.py
+    - repo: janua
+      path: apps/api/app/organizations/domain/models/membership.py
+    - repo: janua
+      path: apps/api/app/organizations/infrastructure/repositories/organization_repository.py
+    - repo: janua
+      path: apps/api/app/organizations/interfaces/rest/organization_controller.py
+    - repo: janua
+      path: apps/api/app/organizations/application/commands/invite_member.py
+  - id: janua:api-keys-and-consent
+    brief: 'Framework: pytest.'
+    context:
+    - repo: janua
+      path: apps/api/app/routers/v1/api_keys.py
+    - repo: janua
+      path: apps/api/app/middleware/api_key_auth.py
+    - repo: janua
+      path: apps/api/app/routers/v1/connections_consent.py
+    - repo: janua
+      path: apps/api/app/core/consent_purposes.py
+  - id: enclii:auth-jwt-oidc
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/jwt.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/jwt_external.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/jwt_middleware.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/oidc.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/provider_oidc.go
+  - id: enclii:auth-rbac-scope
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/rbac.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/tenant_scope.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/platform_admin.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/api_token_scope.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/manager.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/provider_local.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/password.go
+  - id: enclii:api-auth-and-tokens
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/auth_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/api_token_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/db/api_token_repository.go
+  - id: enclii:secrets-intake
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/secret_intake_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/operator_secret_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/operator_secrets_kalya_feed.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/operator_secrets_sync_sweep_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/export/providers_audit_secret.go
+  - id: enclii:build-callbacks
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/build_callbacks.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/function_build_callbacks.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/isolated_bootstrap_signature.go
+  - id: enclii:webhooks-inbound
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/webhook_pr.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/webhook_push.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/webhook_utils.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/webhook_workflow.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/webhook_github_api.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/webhook_handlers.go
+  - id: enclii:webhooks-outbound
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/outbound_webhook_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/db/outbound_webhook_repository.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/db/webhook_repository.go
+  - id: enclii:tenant-admin-and-audit
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/admin_tenants_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/tenant_scope_admin_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/api/tenant_export_handlers.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/db/tenant_scope_repository.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/audit/middleware.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/audit/authz.go
+    - repo: enclii
+      path: apps/switchyard-api/internal/auth/audit.go
+  - id: selva-office:inference-router
+    brief: 'Framework: pytest.'
+    context:
+    - repo: selva-office
+      path: packages/inference/madfam_inference/router.py
+    - repo: selva-office
+      path: packages/inference/madfam_inference/org_config.py
+    - repo: selva-office
+      path: packages/inference/madfam_inference/caching.py
+    - repo: selva-office
+      path: packages/inference/madfam_inference/factory.py
+  - id: selva-office:inference-tenant-policy
+    brief: 'Framework: pytest.'
+    context:
+    - repo: selva-office
+      path: packages/inference/madfam_inference/tenant_policy.py
+    - repo: selva-office
+      path: packages/inference/madfam_inference/identifier_guard.py
+    - repo: selva-office
+      path: packages/inference/madfam_inference/providers/anthropic.py
+    - repo: selva-office
+      path: packages/inference/madfam_inference/providers/openai.py
+  - id: selva-office:gateway-auth-and-proxy
+    brief: 'Framework: pytest.'
+    context:
+    - repo: selva-office
+      path: apps/nexus-api/nexus_api/routers/inference_proxy.py
+    - repo: selva-office
+      path: apps/nexus-api/nexus_api/auth.py
+    - repo: selva-office
+      path: apps/nexus-api/nexus_api/tenant.py
+    - repo: selva-office
+      path: apps/nexus-api/nexus_api/services/inference_usage_ledger.py
+  - id: selva-office:budget-gate
+    brief: 'Framework: pytest.'
+    context:
+    - repo: selva-office
+      path: packages/budget-gate/src/madfam_budget_gate/gate.py
+    - repo: selva-office
+      path: packages/budget-gate/src/madfam_budget_gate/redis_store.py
+    - repo: selva-office
+      path: packages/budget-gate/src/madfam_budget_gate/scope.py
+    - repo: selva-office
+      path: packages/budget-gate/src/madfam_budget_gate/cost_model.py
+  - id: yantra4d:auth-and-admin
+    brief: 'Framework: pytest.'
+    context:
+    - repo: yantra4d
+      path: apps/api/middleware/auth.py
+    - repo: yantra4d
+      path: apps/api/routes/users/admin.py
+  - id: yantra4d:render-engine
+    brief: 'Framework: pytest.'
+    context:
+    - repo: yantra4d
+      path: apps/api/routes/engine/render.py
+    - repo: yantra4d
+      path: apps/api/routes/engine/analysis.py
+    - repo: yantra4d
+      path: apps/api/routes/engine/verify.py
+    - repo: yantra4d
+      path: apps/api/services/engine/render_contract.py
+    - repo: yantra4d
+      path: apps/api/services/engine/render_source.py
+  - id: yantra4d:render-orchestrator
+    brief: 'Framework: pytest.'
+    context:
+    - repo: yantra4d
+      path: apps/api/services/engine/render_orchestrator.py
+    - repo: yantra4d
+      path: apps/api/services/engine/render_cache.py
+    - repo: yantra4d
+      path: apps/api/services/engine/render_gc.py
+  - id: yantra4d:cotiza-forgesight-integrations
+    brief: 'Framework: pytest.'
+    context:
+    - repo: yantra4d
+      path: apps/api/routes/integrations/cotiza_export.py
+    - repo: yantra4d
+      path: apps/api/routes/integrations/cotiza_webhook.py
+    - repo: yantra4d
+      path: apps/api/routes/integrations/forgesight_webhook.py
+  - id: pravara-mes:auth-middleware
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/auth/oidc.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/auth/machine_claims.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/middleware/auth.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/middleware/apikey.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/middleware/caller.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/middleware/scopes.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/middleware/ratelimit.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/middleware/cors.go
+  - id: pravara-mes:webhooks
+    brief: 'Framework: Go testing (table-driven, httptest).'
+    context:
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/api/webhook_handlers.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/api/webhook_subscription_handlers.go
+    - repo: pravara-mes
+      path: apps/pravara-api/internal/api/webhook_tezca_handlers.go
+  - id: pliego:api-render-and-limits
+    brief: 'Framework: pytest.'
+    context:
+    - repo: pliego
+      path: apps/api/api_v1.py
+    - repo: pliego
+      path: apps/api/render.py
+    - repo: pliego
+      path: apps/api/render_cache.py
+    - repo: pliego
+      path: apps/api/ratelimit.py
+    - repo: pliego
+      path: apps/api/security.py
+    - repo: pliego
+      path: apps/api/cors.py
+  budget_share: 0.12
