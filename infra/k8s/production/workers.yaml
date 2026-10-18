@@ -70,9 +70,10 @@ spec:
               value: "600"
             - name: PROVIDER_GRANTS_RESERVATION_TTL_SECONDS
               value: "660"
-            # Items that failed on the old timeout get two more attempts.
+            # Items that failed on the old timeout / the cross-loop meter
+            # error get more attempts; completed targets are skipped on resume.
             - name: CREDIT_AUTOPILOT_MAX_ATTEMPTS
-              value: "4"
+              value: "6"
             # Expiring grant, backlog larger than the ceiling: do not idle
             # when ahead of pace; ceiling, floor and expiry still stop work.
             - name: CREDIT_AUTOPILOT_FRONT_LOAD
