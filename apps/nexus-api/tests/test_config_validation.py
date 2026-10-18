@@ -55,6 +55,39 @@ class TestRedisURLValidation:
             _make_settings(redis_url="http://not-redis:6379")
 
 
+class TestValidationErrorsDoNotLeakCredentials:
+    """Validation errors must never echo a DSN password (not even a prefix)."""
+
+    _PW = "Fake-Pa55word-xyz"  # obviously fake test value
+
+    def test_bad_database_scheme_masks_password(self) -> None:
+        # "postgres://" (no "ql") fails the scheme check; the old message
+        # echoed url[:20], i.e. the start of the password.
+        with pytest.raises(ValueError) as exc:
+            _make_settings(database_url=f"postgres://selva:{self._PW}@db.data:5432/selva")
+        message = str(exc.value)
+        assert "got: postgres://selva:***@db.data:5432/selva" in message
+        assert self._PW[:4] not in message
+
+    def test_bad_redis_scheme_masks_password(self) -> None:
+        with pytest.raises(ValueError) as exc:
+            _make_settings(redis_url=f"http://:{self._PW}@redis.data:6379/8")
+        message = str(exc.value)
+        assert "got: http://:***@redis.data:6379/8" in message
+        assert self._PW[:4] not in message
+
+    def test_pydantic_input_value_is_hidden(self) -> None:
+        """hide_input_in_errors: no ``input_value={...}`` dump of raw env values."""
+        with pytest.raises(ValueError) as exc:
+            _make_settings(
+                redis_url="http://not-redis:6379",
+                database_url=f"postgresql://selva:{self._PW}@db.data/selva",
+            )
+        message = str(exc.value)
+        assert "input_value" not in message
+        assert self._PW not in message
+
+
 class TestDevAuthBypass:
     """DEV_AUTH_BYPASS should warn in non-development environments."""
 

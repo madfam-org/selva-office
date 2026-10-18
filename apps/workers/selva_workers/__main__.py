@@ -23,6 +23,7 @@ from selva_observability import (
     configure_logging,
     init_sentry,
     init_tracing,
+    redact_url,
 )
 from selva_permissions import resolve_audience
 from selva_redis_pool import get_redis_pool
@@ -1223,10 +1224,11 @@ async def main() -> None:
     pool = get_redis_pool(url=settings.redis_url)
 
     if not await pool.ping():
-        logger.error("Cannot connect to Redis at %s", settings.redis_url)
+        logger.error("Cannot connect to Redis at %s", redact_url(settings.redis_url))
         sys.exit(1)
 
-    logger.info("Connected to Redis at %s", settings.redis_url)
+    # Never log the raw URL: it carries the shared Redis password.
+    logger.info("Connected to Redis at %s", redact_url(settings.redis_url))
 
     # Cleanup stale worktrees from previous runs.
     await _cleanup_stale_worktrees(settings.repo_base_path, settings.worktree_stale_hours)

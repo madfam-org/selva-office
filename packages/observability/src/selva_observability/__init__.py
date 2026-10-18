@@ -2,6 +2,11 @@
 
 from selva_observability.logging import bind_task_context, clear_context, configure_logging
 from selva_observability.propagation import extract_trace_context, inject_trace_context
+from selva_observability.redaction import (
+    redact_credentials_processor,
+    redact_text,
+    redact_url,
+)
 from selva_observability.sentry import init_sentry
 from selva_observability.tracing import init_tracing
 
@@ -13,4 +18,7 @@ __all__ = [
     "init_sentry",
     "init_tracing",
     "inject_trace_context",
+    "redact_credentials_processor",
+    "redact_text",
+    "redact_url",
 ]

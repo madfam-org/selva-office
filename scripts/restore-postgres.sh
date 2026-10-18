@@ -57,7 +57,9 @@ fi
 
 FILESIZE=$(stat -f%z "${BACKUP_FILE}" 2>/dev/null || stat --printf="%s" "${BACKUP_FILE}" 2>/dev/null || echo "unknown")
 echo "[restore] Backup file: ${BACKUP_FILE} (${FILESIZE} bytes)"
-echo "[restore] Target database: ${DATABASE_URL%%@*}@..."
+# Print only the part AFTER the last "@" (host:port/db). The old
+# ${DATABASE_URL%%@*} printed everything BEFORE it -- scheme, user and password.
+echo "[restore] Target database: ***@${DATABASE_URL##*@}"
 echo "[restore] WARNING: This will overwrite the current database contents!"
 
 if [ "${FORCE}" != "true" ]; then

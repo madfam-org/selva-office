@@ -8,6 +8,8 @@ from pathlib import Path
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
+from selva_observability import redact_url
+
 # Resolve project root so env_file works regardless of CWD.
 # config.py -> selva_workers -> workers -> apps -> project root
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -91,6 +93,9 @@ class Settings(BaseSettings):
         "env_file": (str(_PROJECT_ROOT / ".env"), ".env"),
         "env_file_encoding": "utf-8",
         "extra": "ignore",
+        # A failed validation must not echo every env-sourced value (DSNs,
+        # API keys) into the crash log via pydantic's ``input_value=...``.
+        "hide_input_in_errors": True,
     }
 
     @model_validator(mode="after")
@@ -117,13 +122,13 @@ class Settings(BaseSettings):
         if not self.redis_url.startswith("redis"):
             raise ValueError(
                 f"REDIS_URL must start with 'redis://' or 'rediss://', "
-                f"got: {self.redis_url[:20]}..."
+                f"got: {redact_url(self.redis_url)}"
             )
 
         if not self.nexus_api_url.startswith("http"):
             raise ValueError(
                 f"NEXUS_API_URL must start with 'http://' or 'https://', "
-                f"got: {self.nexus_api_url[:20]}..."
+                f"got: {redact_url(self.nexus_api_url)}"
             )
 
         return self
