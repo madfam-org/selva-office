@@ -102,6 +102,11 @@ class AutopilotConfig:
     short_time_seconds: float = 3600.0
     low_remaining_fraction: float = 0.15
     far_behind_ratio: float = 2.0
+    #: Keep starting work while ``ahead`` of pace. For an expiring grant whose
+    #: value backlog exceeds the ceiling, idling to "spread" spend only risks
+    #: leaving credit unused at expiry; the ceiling, floor and expiry cut-off
+    #: still stop new work. Off by default (paced behaviour unchanged).
+    front_load: bool = False
 
 
 @dataclass(frozen=True)
@@ -171,6 +176,8 @@ def stop_reason(grant: GrantView, cfg: AutopilotConfig) -> str | None:
         return "too close to expiry"
     if grant.remaining_usd <= cfg.floor_usd:
         return "remaining at or below floor"
+    if grant.pace_status == "ahead" and cfg.front_load:
+        return None
     if grant.pace_status not in SPENDING_PACE:
         return f"pace {grant.pace_status or 'unknown'}: no new work"
     return None

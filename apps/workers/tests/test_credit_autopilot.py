@@ -303,3 +303,21 @@ def test_fetch_context_rejects_paths_outside_org() -> None:
     bad = item(context=(("other/repo", "README.md"), ("selva-office", "../etc/passwd")))
     files, missing = asyncio.run(ap.fetch_context(bad.context))
     assert files == [] and len(missing) == 2 and all("rejected" in m for m in missing)
+
+
+def test_front_load_keeps_working_when_ahead_but_not_past_hard_stops() -> None:
+    from dataclasses import replace
+
+    front = replace(CFG, front_load=True)
+    assert stop_reason(grant(pace_status="ahead"), front) is None
+    assert plan_dispatch(grant(pace_status="ahead"), [item()], {}, front).run is True
+    # Hard stops still win over front-loading.
+    assert stop_reason(grant(pace_status="exhausted"), front) == "grant exhausted"
+    assert stop_reason(grant(pace_status="expired"), front) == "grant expired"
+    assert stop_reason(grant(pace_status="ahead", remaining_usd=2.0), front) == (
+        "remaining at or below floor"
+    )
+    assert stop_reason(grant(pace_status="ahead", seconds_to_expiry=600), front) == (
+        "too close to expiry"
+    )
+    assert stop_reason(grant(pace_status="unknown"), front) == "pace unknown: no new work"

@@ -92,6 +92,7 @@ def load_config() -> AutopilotConfig:
         floor_usd=num("CREDIT_AUTOPILOT_FLOOR_USD", 2.0),
         max_concurrency=max(1, int(num("CREDIT_AUTOPILOT_MAX_CONCURRENCY", 6))),
         max_attempts=max(1, int(num("CREDIT_AUTOPILOT_MAX_ATTEMPTS", 2))),
+        front_load=os.environ.get("CREDIT_AUTOPILOT_FRONT_LOAD", "").strip().lower() == "true",
     )
 
 
