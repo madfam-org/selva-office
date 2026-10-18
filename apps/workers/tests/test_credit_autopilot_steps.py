@@ -394,7 +394,24 @@ def test_repo_backlog_scale_and_value_order() -> None:
     import yaml
 
     path = Path(__file__).resolve().parents[3] / "data" / "credit-investment" / "backlog.yaml"
-    items = parse_backlog(yaml.safe_load(path.read_text(encoding="utf-8")))
+    all_items = parse_backlog(yaml.safe_load(path.read_text(encoding="utf-8")))
+    # Top-up items rerun a subset of an original item's targets; the scale and
+    # order invariants below are about the original backlog.
+    topups = [i for i in all_items if i.id.endswith("-topup")]
+    items = [i for i in all_items if not i.id.endswith("-topup")]
+    by_id = {i.id: i for i in items}
+    for t in topups:
+        if t.mode == "benchmark":
+            assert t.depends_on and t.depends_on[0].endswith("-topup")
+            continue
+        source_ids = {
+            c.id
+            for i in items
+            for c in i.targets()
+            if t.id.startswith(i.id) or t.id == "fm-manifests-topup"
+        }
+        assert {c.id for c in t.targets()} <= source_ids, t.id
+    assert "review-janua-auth" in by_id
     calls = 0
     for it in items:
         if it.mode == "benchmark":
