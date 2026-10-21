@@ -9,6 +9,12 @@
 # Triggered on every push to main. Does NOT touch production — that's
 # promote-to-prod.yml's job.
 #
+# Gate: every job runs only while the repository variable STAGING_ENABLED
+# is 'true' (preflight below; build needs it, and the overlay patch and
+# smoke need build). Staging was retired on 2026-10-18 (Argo CD app and
+# namespace removed): set STAGING_ENABLED to 'false' or delete it and the
+# workflow skips cleanly; set it back to 'true' once staging exists again.
+#
 # Multi-pod adaptation: selva-office has 6 deployables (nexus-api,
 # office-ui, colyseus, admin, gateway, workers). We fan out the build
 # step into 6 parallel jobs, then collect all digests in a single
@@ -64,7 +70,7 @@ jobs:
           set -euo pipefail
           if [[ "${STAGING_ENABLED:-}" != "true" ]]; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Staging deploy skipped: set STAGING_ENABLED=true after provisioning selva-staging ArgoCD app, secrets, DNS, and tunnel routes."
+            echo "::notice::Staging deploy skipped: STAGING_ENABLED is not true (staging was retired on 2026-10-18). Set STAGING_ENABLED=true after provisioning the selva-staging ArgoCD app, secrets, DNS, and tunnel routes."
             exit 0
           fi
 

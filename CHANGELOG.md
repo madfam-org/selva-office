@@ -37,6 +37,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   sequencing, and leadership scorecard.
 
 ### Fixed
+- **Staging jobs skip while staging is retired** — staging was retired on
+  2026-10-18. `staging-deploy.yml` already runs only while the repository
+  variable `STAGING_ENABLED` is `true`; its header and skip notice now say so.
+  The scheduled voice-mode smoke (whose default target is staging) now uses
+  the same switch; a manual dispatch still runs.
+- **Voice-mode smoke no longer passes with failed checks** — its step piped
+  the script into `tee` without `pipefail`, so the job took `tee`'s exit
+  status and stayed green while every check failed (since 2026-10-18 every
+  check hit a 502).
 - **Staging smoke names a down host** — `scripts/verify-campaign-path.sh` reads the
   OpenAPI status code. A non-200 answer (since 2026-10-18 every staging host
   answers a Cloudflare 502) now fails once with the HTTP code and "host down
