@@ -25,20 +25,26 @@ if [[ "$MODE" == "--staging" ]]; then
   BASE_URL="${STAGING_API_URL:-https://staging-api.selva.town}"
 fi
 
-OPENAPI_JSON="$(curl -sS "${BASE_URL}/api/v1/openapi.json" 2>/dev/null || true)"
-OPENAPI_TMP=""
-if [[ -z "$OPENAPI_JSON" ]]; then
-  fail "could not fetch ${BASE_URL}/api/v1/openapi.json"
+# A host that is down (for example a Cloudflare 502 with a plain-text body)
+# must read as "host down", not as six "route missing" failures: a deploy
+# that has not synced yet still answers 200 with the previous schema.
+OPENAPI_TMP="$(mktemp)"
+OPENAPI_READY=0
+trap 'rm -f "$OPENAPI_TMP"' EXIT
+OPENAPI_CODE="$(curl -sS -o "$OPENAPI_TMP" -w '%{http_code}' "${BASE_URL}/api/v1/openapi.json" 2>/dev/null || true)"
+OPENAPI_CODE="${OPENAPI_CODE:-000}"
+if [[ "$OPENAPI_CODE" != "200" ]]; then
+  fail "${BASE_URL}/api/v1/openapi.json answered HTTP ${OPENAPI_CODE}: the API host is down or unreachable (not a sync lag); route checks skipped"
+elif ! python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$OPENAPI_TMP" 2>/dev/null; then
+  fail "${BASE_URL}/api/v1/openapi.json answered 200 but not JSON; route checks skipped"
 else
   pass "fetched OpenAPI from ${BASE_URL}"
-  OPENAPI_TMP="$(mktemp)"
-  printf '%s' "$OPENAPI_JSON" >"$OPENAPI_TMP"
-  trap 'rm -f "$OPENAPI_TMP"' EXIT
+  OPENAPI_READY=1
 fi
 
 require_openapi_path() {
   local path="$1"
-  if [[ -z "$OPENAPI_TMP" || ! -f "$OPENAPI_TMP" ]]; then
+  if [[ "$OPENAPI_READY" != "1" ]]; then
     return
   fi
   if OPENAPI_FILE="$OPENAPI_TMP" CHECK_PATH="$path" python3 - <<'PY'; then
