@@ -18,6 +18,11 @@ on:
 jobs:
   smoke:
     name: Voice-mode gate smoke
+    # The default target is staging, retired on 2026-10-18. Scheduled runs
+    # need the repository variable STAGING_ENABLED == 'true' (same switch as
+    # staging-deploy.yml); a manual dispatch always runs (pass api_url to
+    # aim it elsewhere).
+    if: github.event_name == 'workflow_dispatch' || vars.STAGING_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
@@ -29,7 +34,12 @@ jobs:
 
       - name: Run voice-mode smoke test
         id: smoke
-        run: ./scripts/voice-mode-smoke-test.sh --json | tee smoke-result.json
+        # pipefail: without it the step takes tee's exit status, and a run
+        # with failed checks still passed (60 green runs while every check
+        # hit a 502 since 2026-10-18).
+        run: |
+          set -o pipefail
+          ./scripts/voice-mode-smoke-test.sh --json | tee smoke-result.json
 
       - name: Surface failures
         if: failure()
