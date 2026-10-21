@@ -23,6 +23,7 @@ from selva_observability import (
     configure_logging,
     init_sentry,
     init_tracing,
+    redact_url,
 )
 from selva_permissions import resolve_audience
 from selva_redis_pool import get_redis_pool
@@ -52,6 +53,7 @@ from .graphs.project import build_project_graph
 from .graphs.puppeteer import build_puppeteer_graph
 from .graphs.research import build_research_graph
 from .graphs.sales import build_sales_graph
+from .inference import with_task_org
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
 
@@ -565,7 +567,13 @@ async def process_task(task_data: dict) -> None:
             if isinstance(raw_user_jwt, str) and raw_user_jwt.strip()
             else None
         )
-        with with_coupler_user_jwt(task_user_jwt), with_audience(task_audience):
+        # with_task_org binds the task's tenant for every call_llm in the
+        # graph (LLM spend + per-org routing) and collects failed LLM calls.
+        with (
+            with_coupler_user_jwt(task_user_jwt),
+            with_audience(task_audience),
+            with_task_org(task_org_id or None) as llm_failures,
+        ):
             if graph_type == "custom":
                 # Stream node progress for custom workflows
                 result = await asyncio.wait_for(
@@ -585,6 +593,24 @@ async def process_task(task_data: dict) -> None:
         else:
             api_status = "failed"
         api_result = _state_dict(result, "result") or {}
+        if llm_failures:
+            # Fail visible: a graph that "completed" on top of failed LLM
+            # calls (each node's own fallback text) is reported as failed,
+            # and the errors ride on the task result either way.
+            logger.error(
+                "Task %s: %d LLM call(s) failed during graph %s",
+                task_id,
+                len(llm_failures),
+                graph_type,
+            )
+            api_result = {
+                **api_result,
+                "llm_errors": llm_failures[:10],
+                "llm_error_count": len(llm_failures),
+            }
+            if api_status == "completed":
+                api_status = "failed"
+                graph_status = "error"
         if graph_type == "deployment":
             api_result = {
                 **api_result,
@@ -1198,10 +1224,11 @@ async def main() -> None:
     pool = get_redis_pool(url=settings.redis_url)
 
     if not await pool.ping():
-        logger.error("Cannot connect to Redis at %s", settings.redis_url)
+        logger.error("Cannot connect to Redis at %s", redact_url(settings.redis_url))
         sys.exit(1)
 
-    logger.info("Connected to Redis at %s", settings.redis_url)
+    # Never log the raw URL: it carries the shared Redis password.
+    logger.info("Connected to Redis at %s", redact_url(settings.redis_url))
 
     # Cleanup stale worktrees from previous runs.
     await _cleanup_stale_worktrees(settings.repo_base_path, settings.worktree_stale_hours)
@@ -1259,6 +1286,14 @@ async def main() -> None:
     kanban_overdue_task = asyncio.create_task(_kanban_overdue_periodic_loop(_shutdown))
     _active_tasks.add(kanban_overdue_task)
     kanban_overdue_task.add_done_callback(_active_tasks.discard)
+
+    # Credit-investment autopilot (MADFAM tenant only). Returns at once
+    # unless CREDIT_AUTOPILOT_ENABLED=true; see jobs/credit_autopilot.py.
+    from .jobs.credit_autopilot import periodic_loop as _credit_autopilot_loop
+
+    credit_autopilot_task = asyncio.create_task(_credit_autopilot_loop(_shutdown))
+    _active_tasks.add(credit_autopilot_task)
+    credit_autopilot_task.add_done_callback(_active_tasks.discard)
 
     # Log available inference providers at startup.
     from .inference import validate_providers

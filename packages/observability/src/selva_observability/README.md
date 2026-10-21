@@ -14,6 +14,21 @@ Shared logging, Sentry, and OpenTelemetry helpers for Selva Office.
 |                                | `OTEL_EXPORTER_OTLP_ENDPOINT` is unset.                          |
 | `inject_trace_context(headers)`| Inject W3C `traceparent` into an outbound request's headers.     |
 | `extract_trace_context(headers)`| Extract a parent context from incoming request headers.         |
+| `redact_url(url)`              | Mask the password in one connection URL/DSN (keeps scheme, user, |
+|                                | host, port, DB index). Use at every call site that logs a URL.  |
+| `redact_text(text)`            | Mask every `scheme://user:pass@` (also percent-encoded) in text. |
+| `redact_credentials_processor` | structlog processor applying `redact_text` to every log value.  |
+|                                | `configure_logging` installs it for structlog AND stdlib records.|
+
+## Credential redaction in logs
+
+Never log a connection URL verbatim: `redis://:<password>@host:6379/8` hands
+the shared Redis password to anyone with log access. Log
+`redact_url(settings.redis_url)` instead (renders `redis://:***@host:6379/8`).
+`configure_logging` also redacts any `scheme://user:pass@` pattern in every
+rendered event (message, fields, exception text) as defense in depth, but the
+call-site helper is the primary control: services that do not use
+`configure_logging` (plain uvicorn/stdlib logging) only get the call-site one.
 
 ## W3C Trace Context Propagation
 

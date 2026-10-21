@@ -1,0 +1,139 @@
+# MADFAM factory lines — internal roster for MADFAM's own Selva tenant.
+#
+# MADFAM's offering modelled as a factory of factories: three production
+# lines plus a coordinating Factory-as-a-Product function. This file is the
+# single source for:
+#   - scripts/seed-madfam-factory-lines.py (idempotent department + agent
+#     bootstrap for the platform org; create-if-missing only), and
+#   - the credit-investment autopilot (line context for its prompts).
+#
+# INTERNAL ONLY. Public copy (README, llms.txt, landing, pricing) is held by
+# ruling R130; the positioning draft lives in
+# docs/drafts/factory-of-factories-positioning.md and is not rendered anywhere.
+#
+# Agent skills are restricted to skills whose allowed_tools are read/draft
+# only or HITL-gated writes (no send_email / social / CRM / billing tools):
+# research, strategic-planning, code-review, doc-coauthoring, coding,
+# mcp-builder, webapp-testing. `tools` lists the existing Selva tools that
+# belong to each line (documentation + autopilot context; tool access still
+# comes from skills and the HITL permission matrix).
+
+schema: selva.factory-lines/v1
+org: platform # resolved at runtime to PLATFORM_ORG_ID (default "madfam")
+
+lines:
+  - id: software
+    name: Software factory
+    department:
+      name: Software Factory
+      slug: factory-software
+      description: >-
+        Spec to repo to deploy as a product: Enclii and Fragua, the coding
+        graph (worktree, tests, review, HITL push gate), deploy and Enclii
+        operations tools, factory manifests.
+      max_agents: 6
+      position_x: 250
+      position_y: 900
+    products: [enclii, fragua, janua, selva]
+    graphs: [coding, deployment, research]
+    tools:
+      - deploy_status
+      - deploy_preflight
+      - enclii_health
+      - enclii_logs
+      - lint_and_typecheck
+      - test_coverage_for_diff
+      - factory_manifest_get_for_repo
+      - factory_manifest_verify
+      - factory_manifest_publish # HITL ASK (FILE_WRITE)
+    agents:
+      - name: Yunque
+        role: coder
+        level: 7
+        skill_ids: [coding, code-review, webapp-testing, mcp-builder]
+      - name: Lupa
+        role: reviewer
+        level: 7
+        skill_ids: [code-review, research, doc-coauthoring]
+
+  - id: geometry
+    name: Geometry factory
+    department:
+      name: Geometry Factory
+      slug: factory-geometry
+      description: >-
+        Parametric design to manufacturable geometry: Yantra4D, geom-core,
+        the hyperobjects commons, Pliego cartridges and Fashion Cabinet;
+        ceq for generative 3D.
+      max_agents: 6
+      position_x: 750
+      position_y: 900
+    products: [yantra4d, geom-core, pliego, fashion-cabinet, ceq]
+    graphs: [research]
+    tools:
+      - generate_parametric_model
+      - run_dfm_analysis
+    agents:
+      - name: Compás
+        role: coder
+        level: 6
+        skill_ids: [coding, research, mcp-builder]
+      - name: Malla
+        role: researcher
+        level: 6
+        skill_ids: [research, doc-coauthoring, strategic-planning]
+
+  - id: physical
+    name: Physical-goods factory
+    department:
+      name: Physical-Goods Factory
+      slug: factory-physical
+      description: >-
+        Quote to part: Cotiza quoting (market-verified prices), Pravara MES
+        dispatch and status (read-only from Selva), Forgesight price
+        intelligence.
+      max_agents: 6
+      position_x: 250
+      position_y: 1300
+    products: [cotiza, pravara-mes, forgesight]
+    graphs: [research]
+    tools:
+      - generate_quote # HITL ASK (PRICING_PROPOSAL)
+      - get_production_order_status
+      - run_dfm_analysis
+    agents:
+      - name: Torno
+        role: researcher
+        level: 6
+        skill_ids: [research, doc-coauthoring, strategic-planning]
+      - name: Bitácora
+        role: planner
+        level: 6
+        skill_ids: [strategic-planning, research, doc-coauthoring]
+
+  - id: faap
+    name: Factory-as-a-Product
+    department:
+      name: Factory-as-a-Product
+      slug: factory-as-a-product
+      description: >-
+        Coordinates the three lines as one offer: factory manifests,
+        capability catalog, price references to the Tulana/Dhanam catalog,
+        routing benchmarks and positioning drafts (internal until R130 lifts).
+      max_agents: 4
+      position_x: 750
+      position_y: 1300
+    products: [selva, tulana, dhanam]
+    graphs: [research]
+    tools:
+      - factory_manifest_get_for_repo
+      - factory_manifest_verify
+    agents:
+      - name: Capataz
+        role: planner
+        level: 8
+        skill_ids: [strategic-planning, research, doc-coauthoring, code-review]
+      - name: Catálogo
+        role: researcher
+        level: 6
+        skill_ids: [research, doc-coauthoring]

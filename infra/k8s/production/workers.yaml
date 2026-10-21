@@ -59,6 +59,27 @@ spec:
           env:
             - name: ENVIRONMENT
               value: production
+            # Key 1 of 2 for the credit autopilot; key 2 is `autopilot: true`
+            # on the provider grant in Vault. Idle unless both are set.
+            - name: CREDIT_AUTOPILOT_ENABLED
+              value: "true"
+            # Long Opus generations send no bytes until done; 120 s killed them
+            # as empty ReadTimeouts. The grant reservation must outlive the
+            # call so an in-flight call stays counted against the ceiling.
+            - name: ANTHROPIC_TIMEOUT_SECONDS
+              value: "600"
+            - name: PROVIDER_GRANTS_RESERVATION_TTL_SECONDS
+              value: "660"
+            # Items that failed on the old timeout / the cross-loop meter
+            # error get more attempts; completed targets are skipped on resume.
+            - name: CREDIT_AUTOPILOT_MAX_ATTEMPTS
+              value: "9"
+            # Expiring grant, backlog larger than the ceiling: do not idle
+            # when ahead of pace; ceiling, floor and expiry still stop work.
+            - name: CREDIT_AUTOPILOT_FRONT_LOAD
+              value: "true"
+            - name: CREDIT_AUTOPILOT_MAX_CONCURRENCY
+              value: "8"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -145,6 +166,23 @@ spec:
               value: "https://coupler-api.madfam.io"
             - name: ORG_CONFIG_PATH
               value: "/etc/selva/org-config.yaml"
+            # Provider credit grants (docs/PROVIDER_CREDIT_GRANTS.md). The key
+            # is the existing selva-llm-secrets entry (provisioned outside this
+            # repo, like DEEPINFRA_API_KEY); the grant file comes from
+            # selva-provider-grants (Vault secret/selva, optional until seeded).
+            # Mounting the key is safe on its own: REQUIRED_FOR makes Anthropic
+            # usable ONLY under a valid, unexpired, unexhausted grant for the
+            # caller's org — with no grant file it stays unusable (fail closed).
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: selva-llm-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+            - name: PROVIDER_GRANTS_PATH
+              value: "/etc/selva/provider-grants/provider-grants.json"
+            - name: PROVIDER_GRANTS_REQUIRED_FOR
+              value: "anthropic"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
@@ -152,6 +190,9 @@ spec:
               mountPath: /data/selva
             - name: org-config
               mountPath: /etc/selva
+              readOnly: true
+            - name: provider-grants
+              mountPath: /etc/selva/provider-grants
               readOnly: true
             # RFC 0005 Sprint 1a — projected SA token for the
             # write_kubernetes_secret tool. Bound to a dedicated SA
@@ -170,6 +211,13 @@ spec:
         - name: org-config
           configMap:
             name: selva-org-config
+        - name: provider-grants
+          secret:
+            secretName: selva-provider-grants
+            optional: true
+            items:
+              - key: provider-grants.json
+                path: provider-grants.json
         # Projected token tied to the selva-secret-writer SA. Expires
         # hourly via TokenRequest API auto-rotation. The tool falls
         # back to in-cluster default SA config if this mount is absent

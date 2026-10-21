@@ -14,6 +14,7 @@ import contextlib
 import logging
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user
-from ..database import get_db
+from ..database import _set_session_org_id, get_db
 from ..models import ComputeTokenLedger
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,41 @@ class RecordRequest(BaseModel):
     # body-supplied value is only accepted when it matches that scope
     # (transition-safety for older workers) and is rejected otherwise.
     org_id: str | None = None
+    # Optional token split for inference rows. When the split, provider and
+    # model are present the server prices the call (``cost_usd``) with the
+    # shared cost model; callers never send a USD figure themselves.
+    task_type: str | None = Field(default=None, max_length=50)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    cache_read_tokens: int | None = Field(default=None, ge=0)
+    cache_creation_tokens: int | None = Field(default=None, ge=0)
+
+
+def _price_usage(body: RecordRequest) -> Decimal | None:
+    """USD cost of an inference row, or ``None`` when it cannot be priced.
+
+    Needs provider, model and the input/output split; older workers that send
+    only ``amount`` keep producing rows with NULL ``cost_usd`` as before.
+    """
+    if not body.provider or not body.model:
+        return None
+    if body.input_tokens is None or body.output_tokens is None:
+        return None
+    try:
+        from madfam_budget_gate import estimate_cost
+
+        cost = estimate_cost(
+            body.provider,
+            body.model,
+            body.input_tokens,
+            body.output_tokens,
+            cache_read_tokens=body.cache_read_tokens or 0,
+            cache_creation_tokens=body.cache_creation_tokens or 0,
+        )
+        return Decimal(str(cost))
+    except Exception:
+        logger.warning("billing/record: could not price %s/%s", body.provider, body.model)
+        return None
 
 
 class BudgetResponse(BaseModel):
@@ -79,12 +115,19 @@ async def record_usage(
     not be able to debit another tenant's bucket.
     """
     org_id = _resolve_caller_org(user, body.org_id)
+    # ``get_db`` resolves before ``get_current_user`` and stamps the session's
+    # RLS org from the auth context while it is still unset; re-stamp it now
+    # that the caller's org is known, or the insert violates the
+    # compute_token_ledger RLS policy for any org other than the empty one.
+    await _set_session_org_id(db)
     entry = ComputeTokenLedger(
         action=body.action,
         amount=body.amount,
         provider=body.provider,
         model=body.model,
         org_id=org_id,
+        cost_usd=_price_usage(body),
+        task_type=body.task_type,
     )
     if body.agent_id:
         with contextlib.suppress(ValueError):
@@ -110,6 +153,8 @@ async def check_budget(
     another tenant's spend position.
     """
     org_id = _resolve_caller_org(user, body.get("org_id"))
+    # Same dependency-order RLS issue as ``record_usage``: re-stamp the org.
+    await _set_session_org_id(db)
     from ..services.tier_limits import resolve_org_daily_limit
 
     daily_limit = await resolve_org_daily_limit(db, org_id)

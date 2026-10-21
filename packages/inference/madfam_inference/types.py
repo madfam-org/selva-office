@@ -57,6 +57,15 @@ class RoutingPolicy(BaseModel):
     #: provider never receives the primary's model name. A provider absent
     #: from this mapping uses its adapter default.
     provider_models: dict[str, str] = Field(default_factory=dict)
+    #: The tenant org the request runs for (a Selva org id: the platform
+    #: slug from ``PLATFORM_ORG_ID`` or a Janua org UUID). Set server-side
+    #: by the worker (from the task row) or the gateway (from the
+    #: authenticated caller). It selects the org-config ``org_overrides``
+    #: entry, if any; ``None`` means the global routing applies unchanged.
+    #: Also read by the provider credit-grant guard (``madfam_inference.grants``):
+    #: a grant-guarded provider is usable only when this org is in the grant's
+    #: ``allowed_orgs``; None ⇒ no grant applies. Never widens routing.
+    org_id: str | None = None
 
 
 class InferenceRequest(BaseModel):
@@ -106,5 +115,9 @@ class StreamUsage(BaseModel):
 
     input_tokens: int = 0
     output_tokens: int = 0
+    #: Anthropic prompt-cache accounting (0 for providers without it).
+    #: ``input_tokens`` excludes both, so cost = in + out + read + write.
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
     model: str | None = None
     provider: str | None = None

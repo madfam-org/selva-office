@@ -88,10 +88,17 @@ class AgentNodeHandler:
                             for m in user_messages
                         ],
                         system_prompt=system_prompt,
+                        # The node's own model / temperature (schema fields
+                        # that used to be ignored) and the task's tenant.
+                        model=node.model,
+                        temperature=node.temperature,
+                        org_id=state.get("org_id") or None,
+                        task_id=state.get("task_id") or None,
+                        agent_id=state.get("agent_id") or None,
                     )
                 )
                 if not ai_content:
-                    ai_content = "No response from LLM"
+                    raise RuntimeError("LLM returned an empty response")  # noqa: TRY301
 
                 result_messages = list(state.get("messages", []))
                 result_messages.append(AIMessage(content=ai_content))
@@ -102,21 +109,26 @@ class AgentNodeHandler:
                     "status": "running",
                     "current_node_id": node.id,
                 }
-            except Exception:
-                logger.warning(
-                    "LLM unavailable for agent node '%s'; using static fallback", node.id
-                )
+            except Exception as exc:
+                # Fail visible: no placeholder text that reads like output.
+                # The node does not raise (so the rest of the workflow and
+                # every other graph keep running), but it marks the state as
+                # an error and says so explicitly; call_llm has also recorded
+                # the failure on the task, which the worker reports as failed.
+                logger.error("Agent node '%s' failed: LLM call failed: %s", node.id, exc)
+                error = f"Agent node '{node.id}' failed: LLM call failed ({type(exc).__name__})"
                 result_messages = list(state.get("messages", []))
                 result_messages.append(
                     AIMessage(
-                        content=f"[Agent node '{node.id}' completed — "
-                        f"LLM unavailable, static fallback]"
+                        content=f"[ERROR] {error}",
+                        additional_kwargs={"error": True, "node_id": node.id},
                     )
                 )
                 return {
                     **state,
                     "messages": result_messages,
-                    "status": "running",
+                    "status": "error",
+                    "error": error,
                     "current_node_id": node.id,
                 }
 

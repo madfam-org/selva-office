@@ -74,6 +74,7 @@ from .grafana import get_grafana_tools
 from .hitl_introspection import get_hitl_introspection_tools
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
+from .inference_budget import get_inference_budget_tools
 from .intelligence import (
     DOFMonitorTool,
     ExchangeRateTool,
@@ -438,6 +439,9 @@ def get_builtin_tools() -> list[BaseTool]:
         # their own Bayesian trust state before acting (bucket state,
         # effective tier, recent decisions, "why asked" narrative).
         *get_hitl_introspection_tools(),
+        # Provider credit grants: remaining / burn / pace for the platform
+        # swarm (PLATFORM audience — amounts are MADFAM-private).
+        *get_inference_budget_tools(),
         # Phase 4 — Meta-improvement: tool-catalog self-introspection.
         # list_my_tools / search_tools_by_capability / describe_tool.
         *get_tool_catalog_tools(),

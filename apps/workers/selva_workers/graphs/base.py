@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import contextvars
 import logging
 from collections.abc import Coroutine
 from datetime import UTC
@@ -41,8 +42,11 @@ def run_async(coro: Coroutine[Any, Any, _T]) -> _T:  # noqa: UP047
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
+    # Copy the caller's context into the helper thread so task-scoped
+    # ContextVars (the task org for call_llm, the swarm audience) survive.
+    ctx = contextvars.copy_context()
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
+        return pool.submit(ctx.run, asyncio.run, coro).result()
 
 
 # -- Real permission engine and classifier ------------------------------------
@@ -200,7 +204,7 @@ def permission_check(state: BaseGraphState) -> BaseGraphState:
     if tool_calls:
         for call in tool_calls:
             tool_name = call.get("name", "unknown")
-            category = _classifier.classify(tool_name)
+            category = _classifier.classify(tool_name, call.get("args"))
             result = engine.evaluate(category, context=perm_context)
 
             if result.level == PermissionLevel.DENY:

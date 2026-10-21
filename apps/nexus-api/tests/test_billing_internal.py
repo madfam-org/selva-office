@@ -129,3 +129,61 @@ class TestCheckBudget:
             json={"org_id": "default"},
         )
         assert resp.status_code == 401
+
+
+class TestRecordUsagePricing:
+    """Worker inference rows carry a server-priced ``cost_usd``."""
+
+    def test_split_is_priced_with_the_shared_cost_model(self) -> None:
+        from decimal import Decimal
+
+        from madfam_budget_gate import estimate_cost
+        from nexus_api.routers.billing_internal import RecordRequest, _price_usage
+
+        body = RecordRequest(
+            action="inference",
+            amount=3_000,
+            provider="anthropic",
+            model="claude-opus-5-5",
+            task_type="planning",
+            input_tokens=1_000,
+            output_tokens=2_000,
+            cache_read_tokens=50_000,
+            cache_creation_tokens=4_000,
+        )
+        expected = estimate_cost(
+            "anthropic",
+            "claude-opus-5-5",
+            1_000,
+            2_000,
+            cache_read_tokens=50_000,
+            cache_creation_tokens=4_000,
+        )
+        assert _price_usage(body) == Decimal(str(expected))
+
+    def test_legacy_payload_without_split_stays_unpriced(self) -> None:
+        from nexus_api.routers.billing_internal import RecordRequest, _price_usage
+
+        body = RecordRequest(action="inference", amount=100, provider="deepinfra", model="m")
+        assert _price_usage(body) is None
+
+    @pytest.mark.asyncio
+    async def test_record_with_split_succeeds(
+        self, client: httpx.AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        resp = await client.post(
+            "/api/v1/billing/record",
+            json={
+                "action": "inference",
+                "amount": 30,
+                "provider": "anthropic",
+                "model": "claude-sonnet-5-5",
+                "task_type": "crm",
+                "input_tokens": 10,
+                "output_tokens": 20,
+                "cache_read_tokens": 0,
+                "cache_creation_tokens": 0,
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201

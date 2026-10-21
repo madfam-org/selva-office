@@ -39,4 +39,8 @@ DEFAULT_PERMISSION_MATRIX: dict[ActionCategory, PermissionLevel] = {
     # override to ALLOW at the call site.
     ActionCategory.WEBHOOK_MANAGEMENT: PermissionLevel.ASK,
     ActionCategory.PRICING_PROPOSAL: PermissionLevel.ASK,
+    ActionCategory.EXTERNAL_WRITE: PermissionLevel.ASK,
+    # Unknown tool names fail closed. Reverting this single entry (or the
+    # classifier default) restores the old ALLOW-by-default behaviour.
+    ActionCategory.UNCLASSIFIED_TOOL: PermissionLevel.ASK,
 }

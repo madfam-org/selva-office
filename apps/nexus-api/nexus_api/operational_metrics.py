@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -9,6 +11,8 @@ from sqlalchemy import func, or_, select
 
 from .database import admin_session
 from .models import DeploymentEvidenceRecord, SwarmTask, SwarmTaskOutbox
+
+logger = logging.getLogger(__name__)
 
 try:
     from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, Counter, Gauge, generate_latest
@@ -40,6 +44,21 @@ try:
     MISSING_PRODUCTION_EVIDENCE_ROWS = Gauge(
         "selva_production_deployment_missing_evidence_rows",
         "Completed or failed production deployment tasks without a deployment evidence ledger row.",
+    )
+    PROVIDER_GRANT_REMAINING_USD = Gauge(
+        "selva_provider_grant_remaining_usd",
+        "Provider credit grant USD left under its ceiling (ceiling - spent - reserved).",
+        ["grant"],
+    )
+    PROVIDER_GRANT_SPENT_USD = Gauge(
+        "selva_provider_grant_spent_usd",
+        "Provider credit grant USD settled since starts_at.",
+        ["grant"],
+    )
+    PROVIDER_GRANT_SECONDS_TO_EXPIRY = Gauge(
+        "selva_provider_grant_seconds_to_expiry",
+        "Seconds until the provider credit grant expires (0 once expired).",
+        ["grant"],
     )
     _HAS_PROMETHEUS = True
 except ImportError:
@@ -153,9 +172,31 @@ async def _refresh_db_gauges() -> None:
         MISSING_PRODUCTION_EVIDENCE_ROWS.set(missing_evidence_result.scalar_one() or 0)
 
 
+async def _refresh_provider_grant_gauges() -> None:
+    """Grant gauges from the Redis meter. A meter outage drops the amount
+    series (absent, not a fake zero) and never breaks /metrics."""
+    try:
+        from madfam_inference.grants import get_grant_statuses
+
+        statuses = await get_grant_statuses()
+    except Exception:
+        logger.exception("provider grants: gauge refresh failed")
+        return
+    for st in statuses:
+        PROVIDER_GRANT_SECONDS_TO_EXPIRY.labels(st.id).set(st.seconds_to_expiry)
+        if st.meter_ok and st.remaining_usd is not None and st.spent_usd is not None:
+            PROVIDER_GRANT_REMAINING_USD.labels(st.id).set(st.remaining_usd)
+            PROVIDER_GRANT_SPENT_USD.labels(st.id).set(st.spent_usd)
+        else:
+            for gauge in (PROVIDER_GRANT_REMAINING_USD, PROVIDER_GRANT_SPENT_USD):
+                with contextlib.suppress(KeyError):
+                    gauge.remove(st.id)
+
+
 async def render_prometheus_metrics() -> tuple[bytes, str]:
     """Refresh DB-backed gauges and render the default Prometheus registry."""
     if not _HAS_PROMETHEUS:
         return b"# prometheus-client not installed\n", CONTENT_TYPE_LATEST
     await _refresh_db_gauges()
+    await _refresh_provider_grant_gauges()
     return generate_latest(REGISTRY), CONTENT_TYPE_LATEST

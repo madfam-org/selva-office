@@ -88,3 +88,16 @@ Phase 2 Tulana import (shipped):
 
 Staging workers KEDA is pinned to 1 replica (`patch-keda-staging.yaml`) because
 `selva-memory-pvc` is RWO — see `docs/KEDA_QUEUE_SCALING.md`.
+
+## Inference spend surfaces (provider credit grants)
+
+- Grants: `packages/inference/madfam_inference/grants.py`. A provider listed in
+  `PROVIDER_GRANTS_REQUIRED_FOR` serves a call only under a valid grant for the
+  request's org; past the ceiling or after expiry it is unavailable (fail closed).
+  Grants are declared privately (Vault), never in this repo.
+- Status: `GET /api/v1/providers/grants` (platform admin), nexus-api `/metrics`
+  `selva_provider_grant_*`, agent tool `inference_budget_status` (platform audience).
+- Autopilot: `apps/workers/selva_workers/jobs/credit_autopilot*.py` invests a grant
+  for the platform org from `data/credit-investment/backlog.yaml`.
+- Human docs: `docs/PROVIDER_CREDIT_GRANTS.md`, `docs/CREDIT_AUTOPILOT.md`,
+  `docs/TOOL_HITL_INVENTORY.md`.

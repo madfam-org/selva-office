@@ -56,16 +56,24 @@ class TestClassifyEmail:
 
 
 class TestClassifyUnknownDefaults:
-    """Unrecognised tool names should fall back to API_CALL."""
+    """Unrecognised tool names fail closed to UNCLASSIFIED_TOOL (ASK)."""
 
     def test_classify_completely_unknown(self, classifier: ActionClassifier) -> None:
-        assert classifier.classify("unknown_tool") == ActionCategory.API_CALL
+        assert classifier.classify("unknown_tool") == ActionCategory.UNCLASSIFIED_TOOL
 
     def test_classify_random_string(self, classifier: ActionClassifier) -> None:
-        assert classifier.classify("xyzzy_widget") == ActionCategory.API_CALL
+        assert classifier.classify("xyzzy_widget") == ActionCategory.UNCLASSIFIED_TOOL
 
     def test_classify_empty_string(self, classifier: ActionClassifier) -> None:
-        assert classifier.classify("") == ActionCategory.API_CALL
+        assert classifier.classify("") == ActionCategory.UNCLASSIFIED_TOOL
+
+    def test_brand_new_tool_name_requires_approval(self, classifier: ActionClassifier) -> None:
+        # A tool added tomorrow with no policy entry and no matching
+        # substring must not run unattended.
+        result = classifier.classify_and_evaluate("brand_new_payout_tool_v9")
+        assert result.action_category == ActionCategory.UNCLASSIFIED_TOOL
+        assert result.level == PermissionLevel.ASK
+        assert result.requires_approval is True
 
 
 class TestClassifyCaseSensitivity:
@@ -146,16 +154,48 @@ class TestClassifyAndEvaluate:
         assert result.level == PermissionLevel.ALLOW
         assert result.requires_approval is False
 
-    def test_full_flow_unknown_tool_defaults_to_api_call(
-        self, classifier: ActionClassifier
-    ) -> None:
+    def test_full_flow_unknown_tool_requires_approval(self, classifier: ActionClassifier) -> None:
         result = classifier.classify_and_evaluate("totally_unknown")
-        assert result.action_category == ActionCategory.API_CALL
-        # API_CALL is ALLOW by default
-        assert result.level == PermissionLevel.ALLOW
+        assert result.action_category == ActionCategory.UNCLASSIFIED_TOOL
+        # Unknown tools fail closed (ASK)
+        assert result.level == PermissionLevel.ASK
 
     def test_full_flow_deploy_requires_approval(self, classifier: ActionClassifier) -> None:
         result = classifier.classify_and_evaluate("deploy")
         assert result.action_category == ActionCategory.DEPLOY
         assert result.level == PermissionLevel.ASK
         assert result.requires_approval is True
+
+
+class TestFactoryLineSideEffectTools:
+    """Factory-line tools with side effects must not fall through to ALLOW.
+
+    ``generate_quote`` creates a Cotiza quote record and
+    ``factory_manifest_publish`` writes files; neither name matches a
+    fallback substring, so before the explicit mapping both classified as
+    ``API_CALL`` and ran without human approval.
+    """
+
+    def test_generate_quote_is_pricing_proposal(self, classifier: ActionClassifier) -> None:
+        assert classifier.classify("generate_quote") == ActionCategory.PRICING_PROPOSAL
+
+    def test_factory_manifest_publish_is_file_write(self, classifier: ActionClassifier) -> None:
+        assert classifier.classify("factory_manifest_publish") == ActionCategory.FILE_WRITE
+
+    @pytest.mark.parametrize("tool_name", ["generate_quote", "factory_manifest_publish"])
+    def test_requires_approval_by_default(
+        self, classifier: ActionClassifier, tool_name: str
+    ) -> None:
+        result = classifier.classify_and_evaluate(tool_name, engine=PermissionEngine())
+        assert result.level == PermissionLevel.ASK
+        assert result.requires_approval is True
+
+    @pytest.mark.parametrize(
+        "tool_name",
+        ["factory_manifest_get_for_repo", "factory_manifest_verify", "get_production_order_status"],
+    )
+    def test_read_side_factory_tools_unchanged(
+        self, classifier: ActionClassifier, tool_name: str
+    ) -> None:
+        # Read/verify tools keep their previous classification (no new gate).
+        assert classifier.classify(tool_name) == ActionCategory.API_CALL

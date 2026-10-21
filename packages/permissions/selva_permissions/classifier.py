@@ -3,15 +3,27 @@
 from __future__ import annotations
 
 from .engine import PermissionEngine
+from .tool_policy import BUILTIN_TOOL_CATEGORY_MAP
 from .types import ActionCategory, PermissionResult
+
+# HTTP methods that only read. Anything else on a generic HTTP tool is an
+# external write and must be approved.
+_READ_ONLY_HTTP_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
 class ActionClassifier:
     """Maps tool invocation names to permission action categories.
 
-    The classifier first checks an explicit lookup table, then falls
-    back to substring matching heuristics, and finally defaults to
-    ``API_CALL`` for unrecognised tools.
+    Resolution order:
+
+    1. Generic HTTP tools (``http_request``, ``graphql_query``) are
+       classified from their params: reads stay ``API_CALL``, writes
+       become ``EXTERNAL_WRITE``.
+    2. ``TOOL_CATEGORY_MAP`` (generic tool names).
+    3. ``BUILTIN_TOOL_CATEGORY_MAP`` -- the explicit per-tool policy for
+       every built-in Selva tool (``selva_permissions.tool_policy``).
+    4. Substring heuristics (``_FALLBACK_RULES``).
+    5. ``UNCLASSIFIED_TOOL`` (ASK) for unrecognised tools.
     """
 
     TOOL_CATEGORY_MAP: dict[str, ActionCategory] = {
@@ -47,6 +59,14 @@ class ActionClassifier:
         "deploy_status": ActionCategory.DEPLOY,
         "kubectl": ActionCategory.DEPLOY,
         "terraform": ActionCategory.DEPLOY,
+        # Side-effecting factory-line tools whose names match no fallback
+        # substring and would otherwise default to API_CALL (= ALLOW).
+        # ``generate_quote`` creates a Cotiza quote record (a priced
+        # commitment), so it is gated like any pricing proposal;
+        # ``factory_manifest_publish`` writes files ("publish" does not
+        # contain "push" or "write"). Both resolve to ASK by default.
+        "generate_quote": ActionCategory.PRICING_PROPOSAL,
+        "factory_manifest_publish": ActionCategory.FILE_WRITE,
         # API / HTTP
         "http_request": ActionCategory.API_CALL,
         "fetch": ActionCategory.API_CALL,
@@ -89,16 +109,49 @@ class ActionClassifier:
         """
         normalised = tool_name.strip().lower()
 
+        # Generic HTTP tools: the method / operation decides read vs write.
+        http_category = self._classify_http(normalised, params)
+        if http_category is not None:
+            return http_category
+
         # Exact match
         if normalised in self.TOOL_CATEGORY_MAP:
             return self.TOOL_CATEGORY_MAP[normalised]
+
+        # Explicit per-tool policy for built-in tools.
+        if normalised in BUILTIN_TOOL_CATEGORY_MAP:
+            return BUILTIN_TOOL_CATEGORY_MAP[normalised]
 
         # Substring heuristics
         for substring, category in self._FALLBACK_RULES:
             if substring in normalised:
                 return category
 
-        return ActionCategory.API_CALL
+        # Fail closed: an unrecognised tool needs a human until it is given
+        # an explicit entry in tool_policy.BUILTIN_TOOL_POLICY.
+        return ActionCategory.UNCLASSIFIED_TOOL
+
+    @staticmethod
+    def _classify_http(normalised: str, params: dict | None) -> ActionCategory | None:
+        """Classify generic HTTP tools from their arguments.
+
+        Returns ``None`` for any other tool. Without params the historical
+        ``API_CALL`` is kept (both tools default to a read).
+        """
+        if normalised == "http_request":
+            method = str((params or {}).get("method") or "GET").strip().upper()
+            if method in _READ_ONLY_HTTP_METHODS:
+                return ActionCategory.API_CALL
+            return ActionCategory.EXTERNAL_WRITE
+        if normalised == "graphql_query":
+            query = str((params or {}).get("query") or "")
+            # Skip leading blank and comment lines before the operation type.
+            lines = [ln.strip().lower() for ln in query.splitlines()]
+            body = next((ln for ln in lines if ln and not ln.startswith("#")), "")
+            if body.startswith(("mutation", "subscription")):
+                return ActionCategory.EXTERNAL_WRITE
+            return ActionCategory.API_CALL
+        return None
 
     def classify_and_evaluate(
         self,
