@@ -14,7 +14,10 @@ from selva_skills.types import SkillTier
 SKILL_DEFS_DIR = Path(__file__).resolve().parent.parent / "skill-definitions"
 COMMUNITY_DIR = Path(__file__).resolve().parent.parent / "community-skills"
 
-CORE_SKILL_COUNT = 25
+# Count source definitions independently of registry parsing: a skipped malformed
+# core or duplicate name must still fail, while valid additions need no magic count.
+CORE_DEFINITIONS = tuple(SKILL_DEFS_DIR.rglob("SKILL.md"))
+CORE_SKILL_COUNT = len(CORE_DEFINITIONS)
 
 
 @pytest.fixture()
@@ -40,6 +43,7 @@ def test_community_disabled_by_default(registry: SkillRegistry) -> None:
     assert not registry.community_enabled
     skills = registry.list_skills()
     assert len(skills) == CORE_SKILL_COUNT
+    assert {skill.name for skill in skills} == {path.parent.name for path in CORE_DEFINITIONS}
 
 
 def test_community_enabled_discovers_all(registry_with_community: SkillRegistry) -> None:

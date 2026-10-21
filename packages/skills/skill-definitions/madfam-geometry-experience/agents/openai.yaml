@@ -1,0 +1,4 @@
+interface:
+  display_name: "MADFAM Geometry Experience"
+  short_description: "Source-backed geometry explanations and factory UX"
+  default_prompt: "Use $madfam-geometry-experience to enrich this geometry workflow with a source-backed interactive explanation and scoped verification."
