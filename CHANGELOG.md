@@ -37,6 +37,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   sequencing, and leadership scorecard.
 
 ### Fixed
+- **Staging smoke names a down host** — `scripts/verify-campaign-path.sh` reads the
+  OpenAPI status code. A non-200 answer (since 2026-10-18 every staging host
+  answers a Cloudflare 502) now fails once with the HTTP code and "host down
+  or unreachable (not a sync lag)" instead of six "route missing — image may
+  not have synced yet" lines and Python JSON tracebacks.
 - **Phygital tools call real service routes** — `generate_parametric_model`
   renders an existing Yantra4D project through `POST /api/render`, and
   `run_dfm_analysis` runs Yantra4D's thickness and overhang analyses
