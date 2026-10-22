@@ -451,3 +451,95 @@ class TestKarafielAdapter:
     def test_trailing_slash_stripped(self) -> None:
         adapter = KarafielAdapter(base_url="http://karafiel:3050/")
         assert adapter._base_url == "http://karafiel:3050"
+
+
+class TestBlacklistFailureSemantics:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {},
+            [],
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+                "status": "error",
+            },
+            {"rfc": "XEXX010101000"},
+            {"rfc": "XEXX010101000", "listed": False},
+            {"rfc": "XEXX010101000", "listed": "false", "article_69b": False, "definitive": False},
+            {"rfc": "XEXX010101000", "listed": False, "article_69b": True, "definitive": False},
+            {"rfc": "XEXX010101000", "listed": False, "article_69b": False, "definitive": True},
+            {"rfc": "XAXX010101000", "listed": False, "article_69b": False, "definitive": False},
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+                "details": {"error": "SENSITIVE_SENTINEL"},
+            },
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+                "check_status": "unknown",
+            },
+        ],
+    )
+    async def test_invalid_envelopes_remain_unknown(self, payload, caplog) -> None:
+        client = _mock_client("post", payload)
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(base_url="https://example.invalid").check_blacklist(
+                "XEXX010101000"
+            )
+        assert not result.check_completed
+        assert result.check_status == "unknown"
+        assert result.listed is None
+        assert result.article_69b is None
+        assert result.definitive is None
+        assert "SENSITIVE_SENTINEL" not in result.model_dump_json() + caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure", ["missing_route", "timeout", "invalid_json"])
+    async def test_source_failures_are_not_clearance(self, failure, caplog) -> None:
+        import httpx
+
+        client = _mock_client()
+        if failure == "missing_route":
+            client.post.return_value.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "SENSITIVE_SENTINEL",
+                request=httpx.Request("POST", "https://example.invalid"),
+                response=httpx.Response(404),
+            )
+        elif failure == "timeout":
+            client.post.side_effect = httpx.ReadTimeout("SENSITIVE_SENTINEL")
+        else:
+            client.post.return_value.json.side_effect = ValueError("SENSITIVE_SENTINEL")
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(base_url="https://example.invalid").check_blacklist(
+                "XEXX010101000"
+            )
+        assert result.check_status == "unknown"
+        assert result.listed is None
+        assert "SENSITIVE_SENTINEL" not in result.model_dump_json() + caplog.text
+
+    @pytest.mark.asyncio
+    async def test_explicit_unlisted_is_a_completed_lookup(self) -> None:
+        client = _mock_client(
+            "post",
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+            },
+        )
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(base_url="https://example.invalid").check_blacklist(
+                "XEXX010101000"
+            )
+        assert result.check_completed
+        assert result.listed is False

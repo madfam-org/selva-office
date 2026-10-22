@@ -8,9 +8,6 @@ import pytest
 
 from madfam_inference.adapters.dhanam import (
     DhanamAdapter,
-    DhanamBankStatement,
-    DhanamPaymentSummary,
-    DhanamTransaction,
 )
 
 
@@ -66,208 +63,141 @@ class TestDhanamAdapterInit:
         assert "Authorization" not in headers
 
 
+def _row(identifier="synthetic-1"):
+    return {
+        "id": identifier,
+        "amount": "100.00",
+        "currency": "MXN",
+        "accountId": "synthetic-account",
+        "date": "2026-04-05T00:00:00Z",
+        "category": {"id": "synthetic-category", "name": "Synthetic"},
+    }
+
+
+def _page(rows, total, page=1):
+    return {"data": rows, "total": total, "page": page, "limit": 100}
+
+
 class TestListTransactions:
-    """DhanamAdapter.list_transactions() method."""
+    @pytest.mark.asyncio
+    async def test_reads_all_pages_with_proof_and_actual_date_parameters(self):
+        client = _mock_client()
+        client.get.side_effect = [
+            _mock_response(_page([_row(str(i)) for i in range(100)], 101)),
+            _mock_response(_page([_row("last")], 101, 2)),
+        ]
+        with patch("madfam_inference.adapters.dhanam.httpx.AsyncClient", return_value=client):
+            result = await DhanamAdapter(
+                base_url="https://example.invalid", token="synthetic"
+            ).list_transactions("synthetic-space", "2026-04-01", "2026-05-01")
+        assert len(result.items) == result.proof.total == 101
+        assert result.proof.pages_read == 2
+        assert result.proof.scope_id == "synthetic-space"
+        assert result.items[-1]["id"] == "last"
+        for index, call in enumerate(client.get.call_args_list, 1):
+            params = call.kwargs["params"]
+            assert params["startDate"] == "2026-04-01T00:00:00+00:00"
+            assert params["endDate"] == "2026-04-30T23:59:59.999000+00:00"
+            assert params["page"] == index
+            assert "since" not in params and "until" not in params
 
     @pytest.mark.asyncio
-    async def test_returns_transactions(self) -> None:
-        client = _mock_client(
-            "get",
-            [
-                {
-                    "id": "txn-1",
-                    "amount": "1000.00",
-                    "currency": "MXN",
-                    "description": "Pago servicio",
-                    "category": "income",
-                    "date": "2026-04-05",
-                    "payment_method": "spei",
-                    "cfdi_uuid": "cfdi-abc",
-                    "counterparty_rfc": "XAXX010101000",
-                    "status": "completed",
-                },
-            ],
-        )
-
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
-            result = await adapter.list_transactions("org-1", "2026-04-01", "2026-05-01")
-
-        assert len(result) == 1
-        assert isinstance(result[0], DhanamTransaction)
-        assert result[0].id == "txn-1"
-        assert result[0].amount == "1000.00"
-        assert result[0].payment_method == "spei"
+    async def test_verified_empty_has_an_explicit_source_proof(self):
+        client = _mock_client(data=_page([], 0))
+        with patch("madfam_inference.adapters.dhanam.httpx.AsyncClient", return_value=client):
+            result = await DhanamAdapter(
+                base_url="https://example.invalid", token="synthetic"
+            ).list_transactions("synthetic-space", "2026-04-01", "2026-05-01")
+        assert result.items == []
+        assert result.proof.status == "complete"
+        assert result.proof.total == 0
+        assert result.proof.pages_read == 1
 
     @pytest.mark.asyncio
-    async def test_returns_empty_on_error(self) -> None:
+    @pytest.mark.parametrize(
+        "responses",
+        [
+            [[]],
+            [[_row()]],
+            [{}],
+            [{"data": [], "total": 0}],
+            [_page([], 1)],
+            [_page([_row()], 101)],
+            [_page([_row()], 0)],
+            [_page([], True)],
+            [_page([_row(str(i)) for i in range(100)], 101), _page([], 101, 2)],
+            [_page([_row(str(i)) for i in range(100)], 101), _page([_row("0")], 101, 2)],
+            [_page([_row(str(i)) for i in range(100)], 101), _page([_row("last")], 102, 2)],
+            [_page([_row(str(i)) for i in range(100)], 101), _page([_row("last")], 101, 1)],
+            [_page([{**_row(), "date": "2026-05-01T00:00:00Z"}], 1)],
+            [_page([{**_row(), "currency": ""}], 1)],
+            [_page([{**_row(), "amount": "NaN"}], 1)],
+            [_page([{**_row(), "accountId": ""}], 1)],
+            [_page([{**_row(), "spaceId": "other-space"}], 1)],
+        ],
+    )
+    async def test_no_partial_or_incompatible_read_is_returned(self, responses):
+        from madfam_inference.adapters.financial_reads import FinancialReadUnavailableError
+
+        client = _mock_client()
+        client.get.side_effect = [_mock_response(body) for body in responses]
+        with patch("madfam_inference.adapters.dhanam.httpx.AsyncClient", return_value=client):
+            with pytest.raises(
+                FinancialReadUnavailableError, match="dhanam_transactions_unavailable"
+            ):
+                await DhanamAdapter(
+                    base_url="https://example.invalid", token="synthetic"
+                ).list_transactions("synthetic-space", "2026-04-01", "2026-05-01")
+
+    @pytest.mark.asyncio
+    async def test_failure_after_first_page_does_not_return_partial_data(self, caplog):
         import httpx
 
-        client = AsyncMock()
-        client.get.side_effect = httpx.ConnectError("Connection refused")
-        client.__aenter__ = AsyncMock(return_value=client)
-        client.__aexit__ = AsyncMock(return_value=False)
+        from madfam_inference.adapters.financial_reads import FinancialReadUnavailableError
 
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter(base_url="http://dhanam:3060")
-            result = await adapter.list_transactions("org-1", "2026-04-01", "2026-05-01")
-
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_passes_query_params(self) -> None:
-        client = _mock_client("get", [])
-
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
-            await adapter.list_transactions("org-1", "2026-04-01", "2026-05-01")
-
-        call_kwargs = client.get.call_args
-        assert call_kwargs[1]["params"]["since"] == "2026-04-01"
-        assert call_kwargs[1]["params"]["until"] == "2026-05-01"
-
-
-class TestGetBankStatements:
-    """DhanamAdapter.get_bank_statements() method."""
+        client = _mock_client()
+        client.get.side_effect = [
+            _mock_response(_page([_row(str(i)) for i in range(100)], 101)),
+            httpx.ReadTimeout("SENSITIVE_SENTINEL"),
+        ]
+        with patch("madfam_inference.adapters.dhanam.httpx.AsyncClient", return_value=client):
+            with pytest.raises(FinancialReadUnavailableError) as error:
+                await DhanamAdapter(
+                    base_url="https://example.invalid", token="synthetic"
+                ).list_transactions("synthetic-space", "2026-04-01", "2026-05-01")
+        assert "SENSITIVE_SENTINEL" not in str(error.value) + caplog.text
 
     @pytest.mark.asyncio
-    async def test_returns_statements(self) -> None:
-        client = _mock_client(
-            "get",
-            [
-                {
-                    "account_id": "acct-1",
-                    "account_name": "BBVA Empresarial",
-                    "institution": "BBVA",
-                    "balance": "50000.00",
-                    "currency": "MXN",
-                    "transactions": [],
-                },
-            ],
-        )
+    async def test_unconfigured_source_makes_no_request(self, monkeypatch):
+        from madfam_inference.adapters.financial_reads import FinancialReadUnavailableError
 
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
-            result = await adapter.get_bank_statements("org-1")
+        monkeypatch.delenv("DHANAM_API_URL", raising=False)
+        monkeypatch.delenv("DHANAM_API_TOKEN", raising=False)
+        with patch("madfam_inference.adapters.dhanam.httpx.AsyncClient") as client:
+            with pytest.raises(FinancialReadUnavailableError):
+                await DhanamAdapter().list_transactions(
+                    "synthetic-space", "2026-04-01", "2026-05-01"
+                )
+        client.assert_not_called()
 
-        assert len(result) == 1
-        assert isinstance(result[0], DhanamBankStatement)
-        assert result[0].account_id == "acct-1"
-        assert result[0].institution == "BBVA"
 
+class TestUnavailableAccountingContracts:
     @pytest.mark.asyncio
-    async def test_returns_empty_on_error(self) -> None:
-        import httpx
+    async def test_unverified_routes_never_fabricate_zero_data(self):
+        from madfam_inference.adapters.financial_reads import FinancialReadUnavailableError
+        from madfam_inference.adapters.karafiel import KarafielAdapter
 
-        client = AsyncMock()
-        client.get.side_effect = httpx.ConnectError("Connection refused")
-        client.__aenter__ = AsyncMock(return_value=client)
-        client.__aexit__ = AsyncMock(return_value=False)
-
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter()
-            result = await adapter.get_bank_statements("org-1")
-
-        assert result == []
-
-
-class TestGetPaymentSummary:
-    """DhanamAdapter.get_payment_summary() method."""
-
-    @pytest.mark.asyncio
-    async def test_returns_summary(self) -> None:
-        client = _mock_client(
-            "get",
-            {
-                "period": "2026-04",
-                "total_income": "150000.00",
-                "total_expenses": "80000.00",
-                "by_method": {
-                    "stripe_mx": "60000.00",
-                    "oxxo": "20000.00",
-                    "spei": "50000.00",
-                    "conekta": "10000.00",
-                    "transfer": "10000.00",
-                },
-            },
-        )
-
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
-            result = await adapter.get_payment_summary("org-1", "2026-04")
-
-        assert isinstance(result, DhanamPaymentSummary)
-        assert result.total_income == "150000.00"
-        assert result.by_method["stripe_mx"] == "60000.00"
-
-    @pytest.mark.asyncio
-    async def test_returns_empty_summary_on_error(self) -> None:
-        import httpx
-
-        client = AsyncMock()
-        client.get.side_effect = httpx.ConnectError("Connection refused")
-        client.__aenter__ = AsyncMock(return_value=client)
-        client.__aexit__ = AsyncMock(return_value=False)
-
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter()
-            result = await adapter.get_payment_summary("org-1", "2026-04")
-
-        assert isinstance(result, DhanamPaymentSummary)
-        assert result.total_income == "0.00"
-        assert result.period == "2026-04"
-
-
-class TestGetPosTransactions:
-    """DhanamAdapter.get_pos_transactions() method."""
-
-    @pytest.mark.asyncio
-    async def test_returns_pos_transactions(self) -> None:
-        client = _mock_client(
-            "get",
-            [
-                {
-                    "id": "pos-1",
-                    "amount": "500.00",
-                    "currency": "MXN",
-                    "description": "Terminal sale",
-                    "payment_method": "stripe_mx",
-                    "date": "2026-04-10",
-                    "status": "completed",
-                },
-            ],
-        )
-
-        with patch(
-            "madfam_inference.adapters.dhanam.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = DhanamAdapter(base_url="http://dhanam:3060", token="t")
-            result = await adapter.get_pos_transactions("org-1", "2026-04-01", "2026-05-01")
-
-        assert len(result) == 1
-        assert result[0].payment_method == "stripe_mx"
+        adapter = DhanamAdapter(base_url="https://example.invalid", token="synthetic")
+        with patch("httpx.AsyncClient") as client:
+            for operation, args in (
+                (adapter.get_bank_statements, ("synthetic-space",)),
+                (adapter.get_payment_summary, ("synthetic-space", "2026-04")),
+                (adapter.get_pos_transactions, ("synthetic-space", "2026-04-01", "2026-05-01")),
+                (KarafielAdapter().list_cfdis, ("XEXX010101000", "2026-04-01", "2026-05-01")),
+            ):
+                with pytest.raises(FinancialReadUnavailableError, match="contract_unavailable"):
+                    await operation(*args)
+        client.assert_not_called()
 
 
 class TestGetTransaction:

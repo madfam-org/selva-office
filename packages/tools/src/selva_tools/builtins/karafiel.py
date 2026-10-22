@@ -195,10 +195,16 @@ class BlacklistCheckTool(BaseTool):
 
         adapter = KarafielAdapter()
         result = await adapter.check_blacklist(rfc)
+        if not result.check_completed or result.rfc != rfc:
+            return ToolResult(
+                success=False,
+                error="Blacklist lookup unavailable or invalid; screening remains unknown",
+                data={"check_status": "unknown"},
+            )
         return ToolResult(
             success=True,
             output=(
-                f"RFC {result.rfc}: listed={result.listed}, "
+                f"Screening lookup completed: listed={result.listed}, "
                 f"article_69b={result.article_69b}, definitive={result.definitive}"
             ),
             data=result.model_dump(),

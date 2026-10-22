@@ -4,10 +4,19 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 from pydantic import BaseModel, Field
+
+from .financial_reads import (
+    CompleteTransactionRead,
+    FinancialReadUnavailableError,
+    TransactionReadProof,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +83,7 @@ class DhanamAdapter:
     """Async client wrapping the Dhanam billing REST API.
 
     Uses httpx.AsyncClient for HTTP calls with Bearer token auth.
-    All methods return typed Pydantic models and degrade gracefully on error.
+    Period reads fail closed unless their source completeness can be established.
     """
 
     def __init__(
@@ -82,6 +91,7 @@ class DhanamAdapter:
         base_url: str | None = None,
         token: str | None = None,
     ) -> None:
+        self._read_configured = bool(base_url or os.environ.get("DHANAM_API_URL"))
         self._base_url = (
             base_url or os.environ.get("DHANAM_API_URL", "http://localhost:3060")
         ).rstrip("/")
@@ -100,92 +110,110 @@ class DhanamAdapter:
         org_id: str,
         since: str,
         until: str,
-    ) -> list[DhanamTransaction]:
-        """List transactions for an org within a date range.
+    ) -> CompleteTransactionRead:
+        """Read every page for a space and [since, until) UTC date window.
 
-        Args:
-            org_id: Organization identifier (Dhanam space).
-            since: ISO-8601 start date (inclusive).
-            until: ISO-8601 end date (inclusive).
-
-        Returns:
-            List of DhanamTransaction models.
+        This proves the paginated response was consumed, not that every source
+        statement is ingested, the requested space is legally owned by the user,
+        or that the server supplied an immutable snapshot.
         """
         try:
+            if not self._read_configured or not self._token or not org_id:
+                raise ValueError("Financial source is not configured")
+            start = datetime.fromisoformat(since.replace("Z", "+00:00"))
+            end = datetime.fromisoformat(until.replace("Z", "+00:00"))
+            start = start.replace(tzinfo=UTC) if start.tzinfo is None else start
+            end = end.replace(tzinfo=UTC) if end.tzinfo is None else end
+            if start >= end:
+                raise ValueError("Invalid financial read interval")
+            page_size = 100
+            expected_total = None
+            rows: list[dict[str, Any]] = []
+            ids: set[str] = set()
             async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    f"{self._base_url}/v1/spaces/{org_id}/transactions",
-                    headers=self._headers(),
-                    params={"since": since, "until": until},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                if isinstance(data, list):
-                    return [DhanamTransaction(**t) for t in data]
-                return []
-        except Exception as exc:
-            logger.warning("Dhanam list_transactions failed: %s", exc)
-            return []
+                for page in range(1, 10001):
+                    response = await client.get(
+                        f"{self._base_url}/v1/spaces/{quote(org_id, safe='')}/transactions",
+                        headers=self._headers(),
+                        params={
+                            "startDate": start.isoformat(),
+                            "endDate": (end - timedelta(milliseconds=1)).isoformat(),
+                            "page": page,
+                            "limit": page_size,
+                            "sortBy": "createdAt",
+                            "sortOrder": "asc",
+                        },
+                    )
+                    response.raise_for_status()
+                    body = response.json()
+                    if not isinstance(body, dict) or body.get("error"):
+                        raise ValueError("Invalid financial read envelope")
+                    if (
+                        type(body.get("total")) is not int
+                        or body["total"] < 0
+                        or type(body.get("page")) is not int
+                        or body["page"] != page
+                        or type(body.get("limit")) is not int
+                        or body["limit"] != page_size
+                        or not isinstance(body.get("data"), list)
+                    ):
+                        raise ValueError("Missing pagination proof")
+                    if expected_total is None:
+                        expected_total = body["total"]
+                    if body["total"] != expected_total:
+                        raise ValueError("Source count changed during read")
+                    batch = body["data"]
+                    if len(batch) != min(page_size, expected_total - len(rows)):
+                        raise ValueError("Incomplete or oversized financial page")
+                    for row in batch:
+                        if not isinstance(row, dict):
+                            raise ValueError("Invalid transaction row")
+                        identifier = row.get("id")
+                        if not isinstance(identifier, str) or not identifier or identifier in ids:
+                            raise ValueError("Missing or duplicate transaction identity")
+                        if (
+                            not isinstance(row.get("accountId"), str)
+                            or not row["accountId"]
+                            or not isinstance(row.get("currency"), str)
+                            or not row["currency"]
+                            or not isinstance(row.get("date"), str)
+                            or isinstance(row.get("amount"), bool)
+                            or not Decimal(str(row.get("amount"))).is_finite()
+                        ):
+                            raise ValueError("Invalid transaction provenance")
+                        row_date = datetime.fromisoformat(row["date"].replace("Z", "+00:00"))
+                        if row_date.tzinfo is None:
+                            row_date = row_date.replace(tzinfo=UTC)
+                        if not start <= row_date < end:
+                            raise ValueError("Source ignored the requested date window")
+                        if row.get("spaceId", org_id) != org_id:
+                            raise ValueError("Source returned a different space")
+                        ids.add(identifier)
+                        rows.append(row)
+                    if len(rows) == expected_total:
+                        return CompleteTransactionRead(
+                            items=rows,
+                            proof=TransactionReadProof(
+                                scope_id=org_id,
+                                since=since,
+                                until_exclusive=until,
+                                total=expected_total,
+                                pages_read=page,
+                                page_size=page_size,
+                            ),
+                        )
+            raise ValueError("Financial read exceeded its page bound")
+        except Exception:
+            logger.warning("Dhanam transaction read unavailable or incomplete")
+            raise FinancialReadUnavailableError("dhanam_transactions_unavailable") from None
 
-    # -- Bank statements --------------------------------------------------------
+    async def get_bank_statements(self, org_id: str) -> list[DhanamBankStatement]:
+        """The legacy bank-accounts route has no verified statement coverage contract."""
+        raise FinancialReadUnavailableError("dhanam_statement_contract_unavailable")
 
-    async def get_bank_statements(
-        self,
-        org_id: str,
-    ) -> list[DhanamBankStatement]:
-        """Fetch bank account statements (Belvo-sourced) for an org.
-
-        Args:
-            org_id: Organization identifier (Dhanam space).
-
-        Returns:
-            List of DhanamBankStatement models.
-        """
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    f"{self._base_url}/v1/spaces/{org_id}/bank-accounts",
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                if isinstance(data, list):
-                    return [DhanamBankStatement(**s) for s in data]
-                return []
-        except Exception as exc:
-            logger.warning("Dhanam get_bank_statements failed: %s", exc)
-            return []
-
-    # -- Payment summary --------------------------------------------------------
-
-    async def get_payment_summary(
-        self,
-        org_id: str,
-        period: str,
-    ) -> DhanamPaymentSummary:
-        """Get aggregated payment summary for a period.
-
-        Args:
-            org_id: Organization identifier (Dhanam space).
-            period: Period string (e.g. ``"2026-04"``).
-
-        Returns:
-            DhanamPaymentSummary with income/expense totals and per-method breakdown.
-        """
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    f"{self._base_url}/v1/spaces/{org_id}/payments/summary",
-                    headers=self._headers(),
-                    params={"period": period},
-                )
-                resp.raise_for_status()
-                return DhanamPaymentSummary(**resp.json())
-        except Exception as exc:
-            logger.warning("Dhanam get_payment_summary failed: %s", exc)
-            return DhanamPaymentSummary(period=period)
-
-    # -- POS transactions -------------------------------------------------------
+    async def get_payment_summary(self, org_id: str, period: str) -> DhanamPaymentSummary:
+        """Do not turn a missing summary contract into zero income/expenses."""
+        raise FinancialReadUnavailableError("dhanam_payment_summary_contract_unavailable")
 
     async def get_pos_transactions(
         self,
@@ -193,31 +221,8 @@ class DhanamAdapter:
         since: str,
         until: str,
     ) -> list[DhanamTransaction]:
-        """Fetch POS transactions (Stripe MX terminal / Conekta POS).
-
-        Args:
-            org_id: Organization identifier (Dhanam space).
-            since: ISO-8601 start date (inclusive).
-            until: ISO-8601 end date (inclusive).
-
-        Returns:
-            List of DhanamTransaction from POS channels.
-        """
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    f"{self._base_url}/v1/spaces/{org_id}/pos-transactions",
-                    headers=self._headers(),
-                    params={"since": since, "until": until},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                if isinstance(data, list):
-                    return [DhanamTransaction(**t) for t in data]
-                return []
-        except Exception as exc:
-            logger.warning("Dhanam get_pos_transactions failed: %s", exc)
-            return []
+        """The legacy POS route has no verified pagination/period contract."""
+        raise FinancialReadUnavailableError("dhanam_pos_contract_unavailable")
 
     # -- Single transaction (used by billing graph) -----------------------------
 

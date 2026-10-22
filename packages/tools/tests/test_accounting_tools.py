@@ -99,7 +99,7 @@ class TestAccountingToolsMissingInput:
         tool = BankReconciliationTool()
         result = await tool.execute(org_id="org-1", period="invalid")
         assert not result.success
-        assert "period" in (result.error or "").lower()
+        assert "unavailable" in (result.error or "").lower()
 
     @pytest.mark.asyncio
     async def test_declaration_prep_missing_fields(self) -> None:
@@ -115,29 +115,23 @@ class TestAccountingToolsMissingInput:
         assert "org_id" in (result.error or "").lower()
 
 
-class TestBankReconciliationToolPeriodParsing:
-    """BankReconciliationTool correctly parses YYYY-MM periods."""
+class TestUnavailableSourceTools:
+    @pytest.mark.asyncio
+    async def test_reconciliation_does_not_turn_unavailable_into_zero_counts(self):
+        from unittest.mock import patch
+
+        with patch("madfam_inference.adapters.dhanam.DhanamAdapter") as adapter:
+            result = await BankReconciliationTool().execute(
+                org_id="synthetic-space", period="2026-04"
+            )
+        adapter.assert_not_called()
+        assert not result.success
+        assert result.data == {"coverage_status": "unavailable"}
+        assert "summary" not in result.data
 
     @pytest.mark.asyncio
-    async def test_valid_period_no_error(self) -> None:
-        """With valid period but no adapters, reconciliation returns success (empty data)."""
-        tool = BankReconciliationTool()
-        result = await tool.execute(org_id="org-1", period="2026-04")
-        assert result.success
-        assert result.data["summary"]["period"] == "2026-04"
-
-    @pytest.mark.asyncio
-    async def test_december_period_wraps_year(self) -> None:
-        tool = BankReconciliationTool()
-        result = await tool.execute(org_id="org-1", period="2026-12")
-        assert result.success
-        assert result.data["summary"]["period"] == "2026-12"
-
-    @pytest.mark.asyncio
-    async def test_reconciliation_empty_data(self) -> None:
-        """Without adapters, reconciliation returns zero counts."""
-        tool = BankReconciliationTool()
-        result = await tool.execute(org_id="org-1", period="2026-04")
-        assert result.data["summary"]["total_bank_txns"] == 0
-        assert result.data["summary"]["total_cfdis"] == 0
-        assert result.data["summary"]["matched_count"] == 0
+    async def test_payment_summary_does_not_fabricate_zero_totals(self):
+        result = await PaymentSummaryTool().execute(org_id="synthetic-space", period="2026-04")
+        assert not result.success
+        assert result.data == {"coverage_status": "unavailable"}
+        assert "total_income" not in result.data

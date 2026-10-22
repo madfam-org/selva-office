@@ -130,3 +130,30 @@ class TestKarafielToolsMissingInput:
         tool = NOM035ReportTool()
         result = await tool.execute(org_id="org-1")
         assert not result.success
+
+
+class TestBlacklistToolResults:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("listed", [False, True, None])
+    async def test_unknown_is_not_success_and_listed_is_not_clearance(self, listed) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        from madfam_inference.adapters.karafiel import BlacklistResult
+
+        screening = BlacklistResult(
+            rfc="XEXX010101000",
+            listed=listed,
+            article_69b=listed,
+            definitive=False if listed is not None else None,
+            check_status="checked" if listed is not None else "unknown",
+        )
+        with patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter:
+            adapter.return_value.check_blacklist = AsyncMock(return_value=screening)
+            result = await BlacklistCheckTool().execute(rfc="XEXX010101000")
+        assert result.success is (listed is not None)
+        if listed is None:
+            assert result.data == {"check_status": "unknown"}
+            assert "unknown" in result.error
+        else:
+            assert result.data["listed"] is listed
+        assert "XEXX010101000" not in result.output

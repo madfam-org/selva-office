@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, Literal
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictBool
+
+from .financial_reads import FinancialReadUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +86,24 @@ class NOM035Result(BaseModel):
 
 class BlacklistResult(BaseModel):
     rfc: str
-    listed: bool = False
-    article_69b: bool = False
-    definitive: bool = False
+    listed: StrictBool | None = None
+    article_69b: StrictBool | None = None
+    definitive: StrictBool | None = None
+    check_status: Literal["checked", "unknown"] = "unknown"
     details: dict[str, Any] = {}
+
+    @property
+    def check_completed(self) -> bool:
+        """A completed lookup is not a tax-clearance or source-freshness verdict."""
+        return (
+            self.check_status == "checked"
+            and self.listed is not None
+            and self.article_69b is not None
+            and self.definitive is not None
+            and not self.details.get("error")
+            and not (self.article_69b and not self.listed)
+            and not (self.definitive and not self.article_69b)
+        )
 
 
 # --- Adapter ---
@@ -246,22 +262,14 @@ class KarafielAdapter:
         since: str,
         until: str,
     ) -> list[CFDIListItem]:
-        """List CFDIs for an RFC within a date range via Karafiel."""
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    f"{self._base_url}/api/v1/cfdi/list/",
-                    headers=self._headers(),
-                    params={"rfc": rfc, "since": since, "until": until},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                if isinstance(data, list):
-                    return [CFDIListItem(**item) for item in data]
-                return []
-        except Exception as exc:
-            logger.warning("Karafiel CFDI listing failed: %s", exc)
-            return []
+        """Refuse the unimplemented legacy history contract.
+
+        The real collection is scoped by the authenticated active taxpayer and
+        does not implement these date arguments. Calling it with an arbitrary
+        RFC/date query could silently return the wrong scope or period. A new
+        adapter needs verified scope, paging and history coverage before use.
+        """
+        raise FinancialReadUnavailableError("karafiel_cfdi_history_contract_unavailable")
 
     # -- Declaration preparation ------------------------------------------------
 
@@ -320,7 +328,12 @@ class KarafielAdapter:
     # -- Blacklist (Article 69-B) ------------------------------------------------
 
     async def check_blacklist(self, rfc: str) -> BlacklistResult:
-        """Check Article 69-B blacklist via Karafiel."""
+        """Read an explicit screening result; unavailable is never unlisted.
+
+        Do not silently substitute Karafiel's metered clearance mutation for
+        this lookup contract. A missing endpoint must remain unknown until the
+        integration contract is implemented and verified.
+        """
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.post(
@@ -329,10 +342,31 @@ class KarafielAdapter:
                     json={"rfc": rfc},
                 )
                 resp.raise_for_status()
-                return BlacklistResult(**resp.json())
-        except Exception as exc:
-            logger.warning("Karafiel blacklist check failed: %s", exc)
-            return BlacklistResult(rfc=rfc, details={"error": str(exc)})
+                payload = resp.json()
+                if not isinstance(payload, dict) or payload.get("error"):
+                    raise ValueError("Invalid blacklist response")
+                result = BlacklistResult(**payload)
+                # Require every boolean and the exact requested subject. A
+                # partial/error envelope must not acquire defaults of False.
+                if (
+                    result.rfc != rfc
+                    or payload.get("check_status", "checked") != "checked"
+                    or payload.get("status", "checked") != "checked"
+                    or any(
+                        type(payload.get(field)) is not bool
+                        for field in ("listed", "article_69b", "definitive")
+                    )
+                ):
+                    raise ValueError("Incomplete blacklist response")
+                result.check_status = "checked"
+                if not result.check_completed:
+                    raise ValueError("Inconsistent blacklist response")
+                return result
+        except Exception:
+            # HTTP/validation exceptions may contain taxpayer data, request
+            # bodies or credentials. Emit only a stable, non-sensitive reason.
+            logger.warning("Karafiel blacklist lookup unavailable or invalid")
+            return BlacklistResult(rfc=rfc, details={"error": "blacklist_lookup_unavailable"})
 
     # -- Constancia de Situacion Fiscal -----------------------------------------
 
