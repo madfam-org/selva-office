@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, call, patch
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def isolated_graph_io(monkeypatch):
+    """No graph test may emit events or use ambient adapter configuration."""
+    for key in ("DHANAM_API_URL", "PHYND_CRM_URL", "KARAFIEL_API_URL", "KARAFIEL_API_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
+    with patch("selva_workers.event_emitter.emit_event", new_callable=AsyncMock):
+        yield
 
 
 class TestBillingGraphStructure:
@@ -130,48 +141,129 @@ class TestValidateRfcs:
 
         assert result["status"] == "error"
 
-    def test_validate_rfcs_passes_without_karafiel(self) -> None:
-        """Without KARAFIEL_API_URL, validation is skipped (passes)."""
+    @pytest.mark.parametrize("missing", ["KARAFIEL_API_URL", "KARAFIEL_API_TOKEN"])
+    def test_unconfigured_validation_is_unavailable(self, missing, monkeypatch):
         from selva_workers.graphs.billing import validate_rfcs
 
-        result = validate_rfcs(
-            {
-                "messages": [],
-                "emisor_rfc": "XAXX010101000",
-                "receptor_rfc": "XEXX010101000",
-            }
+        monkeypatch.setenv("KARAFIEL_API_URL", "https://example.invalid")
+        monkeypatch.setenv("KARAFIEL_API_TOKEN", "synthetic-token")
+        monkeypatch.delenv(missing)
+        with patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter:
+            result = validate_rfcs(self._state())
+        adapter.assert_not_called()
+        self._assert_unavailable(result)
+
+    def test_both_subjects_need_explicit_valid_results(self):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+        from selva_workers.graphs.billing import _route_after_validate
+
+        result, adapter = self._check(
+            [
+                RFCValidationResult(valid=True, rfc=rfc, check_status="checked")
+                for rfc in ("XAXX010101000", "XEXX010101000")
+            ]
         )
-
         assert result["status"] == "rfcs_validated"
-        assert len(result["messages"]) == 1
-        assert "validated" in result["messages"][0].content.lower()
+        assert _route_after_validate(result) == "check_blacklist"
+        assert "both emisor and receptor" in result["messages"][-1].content
+        assert "XAXX010101000" not in result["messages"][-1].content
+        assert adapter.validate_rfc.await_args_list == [
+            call("XAXX010101000"),
+            call("XEXX010101000"),
+        ]
 
-    def test_validate_rfcs_blocks_on_invalid_emisor_with_karafiel(self) -> None:
+    @pytest.mark.parametrize("invalid_subject", ["emisor", "receptor"])
+    def test_explicit_invalid_result_stops_instead_of_using_model_truthiness(self, invalid_subject):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+        from selva_workers.graphs.billing import _route_after_validate
+
+        result, _ = self._check(
+            [
+                RFCValidationResult(
+                    valid=subject != invalid_subject, rfc=rfc, check_status="checked"
+                )
+                for subject, rfc in (("emisor", "XAXX010101000"), ("receptor", "XEXX010101000"))
+            ]
+        )
+        assert result["status"] == "error"
+        assert result["result"] == {"error": "rfc_validation_invalid", "subject": invalid_subject}
+        assert _route_after_validate(result) == "__end__"
+        assert "XAXX010101000" not in result["messages"][-1].content
+
+    @pytest.mark.parametrize("response", [True, False, None, {}, {"valid": True}])
+    def test_untyped_response_is_unavailable(self, response):
+        result, _ = self._check([response])
+        self._assert_unavailable(result)
+
+    def test_unknown_wrong_subject_and_error_results_are_unavailable(self):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+
+        for response in (
+            RFCValidationResult(valid=False, rfc="XAXX010101000", status="unavailable"),
+            RFCValidationResult(valid=True, rfc="XAXX010101000"),
+            RFCValidationResult(valid=True, rfc="XEXX010101000", check_status="checked"),
+            RFCValidationResult(
+                valid=True, rfc="XAXX010101000", status="error", check_status="checked"
+            ),
+        ):
+            result, _ = self._check([response])
+            self._assert_unavailable(result)
+
+    def test_second_subject_unavailable_does_not_claim_both_valid(self):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+
+        result, _ = self._check(
+            [
+                RFCValidationResult(valid=True, rfc="XAXX010101000", check_status="checked"),
+                RFCValidationResult(valid=False, rfc="XEXX010101000", status="unavailable"),
+            ]
+        )
+        self._assert_unavailable(result)
+
+    def test_import_failure_is_unavailable(self, monkeypatch):
         import sys
 
         from selva_workers.graphs.billing import validate_rfcs
 
-        mock_adapter_instance = MagicMock()
-        mock_adapter_instance.validate_rfc.return_value = False
+        monkeypatch.setenv("KARAFIEL_API_URL", "https://example.invalid")
+        monkeypatch.setenv("KARAFIEL_API_TOKEN", "synthetic-token")
+        with patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": None}):
+            result = validate_rfcs(self._state())
+        self._assert_unavailable(result)
 
-        mock_module = MagicMock()
-        mock_module.KarafielAdapter.return_value = mock_adapter_instance
+    def test_transport_failure_is_unavailable_and_redacted(self, caplog):
+        result, _ = self._check(RuntimeError("SENSITIVE_SENTINEL"))
+        self._assert_unavailable(result)
+        assert "SENSITIVE_SENTINEL" not in str(result) + caplog.text
 
-        with (
-            patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
-            patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": mock_module}),
-            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
-        ):
-            result = validate_rfcs(
-                {
-                    "messages": [],
-                    "emisor_rfc": "INVALID",
-                    "receptor_rfc": "XEXX010101000",
-                }
-            )
+    def _state(self):
+        return {"messages": [], "emisor_rfc": "XAXX010101000", "receptor_rfc": "XEXX010101000"}
+
+    def _assert_unavailable(self, result):
+        from selva_workers.graphs.billing import _route_after_validate
 
         assert result["status"] == "error"
-        assert "Invalid emisor RFC" in result["result"]["error"]
+        assert result["result"] == {"error": "rfc_validation_unavailable"}
+        assert _route_after_validate(result) == "__end__"
+        assert "unavailable" in result["messages"][-1].content
+        assert "validated" not in result["messages"][-1].content.lower()
+
+    def _check(self, responses):
+        from selva_workers.graphs.billing import validate_rfcs
+
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "KARAFIEL_API_URL": "https://example.invalid",
+                    "KARAFIEL_API_TOKEN": "synthetic-token",
+                },
+            ),
+            patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter,
+        ):
+            adapter.return_value.validate_rfc = AsyncMock(side_effect=responses)
+            result = validate_rfcs(self._state())
+        return result, adapter.return_value
 
 
 class TestCheckBlacklist:

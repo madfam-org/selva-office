@@ -118,10 +118,7 @@ def fetch_context(state: BillingState) -> BillingState:
 
 @instrumented_node
 def validate_rfcs(state: BillingState) -> BillingState:
-    """Validate emisor and receptor RFCs via Karafiel.
-
-    Sets status to ``"error"`` if either RFC is invalid.
-    """
+    """Continue only with explicit, subject-bound RFC verdicts from Karafiel."""
     messages = state.get("messages", [])
     emisor_rfc = state.get("emisor_rfc", "")
     receptor_rfc = state.get("receptor_rfc", "")
@@ -142,43 +139,44 @@ def validate_rfcs(state: BillingState) -> BillingState:
 
         karafiel_url = os.environ.get("KARAFIEL_API_URL")
         karafiel_token = os.environ.get("KARAFIEL_API_TOKEN", "")
-        if karafiel_url:
-            from madfam_inference.adapters.karafiel import KarafielAdapter
+        if not karafiel_url or not karafiel_token:
+            raise RuntimeError("Validation source unavailable")
 
-            adapter = KarafielAdapter(base_url=karafiel_url, token=karafiel_token)
-            emisor_valid = _run_async(adapter.validate_rfc(emisor_rfc))
-            receptor_valid = _run_async(adapter.validate_rfc(receptor_rfc))
+        from madfam_inference.adapters.karafiel import KarafielAdapter, RFCValidationResult
 
-            if not emisor_valid:
-                error_msg = AIMessage(
-                    content=f"RFC validation failed: emisor RFC '{emisor_rfc}' is invalid.",
-                )
+        adapter = KarafielAdapter(base_url=karafiel_url, token=karafiel_token)
+        for subject, rfc in (("emisor", emisor_rfc), ("receptor", receptor_rfc)):
+            validation = _run_async(adapter.validate_rfc(rfc))
+            if (
+                not isinstance(validation, RFCValidationResult)
+                or not validation.check_completed
+                or validation.rfc != rfc
+            ):
+                raise RuntimeError("Validation lookup incomplete")
+            if validation.valid is False:
                 return {
                     **state,
-                    "messages": [*messages, error_msg],
+                    "messages": [
+                        *messages,
+                        AIMessage(content=f"Source reports the {subject} RFC is invalid."),
+                    ],
                     "status": "error",
-                    "result": {"error": f"Invalid emisor RFC: {emisor_rfc}"},
+                    "result": {"error": "rfc_validation_invalid", "subject": subject},
                 }
-
-            if not receptor_valid:
-                error_msg = AIMessage(
-                    content=f"RFC validation failed: receptor RFC '{receptor_rfc}' is invalid.",
-                )
-                return {
-                    **state,
-                    "messages": [*messages, error_msg],
-                    "status": "error",
-                    "result": {"error": f"Invalid receptor RFC: {receptor_rfc}"},
-                }
-        else:
-            raise RuntimeError("KARAFIEL_API_URL not set")
-    except ImportError:
-        logger.debug("KarafielAdapter not available; skipping RFC validation")
-    except RuntimeError:
-        logger.debug("KARAFIEL_API_URL not configured; skipping RFC validation")
+    except Exception:
+        logger.warning("Billing paused: RFC validation unavailable")
+        return {
+            **state,
+            "messages": [
+                *messages,
+                AIMessage(content="RFC validation is unavailable. Invoice generation stopped."),
+            ],
+            "status": "error",
+            "result": {"error": "rfc_validation_unavailable"},
+        }
 
     valid_msg = AIMessage(
-        content=f"RFCs validated: emisor={emisor_rfc}, receptor={receptor_rfc}.",
+        content="Source returned valid RFC verdicts for both emisor and receptor.",
         additional_kwargs={"action_category": "api_call"},
     )
 

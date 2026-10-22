@@ -18,11 +18,23 @@ logger = logging.getLogger(__name__)
 
 
 class RFCValidationResult(BaseModel):
-    valid: bool
+    valid: StrictBool
     rfc: str
     type: str = ""  # "moral" | "fisica"
     name: str = ""
     status: str = ""  # "activo" | "cancelado" | etc.
+    check_status: Literal["checked", "unknown"] = "unknown"
+
+    @property
+    def check_completed(self) -> bool:
+        """The source returned a verdict; this is not broader tax clearance."""
+        status = self.status.strip().lower()
+        return (
+            self.check_status == "checked"
+            and type(self.valid) is bool
+            and status not in {"unknown", "unavailable"}
+            and not status.startswith("error")
+        )
 
 
 class CFDIResult(BaseModel):
@@ -135,8 +147,10 @@ class KarafielAdapter:
     # -- SAT / RFC ---------------------------------------------------------------
 
     async def validate_rfc(self, rfc: str) -> RFCValidationResult:
-        """Validate RFC via Karafiel SAT module."""
+        """Return a subject-bound verdict or an explicit unknown lookup."""
         try:
+            if not self._base_url or not self._token or not rfc.strip():
+                raise ValueError("Validation source or subject unavailable")
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.post(
                     f"{self._base_url}/api/v1/sat/validate-rfc/",
@@ -144,10 +158,21 @@ class KarafielAdapter:
                     json={"rfc": rfc},
                 )
                 resp.raise_for_status()
-                return RFCValidationResult(**resp.json())
-        except Exception as exc:
-            logger.warning("Karafiel RFC validation failed: %s", exc)
-            return RFCValidationResult(valid=False, rfc=rfc, status=f"error: {exc}")
+                payload = resp.json()
+                if (
+                    not isinstance(payload, dict)
+                    or "error" in payload
+                    or ("success" in payload and payload["success"] is not True)
+                    or payload.get("check_status", "checked") != "checked"
+                ):
+                    raise ValueError("Validation response unavailable")
+                result = RFCValidationResult(**{**payload, "check_status": "checked"})
+                if result.rfc != rfc or not result.check_completed:
+                    raise ValueError("Validation response incomplete or subject mismatch")
+                return result
+        except Exception:
+            logger.warning("Karafiel RFC validation unavailable")
+            return RFCValidationResult(valid=False, rfc=rfc, status="unavailable")
 
     # -- CFDI 4.0 ----------------------------------------------------------------
 
