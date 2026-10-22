@@ -16,7 +16,7 @@
     "@selva/map-gen": "workspace:*",
     "@selva/shared-types": "workspace:*",
     "@selva/ui": "workspace:*",
-    "@sentry/nextjs": "10.70.0",
+    "@sentry/nextjs": "10.75.2",
     "@types/simple-peer": "^9.11.9",
     "@xyflow/react": "^12.11.3",
     "js-yaml": "^4.3.2",
