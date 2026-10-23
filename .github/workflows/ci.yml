@@ -426,6 +426,20 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://selva:selva@localhost:5432/selva
           REDIS_URL: redis://localhost:6379
 
+      - name: Financial evidence and fiscal execution containment
+        run: |
+          uv run pytest \
+            apps/workers/tests/test_accounting_graph.py \
+            apps/workers/tests/test_billing_graph.py \
+            packages/inference/tests/test_dhanam_adapter.py \
+            packages/inference/tests/test_karafiel_adapter.py \
+            packages/tools/tests/test_accounting_tools.py \
+            packages/tools/tests/test_karafiel_tools.py \
+            packages/tools/tests/test_mcp_result_semantics.py \
+            -q
+        env:
+          ENVIRONMENT: development
+
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4

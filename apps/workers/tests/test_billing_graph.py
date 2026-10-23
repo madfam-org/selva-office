@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, call, patch
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def isolated_graph_io(monkeypatch):
+    """No graph test may emit events or use ambient adapter configuration."""
+    for key in ("DHANAM_API_URL", "PHYND_CRM_URL", "KARAFIEL_API_URL", "KARAFIEL_API_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
+    with patch("selva_workers.event_emitter.emit_event", new_callable=AsyncMock):
+        yield
 
 
 class TestBillingGraphStructure:
@@ -130,329 +141,303 @@ class TestValidateRfcs:
 
         assert result["status"] == "error"
 
-    def test_validate_rfcs_passes_without_karafiel(self) -> None:
-        """Without KARAFIEL_API_URL, validation is skipped (passes)."""
+    @pytest.mark.parametrize("missing", ["KARAFIEL_API_URL", "KARAFIEL_API_TOKEN"])
+    def test_unconfigured_validation_is_unavailable(self, missing, monkeypatch):
         from selva_workers.graphs.billing import validate_rfcs
 
-        result = validate_rfcs(
-            {
-                "messages": [],
-                "emisor_rfc": "XAXX010101000",
-                "receptor_rfc": "XEXX010101000",
-            }
+        monkeypatch.setenv("KARAFIEL_API_URL", "https://example.invalid")
+        monkeypatch.setenv("KARAFIEL_API_TOKEN", "synthetic-token")
+        monkeypatch.delenv(missing)
+        with patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter:
+            result = validate_rfcs(self._state())
+        adapter.assert_not_called()
+        self._assert_unavailable(result)
+
+    def test_both_subjects_need_explicit_valid_results(self):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+        from selva_workers.graphs.billing import _route_after_validate
+
+        result, adapter = self._check(
+            [
+                RFCValidationResult(valid=True, rfc=rfc, check_status="checked")
+                for rfc in ("XAXX010101000", "XEXX010101000")
+            ]
         )
-
         assert result["status"] == "rfcs_validated"
-        assert len(result["messages"]) == 1
-        assert "validated" in result["messages"][0].content.lower()
+        assert _route_after_validate(result) == "check_blacklist"
+        assert "both emisor and receptor" in result["messages"][-1].content
+        assert "XAXX010101000" not in result["messages"][-1].content
+        assert adapter.validate_rfc.await_args_list == [
+            call("XAXX010101000"),
+            call("XEXX010101000"),
+        ]
 
-    def test_validate_rfcs_blocks_on_invalid_emisor_with_karafiel(self) -> None:
+    @pytest.mark.parametrize("invalid_subject", ["emisor", "receptor"])
+    def test_explicit_invalid_result_stops_instead_of_using_model_truthiness(self, invalid_subject):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+        from selva_workers.graphs.billing import _route_after_validate
+
+        result, _ = self._check(
+            [
+                RFCValidationResult(
+                    valid=subject != invalid_subject, rfc=rfc, check_status="checked"
+                )
+                for subject, rfc in (("emisor", "XAXX010101000"), ("receptor", "XEXX010101000"))
+            ]
+        )
+        assert result["status"] == "error"
+        assert result["result"] == {"error": "rfc_validation_invalid", "subject": invalid_subject}
+        assert _route_after_validate(result) == "__end__"
+        assert "XAXX010101000" not in result["messages"][-1].content
+
+    @pytest.mark.parametrize("response", [True, False, None, {}, {"valid": True}])
+    def test_untyped_response_is_unavailable(self, response):
+        result, _ = self._check([response])
+        self._assert_unavailable(result)
+
+    def test_unknown_wrong_subject_and_error_results_are_unavailable(self):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+
+        for response in (
+            RFCValidationResult(valid=False, rfc="XAXX010101000", status="unavailable"),
+            RFCValidationResult(valid=True, rfc="XAXX010101000"),
+            RFCValidationResult(valid=True, rfc="XEXX010101000", check_status="checked"),
+            RFCValidationResult(
+                valid=True, rfc="XAXX010101000", status="error", check_status="checked"
+            ),
+        ):
+            result, _ = self._check([response])
+            self._assert_unavailable(result)
+
+    def test_second_subject_unavailable_does_not_claim_both_valid(self):
+        from madfam_inference.adapters.karafiel import RFCValidationResult
+
+        result, _ = self._check(
+            [
+                RFCValidationResult(valid=True, rfc="XAXX010101000", check_status="checked"),
+                RFCValidationResult(valid=False, rfc="XEXX010101000", status="unavailable"),
+            ]
+        )
+        self._assert_unavailable(result)
+
+    def test_import_failure_is_unavailable(self, monkeypatch):
         import sys
 
         from selva_workers.graphs.billing import validate_rfcs
 
-        mock_adapter_instance = MagicMock()
-        mock_adapter_instance.validate_rfc.return_value = False
+        monkeypatch.setenv("KARAFIEL_API_URL", "https://example.invalid")
+        monkeypatch.setenv("KARAFIEL_API_TOKEN", "synthetic-token")
+        with patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": None}):
+            result = validate_rfcs(self._state())
+        self._assert_unavailable(result)
 
-        mock_module = MagicMock()
-        mock_module.KarafielAdapter.return_value = mock_adapter_instance
+    def test_transport_failure_is_unavailable_and_redacted(self, caplog):
+        result, _ = self._check(RuntimeError("SENSITIVE_SENTINEL"))
+        self._assert_unavailable(result)
+        assert "SENSITIVE_SENTINEL" not in str(result) + caplog.text
 
-        with (
-            patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
-            patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": mock_module}),
-            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
-        ):
-            result = validate_rfcs(
-                {
-                    "messages": [],
-                    "emisor_rfc": "INVALID",
-                    "receptor_rfc": "XEXX010101000",
-                }
-            )
+    def _state(self):
+        return {"messages": [], "emisor_rfc": "XAXX010101000", "receptor_rfc": "XEXX010101000"}
+
+    def _assert_unavailable(self, result):
+        from selva_workers.graphs.billing import _route_after_validate
 
         assert result["status"] == "error"
-        assert "Invalid emisor RFC" in result["result"]["error"]
+        assert result["result"] == {"error": "rfc_validation_unavailable"}
+        assert _route_after_validate(result) == "__end__"
+        assert "unavailable" in result["messages"][-1].content
+        assert "validated" not in result["messages"][-1].content.lower()
+
+    def _check(self, responses):
+        from selva_workers.graphs.billing import validate_rfcs
+
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "KARAFIEL_API_URL": "https://example.invalid",
+                    "KARAFIEL_API_TOKEN": "synthetic-token",
+                },
+            ),
+            patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter,
+        ):
+            adapter.return_value.validate_rfc = AsyncMock(side_effect=responses)
+            result = validate_rfcs(self._state())
+        return result, adapter.return_value
 
 
 class TestCheckBlacklist:
-    """check_blacklist() blocks listed RFCs."""
+    """Only a complete, explicitly unlisted response can reach generation."""
 
-    def test_blacklist_passes_without_karafiel(self) -> None:
+    def test_blacklist_stops_without_karafiel(self, monkeypatch) -> None:
         from selva_workers.graphs.billing import check_blacklist
 
-        result = check_blacklist(
-            {
-                "messages": [],
-                "receptor_rfc": "XEXX010101000",
-            }
-        )
-
-        assert result["status"] == "blacklist_clear"
-        assert "not on the 69-B blacklist" in result["messages"][0].content
+        monkeypatch.delenv("KARAFIEL_API_URL", raising=False)
+        result = check_blacklist({"messages": [], "receptor_rfc": "XEXX010101000"})
+        assert result["status"] == "error"
+        assert "unknown" in result["messages"][0].content
 
     def test_blacklist_blocks_listed_rfc(self) -> None:
-        import sys
+        from madfam_inference.adapters.karafiel import BlacklistResult
 
-        from selva_workers.graphs.billing import check_blacklist
-
-        mock_adapter_instance = MagicMock()
-        mock_adapter_instance.check_blacklist.return_value = True
-
-        mock_module = MagicMock()
-        mock_module.KarafielAdapter.return_value = mock_adapter_instance
-
-        with (
-            patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
-            patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": mock_module}),
-            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
-        ):
-            result = check_blacklist(
-                {
-                    "messages": [],
-                    "receptor_rfc": "BLACKLISTED_RFC",
-                }
+        result = self._check(
+            BlacklistResult(
+                rfc="XEXX010101000",
+                listed=True,
+                article_69b=True,
+                definitive=False,
+                check_status="checked",
             )
-
+        )
         assert result["status"] == "blocked"
         assert "69-B" in result["messages"][0].content
 
     def test_blacklist_clear_continues(self) -> None:
-        import sys
+        from madfam_inference.adapters.karafiel import BlacklistResult
 
-        from selva_workers.graphs.billing import check_blacklist
-
-        mock_adapter_instance = MagicMock()
-        mock_adapter_instance.check_blacklist.return_value = False
-
-        mock_module = MagicMock()
-        mock_module.KarafielAdapter.return_value = mock_adapter_instance
-
-        with (
-            patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
-            patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": mock_module}),
-            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
-        ):
-            result = check_blacklist(
-                {
-                    "messages": [],
-                    "receptor_rfc": "CLEAN_RFC",
-                }
+        result = self._check(
+            BlacklistResult(
+                rfc="XEXX010101000",
+                listed=False,
+                article_69b=False,
+                definitive=False,
+                check_status="checked",
             )
-
+        )
         assert result["status"] == "blacklist_clear"
 
+    def test_unknown_malformed_or_wrong_subject_stops(self) -> None:
+        from madfam_inference.adapters.karafiel import BlacklistResult
+        from selva_workers.graphs.billing import _route_after_blacklist
 
-class TestGenerateCfdi:
-    """generate_cfdi() produces CFDI XML."""
+        for screening in (
+            False,
+            True,
+            None,
+            {},
+            BlacklistResult(rfc="XEXX010101000"),
+            BlacklistResult(rfc="XEXX010101000", listed=False),
+            BlacklistResult(
+                rfc="XAXX010101000",
+                listed=False,
+                article_69b=False,
+                definitive=False,
+                check_status="checked",
+            ),
+        ):
+            result = self._check(screening)
+            assert result["status"] == "error"
+            assert _route_after_blacklist(result) == "__end__"
+            assert "XEXX010101000" not in result["messages"][0].content
 
-    def test_generate_cfdi_creates_xml_placeholder(self) -> None:
-        """Without Karafiel, generates a placeholder XML."""
-        from selva_workers.graphs.billing import generate_cfdi
-
-        result = generate_cfdi(
-            {
-                "messages": [],
-                "emisor_rfc": "XAXX010101000",
-                "receptor_rfc": "XEXX010101000",
-                "conceptos": [{"descripcion": "Test"}],
-                "task_id": "task-42",
-            }
-        )
-
-        assert result["status"] == "cfdi_generated"
-        assert result["cfdi_xml"] is not None
-        assert "4.0" in result["cfdi_xml"]
-        assert result["cfdi_uuid"] == "placeholder-task-42"
-        assert "CFDI generated" in result["messages"][0].content
-
-    def test_generate_cfdi_with_karafiel(self) -> None:
-        import sys
-
-        from madfam_inference.adapters.karafiel import CFDIResult
-        from selva_workers.graphs.billing import generate_cfdi
-
-        # KarafielAdapter.generate_cfdi returns a CFDIResult pydantic model,
-        # not a dict — billing.py reads result.xml / result.uuid as attrs.
-        mock_adapter_instance = MagicMock()
-        mock_adapter_instance.generate_cfdi.return_value = CFDIResult(
-            xml="<cfdi>real-xml</cfdi>",
-            uuid="real-uuid-1234",
-        )
-
-        mock_module = MagicMock()
-        mock_module.KarafielAdapter.return_value = mock_adapter_instance
+    def test_unavailable_source_does_not_leak_error(self, caplog) -> None:
+        from selva_workers.graphs.billing import check_blacklist
 
         with (
-            patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
-            patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": mock_module}),
-            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
+            patch.dict("os.environ", {"KARAFIEL_API_URL": "https://example.invalid"}),
+            patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter,
         ):
-            result = generate_cfdi(
-                {
-                    "messages": [],
-                    "emisor_rfc": "XAXX010101000",
-                    "receptor_rfc": "XEXX010101000",
-                    "conceptos": [{"descripcion": "Service"}],
-                }
-            )
-
-        assert result["cfdi_xml"] == "<cfdi>real-xml</cfdi>"
-        assert result["cfdi_uuid"] == "real-uuid-1234"
-
-
-class TestStampCfdi:
-    """stamp_cfdi() stamps the CFDI XML via PAC."""
-
-    def test_stamp_cfdi_returns_folio_placeholder(self) -> None:
-        """Without Karafiel, returns a placeholder stamp result."""
-        from selva_workers.graphs.billing import stamp_cfdi
-
-        result = stamp_cfdi(
-            {
-                "messages": [],
-                "cfdi_xml": "<cfdi>test</cfdi>",
-                "cfdi_uuid": "test-uuid",
-            }
-        )
-
-        assert result["status"] == "stamped"
-        assert result["stamp_result"] is not None
-        assert result["stamp_result"]["folio_fiscal"] == "test-uuid"
-        assert "stamped" in result["messages"][0].content.lower()
-
-    def test_stamp_cfdi_fails_without_xml(self) -> None:
-        from selva_workers.graphs.billing import stamp_cfdi
-
-        result = stamp_cfdi(
-            {
-                "messages": [],
-                "cfdi_xml": None,
-            }
-        )
-
+            adapter.return_value.check_blacklist.side_effect = RuntimeError("SENSITIVE_SENTINEL")
+            result = check_blacklist({"messages": [], "receptor_rfc": "XEXX010101000"})
         assert result["status"] == "error"
-        assert "No cfdi_xml" in result["result"]["error"]
+        assert "SENSITIVE_SENTINEL" not in str(result) + caplog.text
 
-    def test_stamp_cfdi_fails_with_empty_xml(self) -> None:
-        from selva_workers.graphs.billing import stamp_cfdi
-
-        result = stamp_cfdi(
-            {
-                "messages": [],
-                "cfdi_xml": "",
-            }
-        )
-
-        assert result["status"] == "error"
-
-    def test_stamp_cfdi_with_karafiel(self) -> None:
-        import sys
-
-        from madfam_inference.adapters.karafiel import StampResult
-        from selva_workers.graphs.billing import stamp_cfdi
-
-        # Adapter returns StampResult; billing.py normalizes via .model_dump()
-        # so downstream dict access works.
-        mock_adapter_instance = MagicMock()
-        mock_adapter_instance.stamp_cfdi.return_value = StampResult(
-            folio_fiscal="ABC-123-DEF",
-            fecha_timbrado="2026-04-14T12:00:00",
-        )
-
-        mock_module = MagicMock()
-        mock_module.KarafielAdapter.return_value = mock_adapter_instance
+    def _check(self, screening):
+        from selva_workers.graphs.billing import check_blacklist
 
         with (
-            patch.dict("os.environ", {"KARAFIEL_API_URL": "http://fake-karafiel:8080"}),
-            patch.dict(sys.modules, {"madfam_inference.adapters.karafiel": mock_module}),
+            patch.dict("os.environ", {"KARAFIEL_API_URL": "https://example.invalid"}),
+            patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter,
             patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
         ):
-            result = stamp_cfdi(
-                {
-                    "messages": [],
-                    "cfdi_xml": "<cfdi>real</cfdi>",
-                    "cfdi_uuid": "uuid-1",
-                }
+            adapter.return_value.check_blacklist.return_value = screening
+            return check_blacklist({"messages": [], "receptor_rfc": "XEXX010101000"})
+
+
+class TestFiscalExecutionDisabled:
+    """Legacy graph execution cannot produce or send synthetic fiscal evidence."""
+
+    def test_all_fiscal_nodes_refuse_even_with_configuration_and_agent_approval(self):
+        from selva_workers.graphs.billing import generate_cfdi, notify_customer, stamp_cfdi
+
+        for node in (generate_cfdi, stamp_cfdi, notify_customer):
+            with (
+                patch.dict(
+                    "os.environ",
+                    {
+                        "KARAFIEL_API_URL": "https://example.invalid",
+                        "SMTP_HOST": "example.invalid",
+                        "WHATSAPP_API_URL": "https://example.invalid",
+                    },
+                ),
+                patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter,
+                patch("selva_workers.graphs.billing._run_async") as run_async,
+            ):
+                result = node(
+                    {
+                        "messages": [],
+                        "status": "stamped",
+                        "approved": True,
+                        "cfdi_xml": "<synthetic/>",
+                        "cfdi_uuid": "synthetic-folio",
+                        "stamp_result": {"folio_fiscal": "synthetic-folio"},
+                        "customer_email": "test@example.invalid",
+                        "customer_phone": "SYNTHETIC_PHONE",
+                    }
+                )
+            assert result["status"] == "blocked"
+            assert result["result"] == {"error": "fiscal_execution_not_enabled"}
+            assert result["cfdi_xml"] is None
+            assert result["cfdi_uuid"] is None
+            assert result["stamp_result"] is None
+            adapter.assert_not_called()
+            run_async.assert_not_called()
+            assert "customer_email" not in result["messages"][0].content
+
+    def test_unconfigured_nodes_do_not_create_placeholders(self, monkeypatch):
+        from selva_workers.graphs.billing import generate_cfdi, notify_customer, stamp_cfdi
+
+        monkeypatch.delenv("KARAFIEL_API_URL", raising=False)
+        for node in (generate_cfdi, stamp_cfdi, notify_customer):
+            result = node({"messages": [], "task_id": "synthetic-task"})
+            assert result["status"] == "blocked"
+            assert result["cfdi_uuid"] is None
+            assert result["stamp_result"] is None
+
+    def test_failed_generation_and_stamp_do_not_reach_following_nodes(self):
+        from selva_workers.graphs.billing import _route_after_generate, _route_after_stamp
+
+        for status in (None, "blocked", "error", "unknown", "pending"):
+            assert _route_after_generate({"status": status}) == "__end__"
+            assert _route_after_stamp({"status": status}) == "__end__"
+
+    def test_compiled_graph_stops_after_disabled_generation(self):
+        from langgraph.graph import START
+
+        from madfam_inference.adapters.karafiel import BlacklistResult
+        from selva_workers.graphs.billing import build_billing_graph
+
+        with (
+            patch.dict("os.environ", {"KARAFIEL_API_URL": "https://example.invalid"}),
+            patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter,
+            patch("selva_workers.graphs.billing._run_async", side_effect=lambda x: x),
+        ):
+            adapter.return_value.check_blacklist.return_value = BlacklistResult(
+                rfc="XEXX010101000",
+                listed=False,
+                article_69b=False,
+                definitive=False,
+                check_status="checked",
             )
-
-        assert result["status"] == "stamped"
-        assert result["stamp_result"]["folio_fiscal"] == "ABC-123-DEF"
-
-
-class TestNotifyCustomer:
-    """notify_customer() sends CFDI notification."""
-
-    def test_notify_customer_sends_via_log_only(self) -> None:
-        """Without contact info, defaults to log_only."""
-        from selva_workers.graphs.billing import notify_customer
-
-        result = notify_customer(
-            {
-                "messages": [],
-                "cfdi_uuid": "uuid-test",
-                "receptor_rfc": "XEXX010101000",
-                "stamp_result": {"folio_fiscal": "F1"},
-            }
-        )
-
-        assert result["status"] == "completed"
-        assert result["result"]["notification_channel"] == "log_only"
-        assert result["result"]["cfdi_uuid"] == "uuid-test"
-
-    def test_notify_customer_with_email(self) -> None:
-        """With customer_email and SMTP_HOST set, uses email channel."""
-        from selva_workers.graphs.billing import notify_customer
-
-        with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
-            result = notify_customer(
-                {
-                    "messages": [],
-                    "cfdi_uuid": "uuid-email",
-                    "receptor_rfc": "RFC123",
-                    "customer_email": "client@co.mx",
-                    "stamp_result": {"folio_fiscal": "F2"},
-                }
-            )
-
-        assert result["status"] == "completed"
-        assert result["result"]["notification_channel"] == "email"
-
-    def test_notify_customer_with_phone_fallback_to_email(self) -> None:
-        """Phone notification fails, falls back to email."""
-        from selva_workers.graphs.billing import notify_customer
-
-        with patch.dict("os.environ", {"SMTP_HOST": "smtp.test.com"}):
-            result = notify_customer(
-                {
-                    "messages": [],
-                    "cfdi_uuid": "uuid-fallback",
-                    "receptor_rfc": "RFC456",
-                    "customer_phone": "+5215512345678",
-                    "customer_email": "fallback@co.mx",
-                    "stamp_result": {"folio_fiscal": "F3"},
-                }
-            )
-
-        # WhatsApp not configured, falls back to email
-        assert result["status"] == "completed"
-        assert result["result"]["notification_channel"] == "email"
-
-    def test_notify_customer_result_structure(self) -> None:
-        from selva_workers.graphs.billing import notify_customer
-
-        result = notify_customer(
-            {
-                "messages": [],
-                "cfdi_uuid": "uuid-struct",
-                "receptor_rfc": "RFC_STRUCT",
-                "stamp_result": {"folio_fiscal": "FS"},
-            }
-        )
-
-        assert "cfdi_uuid" in result["result"]
-        assert "stamp_result" in result["result"]
-        assert "notification_channel" in result["result"]
-        assert len(result["messages"]) == 1
+            # Enter at screening to avoid unrelated ledger/customer lookups.
+            graph = build_billing_graph()
+            graph.edges.discard((START, "fetch_context"))
+            graph.add_edge(START, "check_blacklist")
+            result = graph.compile().invoke({"messages": [], "receptor_rfc": "XEXX010101000"})
+            adapter.return_value.generate_cfdi.assert_not_called()
+            adapter.return_value.stamp_cfdi.assert_not_called()
+        assert result["status"] == "blocked"
+        assert result["stamp_result"] is None
 
 
 class TestConditionalEdges:

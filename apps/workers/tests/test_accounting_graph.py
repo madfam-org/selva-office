@@ -43,353 +43,132 @@ class TestAccountingGraphStructure:
         assert "declaration_data" in annotations
 
 
-class TestFetchPeriodData:
-    """fetch_period_data() gathers data from Dhanam or falls back."""
-
-    def test_requires_org_id_and_period(self) -> None:
+class TestAccountingCoverageBoundary:
+    def test_unconfigured_source_blocks_before_reads(self, monkeypatch):
         from selva_workers.graphs.accounting import fetch_period_data
 
-        result = fetch_period_data(
-            {
-                "messages": [],
-                "org_id": "",
-                "period": "",
-            }
-        )
-        assert result["status"] == "error"
-        err = result["result"]["error"].lower()
-        assert "org_id" in err or "period" in err
-
-    def test_requires_period(self) -> None:
-        from selva_workers.graphs.accounting import fetch_period_data
-
-        result = fetch_period_data(
-            {
-                "messages": [],
-                "org_id": "org-1",
-                "period": "",
-            }
-        )
-        assert result["status"] == "error"
-
-    def test_fetches_without_dhanam(self) -> None:
-        """Without DHANAM_API_URL, falls back to empty data."""
-        from selva_workers.graphs.accounting import fetch_period_data
-
-        result = fetch_period_data(
-            {
-                "messages": [],
-                "org_id": "org-1",
-                "period": "2026-04",
-                "rfc": "XAXX010101000",
-            }
-        )
-        assert result["status"] == "data_fetched"
-        assert result["org_id"] == "org-1"
-        assert result["period"] == "2026-04"
-        assert result["transactions"] == []
-        assert result["bank_statements"] == []
-        assert result["pos_transactions"] == []
-        assert len(result["messages"]) == 1
-        assert "Period data fetched" in result["messages"][0].content
-
-    def test_reads_from_workflow_variables(self) -> None:
-        from selva_workers.graphs.accounting import fetch_period_data
-
-        result = fetch_period_data(
-            {
-                "messages": [],
-                "workflow_variables": {
-                    "org_id": "from-vars",
-                    "period": "2026-03",
-                    "rfc": "RFC_VARS",
-                    "regime": "resico",
-                },
-            }
-        )
-        assert result["status"] == "data_fetched"
-        assert result["org_id"] == "from-vars"
-        assert result["period"] == "2026-03"
-        assert result["rfc"] == "RFC_VARS"
-        assert result["regime"] == "resico"
-
-
-class TestReconcileBank:
-    """reconcile_bank() matches bank transactions against CFDIs."""
-
-    def test_reconcile_without_karafiel(self) -> None:
-        """Without KARAFIEL_API_URL, reconciliation has no CFDI data."""
-        from selva_workers.graphs.accounting import reconcile_bank
-
-        result = reconcile_bank(
-            {
-                "messages": [],
-                "rfc": "XAXX010101000",
-                "period": "2026-04",
-                "transactions": [
-                    {"id": "txn-1", "amount": "1000.00", "counterparty_rfc": ""},
-                ],
-                "status": "data_fetched",
-            }
-        )
-        assert result["status"] == "reconciled"
-        assert result["reconciliation"]["total_bank_txns"] == 1
-        assert result["reconciliation"]["total_cfdis"] == 0
-        assert result["reconciliation"]["matched_count"] == 0
-        assert result["reconciliation"]["unmatched_bank_count"] == 1
-
-    def test_reconcile_skips_on_error(self) -> None:
-        from selva_workers.graphs.accounting import reconcile_bank
-
-        result = reconcile_bank(
-            {
-                "messages": [],
-                "status": "error",
-            }
-        )
-        assert result["status"] == "error"
-
-    def test_reconcile_with_empty_transactions(self) -> None:
-        from selva_workers.graphs.accounting import reconcile_bank
-
-        result = reconcile_bank(
-            {
-                "messages": [],
-                "rfc": "",
-                "period": "2026-04",
-                "transactions": [],
-                "status": "data_fetched",
-            }
-        )
-        assert result["status"] == "reconciled"
-        assert result["reconciliation"]["total_bank_txns"] == 0
-        assert result["reconciliation"]["matched_count"] == 0
-
-
-class TestComputeTaxes:
-    """compute_taxes() calculates ISR/IVA."""
-
-    def test_compute_taxes_without_karafiel(self) -> None:
-        """Without Karafiel, uses placeholder values."""
-        from selva_workers.graphs.accounting import compute_taxes
-
-        result = compute_taxes(
-            {
-                "messages": [],
-                "reconciliation": {
-                    "matched": [
-                        {"bank_txn": {}, "cfdi": {"total": "5000.00"}},
-                        {"bank_txn": {}, "cfdi": {"total": "3000.00"}},
-                    ],
-                },
-                "pos_transactions": [
-                    {"amount": "2000.00"},
-                ],
-                "payment_summary": {"total_income": "0", "by_method": {}},
-                "regime": "pf",
-                "status": "reconciled",
-            }
-        )
-        assert result["status"] == "taxes_computed"
-        tax = result["tax_computation"]
-        assert tax["total_income"] == 10000.0  # 5000 + 3000 + 2000
-        assert tax["isr"]["details"].get("placeholder") is True
-        content = result["messages"][0].content
-        assert "ISR" in content.upper() or "isr" in content.lower()
-
-    def test_compute_taxes_skips_on_error(self) -> None:
-        from selva_workers.graphs.accounting import compute_taxes
-
-        result = compute_taxes(
-            {
-                "messages": [],
-                "status": "error",
-            }
-        )
-        assert result["status"] == "error"
-
-    def test_compute_taxes_uses_dhanam_income_when_higher(self) -> None:
-        from selva_workers.graphs.accounting import compute_taxes
-
-        result = compute_taxes(
-            {
-                "messages": [],
-                "reconciliation": {"matched": []},
-                "pos_transactions": [],
-                "payment_summary": {"total_income": "50000.00", "by_method": {}},
-                "regime": "pm",
-                "status": "reconciled",
-            }
-        )
-        assert result["tax_computation"]["total_income"] == 50000.0
-
-
-class TestPrepareDeclaration:
-    """prepare_declaration() builds ISR, IVA, and DIOT declarations."""
-
-    def test_prepare_without_karafiel(self) -> None:
-        """Without Karafiel, returns placeholder declarations."""
-        from selva_workers.graphs.accounting import prepare_declaration
-
-        result = prepare_declaration(
-            {
-                "messages": [],
-                "org_id": "org-1",
-                "period": "2026-04",
-                "tax_computation": {
-                    "total_income": 10000.0,
-                    "iva": {"tax_amount": "1600.00"},
-                    "payment_method_breakdown": {},
-                },
-                "reconciliation": {
-                    "matched": [
-                        {
-                            "bank_txn": {},
-                            "cfdi": {"receptor_rfc": "RFC_A", "total": "5000.00"},
-                        },
-                        {
-                            "bank_txn": {},
-                            "cfdi": {"receptor_rfc": "RFC_B", "total": "3000.00"},
-                        },
-                    ],
-                },
-                "status": "taxes_computed",
-            }
-        )
-        assert result["status"] == "declarations_prepared"
-        decl = result["declaration_data"]
-        assert "isr_provisional" in decl
-        assert "iva_mensual" in decl
-        assert "diot" in decl
-        assert "Declarations prepared" in result["messages"][0].content
-
-    def test_prepare_skips_on_error(self) -> None:
-        from selva_workers.graphs.accounting import prepare_declaration
-
-        result = prepare_declaration(
-            {
-                "messages": [],
-                "status": "error",
-            }
-        )
-        assert result["status"] == "error"
-
-    def test_diot_groups_by_rfc(self) -> None:
-        from selva_workers.graphs.accounting import prepare_declaration
-
-        result = prepare_declaration(
-            {
-                "messages": [],
-                "org_id": "org-1",
-                "period": "2026-04",
-                "tax_computation": {
-                    "total_income": 0,
-                    "iva": {"tax_amount": "0"},
-                    "payment_method_breakdown": {},
-                },
-                "reconciliation": {
-                    "matched": [
-                        {"bank_txn": {}, "cfdi": {"receptor_rfc": "SAME_RFC", "total": "1000.00"}},
-                        {"bank_txn": {}, "cfdi": {"receptor_rfc": "SAME_RFC", "total": "2000.00"}},
-                        {"bank_txn": {}, "cfdi": {"emisor_rfc": "OTHER_RFC", "total": "500.00"}},
-                    ],
-                },
-                "status": "taxes_computed",
-            }
-        )
-        diot = result["declaration_data"]["diot"]
-        diot_data = diot.get("data", {})
-        assert diot_data["domestic_count"] == 2  # SAME_RFC and OTHER_RFC
-
-
-class TestReviewGate:
-    """review_gate() uses interrupt for HITL approval."""
-
-    def test_review_gate_skips_on_error(self) -> None:
-        from selva_workers.graphs.accounting import review_gate
-
-        result = review_gate(
-            {
-                "messages": [],
-                "status": "error",
-            }
-        )
-        assert result["status"] == "error"
-
-    def test_review_gate_skips_on_blocked(self) -> None:
-        from selva_workers.graphs.accounting import review_gate
-
-        result = review_gate(
-            {
-                "messages": [],
-                "status": "blocked",
-            }
-        )
+        monkeypatch.delenv("DHANAM_API_URL", raising=False)
+        with patch("madfam_inference.adapters.dhanam.DhanamAdapter") as adapter:
+            result = fetch_period_data(
+                {"messages": [], "org_id": "synthetic-space", "period": "2026-04"}
+            )
+        adapter.assert_not_called()
         assert result["status"] == "blocked"
+        assert result["source_coverage"]["status"] == "unavailable"
+        assert result["transaction_read_proof"] is None
 
-    def test_review_gate_approved(self) -> None:
-        from selva_workers.graphs.accounting import review_gate
+    def test_failed_or_legacy_list_reads_are_not_complete(self, caplog):
+        from selva_workers.graphs.accounting import fetch_period_data
 
-        with patch(
-            "selva_workers.graphs.accounting.interrupt",
-            return_value={"approved": True},
+        for returned in ([], {}, {"data": [], "total": 0}):
+            with (
+                patch.dict("os.environ", {"DHANAM_API_URL": "https://example.invalid"}),
+                patch("madfam_inference.adapters.dhanam.DhanamAdapter") as adapter,
+                patch("selva_workers.graphs.accounting._run_async", side_effect=lambda x: x),
+            ):
+                adapter.return_value.list_transactions.return_value = returned
+                result = fetch_period_data(
+                    {"messages": [], "org_id": "synthetic-space", "period": "2026-04"}
+                )
+            assert result["status"] == "blocked"
+            assert result["transaction_read_proof"] is None
+
+        with (
+            patch.dict("os.environ", {"DHANAM_API_URL": "https://example.invalid"}),
+            patch("madfam_inference.adapters.dhanam.DhanamAdapter") as adapter,
         ):
-            result = review_gate(
-                {
-                    "messages": [],
-                    "period": "2026-04",
-                    "reconciliation": {"matched_count": 5},
-                    "tax_computation": {
-                        "total_income": 10000,
-                        "isr": {"tax_amount": "1000"},
-                        "iva": {"tax_amount": "1600"},
-                    },
-                    "declaration_data": {"isr_provisional": {}, "iva_mensual": {}, "diot": {}},
-                    "status": "declarations_prepared",
-                }
+            adapter.return_value.list_transactions.side_effect = RuntimeError("SENSITIVE_SENTINEL")
+            result = fetch_period_data(
+                {"messages": [], "org_id": "synthetic-space", "period": "2026-04"}
             )
+        assert result["status"] == "blocked"
+        assert "SENSITIVE_SENTINEL" not in str(result) + caplog.text
 
-        assert result["status"] == "completed"
-        assert result["result"]["approval"] == "approved"
-        assert "approved" in result["messages"][0].content.lower()
+    def test_verified_empty_transactions_do_not_establish_full_period_coverage(self):
+        from madfam_inference.adapters.financial_reads import (
+            CompleteTransactionRead,
+            TransactionReadProof,
+        )
+        from selva_workers.graphs.accounting import build_accounting_graph
 
-    def test_review_gate_denied(self) -> None:
-        from selva_workers.graphs.accounting import review_gate
-
-        with patch(
-            "selva_workers.graphs.accounting.interrupt",
-            return_value={"approved": False, "feedback": "Fix reconciliation"},
+        read = CompleteTransactionRead(
+            items=[],
+            proof=TransactionReadProof(
+                scope_id="synthetic-space",
+                since="2026-04-01",
+                until_exclusive="2026-05-01",
+                total=0,
+                pages_read=1,
+                page_size=100,
+            ),
+        )
+        with (
+            patch.dict("os.environ", {"DHANAM_API_URL": "https://example.invalid"}),
+            patch("madfam_inference.adapters.dhanam.DhanamAdapter") as adapter,
+            patch("selva_workers.graphs.accounting._run_async", side_effect=lambda x: x),
+            patch("madfam_inference.adapters.karafiel.KarafielAdapter") as fiscal,
         ):
-            result = review_gate(
-                {
-                    "messages": [],
-                    "period": "2026-04",
-                    "reconciliation": {},
-                    "tax_computation": {},
-                    "declaration_data": {},
-                    "status": "declarations_prepared",
-                }
+            adapter.return_value.list_transactions.return_value = read
+            result = (
+                build_accounting_graph()
+                .compile()
+                .invoke(
+                    {
+                        "messages": [],
+                        "org_id": "synthetic-space",
+                        "period": "2026-04",
+                    }
+                )
             )
+        fiscal.assert_not_called()
+        assert result["transaction_read_proof"]["total"] == 0
+        assert result["transaction_read_proof"]["status"] == "complete"
+        assert result["source_coverage"]["status"] == "unavailable"
+        assert result["status"] == "blocked"
+        assert result["tax_computation"] is None
+        assert result["declaration_data"] is None
 
-        assert result["status"] == "denied"
-        assert result["result"]["feedback"] == "Fix reconciliation"
-        assert "denied" in result["messages"][0].content.lower()
+    def test_resumed_nodes_cannot_calculate_or_close_from_asserted_coverage(self):
+        from selva_workers.graphs.accounting import (
+            compute_taxes,
+            prepare_declaration,
+            reconcile_bank,
+            review_gate,
+        )
 
+        with patch("madfam_inference.adapters.karafiel.KarafielAdapter") as adapter:
+            for node in (reconcile_bank, compute_taxes, prepare_declaration, review_gate):
+                result = node(
+                    {
+                        "messages": [],
+                        "status": "reconciled",
+                        "approved": True,
+                        "source_coverage": {"status": "complete"},
+                        "transactions": [],
+                        "tax_computation": {"total_income": 0},
+                    }
+                )
+                assert result["status"] == "blocked"
+                assert result["tax_computation"] is None
+                assert result["declaration_data"] is None
+        adapter.assert_not_called()
 
-class TestConditionalEdges:
-    """Conditional edge routing functions."""
+    def test_unknown_status_stops_every_edge(self):
+        from selva_workers.graphs.accounting import (
+            _route_after_compute,
+            _route_after_fetch,
+            _route_after_prepare,
+            _route_after_reconcile,
+        )
 
-    def test_route_after_fetch_error_goes_to_end(self) -> None:
-        from selva_workers.graphs.accounting import _route_after_fetch
-
-        result = _route_after_fetch({"status": "error"})
-        assert result == "__end__"
-
-    def test_route_after_fetch_ok_goes_to_reconcile(self) -> None:
-        from selva_workers.graphs.accounting import _route_after_fetch
-
-        result = _route_after_fetch({"status": "data_fetched"})
-        assert result == "reconcile_bank"
+        for edge in (
+            _route_after_fetch,
+            _route_after_reconcile,
+            _route_after_compute,
+            _route_after_prepare,
+        ):
+            for status in (None, "blocked", "error", "unknown"):
+                assert edge({"status": status}) == "__end__"
 
 
 class TestAccountingRegistration:

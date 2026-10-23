@@ -122,9 +122,8 @@ class BankReconciliationTool(BaseTool):
 
     name = "bank_reconcile"
     description = (
-        "Reconcile bank transactions from Dhanam against CFDI records from Karafiel "
-        "for a given period. Matches by amount, date proximity, and counterparty RFC. "
-        "Returns matched pairs, unmatched bank items, and unmatched CFDIs."
+        "Report period-reconciliation availability. Currently unavailable pending "
+        "complete, scoped Dhanam and Karafiel source contracts; does not perform matching."
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -148,98 +147,12 @@ class BankReconciliationTool(BaseTool):
         }
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        org_id = kwargs.get("org_id", "")
-        period = kwargs.get("period", "")
-        rfc = kwargs.get("rfc", "")
-
-        if not org_id or not period:
+        if not kwargs.get("org_id") or not kwargs.get("period"):
             return ToolResult(success=False, error="org_id and period are required")
-
-        # Derive date range from period (YYYY-MM).
-        try:
-            year, month = period.split("-")
-            since = f"{year}-{month}-01"
-            m = int(month)
-            until = f"{int(year) + 1}-01-01" if m == 12 else f"{year}-{m + 1:02d}-01"
-        except ValueError:
-            return ToolResult(
-                success=False,
-                error=f"Invalid period format '{period}'; expected YYYY-MM",
-            )
-
-        # Fetch bank transactions from Dhanam.
-        bank_txns: list[dict[str, Any]] = []
-        try:
-            from madfam_inference.adapters.dhanam import DhanamAdapter
-
-            dhanam = DhanamAdapter()
-            txns = await dhanam.list_transactions(org_id, since, until)
-            bank_txns = [t.model_dump() for t in txns]
-        except Exception:
-            pass  # Graceful degradation; reconciliation proceeds with empty bank data.
-
-        # Fetch CFDIs from Karafiel.
-        cfdis: list[dict[str, Any]] = []
-        if rfc:
-            try:
-                from madfam_inference.adapters.karafiel import KarafielAdapter
-
-                karafiel = KarafielAdapter()
-                cfdi_items = await karafiel.list_cfdis(rfc, since, until)
-                cfdis = [c.model_dump() for c in cfdi_items]
-            except Exception:
-                pass
-
-        # Match bank transactions to CFDIs by amount + counterparty_rfc.
-        matched: list[dict[str, Any]] = []
-        unmatched_cfdi_indices: set[int] = set(range(len(cfdis)))
-
-        for txn in bank_txns:
-            txn_amount = txn.get("amount", "")
-            txn_rfc = txn.get("counterparty_rfc", "")
-            found_match = False
-
-            for idx in list(unmatched_cfdi_indices):
-                cfdi = cfdis[idx]
-                if cfdi.get("total") == txn_amount and (
-                    not txn_rfc
-                    or cfdi.get("receptor_rfc") == txn_rfc
-                    or cfdi.get("emisor_rfc") == txn_rfc
-                ):
-                    matched.append({"bank_txn": txn, "cfdi": cfdi})
-                    unmatched_cfdi_indices.discard(idx)
-                    found_match = True
-                    break
-
-            if not found_match:
-                matched.append({"bank_txn": txn, "cfdi": None})
-
-        unmatched_cfdis = [cfdis[i] for i in sorted(unmatched_cfdi_indices)]
-        unmatched_bank = [m["bank_txn"] for m in matched if m["cfdi"] is None]
-        fully_matched = [m for m in matched if m["cfdi"] is not None]
-
-        summary = {
-            "period": period,
-            "total_bank_txns": len(bank_txns),
-            "total_cfdis": len(cfdis),
-            "matched_count": len(fully_matched),
-            "unmatched_bank_count": len(unmatched_bank),
-            "unmatched_cfdi_count": len(unmatched_cfdis),
-        }
-
         return ToolResult(
-            success=True,
-            output=(
-                f"Reconciliation {period}: {len(fully_matched)} matched, "
-                f"{len(unmatched_bank)} unmatched bank, "
-                f"{len(unmatched_cfdis)} unmatched CFDIs"
-            ),
-            data={
-                "summary": summary,
-                "matched": fully_matched,
-                "unmatched_bank": unmatched_bank,
-                "unmatched_cfdis": unmatched_cfdis,
-            },
+            success=False,
+            error="Bank reconciliation unavailable: complete scoped source contracts are required",
+            data={"coverage_status": "unavailable"},
         )
 
 
@@ -323,8 +236,8 @@ class PaymentSummaryTool(BaseTool):
 
     name = "payment_summary"
     description = (
-        "Get payment method breakdown from Dhanam for a period. "
-        "Returns totals by Stripe MX, OXXO, SPEI, Conekta, and transfer."
+        "Report payment-summary availability for a period. The legacy source contract "
+        "is currently unavailable; no income or expense totals are inferred."
     )
 
     def parameters_schema(self) -> dict[str, Any]:
@@ -352,8 +265,14 @@ class PaymentSummaryTool(BaseTool):
         if not org_id or not period:
             return ToolResult(success=False, error="org_id and period are required")
 
-        adapter = DhanamAdapter()
-        result = await adapter.get_payment_summary(org_id, period)
+        try:
+            result = await DhanamAdapter().get_payment_summary(org_id, period)
+        except Exception:
+            return ToolResult(
+                success=False,
+                error="Payment summary unavailable; no totals were established",
+                data={"coverage_status": "unavailable"},
+            )
         return ToolResult(
             success=True,
             output=(

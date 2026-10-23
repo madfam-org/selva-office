@@ -45,6 +45,7 @@ class TestKarafielAdapter:
             "post",
             {
                 "valid": True,
+                "success": True,
                 "rfc": "XAXX010101000",
                 "type": "moral",
                 "name": "Empresa SA de CV",
@@ -63,13 +64,14 @@ class TestKarafielAdapter:
         assert result.valid is True
         assert result.rfc == "XAXX010101000"
         assert result.type == "moral"
+        assert result.check_completed is True
 
     @pytest.mark.asyncio
-    async def test_validate_rfc_error_returns_graceful_fallback(self) -> None:
+    async def test_validate_rfc_error_is_unknown_and_redacted(self, caplog) -> None:
         import httpx
 
         client = AsyncMock()
-        client.post.side_effect = httpx.ConnectError("Connection refused")
+        client.post.side_effect = httpx.ConnectError("SENSITIVE_SENTINEL")
         client.__aenter__ = AsyncMock(return_value=client)
         client.__aexit__ = AsyncMock(return_value=False)
 
@@ -77,12 +79,64 @@ class TestKarafielAdapter:
             "madfam_inference.adapters.karafiel.httpx.AsyncClient",
             return_value=client,
         ):
-            adapter = KarafielAdapter(base_url="http://karafiel:3050")
+            adapter = KarafielAdapter(base_url="http://karafiel:3050", token="synthetic-token")
             result = await adapter.validate_rfc("BAD_RFC")
 
         assert isinstance(result, RFCValidationResult)
         assert result.valid is False
-        assert "error" in result.status
+        assert result.status == "unavailable"
+        assert result.check_completed is False
+        assert "SENSITIVE_SENTINEL" not in result.model_dump_json() + caplog.text
+
+    @pytest.mark.asyncio
+    async def test_validate_rfc_explicit_invalid_is_a_completed_lookup(self):
+        client = _mock_client("post", {"valid": False, "rfc": "XAXX010101000"})
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(token="synthetic-token").validate_rfc("XAXX010101000")
+        assert result.valid is False
+        assert result.check_completed is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            [],
+            {},
+            {"valid": "true", "rfc": "XAXX010101000"},
+            {"valid": 1, "rfc": "XAXX010101000"},
+            {"valid": None, "rfc": "XAXX010101000"},
+            {"valid": True, "rfc": "XEXX010101000"},
+            {"valid": True, "rfc": "XAXX010101000", "error": "SENSITIVE_SENTINEL"},
+            {"valid": True, "rfc": "XAXX010101000", "error": ""},
+            {"valid": True, "rfc": "XAXX010101000", "error": False},
+            {"valid": True, "rfc": "XAXX010101000", "success": False},
+            {"valid": True, "rfc": "XAXX010101000", "success": "false"},
+            {"valid": True, "rfc": "XAXX010101000", "success": 0},
+            {"valid": True, "rfc": "XAXX010101000", "success": None},
+            {"valid": True, "rfc": "XAXX010101000", "check_status": "unknown"},
+            {"valid": True, "rfc": "XAXX010101000", "status": "error: SENSITIVE_SENTINEL"},
+            {"valid": True, "rfc": "XAXX010101000", "status": "unknown"},
+            {"valid": True, "rfc": "XAXX010101000", "status": "unavailable"},
+        ],
+    )
+    async def test_validate_rfc_rejects_malformed_or_unconfirmed_verdicts(self, payload, caplog):
+        client = _mock_client("post")
+        client.post.return_value.json.return_value = payload
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(token="synthetic-token").validate_rfc("XAXX010101000")
+        assert result.check_completed is False
+        assert result.valid is False
+        assert result.status == "unavailable"
+        assert "SENSITIVE_SENTINEL" not in result.model_dump_json() + caplog.text
+
+    @pytest.mark.asyncio
+    async def test_validate_rfc_without_token_does_not_call_transport(self, monkeypatch):
+        monkeypatch.delenv("KARAFIEL_API_TOKEN", raising=False)
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient") as client:
+            result = await KarafielAdapter(token="").validate_rfc("XAXX010101000")
+        client.assert_not_called()
+        assert result.check_completed is False
+        assert result.status == "unavailable"
 
     @pytest.mark.asyncio
     async def test_generate_cfdi(self) -> None:
@@ -422,20 +476,10 @@ class TestKarafielAdapter:
         headers = call_kwargs[1]["headers"]
         assert headers["Authorization"] == "Bearer my-secret-token"
 
-    @pytest.mark.asyncio
-    async def test_no_auth_header_when_token_empty(self) -> None:
-        client = _mock_client("post", {"valid": False, "rfc": "X"})
-
-        with patch(
-            "madfam_inference.adapters.karafiel.httpx.AsyncClient",
-            return_value=client,
-        ):
-            adapter = KarafielAdapter(base_url="http://karafiel:3050", token="")
-            await adapter.validate_rfc("X")
-
-        call_kwargs = client.post.call_args
-        headers = call_kwargs[1]["headers"]
-        assert "Authorization" not in headers
+    def test_no_auth_header_when_token_empty(self, monkeypatch) -> None:
+        monkeypatch.delenv("KARAFIEL_API_TOKEN", raising=False)
+        adapter = KarafielAdapter(base_url="http://karafiel:3050", token="")
+        assert "Authorization" not in adapter._headers()
 
     @pytest.mark.asyncio
     async def test_default_base_url_from_env(self) -> None:
@@ -451,3 +495,95 @@ class TestKarafielAdapter:
     def test_trailing_slash_stripped(self) -> None:
         adapter = KarafielAdapter(base_url="http://karafiel:3050/")
         assert adapter._base_url == "http://karafiel:3050"
+
+
+class TestBlacklistFailureSemantics:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {},
+            [],
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+                "status": "error",
+            },
+            {"rfc": "XEXX010101000"},
+            {"rfc": "XEXX010101000", "listed": False},
+            {"rfc": "XEXX010101000", "listed": "false", "article_69b": False, "definitive": False},
+            {"rfc": "XEXX010101000", "listed": False, "article_69b": True, "definitive": False},
+            {"rfc": "XEXX010101000", "listed": False, "article_69b": False, "definitive": True},
+            {"rfc": "XAXX010101000", "listed": False, "article_69b": False, "definitive": False},
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+                "details": {"error": "SENSITIVE_SENTINEL"},
+            },
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+                "check_status": "unknown",
+            },
+        ],
+    )
+    async def test_invalid_envelopes_remain_unknown(self, payload, caplog) -> None:
+        client = _mock_client("post", payload)
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(base_url="https://example.invalid").check_blacklist(
+                "XEXX010101000"
+            )
+        assert not result.check_completed
+        assert result.check_status == "unknown"
+        assert result.listed is None
+        assert result.article_69b is None
+        assert result.definitive is None
+        assert "SENSITIVE_SENTINEL" not in result.model_dump_json() + caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure", ["missing_route", "timeout", "invalid_json"])
+    async def test_source_failures_are_not_clearance(self, failure, caplog) -> None:
+        import httpx
+
+        client = _mock_client()
+        if failure == "missing_route":
+            client.post.return_value.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "SENSITIVE_SENTINEL",
+                request=httpx.Request("POST", "https://example.invalid"),
+                response=httpx.Response(404),
+            )
+        elif failure == "timeout":
+            client.post.side_effect = httpx.ReadTimeout("SENSITIVE_SENTINEL")
+        else:
+            client.post.return_value.json.side_effect = ValueError("SENSITIVE_SENTINEL")
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(base_url="https://example.invalid").check_blacklist(
+                "XEXX010101000"
+            )
+        assert result.check_status == "unknown"
+        assert result.listed is None
+        assert "SENSITIVE_SENTINEL" not in result.model_dump_json() + caplog.text
+
+    @pytest.mark.asyncio
+    async def test_explicit_unlisted_is_a_completed_lookup(self) -> None:
+        client = _mock_client(
+            "post",
+            {
+                "rfc": "XEXX010101000",
+                "listed": False,
+                "article_69b": False,
+                "definitive": False,
+            },
+        )
+        with patch("madfam_inference.adapters.karafiel.httpx.AsyncClient", return_value=client):
+            result = await KarafielAdapter(base_url="https://example.invalid").check_blacklist(
+                "XEXX010101000"
+            )
+        assert result.check_completed
+        assert result.listed is False

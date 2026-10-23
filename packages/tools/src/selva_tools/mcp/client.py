@@ -77,16 +77,29 @@ class McpToolAdapter(BaseTool):
     async def execute(self, **kwargs: Any) -> ToolResult:
         try:
             result = await self._transport.call_tool(self.name, kwargs)
-            if isinstance(result, dict):
-                content = result.get("content", "")
-                if isinstance(content, list):
-                    text_parts = [c.get("text", "") for c in content if c.get("type") == "text"]
-                    return ToolResult(output="\n".join(text_parts), data=result)
-                return ToolResult(output=str(content), data=result)
-            return ToolResult(output=str(result))
-        except Exception as exc:
-            logger.error("MCP tool '%s' execution failed: %s", self.name, exc)
-            return ToolResult(success=False, error=str(exc))
+            if not isinstance(result, dict):
+                return ToolResult(success=False, error="Invalid MCP tool result")
+            is_error = result.get("isError", False)
+            if type(is_error) is not bool:
+                return ToolResult(success=False, error="Invalid MCP error indicator")
+            content = result.get("content")
+            if not isinstance(content, list) or any(not isinstance(c, dict) for c in content):
+                return ToolResult(success=False, error="Invalid MCP tool content")
+            text_parts = [c.get("text", "") for c in content if c.get("type") == "text"]
+            if any(not isinstance(part, str) for part in text_parts):
+                return ToolResult(success=False, error="Invalid MCP text content")
+            output = "\n".join(text_parts)
+            return ToolResult(
+                success=not is_error,
+                output=output,
+                error=(output or "Remote MCP tool reported an error") if is_error else None,
+                data=result,
+            )
+        except Exception:
+            # Transport exceptions can contain credential-bearing URLs or
+            # remote response bodies; keep them out of logs and tool output.
+            logger.error("MCP tool execution failed")
+            return ToolResult(success=False, error="MCP transport unavailable")
 
 
 class McpTransport:
