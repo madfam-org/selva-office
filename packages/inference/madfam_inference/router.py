@@ -6,6 +6,7 @@ import os
 from collections.abc import AsyncIterator
 from typing import Any
 
+from . import credentials as _credentials
 from . import grants as _grants
 from .base import InferenceProvider, UsageCallback
 from .caching import PromptCacheManager
@@ -230,6 +231,13 @@ class ModelRouter:
     ) -> None:
         self._providers = providers
         self._org_config = org_config
+        # Extra accounts of a vendor (``madfam_inference.credentials``), e.g.
+        # ``anthropic-ops``. Same vendor as a canonical cloud provider, so a
+        # server-set ``provider_allowlist`` may name them; never added to any
+        # priority list, and always behind the grant guard.
+        self._extra_credentials = frozenset(
+            name for name in providers if _credentials.is_extra_credential(name)
+        )
         # Provider credit-grant guard (madfam_inference.grants). None ⇒ the
         # process-wide guard built from env; it is inert (``enabled`` False)
         # unless a grant is declared or PROVIDER_GRANTS_REQUIRED_FOR is set.
@@ -306,7 +314,9 @@ class ModelRouter:
             # exception names exactly where the data may go, and nothing —
             # prefer_local, a priority list, a client-sent model — adds to it.
             return [
-                name for name in dict.fromkeys(policy.provider_allowlist) if name in CLOUD_PRIORITY
+                name
+                for name in dict.fromkeys(policy.provider_allowlist)
+                if name in CLOUD_PRIORITY or name in self._extra_credentials
             ]
 
         cloud_priority, cheapest_priority = self._priority_lists(policy)
@@ -510,7 +520,10 @@ class ModelRouter:
 
     def _active_grant_guard(self) -> _grants.GrantGuard | None:
         guard = self._grant_guard or _grants.get_default_guard()
-        return guard if guard.enabled else None
+        # An extra vendor account is never used unmetered: with one registered
+        # the guard runs even when nothing else would enable it (it then
+        # refuses that account: not in PROVIDER_GRANTS_REQUIRED_FOR).
+        return guard if guard.enabled or self._extra_credentials else None
 
     def _provider_name(self, provider: InferenceProvider) -> str:
         for name, registered in self._providers.items():
@@ -539,7 +552,13 @@ class ModelRouter:
         while True:
             provider = self._select_provider(request, excluded)
             name = self._provider_name(provider)
-            decision = await guard.reserve(name, policy.org_id, policy.model_override, request)
+            decision = await guard.reserve(
+                name,
+                policy.org_id,
+                policy.model_override,
+                request,
+                credential_env=getattr(provider, "credential_env", None),
+            )
             if decision.allowed:
                 return provider, decision.reservation, excluded
             caller_model = original.model_override
@@ -588,7 +607,11 @@ class ModelRouter:
         if guard is None:
             return True, None
         decision = await guard.reserve(
-            name, request.policy.org_id, request.policy.model_override, request
+            name,
+            request.policy.org_id,
+            request.policy.model_override,
+            request,
+            credential_env=getattr(self._providers.get(name), "credential_env", None),
         )
         if not decision.allowed:
             excluded[name] = decision.reason

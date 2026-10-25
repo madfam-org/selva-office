@@ -13,9 +13,9 @@ import os
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +46,30 @@ class ModelAssignment(BaseModel):
 
 
 class ProviderConfig(BaseModel):
-    """Connection details for an OpenAI-compatible provider."""
+    """Connection details for one org-config provider.
 
-    base_url: str
+    ``adapter`` picks the client:
+
+    - ``openai_compatible`` (the default, unchanged): ``GenericOpenAIProvider``
+      against ``base_url``.
+    - ``anthropic``: the native Anthropic Messages adapter, for an EXTRA
+      Anthropic account (``madfam_inference.credentials``). The provider name
+      must be ``anthropic-<suffix>`` and must be listed in
+      ``PROVIDER_GRANTS_REQUIRED_FOR``, or the factory refuses to register it.
+      ``base_url`` is optional (defaults to the public Anthropic API).
+    """
+
+    adapter: Literal["openai_compatible", "anthropic"] = "openai_compatible"
+    base_url: str = ""
     api_key_env: str
     vision: bool = True
     timeout: float = 120.0
+
+    @model_validator(mode="after")
+    def _base_url_for_openai_compatible(self) -> ProviderConfig:
+        if self.adapter == "openai_compatible" and not self.base_url:
+            raise ValueError("base_url is required for an openai_compatible provider")
+        return self
 
 
 class AgentTemplate(BaseModel):

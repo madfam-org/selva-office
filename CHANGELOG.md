@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Several Anthropic accounts as distinct providers** — an extra account is
+  declared in the org config as `anthropic-<suffix>` with `adapter: anthropic`
+  (native Messages adapter) and its own key env var. It registers only when
+  its key is set and its name is in `PROVIDER_GRANTS_REQUIRED_FOR`, spends only
+  under its own grant (grant `key_env` must match), is priced like `anthropic`,
+  is recorded under its own name in the USD ledger, and is reachable only by
+  routing that names it. Production declares `anthropic-ops`
+  (`ANTHROPIC_API_KEY_OPS`, optional). The built-in `anthropic` provider is
+  unchanged. See `docs/PROVIDER_CREDIT_GRANTS.md` → Several accounts for one vendor.
 - **Janua machine tokens for the phygital tools** — Yantra4D and Pravara-MES
   calls can carry short-lived Janua `client_credentials` tokens. With
   `SELVA_YANTRA4D_CLIENT_ID` / `SELVA_YANTRA4D_CLIENT_SECRET` (scope

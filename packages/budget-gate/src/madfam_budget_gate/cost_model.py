@@ -167,12 +167,27 @@ def _normalise_model(model: str) -> str:
     return m
 
 
+def _price_family(provider: str) -> str:
+    """The price-table key for a provider name.
+
+    An extra Anthropic account registered as its own provider
+    (``anthropic-<suffix>``, see ``madfam_inference.credentials``) is the same
+    vendor at the same prices: it is priced as ``anthropic``. The provider
+    name itself is kept everywhere else (ledger rows, grant meters), so each
+    account's spend stays separately visible.
+    """
+    p = provider.strip().lower()
+    if p.startswith("anthropic-"):
+        return "anthropic"
+    return p
+
+
 def _lookup(provider: str | None, model: str | None) -> _Price:
     if provider is None or model is None:
         logger.debug("cost_model: missing provider/model, using fallback rate")
         return _DEFAULT_FALLBACK
 
-    p = provider.strip().lower()
+    p = _price_family(provider)
     m = _normalise_model(model)
     table = _PRICE_TABLE.get(p)
     if table is None:

@@ -28,6 +28,16 @@ Nothing here runs unless a grant is declared or a provider is listed in
 ``PROVIDER_GRANTS_REQUIRED_FOR``: with neither, :func:`get_default_guard`
 returns a guard whose ``enabled`` is False and the router behaves exactly as
 before.
+
+Several accounts of one vendor (``madfam_inference.credentials``): an extra
+Anthropic account is its own provider (``anthropic-<suffix>``), so it only
+ever reserves on grants whose ``provider`` is that exact name — two accounts
+can never draw on each other's grant. An extra account is always guarded and
+is refused (``not_grant_required``) unless it is in
+``PROVIDER_GRANTS_REQUIRED_FOR``. When the router knows the env var a
+provider's key came from, a grant whose ``key_env`` names a different env var
+is not used for it (``key_env_mismatch``), so a grant can never meter the
+wrong account.
 """
 
 from __future__ import annotations
@@ -48,6 +58,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from . import credentials as _credentials
 from .types import InferenceRequest
 
 logger = logging.getLogger(__name__)
@@ -733,6 +744,8 @@ class GrantGuard:
         return bool(self._required or st.grants)
 
     def is_guarded(self, provider_name: str) -> bool:
+        if _credentials.is_extra_credential(provider_name):
+            return True  # an extra account is never unmetered
         st = self.state()
         return provider_name in self._required or any(
             g.provider == provider_name for g in st.grants
@@ -789,21 +802,39 @@ class GrantGuard:
         org_id: str | None,
         model: str | None,
         request: InferenceRequest,
+        *,
+        credential_env: str | None = None,
     ) -> GuardDecision:
         """Check org / window / ceiling and reserve the worst case for one attempt.
 
         Unguarded providers are always allowed with no reservation.
+        ``credential_env`` is the env var the provider's key came from, when
+        the caller knows it; a grant whose ``key_env`` names another env var is
+        then not used for this provider.
         """
         if not self.is_guarded(provider_name):
             return GuardDecision(True, "unguarded")
-        st = self.state()
         required = provider_name in self._required
+        if _credentials.is_extra_credential(provider_name) and not required:
+            return GuardDecision(False, "not_grant_required")
+        st = self.state()
         if st.error:
             return GuardDecision(False, "config_invalid")
         now = self._now()
         candidates = [g for g in st.grants if g.provider == provider_name]
         if not candidates:
             return GuardDecision(False, "no_grant")
+        if credential_env:
+            candidates = [g for g in candidates if g.key_env in (None, credential_env)]
+            if not candidates:
+                self._log_error(
+                    "key_env:" + provider_name,
+                    "provider grants: every grant for %s names a key_env other than %s — "
+                    "provider unavailable (a grant must meter its own account)",
+                    provider_name,
+                    credential_env,
+                )
+                return GuardDecision(False, "key_env_mismatch")
         if not org_id:
             return self._passthrough_or(required, "org_missing")
         for_org = [g for g in candidates if org_allowed(g, org_id, self._platform_orgs)]
@@ -966,5 +997,5 @@ def is_pinned_to(provider_name: str, model: str | None) -> bool:
     """True when ``model`` is a model id of ``provider_name`` (e.g. ``claude-*``)."""
     if not model:
         return False
-    prefixes = PROVIDER_MODEL_PREFIXES.get(provider_name, ())
+    prefixes = PROVIDER_MODEL_PREFIXES.get(_credentials.provider_family(provider_name), ())
     return model.lower().startswith(prefixes) if prefixes else False
