@@ -443,11 +443,13 @@ jobs:
       - name: Impeccable UI/UX gate (vendored pin + skill + detector tool + worker loop)
         run: |
           python3 scripts/vendor-impeccable.py check
+          # Separate invocations: packages/skills/tests and apps/workers/tests
+          # are both importable as the `tests` package.
           uv run pytest \
             packages/skills/tests/test_impeccable_skill.py \
             packages/tools/tests/test_impeccable_detect.py \
-            apps/workers/tests/test_ui_audit.py \
             -q
+          (cd apps/workers && uv run pytest tests/test_ui_audit.py -q)
         env:
           ENVIRONMENT: development
 
