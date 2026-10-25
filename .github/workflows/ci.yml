@@ -518,6 +518,7 @@ jobs:
             packages/inference/tests/test_tenant_task_exception.py \
             packages/inference/tests/test_identifier_guard.py \
             packages/inference/tests/test_provider_grants.py \
+            packages/inference/tests/test_multi_credential.py \
             apps/nexus-api/tests/test_inference_proxy_sensitivity.py \
             apps/nexus-api/tests/test_inference_proxy_task_exception.py \
             -q

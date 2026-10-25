@@ -13,10 +13,21 @@ data:
     # ═══════════════════════════════════════════════════════════════════════
     # Deployed via ConfigMap → mounted at /etc/selva/org-config.yaml.
     # Providers are auto-registered from env vars (DEEPINFRA_API_KEY, etc.)
-    # — only add here if overriding base_url or timeout.
+    # — only add here if overriding base_url or timeout, or to declare an
+    # extra account of a vendor (below).
     # ═══════════════════════════════════════════════════════════════════════
 
-    providers: {}
+    providers:
+      # Second Anthropic account as its own provider (native Anthropic
+      # adapter). Registered only when ANTHROPIC_API_KEY_OPS is mounted AND
+      # `anthropic-ops` is in PROVIDER_GRANTS_REQUIRED_FOR; it then spends
+      # only under a grant whose provider is `anthropic-ops`. It is in NO
+      # priority list and NO assignment: only a server-set provider_allowlist
+      # (madfam infra ops / self-healing) reaches it. A third account is
+      # another entry like this one plus its key, REQUIRED_FOR entry and grant.
+      anthropic-ops:
+        adapter: anthropic
+        api_key_env: ANTHROPIC_API_KEY_OPS
 
     # ── Task-type model assignments ───────────────────────────────────────
     # DeepInfra is the only provider with active credits right now, so all

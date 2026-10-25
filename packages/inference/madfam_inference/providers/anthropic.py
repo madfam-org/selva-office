@@ -92,7 +92,16 @@ class AnthropicProvider(InferenceProvider):
         model: str = DEFAULT_MODEL,
         base_url: str = ANTHROPIC_API_URL,
         timeout: float = 120.0,
+        provider_name: str = "anthropic",
+        credential_env: str | None = None,
     ) -> None:
+        # ``provider_name`` is the registered name; an extra Anthropic account
+        # (``anthropic-<suffix>``, see ``madfam_inference.credentials``) reports
+        # its own name so responses, the USD ledger and the grant meter record
+        # which account paid. ``credential_env`` is the env var the key came
+        # from; the grant guard checks it against the grant's ``key_env``.
+        self.name = provider_name
+        self.credential_env = credential_env
         self._api_key = api_key
         self._model = model
         self._base_url = base_url.rstrip("/")

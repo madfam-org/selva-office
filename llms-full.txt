@@ -95,6 +95,10 @@ Staging workers KEDA is pinned to 1 replica (`patch-keda-staging.yaml`) because
   `PROVIDER_GRANTS_REQUIRED_FOR` serves a call only under a valid grant for the
   request's org; past the ceiling or after expiry it is unavailable (fail closed).
   Grants are declared privately (Vault), never in this repo.
+- Several accounts of one vendor: an extra Anthropic account is its own provider
+  `anthropic-<suffix>` (org-config `adapter: anthropic`, own key env var), fail
+  closed unless in `PROVIDER_GRANTS_REQUIRED_FOR`, metered only on its own grant,
+  reachable only by routing that names it (`madfam_inference/credentials.py`).
 - Status: `GET /api/v1/providers/grants` (platform admin), nexus-api `/metrics`
   `selva_provider_grant_*`, agent tool `inference_budget_status` (platform audience).
 - Autopilot: `apps/workers/selva_workers/jobs/credit_autopilot*.py` invests a grant

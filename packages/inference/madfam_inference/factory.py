@@ -12,9 +12,11 @@ import logging
 import os
 from pathlib import Path
 
+from . import credentials
 from .base import InferenceProvider
-from .org_config import OrgConfig, load_org_config
-from .providers.anthropic import AnthropicProvider
+from .grants import required_providers
+from .org_config import OrgConfig, ProviderConfig, load_org_config
+from .providers.anthropic import ANTHROPIC_API_URL, AnthropicProvider
 from .providers.generic import GenericOpenAIProvider
 from .providers.ollama import OllamaProvider
 from .providers.openai import OpenAIProvider
@@ -22,7 +24,6 @@ from .providers.openrouter import OpenRouterProvider
 from .router import ModelRouter
 
 logger = logging.getLogger(__name__)
-
 
 
 ENV_ANTHROPIC_TIMEOUT = "ANTHROPIC_TIMEOUT_SECONDS"
@@ -47,10 +48,49 @@ def _anthropic_timeout_seconds() -> float:
         return DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
     return value if value > 0 else DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
 
+
 def _resolve_api_key(env_name: str) -> str | None:
     import os
 
     return os.environ.get(env_name)
+
+
+def _build_extra_anthropic(name: str, cfg: ProviderConfig) -> InferenceProvider | None:
+    """An extra Anthropic account from the org config, or None (logged).
+
+    Fail closed (``madfam_inference.credentials``): the name must be
+    ``anthropic-<suffix>``, the adapter must be the native one, and the name
+    must be in ``PROVIDER_GRANTS_REQUIRED_FOR`` so the account can only ever
+    spend under a grant of its own. An absent key just means "not registered".
+    """
+    if cfg.adapter != "anthropic" or not credentials.valid_credential_name(name):
+        logger.error(
+            "org config provider %r is NOT registered: an extra Anthropic account "
+            "needs a name of the form anthropic-<suffix> and adapter: anthropic",
+            name,
+        )
+        return None
+    if name not in required_providers():
+        logger.error(
+            "org config provider %r is NOT registered: an extra Anthropic account "
+            "must be listed in PROVIDER_GRANTS_REQUIRED_FOR (fail closed)",
+            name,
+        )
+        return None
+    api_key = _resolve_api_key(cfg.api_key_env) or ""
+    if not api_key:
+        logger.info("org config provider %r not registered: %s is not set", name,
+                    cfg.api_key_env)
+        return None
+    logger.info("org config provider %r registered (native Anthropic adapter, key from %s)",
+                name, cfg.api_key_env)
+    return AnthropicProvider(
+        api_key=api_key,
+        timeout=_anthropic_timeout_seconds(),
+        provider_name=name,
+        credential_env=cfg.api_key_env,
+        base_url=cfg.base_url or ANTHROPIC_API_URL,
+    )
 
 
 def build_router_from_env(
@@ -145,17 +185,23 @@ def build_router_from_env(
 
     # Register additional providers from org config (skip already registered).
     for name, cfg in org_config.providers.items():
-        if name not in providers:
-            api_key = _resolve_api_key(cfg.api_key_env) or ""
-            if api_key:
-                providers[name] = GenericOpenAIProvider(
-                    base_url=cfg.base_url,
-                    api_key=api_key,
-                    model="default",
-                    provider_name=name,
-                    vision=cfg.vision,
-                    timeout=cfg.timeout,
-                )
+        if name in providers:
+            continue
+        if cfg.adapter == "anthropic" or credentials.is_extra_credential(name):
+            extra = _build_extra_anthropic(name, cfg)
+            if extra is not None:
+                providers[name] = extra
+            continue
+        api_key = _resolve_api_key(cfg.api_key_env) or ""
+        if api_key:
+            providers[name] = GenericOpenAIProvider(
+                base_url=cfg.base_url,
+                api_key=api_key,
+                model="default",
+                provider_name=name,
+                vision=cfg.vision,
+                timeout=cfg.timeout,
+            )
 
     # Always include Ollama as local fallback.
     providers["ollama"] = OllamaProvider(base_url=ollama_base_url)

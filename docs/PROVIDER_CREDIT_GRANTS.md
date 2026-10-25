@@ -59,6 +59,49 @@ Other env:
 | `PROVIDER_GRANTS_REDIS_URL` | `REDIS_URL` | Meter Redis. |
 | `PROVIDER_GRANTS_RESERVATION_TTL_SECONDS` | `150` | How long an in-flight hold lives if its pod dies. Keep it above the provider read timeout: production workers set `660` with `ANTHROPIC_TIMEOUT_SECONDS=600`. |
 
+## Several accounts for one vendor
+
+Selva can hold more than one Anthropic account. Each extra account is its own
+provider named `anthropic-<suffix>`, declared in the org config with the
+native adapter (code: `packages/inference/madfam_inference/credentials.py`):
+
+```yaml
+providers:
+  anthropic-example:
+    adapter: anthropic          # native Messages adapter, not the OpenAI-compatible path
+    api_key_env: ANTHROPIC_API_KEY_EXAMPLE
+```
+
+- The built-in `anthropic` provider (`ANTHROPIC_API_KEY`) is unchanged.
+- An extra account is registered only when its key env var is set AND its name
+  is in `PROVIDER_GRANTS_REQUIRED_FOR`. Otherwise it is not registered (logged
+  at ERROR when the list is missing it). The guard re-checks the list per call
+  (`not_grant_required`) and the router runs the guard whenever an extra
+  account is registered, so an extra account is never used unmetered.
+- It spends only under grants whose `provider` is its exact name. The guard
+  matches grants by provider name, so two accounts never draw on each other's
+  grant: a dead `anthropic` grant does not borrow from `anthropic-example`.
+- The grant's `key_env` must name the env var the key came from (or be
+  omitted). A grant naming another env var is not used for that account
+  (`key_env_mismatch`), so a grant can never meter the wrong account.
+- Prices are the `anthropic` rows of the cost model. The USD ledger
+  (`compute_token_ledger.provider`) and the grant meter carry the account
+  name, so each account's spend is visible on its own.
+- It is in no global priority list and no assignment. Only routing that names
+  it reaches it: an `org_overrides.<org>` priority list or assignment, or a
+  server-set `provider_allowlist` (for example madfam infra operations, which
+  prefer an extra account and fall back to `anthropic`). Every other tenant
+  routes exactly as before.
+
+A third account is configuration only: an org-config entry, its key in the
+`selva-llm-secrets` Secret, its name in `PROVIDER_GRANTS_REQUIRED_FOR` on
+inference-gateway, nexus-api and workers, and a grant with that `provider`.
+
+Order matters: add the name to `PROVIDER_GRANTS_REQUIRED_FOR` and deploy
+before (or with) the key, and declare its grant in Vault. A grant for an
+extra account is accepted by the strict loader today, because `provider` is a
+free name; nothing new is added to the grant schema.
+
 ## The fail-closed guarantee
 
 A provider in `PROVIDER_GRANTS_REQUIRED_FOR` is used for a call only when ALL hold:
@@ -77,7 +120,8 @@ the ceiling. Anything else makes the provider unavailable for that call:
 
 Reason codes: `no_grant`, `config_invalid`, `org_missing`, `org_not_allowed`,
 `not_started`, `expired`, `ceiling_reached`, `meter_unavailable`,
-`cost_model_unavailable`. Config and Redis errors log at ERROR at most once a
+`cost_model_unavailable`, and for extra accounts `not_grant_required` and
+`key_env_mismatch`. Config and Redis errors log at ERROR at most once a
 minute.
 
 Metering: before each attempt the router atomically reserves the worst case
