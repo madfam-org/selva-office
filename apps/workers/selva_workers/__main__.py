@@ -32,6 +32,7 @@ from selva_redis_pool.task_stream import (
     TaskStreamConsumer,
 )
 from selva_redis_pool.timeout import get_task_timeout
+from selva_skills.impeccable import with_impeccable_skill
 from selva_tools import Audience as ToolAudience
 from selva_tools import with_audience
 from selva_tools.backends.coupler import with_coupler_user_jwt
@@ -56,6 +57,7 @@ from .graphs.sales import build_sales_graph
 from .inference import with_task_org
 from .interrupt_handler import InterruptHandler
 from .task_status import update_task_status as _update_task_status
+from .ui_audit import approval_summary, ui_task_fields
 
 # Use shared observability logging instead of basicConfig.
 configure_logging(service_name="worker")
@@ -342,10 +344,34 @@ async def process_task(task_data: dict) -> None:
     # assignment. Tool execution is separately guarded by selva_tools.
     task_audience = ToolAudience(resolve_audience(task_org_id).value)
 
+    # Impeccable (MADFAM UI/UX rule): a UI/UX task always carries the
+    # impeccable skill, plus the reference of the command its payload names.
+    # An unknown command fails the task visibly instead of loading nothing.
+    try:
+        ui_fields = ui_task_fields(
+            graph_type, payload_for_audience, task_data.get("description", "")
+        )
+    except ValueError as exc:
+        logger.error("Task %s: %s", task_id, exc)
+        await _update_task_status(
+            settings.nexus_api_url,
+            task_id,
+            "failed",
+            {"error": str(exc)},
+            error_message=str(exc),
+            org_id=task_org_id or None,
+        )
+        return
+
     try:
         skill_ids = await _fetch_agent_skills(
             settings.nexus_api_url, agent_id, org_id=task_org_id or None
         )
+    except Exception:
+        logger.warning("Failed to fetch skills for agent %s", agent_id, exc_info=True)
+    if ui_fields["ui_ux_task"]:
+        skill_ids = with_impeccable_skill(skill_ids)
+    try:
         if skill_ids:
             from selva_skills import SkillAudience, get_skill_registry
 
@@ -387,6 +413,7 @@ async def process_task(task_data: dict) -> None:
         # about which swarm this is running for.
         "org_id": task_org_id,
         "audience": task_audience.value,
+        **ui_fields,
     }
 
     # Add graph-specific state
@@ -621,6 +648,9 @@ async def process_task(task_data: dict) -> None:
                 "rollback_evidence_artifact": _state_dict(result, "rollback_evidence_artifact"),
                 "deployment_evidence": _state_dict(result, "deployment_evidence"),
             }
+        ui_gate = _state_dict(result, "ui_audit")
+        if ui_gate:
+            api_result = {**api_result, "ui_audit": approval_summary(result)}
         await _update_task_status(
             settings.nexus_api_url,
             task_id,

@@ -40,6 +40,26 @@ redirect and should not become the source of truth again.
 - Record any missing Enclii adapter gap instead of normalizing raw production
   access in docs or runbooks.
 
+## UI/UX work uses impeccable (standing rule)
+
+MADFAM rule: [impeccable](https://github.com/pbakaus/impeccable) is used for any
+and all UI/UX work, both by Selva's own agents and by humans and coding agents
+working on Selva's UI (`apps/office-ui`, `apps/admin`, `packages/ui`, landing
+and email templates).
+
+- Humans and coding agents: run the impeccable skill for UI/UX changes
+  (`/impeccable shape|critique|audit|polish|harden|clarify|layout|typeset|adapt
+  <target>`) and run the detector on the files you changed before you open a
+  PR: `IMPECCABLE_NO_TELEMETRY=1 DO_NOT_TRACK=1 npx impeccable@4.7.0 detect
+  <files>` (or `$IMPECCABLE_BIN detect`, see below). Fix primary findings or
+  justify each one in the PR body. Telemetry stays off, always.
+- Selva agents: UI/UX tasks load the vendored `impeccable` skill and the coding
+  graph runs the `impeccable_detect` gate before review. See
+  [`packages/skills/vendor/README.md`](packages/skills/vendor/README.md) for the
+  mechanism, the pin, and how to update it.
+- Precedence: where Selva's own UI standards are stricter (this file, the
+  target app's design tokens, accessibility and legal requirements), they win.
+
 ## Repo entrypoints
 
 - `README.md`
@@ -1188,6 +1208,10 @@ The `packages/skills/` package implements the AgentSkills standard.
 - Core skills always take precedence on name collision with community skills.
 - Community skill scripts under `community-skills/` are excluded from ruff linting
   via `extend-exclude` in `pyproject.toml`.
+- **Vendored skills** live in `packages/skills/vendor/` (verbatim upstream plus a
+  pin). `impeccable` is rendered into `skill-definitions/impeccable/SKILL.md` by
+  `scripts/vendor-impeccable.py` and loaded on every UI/UX task; CI runs
+  `vendor-impeccable.py check`. Never hand-edit the vendored or generated files.
 
 ## Dynamic Workflow System (ChatDev 2.0 Parity)
 
@@ -1246,6 +1270,13 @@ can use them without platform privileges.
 
 See `packages/skills/skill-definitions/pre-pr-audit/SKILL.md` for how the
 skill composes these four tools into a pre-submission gate.
+
+- `impeccable_detect` (in `builtins/impeccable_detect.py`) — runs the pinned
+  impeccable engine (`impeccable detect --json`) on changed UI files. Read-only
+  (`file_read` / ALLOW), telemetry forced off, minimal child environment, refuses
+  a binary whose version differs from the pin. Missing binary is
+  `status="unavailable"`, never a clean result. The coding graph's `ui_audit`
+  node calls it on UI/UX tasks.
 
 ### Agent Memory (`packages/memory`)
 - **MemoryStore**: Per-agent FAISS `IndexFlatIP` with metadata. `store()`, `search()`,

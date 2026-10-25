@@ -27,6 +27,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   routing that names it. Production declares `anthropic-ops`
   (`ANTHROPIC_API_KEY_OPS`, optional). The built-in `anthropic` provider is
   unchanged. See `docs/PROVIDER_CREDIT_GRANTS.md` → Several accounts for one vendor.
+- **impeccable for every UI/UX task** — the MADFAM standing rule that
+  [impeccable](https://github.com/pbakaus/impeccable) (Apache-2.0) is used for
+  all UI/UX work now holds inside Selva. `packages/skills/vendor/impeccable/`
+  vendors `skill-v4.7.0` verbatim (npm `impeccable@4.7.0`, engine `0.1.16`,
+  pinned with sha256/sha512 in `impeccable.pin.json`); `scripts/vendor-impeccable.py`
+  renders the `impeccable` core skill, checks drift in CI and fetches the engine.
+  UI/UX tasks (payload `ui_ux` / `impeccable_command`, UI vocabulary, or changed
+  UI files) load the skill plus the named command's reference. New read-only tool
+  `impeccable_detect` runs the pinned detector with telemetry forced off; the
+  coding graph's new `ui_audit` node runs it after tests, feeds primary findings
+  back into one more implement round, has the review justify the rest, and shows
+  the result at the push gate and in the task result
+  (`SELVA_IMPECCABLE_ENFORCEMENT=warn|block`, default `warn`). The workers image
+  bakes the verified engine at `/opt/impeccable/bin/impeccable`.
 - **Janua machine tokens for the phygital tools** — Yantra4D and Pravara-MES
   calls can carry short-lived Janua `client_credentials` tokens. With
   `SELVA_YANTRA4D_CLIENT_ID` / `SELVA_YANTRA4D_CLIENT_SECRET` (scope

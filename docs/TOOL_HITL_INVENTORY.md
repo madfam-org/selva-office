@@ -37,11 +37,11 @@ social-post, outbound-send, infra-mutating and secret-mutating tools.
 
 ## Counts
 
-- Built-in tools enumerated: **276** (plus `cleanup_worktree`, `create_worktree` classified as
+- Built-in tools enumerated: **277** (plus `cleanup_worktree`, `create_worktree` classified as
   worker-local tools).
 - Newly gated (ALLOW before, ASK now): **73**.
 - Side-effecting tools, all ASK now: **113**.
-- Read-only tools explicitly ALLOW: **134**.
+- Read-only tools explicitly ALLOW: **135**.
 - ASK before and after: **50**.
 
 | Side-effect class | Tools |
@@ -53,7 +53,7 @@ social-post, outbound-send, infra-mutating and secret-mutating tools.
 | infra-mutating | 29 |
 | money-moving | 8 |
 | outbound-send | 15 |
-| read-only | 140 |
+| read-only | 141 |
 | secret-or-identity-mutating | 21 |
 | social-post | 5 |
 
@@ -187,6 +187,7 @@ Coupler proxy tool, or a future tool-calling loop).
 | `hitl_why_asked` | hitl_introspection | platform | read-only | platform-only (audience guard) | api_call / ALLOW | api_call / ALLOW |
 | `http_request` | http_tools | tenant | read-only | SSRF guard; classifier is method-aware | api_call / ALLOW | api_call / ALLOW |
 | `image_analysis` | image_analysis | tenant | read-only | - | api_call / ALLOW | api_call / ALLOW |
+| `impeccable_detect` | impeccable_detect | tenant | read-only | - | api_call / ALLOW | file_read / ALLOW |
 | `inference_budget_status` | inference_budget | platform | read-only | platform-only (audience guard) | api_call / ALLOW | api_call / ALLOW |
 | `inflation_rate` | intelligence | tenant | read-only | - | api_call / ALLOW | api_call / ALLOW |
 | `inventory_check` | operations | platform | read-only | platform-only (audience guard) | api_call / ALLOW | api_call / ALLOW |

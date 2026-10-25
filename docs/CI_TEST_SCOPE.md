@@ -19,6 +19,7 @@ contract.
 | `test-py` root unit tests | `tests/unit` with coverage artifact | Backend/platform |
 | `test-py` Wave 0 regressions | Inference router, budget gate, pgvector memory, campaign graph, approval agent-name response | Backend/platform |
 | `test-py` financial evidence | Accounting/billing execution containment, Dhanam pagination, unavailable screening, accounting tools and MCP error propagation (synthetic transports; no live fiscal calls or supplier messages) | Backend/platform |
+| `test-py` impeccable UI/UX gate | Vendored impeccable pin + generated skill in sync (`scripts/vendor-impeccable.py check`), skill loading for UI/UX tasks, `impeccable_detect` allowlist + telemetry-off env + pinned-version refusal, worker `ui_audit` findings loop and warn/block enforcement (fake engine; no network) | Backend/platform |
 | `critical-path-coverage` | Auth, RLS, onboarding, dispatch, outbound governance, artifact storage, worker auth/lifecycle | Backend/platform |
 | `critical-path-coverage` inference sensitivity | `X-Sensitivity` fail-closed, sensitivity-before-task_type routing, per-tenant floors/caps/rate limits, the pseudonymized-task exception (its conditions, provider allowlist, identifier guard, fail-closed config), no prompt or completion persisted | Backend/platform |
 | `build` | Turbo production build after TS/Python tests | Release engineering |
