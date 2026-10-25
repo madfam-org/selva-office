@@ -88,7 +88,7 @@ images:
 - digest: sha256:1f431201e1acc7bdf15a4bf35580f10aa2324b042ae5f10a3881dc340759d7a2
   name: ghcr.io/madfam-org/selva-admin
   newName: ghcr.io/madfam-org/selva-admin
-- digest: sha256:8ca54cffe54bbe4eb1d6dce6d54c141d8e321adfa9a1d764848428a8c87388fe
+- digest: sha256:56f233f024deb7d3f0ccac49afbeacfb8f21667fea5459082017beb9343c932b
   name: ghcr.io/madfam-org/selva-colyseus
   newName: ghcr.io/madfam-org/selva-colyseus
 - digest: sha256:0356cd5eded8c4aed571dcb6d6ba458f573accbb386b3404d34f63033ae65991
