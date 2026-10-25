@@ -19,6 +19,7 @@ dependencies = [
   "selva-calendar",
   "selva-a2a",
   "madfam-budget-gate",
+  "selva-autoheal",
 ]
 
 [tool.uv.workspace]
@@ -39,6 +40,7 @@ members = [
   "packages/calendar",
   "packages/a2a",
   "packages/budget-gate",
+  "packages/autoheal",
 ]
 
 [tool.uv.sources]
@@ -58,6 +60,7 @@ selva-sdk = { workspace = true }
 selva-calendar = { workspace = true }
 selva-a2a = { workspace = true }
 madfam-budget-gate = { workspace = true }
+selva-autoheal = { workspace = true }
 
 [tool.uv]
 constraint-dependencies = [
@@ -130,6 +133,7 @@ mypy_path = [
     "packages/calendar",
     "packages/a2a",
     "packages/budget-gate/src",
+    "packages/autoheal/src",
     "apps/nexus-api",
     "apps/workers",
 ]

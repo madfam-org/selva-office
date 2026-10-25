@@ -7,6 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Infra self-healing agent, v1 (RFC 0047), off by default** — Alertmanager
+  receiver `POST /api/v1/infra/autoheal/alertmanager` (bearer, not in the
+  OpenAPI schema) queues allowlisted alert groups as incidents (dedup by
+  `groupKey`, cooldown, flap and daily limits, kill switch). A worker job
+  (`jobs/infra_autoheal.py`) diagnoses one incident at a time with read-only
+  Enclii tools and deterministic signatures, then a bounded model loop on the
+  funded Anthropic credentials (`anthropic-ops` first) under per-incident and
+  daily caps; with no funded credential it reports «sin presupuesto» from
+  evidence alone. The report (evidence, remedy, Enclii plan hash) goes to
+  Telegram through angelia Courier. v1 never writes to production. Package:
+  `packages/autoheal` (`selva_autoheal`).
 - **Several Anthropic accounts as distinct providers** — an extra account is
   declared in the org config as `anthropic-<suffix>` with `adapter: anthropic`
   (native Messages adapter) and its own key env var. It registers only when

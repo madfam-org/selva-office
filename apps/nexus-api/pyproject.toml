@@ -23,6 +23,7 @@ dependencies = [
   "selva-workflows",
   "selva-observability",
   "selva-redis-pool",
+  "selva-autoheal",
   "selva-calendar",
   "selva-a2a",
   "structlog>=24.0",

@@ -89,6 +89,17 @@ Phase 2 Tulana import (shipped):
 Staging workers KEDA is pinned to 1 replica (`patch-keda-staging.yaml`) because
 `selva-memory-pvc` is RWO — see `docs/KEDA_QUEUE_SCALING.md`.
 
+## Infra self-healing agent (RFC 0047)
+
+- v1 is diagnose-and-propose: it NEVER writes to production. Toolbox
+  (`packages/autoheal/src/selva_autoheal/tools.py`) = Enclii reads + dry-runs on an
+  explicit allowlist; no secrets, no kubectl.
+- Intake: `apps/nexus-api/nexus_api/routers/infra_autoheal.py` (Alertmanager
+  receiver, off unless `INFRA_AUTOHEAL_ENABLED`). Worker: `apps/workers/selva_workers/jobs/infra_autoheal.py`.
+- Spend: only funded grants (`anthropic-ops` preferred), per-incident and daily caps
+  with no default; none funded ⇒ «sin presupuesto» evidence-only report.
+- Design and owner decisions: `docs/rfcs/0047-infra-self-healing-agents.md`.
+
 ## Inference spend surfaces (provider credit grants)
 
 - Grants: `packages/inference/madfam_inference/grants.py`. A provider listed in

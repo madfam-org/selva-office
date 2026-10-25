@@ -1,0 +1,58 @@
+{
+  "version": "4",
+  "groupKey": "{}/{severity=~\"critical|warning\"}:{alertname=\"CNPGInstanceStatusUnreachable\", namespace=\"project-example01\"}",
+  "truncatedAlerts": 0,
+  "status": "firing",
+  "receiver": "selva-autoheal",
+  "groupLabels": {
+    "alertname": "CNPGInstanceStatusUnreachable",
+    "namespace": "project-example01"
+  },
+  "commonLabels": {
+    "alertname": "CNPGInstanceStatusUnreachable",
+    "namespace": "project-example01",
+    "cluster": "app-db",
+    "severity": "critical"
+  },
+  "commonAnnotations": {
+    "summary": "CNPG cannot read instance status for project-example01/app-db",
+    "description": "The CloudNativePG operator has not reported a healthy phase for the cluster for 10 minutes."
+  },
+  "externalURL": "http://alertmanager.monitoring.svc:9093",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "CNPGInstanceStatusUnreachable",
+        "namespace": "project-example01",
+        "cluster": "app-db",
+        "severity": "critical",
+        "pod": "app-db-1"
+      },
+      "annotations": {
+        "summary": "CNPG cannot read instance status for project-example01/app-db"
+      },
+      "startsAt": "2026-10-24T14:02:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus.monitoring.svc:9090/graph",
+      "fingerprint": "5f0c2a9e1b7d4c33"
+    },
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "CNPGInstanceStatusUnreachable",
+        "namespace": "project-example01",
+        "cluster": "app-db",
+        "severity": "critical",
+        "pod": "app-db-2"
+      },
+      "annotations": {
+        "summary": "CNPG cannot read instance status for project-example01/app-db"
+      },
+      "startsAt": "2026-10-24T14:02:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus.monitoring.svc:9090/graph",
+      "fingerprint": "8a41d6c0e2f95b17"
+    }
+  ]
+}

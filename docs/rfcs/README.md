@@ -12,6 +12,7 @@ and lives as a single markdown file in this directory.
 | [0019](./0019-cross-service-cdc-audit-topic.md) | Cross-service CDC audit topic | Accepted | Phase 4 |
 | [0020](./0020-per-tenant-data-residency.md) | Per-tenant data residency | Accepted | Phase 4 |
 | [0021](./0021-multi-region-failover.md) | Multi-region failover | Accepted | Phase 4 (after 0020) |
+| [0047](./0047-infra-self-healing-agents.md) | Infra self-healing agents (v1 diagnose-and-propose; never writes to production) | Draft | Autonomous operations |
 | — | [phygital-quote-truth-contract.md](./phygital-quote-truth-contract.md) | Accepted | Phase 3 |
 
 North-star sequencing: [../AUTONOMOUS_OPERATIONS_PROGRAM.md](../AUTONOMOUS_OPERATIONS_PROGRAM.md).

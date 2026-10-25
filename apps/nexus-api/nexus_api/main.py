@@ -50,6 +50,7 @@ from .routers import (
     gateway,
     health,
     hitl_confidence,
+    infra_autoheal,
     intelligence,
     invoices,
     maps,
@@ -281,6 +282,8 @@ def create_app() -> FastAPI:
     # discover we're at $0. Closes the visibility gap left by the
     # 2026-04-16 incident.
     app.include_router(providers.router, prefix="/api/v1")
+    # Infra self-healing agent intake (RFC 0047): off unless INFRA_AUTOHEAL_ENABLED.
+    app.include_router(infra_autoheal.router, prefix="/api/v1")
     # HITL Confidence (Sprint 1 observe-only) — decisions ledger + dashboard
     app.include_router(hitl_confidence.router, prefix="/api/v1")
 
