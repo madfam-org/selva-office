@@ -1295,6 +1295,14 @@ async def main() -> None:
     _active_tasks.add(credit_autopilot_task)
     credit_autopilot_task.add_done_callback(_active_tasks.discard)
 
+    # Infra self-healing agent, v1 diagnose-and-propose (RFC 0047). Returns at
+    # once unless INFRA_AUTOHEAL_ENABLED=true; see jobs/infra_autoheal.py.
+    from .jobs.infra_autoheal import periodic_loop as _infra_autoheal_loop
+
+    infra_autoheal_task = asyncio.create_task(_infra_autoheal_loop(_shutdown))
+    _active_tasks.add(infra_autoheal_task)
+    infra_autoheal_task.add_done_callback(_active_tasks.discard)
+
     # Log available inference providers at startup.
     from .inference import validate_providers
 

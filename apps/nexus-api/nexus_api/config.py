@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     # -- Enclii (deployment webhooks) ------------------------------------------
     enclii_webhook_secret: str = ""
 
+    # -- Infra self-healing agent (RFC 0047) -----------------------------------
+    # Bearer secret Alertmanager presents on POST
+    # /api/v1/infra/autoheal/alertmanager. Empty -> the route answers 503.
+    # The route is also off unless INFRA_AUTOHEAL_ENABLED=true.
+    infra_autoheal_webhook_secret: str = ""
+
     # -- Harness communication gateway ---------------------------------------
     # Multi-channel gateway tokens and channel-specific shared secrets.
     telegram_bot_token: str = ""

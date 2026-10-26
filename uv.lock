@@ -12,6 +12,7 @@ members = [
     "madfam-budget-gate",
     "madfam-inference",
     "selva-a2a",
+    "selva-autoheal",
     "selva-calendar",
     "selva-inference-gateway",
     "selva-memory",
@@ -2847,6 +2848,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "selva-autoheal"
+version = "0.1.0"
+source = { editable = "packages/autoheal" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pydantic", specifier = ">=2.10.5" },
+]
+
+[[package]]
 name = "selva-calendar"
 version = "0.1.0"
 source = { editable = "packages/calendar" }
@@ -2938,6 +2954,7 @@ dependencies = [
     { name = "pyjwt", extra = ["crypto"] },
     { name = "redis" },
     { name = "selva-a2a" },
+    { name = "selva-autoheal" },
     { name = "selva-calendar" },
     { name = "selva-observability" },
     { name = "selva-orchestrator" },
@@ -2972,6 +2989,7 @@ requires-dist = [
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.15.1" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "selva-a2a", editable = "packages/a2a" },
+    { name = "selva-autoheal", editable = "packages/autoheal" },
     { name = "selva-calendar", editable = "packages/calendar" },
     { name = "selva-observability", editable = "packages/observability" },
     { name = "selva-orchestrator", editable = "packages/orchestrator" },
@@ -3032,6 +3050,7 @@ dependencies = [
     { name = "madfam-budget-gate" },
     { name = "madfam-inference" },
     { name = "selva-a2a" },
+    { name = "selva-autoheal" },
     { name = "selva-calendar" },
     { name = "selva-memory" },
     { name = "selva-nexus-api" },
@@ -3062,6 +3081,7 @@ requires-dist = [
     { name = "madfam-budget-gate", editable = "packages/budget-gate" },
     { name = "madfam-inference", editable = "packages/inference" },
     { name = "selva-a2a", editable = "packages/a2a" },
+    { name = "selva-autoheal", editable = "packages/autoheal" },
     { name = "selva-calendar", editable = "packages/calendar" },
     { name = "selva-memory", editable = "packages/memory" },
     { name = "selva-nexus-api", editable = "apps/nexus-api" },
@@ -3212,6 +3232,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "redis" },
+    { name = "selva-autoheal" },
     { name = "selva-observability" },
     { name = "selva-permissions" },
     { name = "selva-redis-pool" },
@@ -3237,6 +3258,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.10.5" },
     { name = "pydantic-settings", specifier = ">=2.7.1" },
     { name = "redis", specifier = ">=5.2.1" },
+    { name = "selva-autoheal", editable = "packages/autoheal" },
     { name = "selva-observability", editable = "packages/observability" },
     { name = "selva-permissions", editable = "packages/permissions" },
     { name = "selva-redis-pool", editable = "packages/redis-pool" },

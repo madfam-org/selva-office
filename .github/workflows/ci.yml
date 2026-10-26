@@ -559,6 +559,22 @@ jobs:
             --cov-fail-under=75 \
             -q
 
+      # Infra self-healing agent v1 (RFC 0047): the recorded CNPG incident
+      # replay, budget caps and stop conditions, and the toolbox allowlist
+      # that refuses every write. v1 never writes to production.
+      - name: infra autoheal (v1 read-only containment)
+        run: |
+          uv run pytest \
+            packages/autoheal/tests \
+            apps/nexus-api/tests/test_infra_autoheal_intake.py \
+            apps/workers/tests/test_infra_autoheal_job.py \
+            --cov=selva_autoheal \
+            --cov-report=term-missing \
+            --cov-fail-under=85 \
+            -q
+        env:
+          ENVIRONMENT: development
+
       - name: workers (task lifecycle + interrupt + graphs)
         run: |
           cd apps/workers
