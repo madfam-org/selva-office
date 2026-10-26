@@ -236,6 +236,8 @@ BUILTIN_TOOL_POLICY: dict[str, ToolPolicy] = {
     # -- dev quality ------------------------------------------------------------
     "lint_and_typecheck": _READ,
     "test_coverage_for_diff": _READ,
+    # Pinned impeccable detector: reads workspace UI files, writes nothing.
+    "impeccable_detect": _READ_FILE,
     # -- Dhanam -----------------------------------------------------------------
     # Read-only; ASK today only because "credit" contains "edit"; kept.
     "dhanam_credit_ledger_query": ToolPolicy(_S.READ_ONLY, _C.FILE_WRITE),

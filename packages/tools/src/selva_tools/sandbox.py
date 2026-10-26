@@ -6,7 +6,7 @@ import asyncio
 import logging
 import shlex
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -43,9 +43,18 @@ class ToolSandbox:
         return self._workdir
 
     async def run_command(
-        self, command: str | Sequence[str], *, timeout: float = 30.0, cwd: str | None = None
+        self,
+        command: str | Sequence[str],
+        *,
+        timeout: float = 30.0,
+        cwd: str | None = None,
+        env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
-        """Run a shell command within the sandbox."""
+        """Run a shell command within the sandbox.
+
+        ``env`` replaces the inherited environment entirely when given (the
+        child sees only those variables); ``None`` inherits the worker's.
+        """
         work_cwd = cwd or str(self.workdir) if self.level != SandboxLevel.NONE else cwd
 
         try:
@@ -61,6 +70,7 @@ class ToolSandbox:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=work_cwd,
+                env=dict(env) if env is not None else None,
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             return {

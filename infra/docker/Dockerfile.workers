@@ -12,6 +12,12 @@ COPY packages/ packages/
 
 RUN uv sync --frozen --no-dev
 
+# Pinned impeccable engine: the deterministic UI/UX detector behind the
+# `impeccable_detect` tool. Version + sha512 come from
+# packages/skills/vendor/impeccable.pin.json; a mismatch fails the build.
+COPY scripts/vendor-impeccable.py scripts/vendor-impeccable.py
+RUN python scripts/vendor-impeccable.py fetch-engine --dest /opt/impeccable/bin
+
 # Stage 2: Runtime
 FROM python:3.12-slim AS runtime
 
@@ -28,9 +34,14 @@ COPY packages/ packages/
 # Credit-investment backlog + factory-lines roster read by the autopilot.
 COPY data/credit-investment/ data/credit-investment/
 COPY data/factory-lines/ data/factory-lines/
+COPY --from=builder /opt/impeccable /opt/impeccable
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
+# impeccable runs with telemetry off, always.
+ENV IMPECCABLE_BIN=/opt/impeccable/bin/impeccable \
+    IMPECCABLE_NO_TELEMETRY=1 \
+    DO_NOT_TRACK=1
 
 USER appuser
 

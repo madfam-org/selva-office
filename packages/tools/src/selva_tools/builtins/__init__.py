@@ -74,6 +74,7 @@ from .grafana import get_grafana_tools
 from .hitl_introspection import get_hitl_introspection_tools
 from .http_tools import GraphQLQueryTool, HTTPRequestTool, WebhookSendTool
 from .image_analysis import ImageAnalysisTool
+from .impeccable_detect import ImpeccableDetectTool
 from .inference_budget import get_inference_budget_tools
 from .intelligence import (
     DOFMonitorTool,
@@ -213,6 +214,8 @@ def get_builtin_tools() -> list[BaseTool]:
         # Dev quality (pre-PR audit building blocks)
         LintAndTypeCheckTool(),
         TestCoverageForDiffTool(),
+        # UI/UX: pinned impeccable detector (read-only, telemetry off)
+        ImpeccableDetectTool(),
         # Deployment pre-flight
         DeployPreflightTool(),
         *get_smoke_tools(),

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json as _json
 import logging
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
@@ -13,6 +13,13 @@ from langgraph.types import interrupt
 
 from ..event_emitter import instrumented_node
 from ..tools.bash_tool import BashTool
+from ..ui_audit import (
+    approval_summary,
+    finalize_after_review,
+    route_after_ui_audit,
+    run_ui_audit,
+    skill_context,
+)
 from .base import BaseGraphState, check_permission
 from .base import run_async as _run_async
 
@@ -34,6 +41,11 @@ class CodingState(BaseGraphState, TypedDict, total=False):
     iteration: int
     worktree_path: str | None
     repo_path: str | None
+    # Impeccable UI/UX gate (see selva_workers.ui_audit)
+    ui_ux_task: bool
+    impeccable_command: str
+    impeccable_reference: str
+    ui_audit: dict[str, Any] | None
 
 
 # -- Node functions -----------------------------------------------------------
@@ -77,7 +89,7 @@ def plan(state: CodingState) -> CodingState:
         except Exception:
             logger.debug("Failed to retrieve experience context", exc_info=True)
 
-        skill_ctx = state.get("agent_system_prompt", "")
+        skill_ctx = skill_context(dict(state), "plan")
         repo_path = state.get("repo_path")
         locale = state.get("locale", "en")
         system_prompt = build_plan_prompt(
@@ -197,7 +209,7 @@ def implement(state: CodingState) -> CodingState:
 
         from ..prompts import build_implement_prompt
 
-        skill_ctx = state.get("agent_system_prompt", "")
+        skill_ctx = skill_context(dict(state), "implement")
         locale = state.get("locale", "en")
         system_prompt = build_implement_prompt(
             step=current_step,
@@ -461,7 +473,7 @@ def review(state: CodingState) -> CodingState:
         from ..prompts import build_review_prompt
 
         changes_text = "\n".join(c.get("summary", "") for c in code_changes)
-        skill_ctx = state.get("agent_system_prompt", "")
+        skill_ctx = skill_context(dict(state), "review")
         locale = state.get("locale", "en")
         system_prompt = build_review_prompt(
             changes_text,
@@ -492,11 +504,21 @@ def review(state: CodingState) -> CodingState:
         additional_kwargs={"action_category": "file_read", "review": review_summary},
     )
 
-    return {
+    updated: dict[str, Any] = {
         **state,
         "messages": [*messages, review_message],
         "status": "reviewed",
     }
+    # Impeccable gate: record justified/unjustified findings (block mode may
+    # set status="blocked", which ends the graph before the push gate).
+    updated.update(finalize_after_review(dict(state), review_summary))
+    return cast(CodingState, updated)
+
+
+@instrumented_node
+def ui_audit(state: CodingState) -> CodingState:
+    """Run the pinned impeccable detector on changed UI files (UI/UX tasks)."""
+    return cast(CodingState, run_ui_audit(dict(state)))
 
 
 @instrumented_node
@@ -515,6 +537,9 @@ def push_gate(state: CodingState) -> CodingState:
         "change_count": len(code_changes),
         "test_results": state.get("test_results"),
     }
+    ui_gate = approval_summary(dict(state))
+    if ui_gate is not None:
+        approval_context["ui_audit"] = ui_gate
 
     # This call pauses graph execution and emits an interrupt event.
     decision = interrupt(approval_context)
@@ -655,14 +680,26 @@ def _route_after_test(state: CodingState) -> str:
     """Decide whether to proceed to review or loop back to implement."""
     test_results = state.get("test_results")
     if test_results and test_results.get("passed"):
-        return "review"
+        return "ui_audit"
 
     # Guard against infinite loops.
     if state.get("iteration", 0) >= 3:
         logger.warning("Max implementation iterations reached; proceeding to review anyway.")
-        return "review"
+        return "ui_audit"
 
     return "implement"
+
+
+def _route_after_ui_audit(state: CodingState) -> str:
+    """Detector findings loop back to implement once; otherwise review."""
+    return route_after_ui_audit(dict(state))
+
+
+def _route_after_review(state: CodingState) -> str:
+    """A blocked UI/UX gate ends the graph; otherwise the push gate."""
+    if state.get("status") == "blocked":
+        return END
+    return "push_gate"
 
 
 # -- Graph construction -------------------------------------------------------
@@ -673,15 +710,19 @@ def build_coding_graph() -> StateGraph:
 
     Flow::
 
-        plan -> implement -> test -> (pass?) -> review -> push_gate -> END
-                   ^                   |
-                   +--- (fail) --------+
+        plan -> implement -> test -> (pass?) -> ui_audit -> review -> push_gate -> END
+                   ^                   |            |              |
+                   +--- (fail) --------+            |              +-> END (UI gate
+                   +--- (impeccable findings, once) +                   blocked)
+
+    ``ui_audit`` is a no-op unless the task is UI/UX or changed UI files.
     """
     graph = StateGraph(CodingState)
 
     graph.add_node("plan", plan)
     graph.add_node("implement", implement)
     graph.add_node("test", test)
+    graph.add_node("ui_audit", ui_audit)
     graph.add_node("review", review)
     graph.add_node("push_gate", push_gate)
 
@@ -695,9 +736,18 @@ def build_coding_graph() -> StateGraph:
     graph.add_conditional_edges(
         "test",
         _route_after_test,
+        {"ui_audit": "ui_audit", "implement": "implement"},
+    )
+    graph.add_conditional_edges(
+        "ui_audit",
+        _route_after_ui_audit,
         {"review": "review", "implement": "implement"},
     )
-    graph.add_edge("review", "push_gate")
+    graph.add_conditional_edges(
+        "review",
+        _route_after_review,
+        {"push_gate": "push_gate", END: END},
+    )
     graph.add_edge("push_gate", END)
 
     return graph
