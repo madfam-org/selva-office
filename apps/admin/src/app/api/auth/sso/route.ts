@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { januaBaseUrl, januaClientId, safeRedirectPath } from '@/lib/janua-config';
 
 /**
  * SSO Initiation Route
@@ -6,17 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
  * Generates PKCE parameters, stores state/verifier in httpOnly cookies,
  * and redirects to the Janua authorization endpoint.
  */
-
-const JANUA_BASE_URL =
-  process.env.NEXT_PUBLIC_JANUA_BASE_URL ||
-  process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ||
-  'https://auth.madfam.io';
-
-const CLIENT_ID =
-  process.env.JANUA_CLIENT_ID ||
-  process.env.NEXT_PUBLIC_JANUA_CLIENT_ID ||
-  process.env.NEXT_PUBLIC_JANUA_PUBLISHABLE_KEY ||
-  'selva-office';
 
 function getCallbackUrl(request: NextRequest): string {
   const proto = request.headers.get('x-forwarded-proto') || 'http';
@@ -50,7 +40,7 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const redirect = searchParams.get('redirect') || '/';
+  const redirect = safeRedirectPath(searchParams.get('redirect'));
   const provider = searchParams.get('provider'); // Optional: google, github
 
   const state = generateRandomString(32);
@@ -60,9 +50,9 @@ export async function GET(request: NextRequest) {
   const callbackUrl = getCallbackUrl(request);
 
   // Build the authorization URL
-  const authUrl = new URL('/api/v1/oauth/authorize', JANUA_BASE_URL);
+  const authUrl = new URL('/api/v1/oauth/authorize', januaBaseUrl());
   authUrl.searchParams.set('response_type', 'code');
-  authUrl.searchParams.set('client_id', CLIENT_ID);
+  authUrl.searchParams.set('client_id', januaClientId());
   authUrl.searchParams.set('redirect_uri', callbackUrl);
   authUrl.searchParams.set('scope', 'openid profile email roles');
   authUrl.searchParams.set('state', state);

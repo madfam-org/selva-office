@@ -11,7 +11,6 @@ const DUMMY_JWT_PAYLOAD =
 const DUMMY_JWT = `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.${DUMMY_JWT_PAYLOAD}.`;
 
 const JANUA_ISSUER_URL = process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ?? '';
-const JANUA_CLIENT_ID = process.env.NEXT_PUBLIC_JANUA_CLIENT_ID ?? 'selva-office';
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -23,31 +22,10 @@ function LoginForm() {
     router.push(redirect);
   }, [redirect, router]);
 
-  const handleJanuaLogin = useCallback(async () => {
-    // Generate PKCE code_verifier and code_challenge
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    const codeVerifier = btoa(String.fromCharCode(...array))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
-    const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-    // Store verifier in cookie for the callback route to use
-    document.cookie = `janua-pkce-verifier=${codeVerifier}; path=/; max-age=300; SameSite=Lax; Secure`;
-    document.cookie = `janua-oauth-state=${redirect}; path=/; max-age=300; SameSite=Lax; Secure`;
-
-    const callbackUrl = `${window.location.origin}/api/auth/callback/janua`;
-    const params = new URLSearchParams({
-      client_id: JANUA_CLIENT_ID,
-      redirect_uri: callbackUrl,
-      response_type: 'code',
-      scope: 'openid profile email',
-      state: redirect,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
-    });
-    window.location.href = `${JANUA_ISSUER_URL}/api/v1/oauth/authorize?${params.toString()}`;
+  const handleJanuaLogin = useCallback(() => {
+    // The server route generates state + PKCE, keeps them in an httpOnly
+    // cookie, and redirects to Janua; the callback verifies them.
+    window.location.assign(`/api/auth/login?redirect=${encodeURIComponent(redirect)}`);
   }, [redirect]);
 
   const hasJanua = Boolean(JANUA_ISSUER_URL);
