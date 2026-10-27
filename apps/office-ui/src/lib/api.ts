@@ -1,12 +1,20 @@
 /**
- * Authenticated API client for the Nexus API.
+ * API client for the Nexus API.
  *
- * Reads the `janua-session` cookie and passes it as a Bearer token.
- * All API calls go through this function so auth is handled once.
+ * REST calls go to this app's same-origin proxy (`/api/nexus/<path>`, see
+ * app/api/nexus/[...path]/route.ts), which verifies the session and attaches
+ * the token from the `janua-session` cookie server-side. That cookie is
+ * httpOnly for Janua sign-ins, so the token is never readable by browser JS.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4300';
+import { NEXUS_PROXY_PREFIX } from './nexus-proxy';
 
+/**
+ * The session token, when it is in a JS-readable cookie: the /guest and /demo
+ * flows set it client-side. Returns null for httpOnly Janua sign-in sessions.
+ * Used for the WebSocket and Colyseus handshakes, which cannot go through the
+ * REST proxy.
+ */
 export function getSessionToken(): string | null {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(/(?:^|;\s*)janua-session=([^;]*)/);
@@ -17,17 +25,13 @@ export async function apiFetch(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const token = getSessionToken();
   const headers = new Headers(init?.headers);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
   headers.set('Content-Type', 'application/json');
 
-  return fetch(`${API_BASE_URL}${path}`, {
+  return fetch(`${NEXUS_PROXY_PREFIX}${path}`, {
     ...init,
     headers,
-    credentials: 'include',
+    credentials: 'same-origin',
   });
 }
 

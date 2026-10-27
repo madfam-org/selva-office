@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { ADMIN_SESSION_COOKIE } from '@/lib/janua-config';
+import { ADMIN_ACCESS_TOKEN_COOKIE, ADMIN_SESSION_COOKIE } from '@/lib/janua-config';
 import { checkAdminSession } from '@/lib/verify-session';
 
 const PUBLIC_PATHS = ['/login', '/api/health', '/api/auth'];
@@ -57,6 +57,7 @@ export async function middleware(request: NextRequest) {
   // Drop a session cookie that did not verify so the browser stops sending it.
   if (token) {
     response.cookies.delete(ADMIN_SESSION_COOKIE);
+    response.cookies.delete(ADMIN_ACCESS_TOKEN_COOKIE);
   }
   return response;
 }

@@ -349,12 +349,12 @@ describe('useApprovals', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:4300/api/v1/approvals/req-a/approve',
+      '/api/nexus/api/v1/approvals/req-a/approve',
       expect.objectContaining({
         method: 'POST',
         headers: expect.any(Headers),
         body: JSON.stringify({ feedback: 'looks good' }),
-        credentials: 'include',
+        credentials: 'same-origin',
       }),
     );
   });
@@ -379,12 +379,12 @@ describe('useApprovals', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:4300/api/v1/approvals/req-b/deny',
+      '/api/nexus/api/v1/approvals/req-b/deny',
       expect.objectContaining({
         method: 'POST',
         headers: expect.any(Headers),
         body: JSON.stringify({ feedback: 'not allowed' }),
-        credentials: 'include',
+        credentials: 'same-origin',
       }),
     );
   });

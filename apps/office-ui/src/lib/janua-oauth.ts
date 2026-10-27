@@ -12,7 +12,7 @@
  * Mirrors the admin app's server-side SSO route (apps/admin/src/app/api/auth/sso).
  */
 
-const DEFAULT_JANUA_URL = 'https://auth.madfam.io';
+import { januaClientId, januaIssuer } from './verify-session';
 
 /**
  * `__Host-` prefix: the browser only accepts it with Secure, Path=/ and no
@@ -34,12 +34,10 @@ export interface OAuthFlowState {
 }
 
 export function januaIssuerUrl(): string {
-  return (process.env.NEXT_PUBLIC_JANUA_ISSUER_URL || DEFAULT_JANUA_URL).replace(/\/+$/, '');
+  return januaIssuer().replace(/\/+$/, '');
 }
 
-export function januaClientId(): string {
-  return process.env.NEXT_PUBLIC_JANUA_CLIENT_ID || 'selva-office';
-}
+export { januaClientId };
 
 /** Public origin of this app, honouring the tunnel/proxy forwarding headers. */
 export function getOrigin(request: Request): string {
