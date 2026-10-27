@@ -10,7 +10,8 @@
  * so the savings math stays honest as list prices change.
  *
  * VISIBILITY: admin-only. Route is guarded by a server-side role check
- * (see below). Non-admins hitting /bundles are redirected to /office.
+ * (see ./access.ts). Signed-out visitors go to /login; signed-in users who
+ * are not MADFAM operators get a "not available" view.
  * Rationale: bundle SKUs are still a PROPOSED pricing surface — we want
  * internal operators to review the math before making it a public page.
  *
@@ -22,6 +23,9 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+
+import { SESSION_COOKIE } from '@/lib/verify-session';
+import { bundlesAccess } from './access';
 
 import {
   type BundleLine,
@@ -237,36 +241,28 @@ function EmptyState() {
   );
 }
 
-/**
- * Server-side admin gate. Reads the `janua-session` cookie JWT (already
- * verified by middleware before reaching here — we just decode the
- * payload to read `roles`), and redirects non-admins to /office.
- *
- * Kept inline rather than extracted to a shared util because (a) it's
- * the only admin-gated page in the app right now, and (b) the
- * "extracted util" rewrite lives with the eventual Janua middleware
- * refactor, not here.
- */
-async function requireAdmin(): Promise<void> {
-  const token = (await cookies()).get('janua-session')?.value;
-  if (!token) redirect('/login?next=/bundles');
-
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) throw new Error('malformed JWT');
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-    const claims = JSON.parse(Buffer.from(padded, 'base64').toString('utf-8')) as {
-      roles?: string[];
-    };
-    if (!claims.roles?.includes('admin')) redirect('/office');
-  } catch {
-    redirect('/login?next=/bundles');
-  }
+function BundlesForbidden() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 scanline-overlay">
+      <main className="retro-panel max-w-sm p-8 text-center">
+        <h1 className="mb-3 text-lg text-white">Not available</h1>
+        <p className="mb-6 text-sm text-slate-400">
+          Bundles are visible to MADFAM operators only.
+        </p>
+        <Link href="/office" className="retro-btn px-4 py-2 text-sm">
+          Back to the office
+        </Link>
+      </main>
+    </div>
+  );
 }
 
 export default async function BundlesPage() {
-  await requireAdmin();
+  // Verified here on every render; redirect() stays outside any try/catch so
+  // its control-flow signal is never swallowed.
+  const access = await bundlesAccess((await cookies()).get(SESSION_COOKIE)?.value);
+  if (access === 'unauthenticated') redirect('/login?redirect=/bundles');
+  if (access === 'forbidden') return <BundlesForbidden />;
 
   const catalog = await fetchCatalog();
 

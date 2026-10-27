@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { CRAWL_FILE_PATHS } from '@/lib/seo/crawl';
+import { SESSION_COOKIE, verifySessionToken } from '@/lib/verify-session';
 
 /**
  * URL scheme:
@@ -30,12 +31,16 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+function isApiPath(pathname: string): boolean {
+  return pathname === '/api' || pathname.startsWith('/api/');
+}
+
 function isAppHost(host: string): boolean {
   return host === APP_HOST || host.startsWith(APP_HOST);
 }
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
   const host = request.headers.get('host') || '';
 
   // --- Canonical host (www.selva.town → selva.town) ---
@@ -59,17 +64,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for Janua session cookie or Authorization header
-  const sessionCookie = request.cookies.get('janua-session');
-  const authHeader = request.headers.get('authorization');
-
-  if (!sessionCookie?.value && !authHeader) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+  // Protected paths need a `janua-session` token that verifies against
+  // Janua (signature, issuer, expiry, audience; see lib/verify-session.ts).
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = await verifySessionToken(token);
+  if (session.status === 'ok') {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // The cookie is left in place: /demo keeps its own unsigned demo session
+  // in it, and that page stays usable after a denied request elsewhere.
+  if (isApiPath(pathname)) {
+    return NextResponse.json(
+      { error: 'unauthorized', detail: 'valid session required' },
+      { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
+    );
+  }
+  const loginUrl = new URL('/login', request.url);
+  loginUrl.searchParams.set('redirect', `${pathname}${search}`);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

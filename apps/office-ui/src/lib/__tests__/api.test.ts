@@ -20,21 +20,18 @@ describe('apiFetch', () => {
     }
   });
 
-  it('calls fetch with API base URL + path', async () => {
+  it('calls the same-origin Nexus proxy with the path', async () => {
     await apiFetch('/api/v1/health');
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/health'),
-      expect.any(Object),
-    );
+    expect(fetchMock).toHaveBeenCalledWith('/api/nexus/api/v1/health', expect.any(Object));
   });
 
-  it('includes credentials: include', async () => {
+  it('sends same-origin credentials so the httpOnly session cookie reaches the proxy', async () => {
     await apiFetch('/api/v1/test');
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ credentials: 'include' }),
+      expect.objectContaining({ credentials: 'same-origin' }),
     );
   });
 
@@ -56,14 +53,14 @@ describe('apiFetch', () => {
     expect(callArgs[1].body).toBe(body);
   });
 
-  it('attaches Authorization header when janua-session cookie is set', async () => {
+  it('leaves the Authorization header to the server-side proxy', async () => {
     document.cookie = 'janua-session=my-test-token';
 
     await apiFetch('/api/v1/test');
 
     const callArgs = fetchMock.mock.calls[0];
     const headers = callArgs[1].headers as Headers;
-    expect(headers.get('Authorization')).toBe('Bearer my-test-token');
+    expect(headers.get('Authorization')).toBeNull();
   });
 
   it('does not attach Authorization header when no cookie is set', async () => {

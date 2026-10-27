@@ -25,22 +25,22 @@ function req(url: string, host: string): NextRequest {
 
 describe('crawl files reach the app instead of the login redirect (J1 F8)', () => {
   for (const crawlPath of CRAWL_FILE_PATHS) {
-    it(`passes ${crawlPath} through on selva.town and app.selva.town`, () => {
+    it(`passes ${crawlPath} through on selva.town and app.selva.town`, async () => {
       for (const host of ['selva.town', 'app.selva.town']) {
-        const res = middleware(req(`https://${host}${crawlPath}`, host));
+        const res = await middleware(req(`https://${host}${crawlPath}`, host));
         expect(res.headers.get('location')).toBeNull();
       }
     });
 
-    it(`still 301s www.selva.town${crawlPath} to the apex`, () => {
-      const res = middleware(req(`https://www.selva.town${crawlPath}`, 'www.selva.town'));
+    it(`still 301s www.selva.town${crawlPath} to the apex`, async () => {
+      const res = await middleware(req(`https://www.selva.town${crawlPath}`, 'www.selva.town'));
       expect(res.status).toBe(301);
       expect(new URL(res.headers.get('location')!).host).toBe('selva.town');
     });
   }
 
-  it('keeps app routes behind the login redirect', () => {
-    const res = middleware(req('https://selva.town/office', 'selva.town'));
+  it('keeps app routes behind the login redirect', async () => {
+    const res = await middleware(req('https://selva.town/office', 'selva.town'));
     expect(new URL(res.headers.get('location')!).pathname).toBe('/login');
   });
 });

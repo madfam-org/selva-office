@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
 import { logger } from '@/lib/logger';
 import {
+  ADMIN_ACCESS_TOKEN_COOKIE,
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_ISSUER,
   adminSessionSecret,
@@ -184,6 +185,18 @@ export async function GET(request: NextRequest) {
     sameSite: 'lax',
     maxAge: 86400, // 24 hours
   });
+
+  // With a signed admin session, keep the Janua access token in its own
+  // httpOnly cookie for the server-side Nexus proxy (api/nexus).
+  if (sessionSecret) {
+    response.cookies.set(ADMIN_ACCESS_TOKEN_COOKIE, tokenData.access_token, {
+      path: '/',
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: Math.min(tokenData.expires_in || 3600, 86400),
+    });
+  }
 
   // Clear OAuth flow cookies
   const clearOptions = { path: '/', maxAge: 0 };

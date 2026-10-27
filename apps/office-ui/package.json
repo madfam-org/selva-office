@@ -19,6 +19,7 @@
     "@sentry/nextjs": "10.75.2",
     "@types/simple-peer": "^9.11.9",
     "@xyflow/react": "^12.11.3",
+    "jose": "^5.2.0",
     "js-yaml": "^4.3.2",
     "next": "^15.5.28",
     "phaser": "^3.87.0",

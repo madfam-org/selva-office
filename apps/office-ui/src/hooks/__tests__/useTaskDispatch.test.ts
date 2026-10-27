@@ -220,7 +220,7 @@ describe('useTaskDispatch', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:4300/api/v1/swarms/dispatch',
+      '/api/nexus/api/v1/swarms/dispatch',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
@@ -230,7 +230,7 @@ describe('useTaskDispatch', () => {
           required_skills: ['coding'],
           payload: { key: 'value' },
         }),
-        credentials: 'include',
+        credentials: 'same-origin',
       }),
     );
   });
@@ -257,7 +257,7 @@ describe('useTaskDispatch', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('includes credentials: include', async () => {
+  it('sends same-origin credentials to the proxy', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -283,7 +283,7 @@ describe('useTaskDispatch', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        credentials: 'include',
+        credentials: 'same-origin',
       }),
     );
   });

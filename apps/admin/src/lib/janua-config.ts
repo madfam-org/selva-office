@@ -17,6 +17,13 @@ export const ADMIN_SESSION_ISSUER = 'selva-admin';
 /** Cookie that carries the admin session token. */
 export const ADMIN_SESSION_COOKIE = 'janua-session';
 
+/**
+ * httpOnly cookie with the Janua access token, set by the callback when the
+ * session itself is the HS256 selva-admin JWT (which nexus-api does not
+ * accept). The Nexus proxy (api/nexus) sends this one upstream.
+ */
+export const ADMIN_ACCESS_TOKEN_COOKIE = 'janua-access-token';
+
 /** Base URL used to build the Janua authorize/token/userinfo endpoints. */
 export function januaBaseUrl(): string {
   return (
