@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
 import { logger } from '@/lib/logger';
+import {
+  ADMIN_SESSION_COOKIE,
+  ADMIN_SESSION_ISSUER,
+  adminSessionSecret,
+  januaBaseUrl,
+  januaClientId,
+  safeRedirectPath,
+} from '@/lib/janua-config';
 
 /**
  * OAuth Callback Route
@@ -12,19 +20,6 @@ import { logger } from '@/lib/logger';
  * 4. Creates a signed session cookie (HS256 via jose)
  * 5. Redirects to the original destination
  */
-
-const JANUA_BASE_URL =
-  process.env.NEXT_PUBLIC_JANUA_BASE_URL ||
-  process.env.NEXT_PUBLIC_JANUA_ISSUER_URL ||
-  'https://auth.madfam.io';
-
-const CLIENT_ID =
-  process.env.JANUA_CLIENT_ID ||
-  process.env.NEXT_PUBLIC_JANUA_CLIENT_ID ||
-  process.env.NEXT_PUBLIC_JANUA_PUBLISHABLE_KEY ||
-  'selva-office';
-
-const SESSION_SECRET = process.env.JANUA_SECRET_KEY || process.env.SESSION_SECRET || '';
 
 function getCallbackUrl(request: NextRequest): string {
   const proto = request.headers.get('x-forwarded-proto') || 'http';
@@ -76,7 +71,7 @@ export async function GET(request: NextRequest) {
     return errorRedirect(request, 'Missing PKCE verifier - session may have expired');
   }
 
-  const postRedirect = request.cookies.get('oauth_redirect')?.value || '/';
+  const postRedirect = safeRedirectPath(request.cookies.get('oauth_redirect')?.value);
   const callbackUrl = getCallbackUrl(request);
 
   // Exchange code for tokens
@@ -88,7 +83,7 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    const tokenUrl = new URL('/api/v1/oauth/token', JANUA_BASE_URL);
+    const tokenUrl = new URL('/api/v1/oauth/token', januaBaseUrl());
     const tokenResponse = await fetch(tokenUrl.toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -96,7 +91,7 @@ export async function GET(request: NextRequest) {
         grant_type: 'authorization_code',
         code,
         redirect_uri: callbackUrl,
-        client_id: CLIENT_ID,
+        client_id: januaClientId(),
         code_verifier: codeVerifier,
       }),
     });
@@ -124,7 +119,7 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    const userInfoUrl = new URL('/api/v1/oauth/userinfo', JANUA_BASE_URL);
+    const userInfoUrl = new URL('/api/v1/oauth/userinfo', januaBaseUrl());
     const userInfoResponse = await fetch(userInfoUrl.toString(), {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
@@ -150,18 +145,19 @@ export async function GET(request: NextRequest) {
       : [];
 
   // Create session JWT
+  const sessionSecret = adminSessionSecret();
   let sessionToken: string;
 
-  if (SESSION_SECRET) {
+  if (sessionSecret) {
     // Sign a session JWT with the configured secret
-    const secret = new TextEncoder().encode(SESSION_SECRET);
+    const secret = new TextEncoder().encode(sessionSecret);
     sessionToken = await new SignJWT({
       sub: userInfo.sub,
       email: userInfo.email,
       name: userInfo.name,
       roles,
       org_id: userInfo.org_id,
-      iss: 'selva-admin',
+      iss: ADMIN_SESSION_ISSUER,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
@@ -169,7 +165,7 @@ export async function GET(request: NextRequest) {
       .sign(secret);
   } else {
     // No secret configured: use the access token directly.
-    // The middleware will still decode the payload for role checks.
+    // The middleware verifies it against Janua's JWKS (lib/verify-session.ts).
     // In production, JANUA_SECRET_KEY MUST be set for proper session signing.
     logger.warn('[SSO] No SESSION_SECRET or JANUA_SECRET_KEY configured - using access token as session');
     sessionToken = tokenData.access_token;
@@ -181,7 +177,7 @@ export async function GET(request: NextRequest) {
 
   // Set session cookie
   const isProduction = process.env.NODE_ENV === 'production';
-  response.cookies.set('janua-session', sessionToken, {
+  response.cookies.set(ADMIN_SESSION_COOKIE, sessionToken, {
     path: '/',
     httpOnly: true,
     secure: isProduction,

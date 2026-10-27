@@ -1,59 +1,72 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextResponse, type NextRequest } from 'next/server';
 import { logger } from '@/lib/logger';
+import {
+  CALLBACK_PATH,
+  OAUTH_FLOW_COOKIE,
+  constantTimeEqual,
+  decodeFlowState,
+  flowCookieOptions,
+  getOrigin,
+  januaClientId,
+  januaIssuerUrl,
+  safeRedirectPath,
+} from '@/lib/janua-oauth';
 
-const JANUA_ISSUER = process.env.NEXT_PUBLIC_JANUA_ISSUER_URL || 'https://auth.madfam.io';
-const CLIENT_ID = process.env.NEXT_PUBLIC_JANUA_CLIENT_ID || 'selva-office';
+function clearFlowCookie(response: NextResponse): NextResponse {
+  response.cookies.set(OAUTH_FLOW_COOKIE, '', flowCookieOptions(0));
+  return response;
+}
 
-function getOrigin(request: Request): string {
-  const h = new Headers(request.headers);
-  const host = h.get('x-forwarded-host') || h.get('host') || new URL(request.url).host;
-  const proto = h.get('x-forwarded-proto') || 'https';
-  return `${proto}://${host}`;
+function loginError(origin: string, code: string): NextResponse {
+  return clearFlowCookie(
+    NextResponse.redirect(`${origin}/login?sso_error=${encodeURIComponent(code)}`),
+  );
 }
 
 /**
  * GET /api/auth/callback/janua
  *
  * OAuth 2.0 Authorization Code callback with PKCE (public client).
- * 1. Exchanges the authorization code for an access token
- * 2. Stores the access token as a session cookie
- * 3. Redirects to the office
+ * 1. Requires the `state` parameter to match the value stored by
+ *    /api/auth/login in the httpOnly flow cookie, then deletes the cookie
+ * 2. Exchanges the authorization code using the stored PKCE verifier
+ * 3. Stores the access token as an httpOnly session cookie
+ * 4. Redirects to the stored same-origin post-login path
  */
-export async function GET(request: Request) {
-  const url = new URL(request.url);
+export async function GET(request: NextRequest) {
+  const url = request.nextUrl;
   const origin = getOrigin(request);
   const code = url.searchParams.get('code');
-  const state = url.searchParams.get('state') || '/office';
+  const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
 
   if (error) {
     const desc = url.searchParams.get('error_description') || error;
-    return NextResponse.redirect(`${origin}/login?sso_error=${encodeURIComponent(desc)}`);
+    return loginError(origin, desc);
   }
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?sso_error=${encodeURIComponent('Missing authorization code')}`);
+    return loginError(origin, 'Missing authorization code');
   }
 
-  // Retrieve PKCE verifier from cookie
-  const cookieStore = await cookies();
-  const codeVerifier = cookieStore.get('janua-pkce-verifier')?.value;
+  const flow = decodeFlowState(request.cookies.get(OAUTH_FLOW_COOKIE)?.value);
+  if (!flow || !state || !constantTimeEqual(state, flow.state)) {
+    logger.warn('OAuth callback: state check failed');
+    return loginError(origin, 'invalid_state');
+  }
 
-  // Exchange code for tokens
-  const redirectUri = `${origin}/api/auth/callback/janua`;
   const tokenParams = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
-    redirect_uri: redirectUri,
-    client_id: CLIENT_ID,
-    ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
+    redirect_uri: `${origin}${CALLBACK_PATH}`,
+    client_id: januaClientId(),
+    code_verifier: flow.verifier,
   });
 
   let tokenData: { access_token: string; expires_in?: number };
 
   try {
-    const tokenRes = await fetch(`${JANUA_ISSUER}/api/v1/oauth/token`, {
+    const tokenRes = await fetch(`${januaIssuerUrl()}/api/v1/oauth/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: tokenParams,
@@ -62,23 +75,26 @@ export async function GET(request: Request) {
     if (!tokenRes.ok) {
       const body = await tokenRes.text();
       logger.error('Token exchange failed:', tokenRes.status, body);
-      return NextResponse.redirect(`${origin}/login?sso_error=${encodeURIComponent('Token exchange failed')}`);
+      return loginError(origin, 'Token exchange failed');
     }
 
     tokenData = await tokenRes.json();
   } catch (err) {
     logger.error('Token exchange error:', err);
-    return NextResponse.redirect(`${origin}/login?sso_error=${encodeURIComponent('Auth server unreachable')}`);
+    return loginError(origin, 'Auth server unreachable');
   }
 
-  // Clean up PKCE cookies
-  cookieStore.delete('janua-pkce-verifier');
-  cookieStore.delete('janua-oauth-state');
+  if (!tokenData?.access_token) {
+    return loginError(origin, 'Token exchange failed');
+  }
 
-  // Set the access token as the session cookie
-  // The office-ui middleware checks this cookie for protected routes
+  const response = clearFlowCookie(
+    NextResponse.redirect(`${origin}${safeRedirectPath(flow.redirect)}`),
+  );
+
+  // The office-ui middleware checks this cookie for protected routes.
   const expiresIn = tokenData.expires_in || 86400;
-  cookieStore.set('janua-session', tokenData.access_token, {
+  response.cookies.set('janua-session', tokenData.access_token, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
@@ -86,17 +102,5 @@ export async function GET(request: Request) {
     maxAge: expiresIn,
   });
 
-  // Also set a short-lived non-httpOnly cookie for client-side hydration
-  cookieStore.set('janua-sso-tokens', JSON.stringify({
-    access_token: tokenData.access_token,
-    expires_at: Math.floor(Date.now() / 1000 + expiresIn),
-  }), {
-    httpOnly: false,
-    secure: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60, // 60 seconds — client reads and deletes
-  });
-
-  return NextResponse.redirect(`${origin}${state}`);
+  return response;
 }

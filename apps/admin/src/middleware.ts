@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { ADMIN_SESSION_COOKIE } from '@/lib/janua-config';
+import { checkAdminSession } from '@/lib/verify-session';
 
 const PUBLIC_PATHS = ['/login', '/api/health', '/api/auth'];
 
@@ -8,50 +10,55 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+function isApiPath(pathname: string): boolean {
+  return pathname === '/api' || pathname.startsWith('/api/');
+}
+
+/**
+ * Admin access gate. Every non-public request needs a `janua-session` cookie
+ * whose token verifies (signature, issuer, audience, expiry; see
+ * lib/verify-session.ts) and carries the `admin` role.
+ *
+ *   - missing / invalid / expired token: pages redirect to /login, /api/* get 401
+ *   - valid token without the admin role: 403
+ */
+export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  // Check for Janua session cookie or Authorization header
-  const sessionCookie = request.cookies.get('janua-session');
-  const authHeader = request.headers.get('authorization');
+  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  const session = await checkAdminSession(token);
 
-  if (!sessionCookie?.value && !authHeader) {
+  if (session.status === 'ok') {
+    return NextResponse.next();
+  }
+
+  if (session.status === 'forbidden') {
+    return isApiPath(pathname)
+      ? NextResponse.json({ error: 'forbidden', detail: 'admin role required' }, { status: 403 })
+      : new NextResponse('Forbidden: admin role required', { status: 403 });
+  }
+
+  let response: NextResponse;
+  if (isApiPath(pathname)) {
+    response = NextResponse.json(
+      { error: 'unauthorized', detail: 'valid admin session required' },
+      { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
+    );
+  } else {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    loginUrl.searchParams.set('redirect', `${pathname}${search}`);
+    response = NextResponse.redirect(loginUrl);
   }
 
-  // Verify admin role via custom claim in the session cookie
-  // The Janua session cookie contains a JWT with role claims.
-  // For a production setup, decode and validate the JWT properly.
-  // Here we check for an admin role indicator in the cookie value.
-  const sessionValue = sessionCookie?.value ?? '';
-  try {
-    // Attempt to read the payload section of a JWT (base64url-encoded)
-    const parts = sessionValue.split('.');
-    if (parts.length === 3) {
-      const payload = JSON.parse(
-        Buffer.from(parts[1], 'base64url').toString('utf-8'),
-      );
-      const roles: string[] = payload.roles ?? payload.role ?? [];
-      const roleArray = Array.isArray(roles) ? roles : [roles];
-
-      if (!roleArray.includes('admin')) {
-        return new NextResponse('Forbidden: admin role required', {
-          status: 403,
-        });
-      }
-    }
-  } catch {
-    // If we cannot decode the cookie, still allow the request through
-    // and let the server-side auth layer handle validation.
+  // Drop a session cookie that did not verify so the browser stops sending it.
+  if (token) {
+    response.cookies.delete(ADMIN_SESSION_COOKIE);
   }
-
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
