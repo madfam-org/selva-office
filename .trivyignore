@@ -39,3 +39,14 @@ CVE-2026-104844 exp:2026-12-31
 #     kubernetes > requests-oauthlib, which never run a revocation endpoint or a PKCE grant.
 CVE-2026-49264 exp:2026-12-31
 CVE-2026-49265 exp:2026-12-31
+
+# oauthlib 3.3.1, GHSA-3jp2-3mrg-2vxc (HIGH): DeviceCodeGrant.validate_token_request does not
+# validate `device_code`, so a token endpoint with the RFC 8628 device grant enabled can issue a
+# bearer token to a caller who knows a valid client id. Added 2026-10-27, when the CI gate began
+# reporting it.
+# (1) Same as above: fixed only in oauthlib 4.0.0, and tweepy 4.17.0 (the latest release, the
+#     selva-tools[x] extra) still requires oauthlib<4.
+# (2) Not exposed: this is oauthlib's server-side device-code token endpoint. Nothing in this repo
+#     imports oauthlib or hosts an OAuth2 provider (Janua owns auth); oauthlib is only the client
+#     helper under tweepy and kubernetes > requests-oauthlib.
+CVE-2026-49272 exp:2026-12-31
