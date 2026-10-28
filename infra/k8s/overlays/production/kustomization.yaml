@@ -40,7 +40,7 @@ resources:
 # manual promote. All zero-digests until the first promote runs.
 images:
   - name: ghcr.io/madfam-org/selva-nexus-api
-    digest: sha256:b3af10db30977a4e36c57d6c9294f8940709b4b6ac2b79f637070f4c2dd9c8b4
+    digest: sha256:98dafdc9ff6fea292eb31b977837d2f61667aeb24233eaa23108eba09e35ba52
   - name: ghcr.io/madfam-org/selva-office-ui
     digest: sha256:e9815d19d773b78d03f654b255ae6e4e553b3dbd9d722a9d77652c9090f8236c
   - name: ghcr.io/madfam-org/selva-colyseus
