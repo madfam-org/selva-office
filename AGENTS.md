@@ -802,6 +802,12 @@ make dev-full    # Installs deps, starts Docker, migrates, seeds, boots all serv
   `GET /api/v1/a2a/.well-known/agent.json` — AgentCard discovery.
   `POST /api/v1/a2a/tasks/send` — task exchange.
   `POST /api/v1/a2a/tasks/sendSubscribe` — SSE streaming.
+  `GET /api/v1/a2a/tasks/{id}` — task status.
+  The `tasks/*` routes require a verified bearer token
+  (`auth.require_a2a_caller`) and `A2A_INBOUND_ENABLED=true` (default off,
+  answers 503); the AgentCard stays public. `create_a2a_router` refuses to
+  mount task handlers without `task_dependencies` unless the host passes
+  `allow_anonymous_tasks=True`.
   `A2AClient` for calling external agents. `CallExternalAgentTool`
   registered in tool registry. CSRF-exempt (Bearer auth).
 

@@ -209,6 +209,9 @@ class Settings(BaseSettings):
 
     # -- Security -------------------------------------------------------------
     dev_auth_bypass: bool = False
+    # Inbound A2A task intake (/api/v1/a2a/tasks/*). Off until per-caller
+    # metering lands; when on, callers still need a verified bearer token.
+    a2a_inbound_enabled: bool = False
     rate_limit_per_minute: int = 60
     dispatch_rate_limit: int = 10
     dispatch_rate_window: int = 60
