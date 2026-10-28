@@ -79,6 +79,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   handlers without `task_dependencies` unless the host passes
   `allow_anonymous_tasks=True`, so intake cannot be mounted without a caller
   check by accident.
+- **dnspython 2.9.0; oauthlib device-grant advisory recorded** — dnspython
+  2.8.0 → 2.9.0 (CVE-2026-114605), with a `dnspython>=2.9.0` uv constraint so
+  it cannot regress; it is reached only through `atproto`
+  (`selva-tools[bluesky]`). oauthlib CVE-2026-49272 (GHSA-3jp2-3mrg-2vxc)
+  joins the oauthlib block in `.trivyignore`: it is fixed only in 4.0.0, which
+  tweepy 4.17.0 still caps out, and it lies in the server-side device-code
+  token endpoint, which nothing here hosts. Expires 2026-12-31 like its
+  siblings. (#349)
 - **Staging jobs skip while staging is retired** — staging was retired on
   2026-10-18. `staging-deploy.yml` already runs only while the repository
   variable `STAGING_ENABLED` is `true`; its header and skip notice now say so.

@@ -10,6 +10,11 @@
 
 ## 1. Status quo and the smell
 
+> **Update 2026-10-28 (#348):** the `tasks/*` routes now require a verified bearer token
+> (`auth.require_a2a_caller`) and `A2A_INBOUND_ENABLED=true`, which defaults to off. Tasks still
+> land in the single `"a2a-external"` org described below; the per-caller model this RFC proposes
+> remains the plan.
+
 The A2A protocol bridge in `apps/nexus-api/nexus_api/main.py:228-326`
 funnels every inbound `tasks/send` and `tasks/sendSubscribe` request
 through a single synthetic org:
