@@ -311,6 +311,29 @@ async def require_non_demo(
     return user
 
 
+async def require_a2a_caller(
+    user: dict[str, Any] = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Admit a verified caller to the A2A task routes while intake is enabled.
+
+    The agent card stays public; ``tasks/*`` need a verified bearer token and
+    ``A2A_INBOUND_ENABLED``. Guest and demo accounts cannot submit tasks.
+    """
+    if not settings.a2a_inbound_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="A2A task intake is not enabled",
+        )
+    roles = user.get("roles", [])
+    if "guest" in roles or "demo" in roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account cannot submit A2A tasks",
+        )
+    return user
+
+
 def bearer_token_from_request(request: Request) -> str | None:
     """Extract the raw Bearer token from an Authorization header, if present."""
     authorization = request.headers.get("Authorization", "")

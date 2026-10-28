@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -34,6 +35,8 @@ def create_a2a_router(
     get_skills: SkillsProvider | None = None,
     dispatch_task: TaskDispatcher | None = None,
     get_task_status: TaskStatusGetter | None = None,
+    task_dependencies: Sequence[Any] | None = None,
+    allow_anonymous_tasks: bool = False,
 ) -> APIRouter:
     """Build a FastAPI router implementing the A2A protocol.
 
@@ -51,7 +54,21 @@ def create_a2a_router(
     get_task_status:
         Optional async callable that accepts a task ID and returns a
         ``TaskResponse``.  Required for ``tasks/{task_id}``.
+    task_dependencies:
+        FastAPI dependencies (``Depends(...)``) applied to every ``tasks/*``
+        route, typically one that authenticates the calling agent. The agent
+        card stays public.
+    allow_anonymous_tasks:
+        Must be ``True`` to mount task handlers without ``task_dependencies``.
+        Without either, building the router raises ``ValueError`` so a host
+        cannot expose task intake without a caller check by accident.
     """
+    if (dispatch_task or get_task_status) and not task_dependencies and not allow_anonymous_tasks:
+        raise ValueError(
+            "A2A task handlers need task_dependencies (caller authentication) "
+            "or an explicit allow_anonymous_tasks=True"
+        )
+    task_deps = list(task_dependencies or [])
     router = APIRouter(prefix="/a2a", tags=["A2A Protocol"])
 
     @router.get("/.well-known/agent.json", response_model=AgentCard)
@@ -60,7 +77,7 @@ def create_a2a_router(
         skills = get_skills() if get_skills else []
         return AgentCard(name=agent_name, url=base_url, skills=skills)
 
-    @router.post("/tasks/send", response_model=TaskResponse)
+    @router.post("/tasks/send", response_model=TaskResponse, dependencies=task_deps)
     async def send_task(req: TaskRequest) -> TaskResponse:
         """Accept a task from an external agent (one-shot)."""
         if not dispatch_task:
@@ -72,7 +89,7 @@ def create_a2a_router(
             raise HTTPException(status_code=502, detail="Internal dispatch error") from None
         return TaskResponse(task_id=task_id, status=TaskStatus.PENDING)
 
-    @router.get("/tasks/{task_id}", response_model=TaskResponse)
+    @router.get("/tasks/{task_id}", response_model=TaskResponse, dependencies=task_deps)
     async def get_task(task_id: str) -> TaskResponse:
         """Poll the status of an A2A task."""
         if not get_task_status:
@@ -83,7 +100,7 @@ def create_a2a_router(
             logger.exception("A2A task status lookup failed for %s", task_id)
             raise HTTPException(status_code=502, detail="Internal status lookup error") from None
 
-    @router.post("/tasks/sendSubscribe")
+    @router.post("/tasks/sendSubscribe", dependencies=task_deps)
     async def send_subscribe(req: TaskRequest) -> StreamingResponse:
         """Accept a task and stream status updates via SSE."""
         if not dispatch_task:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from selva_a2a.client import A2AClient
@@ -108,9 +108,47 @@ def _build_test_app(
         get_skills=get_skills,
         dispatch_task=dispatch_task,
         get_task_status=get_task_status,
+        allow_anonymous_tasks=True,
     )
     app.include_router(router)
     return app
+
+
+class TestTaskRouteAuthentication:
+    def test_task_handlers_without_a_caller_check_are_refused(self):
+        async def fake_dispatch(req: TaskRequest) -> str:
+            return "task-001"
+
+        with pytest.raises(ValueError, match="task_dependencies"):
+            create_a2a_router(dispatch_task=fake_dispatch)
+
+    def test_card_only_router_needs_no_caller_check(self):
+        app = FastAPI()
+        app.include_router(create_a2a_router(agent_name="CardOnly"))
+        resp = TestClient(app).get("/a2a/.well-known/agent.json")
+        assert resp.status_code == 200
+
+    def test_task_dependencies_guard_every_task_route_but_not_the_card(self):
+        async def deny() -> None:
+            raise HTTPException(status_code=401, detail="no caller")
+
+        dispatch = AsyncMock(return_value="task-001")
+        status_getter = AsyncMock()
+        app = FastAPI()
+        app.include_router(
+            create_a2a_router(
+                dispatch_task=dispatch,
+                get_task_status=status_getter,
+                task_dependencies=[Depends(deny)],
+            )
+        )
+        client = TestClient(app)
+        assert client.get("/a2a/.well-known/agent.json").status_code == 200
+        assert client.post("/a2a/tasks/send", json={"description": "x"}).status_code == 401
+        assert client.post("/a2a/tasks/sendSubscribe", json={"description": "x"}).status_code == 401
+        assert client.get("/a2a/tasks/task-001").status_code == 401
+        dispatch.assert_not_called()
+        status_getter.assert_not_called()
 
 
 class TestAgentCardEndpoint:

@@ -420,12 +420,17 @@ def create_app() -> FastAPI:
             except Exception:
                 return []
 
+        from fastapi import Depends
+
+        from .auth import require_a2a_caller
+
         a2a_router = create_a2a_router(
             agent_name="Selva Office",
             base_url=settings.public_app_url,
             get_skills=_get_a2a_skills,
             dispatch_task=_dispatch_a2a_task,
             get_task_status=_get_a2a_task_status,
+            task_dependencies=[Depends(require_a2a_caller)],
         )
         app.include_router(a2a_router, prefix="/api/v1")
         logger.info("A2A protocol router mounted at /api/v1/a2a")

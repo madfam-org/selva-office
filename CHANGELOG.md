@@ -71,6 +71,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   sequencing, and leadership scorecard.
 
 ### Fixed
+- **A2A task routes take a verified caller and an intake switch** —
+  `tasks/send`, `tasks/sendSubscribe` and `tasks/{id}` now require a verified
+  bearer token (`auth.require_a2a_caller`; guest and demo accounts refused)
+  and `A2A_INBOUND_ENABLED=true`, which defaults to off and answers 503. The
+  AgentCard stays public. `create_a2a_router` now refuses to mount task
+  handlers without `task_dependencies` unless the host passes
+  `allow_anonymous_tasks=True`, so intake cannot be mounted without a caller
+  check by accident.
 - **Staging jobs skip while staging is retired** — staging was retired on
   2026-10-18. `staging-deploy.yml` already runs only while the repository
   variable `STAGING_ENABLED` is `true`; its header and skip notice now say so.
