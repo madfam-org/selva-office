@@ -437,6 +437,203 @@ def create_app() -> FastAPI:
     except ImportError:
         logger.debug("selva-a2a not installed; A2A protocol disabled")
 
+    # -- A2A v1.0.1-compatible surface (additive, feature-gated OFF) -----------
+    # Served ALONGSIDE the legacy 0.7.0 surface above; never replaces it. Card
+    # at /api/v1/a2a/v1/.well-known/agent-card.json + JSON-RPC 2.0 at
+    # /api/v1/a2a/v1/. Fully inert unless FEATURE_A2A_V1=true. Reuses the same
+    # synthetic "a2a-external" org + tenant_session pattern as the legacy
+    # bridge (RLS Phase 1.5). See docs/A2A_V1_SURFACE.md and RFC 0018.
+    if settings.feature_a2a_v1:
+        try:
+            from selva_a2a.announce import schedule_announcement
+            from selva_a2a.v1 import (
+                A2A_V1_PROTOCOL_VERSION,
+                AgentCapabilities,
+                AgentCardV1,
+                AgentInterface,
+                MessageSendParams,
+                TaskState,
+                create_a2a_v1_router,
+                selva_status_to_task_state,
+            )
+
+            # Public base for interface + card URLs. The versioned JSON-RPC
+            # endpoint lives under the same /api/v1/a2a/v1 mount point.
+            _v1_base = settings.public_app_url.rstrip("/")
+            _v1_prefix = "/a2a/v1"
+            _v1_rpc_url = f"{_v1_base}/api/v1{_v1_prefix}/"
+            _v1_card_url = f"{_v1_base}/api/v1{_v1_prefix}/.well-known/agent-card.json"
+
+            def _build_v1_card() -> AgentCardV1:
+                """Assemble the v1.0.1 card with ordered interfaces + skills."""
+                skills: list[dict] = []
+                try:
+                    from selva_skills import get_skill_registry
+
+                    skills = [
+                        {"id": s.name, "name": s.name, "description": s.description}
+                        for s in get_skill_registry().list_skills()
+                    ]
+                except Exception:
+                    skills = []
+                return AgentCardV1(
+                    protocol_version=A2A_V1_PROTOCOL_VERSION,
+                    name="Selva Office",
+                    supported_interfaces=[
+                        # ORDER MATTERS: JSON-RPC first (the observer takes the
+                        # first binding it understands).
+                        AgentInterface(url=_v1_rpc_url, protocol_binding="JSONRPC"),
+                    ],
+                    capabilities=AgentCapabilities(streaming=settings.a2a_v1_streaming),
+                    skills=skills,
+                )
+
+            async def _v1_create_task(params: MessageSendParams) -> str:
+                """Create a SwarmTask from an inbound v1 message, then announce.
+
+                Reuses the exact RLS Phase 1.5 pattern from the legacy
+                ``_dispatch_a2a_task``: synthetic ``a2a-external`` org via
+                ``tenant_session`` + Redis enqueue with a ``pending`` fallback.
+                """
+                import json as _json
+
+                from .database import tenant_session
+                from .models import SwarmTask
+
+                # Data parts (if any) become the task payload; text becomes the
+                # description. Keep the raw parts so nothing is silently dropped.
+                payload: dict = {}
+                if params.data_parts:
+                    payload["a2a_data"] = params.data_parts
+                if params.file_parts:
+                    payload["a2a_files"] = params.file_parts
+                if params.tenant:
+                    payload["a2a_tenant"] = params.tenant
+
+                async with tenant_session(org_id="a2a-external") as db:
+                    task = SwarmTask(
+                        description=params.text or "(no text)",
+                        graph_type="sequential",
+                        payload=payload,
+                        status="queued",
+                        org_id="a2a-external",
+                    )
+                    db.add(task)
+                    await db.flush()
+                    await db.refresh(task)
+                    task_id = str(task.id)
+
+                    try:
+                        pool = get_redis_pool(url=settings.redis_url)
+                        task_msg = _json.dumps(
+                            {
+                                "task_id": task_id,
+                                "graph_type": task.graph_type,
+                                "description": task.description,
+                                "assigned_agent_ids": [],
+                                "required_skills": [],
+                                "payload": task.payload or {},
+                            }
+                        )
+                        await pool.execute_with_retry(
+                            "xadd", "selva:task-stream", {"data": task_msg}
+                        )
+                    except Exception:
+                        task.status = "pending"
+                        await db.flush()
+
+                    await db.commit()
+
+                # Fire-and-forget announcement to the observability intake (no-op
+                # when A2A_OBSERVER_INTAKE_URL is unset). NEVER blocks/fails the
+                # task — schedule_announcement returns None when disabled and the
+                # underlying announce_task swallows all errors.
+                schedule_announcement(
+                    task_id=task_id,
+                    state=str(TaskState.SUBMITTED),
+                    agent_card_url=_v1_card_url,
+                    tenant=params.tenant,
+                )
+                return task_id
+
+            async def _v1_get_task(
+                task_id: str,
+            ) -> tuple[TaskState, str | None] | None:
+                """Look up a task's v1 state, or None when it does not exist."""
+                import uuid as _uuid
+
+                from sqlalchemy import select
+
+                from .database import tenant_session
+                from .models import SwarmTask
+
+                try:
+                    uid = _uuid.UUID(task_id)
+                except ValueError:
+                    return None
+
+                async with tenant_session(org_id="a2a-external") as db:
+                    result = await db.execute(select(SwarmTask).where(SwarmTask.id == uid))
+                    task = result.scalar_one_or_none()
+
+                if task is None:
+                    return None
+                return selva_status_to_task_state(task.status), task.error_message
+
+            async def _v1_cancel_task(
+                task_id: str,
+            ) -> tuple[TaskState, str | None] | None:
+                """Request cancellation; returns the resulting v1 state or None.
+
+                Cancellation is a real, reachable Selva status. Only
+                non-terminal tasks are transitioned to ``cancelled``; a task
+                already in a terminal state is returned unchanged (GROUNDED:
+                duplicate terminal snapshots are a no-op).
+                """
+                import uuid as _uuid
+
+                from sqlalchemy import select
+
+                from .database import tenant_session
+                from .models import SwarmTask
+
+                try:
+                    uid = _uuid.UUID(task_id)
+                except ValueError:
+                    return None
+
+                _terminal = {"completed", "failed", "cancelled"}
+                async with tenant_session(org_id="a2a-external") as db:
+                    result = await db.execute(select(SwarmTask).where(SwarmTask.id == uid))
+                    task = result.scalar_one_or_none()
+                    if task is None:
+                        return None
+                    if task.status not in _terminal:
+                        task.status = "cancelled"
+                        await db.flush()
+                    await db.commit()
+                    final_status = task.status
+
+                return selva_status_to_task_state(final_status), None
+
+            a2a_v1_router = create_a2a_v1_router(
+                prefix=_v1_prefix,
+                get_card=_build_v1_card,
+                create_task=_v1_create_task,
+                get_task=_v1_get_task,
+                cancel_task=_v1_cancel_task,
+                streaming=settings.a2a_v1_streaming,
+            )
+            app.include_router(a2a_v1_router, prefix="/api/v1")
+            logger.info(
+                "A2A v1.0.1 surface mounted at /api/v1/a2a/v1 (streaming=%s)",
+                settings.a2a_v1_streaming,
+            )
+        except ImportError:
+            logger.debug("selva-a2a v1 module unavailable; A2A v1 surface disabled")
+    else:
+        logger.debug("A2A v1.0.1 surface disabled (FEATURE_A2A_V1 not set)")
+
     return app
 
 
