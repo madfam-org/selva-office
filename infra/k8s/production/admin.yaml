@@ -80,6 +80,13 @@ spec:
           env:
             - name: ENVIRONMENT
               value: production
+            # Janua has no `selva-office` client; the admin's live client is
+            # still the pre-rename `autoswarm-office` (see
+            # infra/janua/selva-office.oauth-client.yaml). Admin only:
+            # nexus-api keeps selva-config's JANUA_CLIENT_ID=selva-office as
+            # the token audience it verifies.
+            - name: JANUA_CLIENT_ID
+              value: autoswarm-office
           volumeMounts:
             - name: tmp
               mountPath: /tmp

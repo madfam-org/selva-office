@@ -35,3 +35,7 @@ spec:
               value: https://auth.madfam.io
             - name: NEXT_PUBLIC_JANUA_CLIENT_ID
               value: selva-office-staging
+            # Overrides the production admin's JANUA_CLIENT_ID pin, which the
+            # admin reads before NEXT_PUBLIC_JANUA_CLIENT_ID.
+            - name: JANUA_CLIENT_ID
+              value: selva-office-staging
