@@ -50,3 +50,14 @@ CVE-2026-49265 exp:2026-12-31
 #     imports oauthlib or hosts an OAuth2 provider (Janua owns auth); oauthlib is only the client
 #     helper under tweepy and kubernetes > requests-oauthlib.
 CVE-2026-49272 exp:2026-12-31
+
+# oauthlib 3.3.1, GHSA-7984-qgvg-3j9c (HIGH): in the OAuth2 token endpoint's client_credentials and
+# password grants, oauthlib authenticates one confidential client but validates grant type and scopes
+# against an attacker-supplied `client_id` from the request body. Added 2026-11-04 with the owner's
+# explicit OK, when the CI gate began reporting it (advisory published 2026-10-30).
+# (1) Same as above: fixed only in oauthlib 4.0.0, and tweepy 4.17.0 (still the latest release, the
+#     selva-tools[x] extra) requires oauthlib>=3.2.0,<4.
+# (2) Not exposed: the flaw is in oauthlib's server-side token endpoint (an OAuth2 provider with a
+#     RequestValidator). Nothing in this repo imports oauthlib or hosts an OAuth2 provider (Janua owns
+#     auth); oauthlib is only the client helper under tweepy and kubernetes > requests-oauthlib.
+CVE-2026-118669 exp:2026-12-31
