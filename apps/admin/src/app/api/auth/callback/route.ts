@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SignJWT } from 'jose';
+import { SignJWT, decodeJwt, type JWTPayload } from 'jose';
 import { logger } from '@/lib/logger';
+import { adminRolesFromJanuaClaims } from '@/lib/verify-session';
 import {
   ADMIN_ACCESS_TOKEN_COOKIE,
   ADMIN_SESSION_COOKIE,
@@ -17,7 +18,7 @@ import {
  * Handles the authorization code callback from Janua:
  * 1. Validates state parameter against stored cookie
  * 2. Exchanges authorization code for tokens via PKCE
- * 3. Fetches user info from Janua
+ * 3. Fetches user info from Janua; admin role and org from the access token
  * 4. Creates a signed session cookie (HS256 via jose)
  * 5. Redirects to the original destination
  */
@@ -114,9 +115,6 @@ export async function GET(request: NextRequest) {
     sub: string;
     email?: string;
     name?: string;
-    roles?: string[];
-    role?: string | string[];
-    org_id?: string;
   };
 
   try {
@@ -137,13 +135,23 @@ export async function GET(request: NextRequest) {
     return errorRedirect(request, 'Failed to retrieve user information');
   }
 
-  // Extract roles (support both array and single-value formats)
-  const rolesRaw = userInfo.roles || userInfo.role || [];
-  const roles: string[] = Array.isArray(rolesRaw)
-    ? rolesRaw.filter((r): r is string => typeof r === 'string')
-    : typeof rolesRaw === 'string'
-      ? rolesRaw.split(',').map((r) => r.trim())
-      : [];
+  // Roles and org come from the access token: Janua's userinfo carries
+  // neither. The token arrived straight from Janua's token endpoint and
+  // userinfo has just accepted it, so its claims are read without a second
+  // signature check; `sub` must still agree with userinfo.
+  let tokenClaims: JWTPayload;
+  try {
+    tokenClaims = decodeJwt(tokenData.access_token);
+  } catch (err) {
+    logger.error('[SSO] Access token is not a JWT:', err);
+    return errorRedirect(request, 'Failed to retrieve user information');
+  }
+  if (tokenClaims.sub !== userInfo.sub) {
+    logger.error('[SSO] Access token subject does not match userinfo');
+    return errorRedirect(request, 'Failed to retrieve user information');
+  }
+  const roles = adminRolesFromJanuaClaims(tokenClaims);
+  const orgId = typeof tokenClaims.org_id === 'string' ? tokenClaims.org_id : undefined;
 
   // Create session JWT
   const sessionSecret = adminSessionSecret();
@@ -157,7 +165,7 @@ export async function GET(request: NextRequest) {
       email: userInfo.email,
       name: userInfo.name,
       roles,
-      org_id: userInfo.org_id,
+      org_id: orgId,
       iss: ADMIN_SESSION_ISSUER,
     })
       .setProtectedHeader({ alg: 'HS256' })

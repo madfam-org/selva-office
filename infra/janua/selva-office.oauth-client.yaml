@@ -8,6 +8,9 @@
 # Layer 5 registers a `selva-office` client.
 # office-ui does not use this client: its image is built with the
 # JANUA_CLIENT_ID repo secret (jnc_autoswarm_admin_prod).
+# `audience` is what nexus-api verifies (aud must contain selva-office). On
+# 2026-11-03 Janua held it empty, so tokens carried the global JWT_AUDIENCE and
+# the admin's Nexus proxy calls were refused.
 apiVersion: janua.dev/v1
 kind: OAuthClient
 metadata:
@@ -19,11 +22,11 @@ spec:
     - https://selva.town/api/auth/callback/janua
     - https://admin.selva.town/api/auth/callback
     - http://localhost:4301/api/auth/callback/janua
+  audience: selva-office
   allowed_scopes:
     - openid
     - profile
     - email
-    - roles
   grant_types:
     - authorization_code
   is_confidential: false

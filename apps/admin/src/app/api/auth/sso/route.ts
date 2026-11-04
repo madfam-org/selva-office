@@ -54,7 +54,9 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('client_id', januaClientId());
   authUrl.searchParams.set('redirect_uri', callbackUrl);
-  authUrl.searchParams.set('scope', 'openid profile email roles');
+  // No `roles` scope: Janua does not grant it to this client, and the
+  // callback reads roles from the access token's claims instead.
+  authUrl.searchParams.set('scope', 'openid profile email');
   authUrl.searchParams.set('state', state);
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
