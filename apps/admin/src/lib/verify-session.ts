@@ -29,6 +29,9 @@ import {
 
 export const ADMIN_ROLE = 'admin';
 
+/** Janua application role that opens the console for a non-platform admin. */
+export const SELVA_ADMIN_APP_ROLE = 'selva:admin';
+
 /** Janua signs access tokens with RS256 (see nexus-api `_JANUA_ALGORITHMS`). */
 const JANUA_ALGORITHMS = ['RS256'];
 const SESSION_ALGORITHMS = ['HS256'];
@@ -65,6 +68,22 @@ export function extractRoles(claims: JWTPayload): string[] {
       .split(',')
       .map((r) => r.trim())
       .filter(Boolean);
+  }
+  return [];
+}
+
+/**
+ * Admin-session roles for a Janua access token's claims.
+ *
+ * Janua's `/userinfo` returns no roles, and the token's legacy `roles` claim
+ * mixes in organization roles (`owner` / `admin` / `member`) from every org
+ * the user belongs to, so a bare `admin` there must not open the console.
+ * Only a Janua platform admin (`is_admin: true`) or an explicit
+ * `selva:admin` application role does.
+ */
+export function adminRolesFromJanuaClaims(claims: JWTPayload): string[] {
+  if (claims.is_admin === true || extractRoles(claims).includes(SELVA_ADMIN_APP_ROLE)) {
+    return [ADMIN_ROLE];
   }
   return [];
 }

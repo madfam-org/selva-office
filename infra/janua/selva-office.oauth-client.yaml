@@ -1,6 +1,16 @@
-# Canonical Janua OAuth redirect URIs for Selva Office (selva-office client).
+# Canonical Janua OAuth redirect URIs for Selva Office (admin console client).
 # Apply with Janua admin API or janua CLI when redirect URIs drift.
-# Live production client_id: selva-office (legacy string id).
+# Live production client_id: autoswarm-office (legacy string id, shown in Janua
+# as "Selva Office"). The 2026-06-02 identity rename (e4f8126) changed this file
+# and selva-config to `selva-office` but never renamed the Janua client, so
+# Janua answers `invalid_client: Unknown client_id` for `selva-office`. The admin
+# Deployment pins JANUA_CLIENT_ID to the live id until internal-devops RFC 0010
+# Layer 5 registers a `selva-office` client.
+# office-ui does not use this client: its image is built with the
+# JANUA_CLIENT_ID repo secret (jnc_autoswarm_admin_prod).
+# `audience` is what nexus-api verifies (aud must contain selva-office). On
+# 2026-11-03 Janua held it empty, so tokens carried the global JWT_AUDIENCE and
+# the admin's Nexus proxy calls were refused.
 apiVersion: janua.dev/v1
 kind: OAuthClient
 metadata:
@@ -12,11 +22,11 @@ spec:
     - https://selva.town/api/auth/callback/janua
     - https://admin.selva.town/api/auth/callback
     - http://localhost:4301/api/auth/callback/janua
+  audience: selva-office
   allowed_scopes:
     - openid
     - profile
     - email
-    - roles
   grant_types:
     - authorization_code
   is_confidential: false
