@@ -53,7 +53,7 @@ spec:
               # single-digit millicores. Both nodes are ~99% CPU-requested, so
               # a 50m ask cannot schedule; limits (500m) are what matter.
               cpu: 10m
-              memory: 384Mi
+              memory: 160Mi
             limits:
               cpu: 500m
               memory: 768Mi
