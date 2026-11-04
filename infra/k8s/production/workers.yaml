@@ -33,8 +33,8 @@ spec:
           image: ghcr.io/madfam-org/selva-workers@sha256:7536d8c7fefad9b815381c8dc0aca57df4e609eb10ae05ad69eda4eb9600bb5b
           resources:
             requests:
-              cpu: 100m
-              memory: 512Mi
+              cpu: 25m
+              memory: 208Mi
             limits:
               cpu: 1000m
               memory: 1Gi
