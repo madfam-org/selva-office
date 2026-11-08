@@ -133,7 +133,8 @@ export interface MetricsDashboard {
     total_tokens: number;
     call_count: number;
   }>;
-  error_rate: number;
+  /** Null when no task events fell in the period. */
+  error_rate: number | null;
   trends: Record<string, TrendPoint[]>;
   recent_errors: Array<{
     id: string;

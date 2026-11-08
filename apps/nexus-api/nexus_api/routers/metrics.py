@@ -39,7 +39,9 @@ class MetricsDashboardResponse(BaseModel):
     task_throughput: dict[str, Any]
     approval_latency: dict[str, Any]
     cost_breakdown: list[dict[str, Any]]
-    error_rate: float
+    # None when no task events fell in the period: a rate over nothing is
+    # unknown, not 0%.
+    error_rate: float | None
     trends: dict[str, list[TrendPoint]]
     recent_errors: list[dict[str, Any]]
 
@@ -135,7 +137,11 @@ async def get_metrics_dashboard(
         "pending_count": pending_count,
     }
 
-    # -- Cost breakdown -------------------------------------------------------
+    # -- Token usage by provider ----------------------------------------------
+    # Token volume only, never spend: the ledger cannot yet tell usage paid by
+    # a provider credit grant from cash-paid usage, so no USD figure is
+    # returned here. Rows without a provider (task dispatch debits, counted in
+    # compute-budget units rather than tokens) are left out.
     cost_result = await db.execute(
         select(
             ComputeTokenLedger.provider,
@@ -144,6 +150,7 @@ async def get_metrics_dashboard(
             func.count(ComputeTokenLedger.id),
         )
         .where(ComputeTokenLedger.created_at >= since)
+        .where(ComputeTokenLedger.provider.isnot(None))
         .group_by(ComputeTokenLedger.provider, ComputeTokenLedger.model)
         .order_by(func.sum(ComputeTokenLedger.amount).desc())
     )
@@ -161,7 +168,7 @@ async def get_metrics_dashboard(
     total_events_result = await db.execute(
         select(func.count(TaskEvent.id)).where(TaskEvent.created_at >= since)
     )
-    total_events = total_events_result.scalar_one() or 1
+    total_events = total_events_result.scalar_one() or 0
 
     error_events_result = await db.execute(
         select(func.count(TaskEvent.id))
@@ -169,7 +176,7 @@ async def get_metrics_dashboard(
         .where(TaskEvent.event_type.in_(["task.failed", "task.timeout", "node.error"]))
     )
     error_events = error_events_result.scalar_one() or 0
-    error_rate = (error_events / max(total_events, 1)) * 100
+    error_rate = (error_events / total_events) * 100 if total_events else None
 
     # -- Trend sparklines (hourly buckets) ------------------------------------
     trends: dict[str, list[TrendPoint]] = {"tasks": [], "errors": []}
@@ -233,7 +240,7 @@ async def get_metrics_dashboard(
         task_throughput=task_throughput,
         approval_latency=approval_latency,
         cost_breakdown=cost_breakdown,
-        error_rate=round(error_rate, 2),
+        error_rate=round(error_rate, 2) if error_rate is not None else None,
         trends=trends,
         recent_errors=recent_errors,
     )
