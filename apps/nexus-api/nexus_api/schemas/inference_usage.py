@@ -33,7 +33,8 @@ class UsagePeriod(BaseModel):
 
     month: str = Field(..., description="The civil month asked for, YYYY-MM.")
     timezone: Literal["America/Mexico_City"] = Field(
-        default="America/Mexico_City", description="Month bounds follow the cost ledger's period cut-off."
+        default="America/Mexico_City",
+        description="Month bounds follow the cost ledger's period cut-off.",
     )
     start: datetime = Field(..., description="Inclusive start, RFC 3339 with offset.")
     end: datetime = Field(..., description="Exclusive end, RFC 3339 with offset.")
@@ -84,8 +85,12 @@ class TokenTotals(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     total: int | None = Field(..., description="Input + output tokens as metered; null = unknown.")
-    input: None = Field(default=None, description="Not recorded by the ledger (total only): unknown.")
-    output: None = Field(default=None, description="Not recorded by the ledger (total only): unknown.")
+    input: None = Field(
+        default=None, description="Not recorded by the ledger (total only): unknown."
+    )
+    output: None = Field(
+        default=None, description="Not recorded by the ledger (total only): unknown."
+    )
 
 
 class UsageLine(BaseModel):
