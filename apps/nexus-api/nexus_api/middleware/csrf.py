@@ -19,6 +19,7 @@ _EXEMPT_PREFIXES = (
     "/api/v1/a2a/",
     "/api/v1/stripe/",  # Stripe webhook — signed via stripe-signature header
     "/v1/",
+    "/mcp",  # bearer-only machine endpoint; answers 404 itself while switched off
 )
 
 _STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

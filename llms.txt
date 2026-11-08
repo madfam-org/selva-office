@@ -42,6 +42,12 @@ Compact LLM context index for this repository.
 - Security floors: root `pyproject.toml` `[tool.uv] constraint-dependencies` (pyjwt 2.15.1, urllib3 2.8.0, …) and pnpm overrides (fast-uri, brace-expansion). SQLAlchemy has no `<2.1` bound yet. Open hygiene items: `docs/PHASE_0_REMEDIATION_PLAN.md` → «Dependency and test hygiene». CI runners are pinned to `ubuntu-24.04`.
 - Contract links: `README.md` → "Related repositories / contracts".
 
+## Native COGS MCP (RFC 0051)
+
+- `POST /mcp` on `api.selva.town` (nexus-api), off unless `SELVA_MCP_ENABLED`. Janua machine tokens, scope `selva-cogs:read`.
+- Tool `inference_usage(org, month)` = `GET /api/v1/billing/inference-usage`: tokens by model and caller class, `list_price_estimate_usd` (an estimate, not cash or COGS), funding unattributed.
+- Contract and drift guard: `apps/nexus-api/nexus_api/mcp/coverage.py`. Details: `AGENTS.md` → «Native COGS MCP».
+
 ## Production operations
 
 Routine production operations are Enclii-first. Use Enclii web, API, or CLI
