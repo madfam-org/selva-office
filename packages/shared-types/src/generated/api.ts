@@ -6090,7 +6090,7 @@ export interface components {
                 [key: string]: unknown;
             }[];
             /** Error Rate */
-            error_rate: number;
+            error_rate: number | null;
             /** Trends */
             trends: {
                 [key: string]: components["schemas"]["TrendPoint"][];
