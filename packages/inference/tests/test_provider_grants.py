@@ -70,13 +70,18 @@ async def redis() -> AsyncIterator[fakeredis.aioredis.FakeRedis]:
     await client.aclose()
 
 
+async def _empty_ledger(_grant: g.ProviderGrant) -> float:
+    """A ledger with no spend yet: the meter must be seeded explicitly (fail-closed)."""
+    return 0.0
+
+
 def _guard(
     redis: Any,
     *grants: dict[str, Any],
     required: tuple[str, ...] = ("anthropic",),
     clock: _Clock | None = None,
     state: g.GrantConfigState | None = None,
-    seeder: g.LedgerSeeder | None = None,
+    seeder: g.LedgerSeeder | None = _empty_ledger,
     ttl: int = 150,
 ) -> g.GrantGuard:
     st = state if state is not None else _state(*grants)
@@ -211,7 +216,7 @@ class TestGuard:
         guard = g.GrantGuard(
             config_loader=lambda: _state(_grant_dict(allowed_orgs=["madfam"])),
             required=("anthropic",),
-            meter=g.GrantMeter(redis),
+            meter=g.GrantMeter(redis, seeder=_empty_ledger),
             platform_orgs={"platform-uuid"},
             now_fn=_Clock(),
         )
@@ -291,7 +296,7 @@ class TestPacer:
         grant = g.ProviderGrant.model_validate(
             _grant_dict(amount_usd=10.0, safety_margin_usd=0.0)
         )
-        meter = g.GrantMeter(redis)
+        meter = g.GrantMeter(redis, seeder=_empty_ledger)
         results = await asyncio.gather(*(meter.try_reserve(grant, 1.0, NOW) for _ in range(50)))
         assert sum(1 for ok, _ in results if ok) == 10
         snap = await meter.snapshot(grant, NOW)
@@ -311,7 +316,7 @@ class TestPacer:
 
     async def test_settle_and_release(self, redis: Any) -> None:
         grant = g.ProviderGrant.model_validate(_grant_dict())
-        meter = g.GrantMeter(redis)
+        meter = g.GrantMeter(redis, seeder=_empty_ledger)
         ok, rid = await meter.try_reserve(grant, 2.0, NOW)
         assert ok and rid
         await meter.settle(grant, rid, 0.5, NOW)
@@ -325,7 +330,7 @@ class TestPacer:
 
     async def test_reservations_expire_on_their_own(self, redis: Any) -> None:
         grant = g.ProviderGrant.model_validate(_grant_dict(amount_usd=10.0, safety_margin_usd=0))
-        meter = g.GrantMeter(redis, reservation_ttl_seconds=30)
+        meter = g.GrantMeter(redis, seeder=_empty_ledger, reservation_ttl_seconds=30)
         assert (await meter.try_reserve(grant, 10.0, NOW))[0]
         assert not (await meter.try_reserve(grant, 1.0, NOW + timedelta(seconds=10)))[0]
         # The holder died: after the TTL the budget is free again.
@@ -341,13 +346,58 @@ class TestPacer:
         assert not (await meter.try_reserve(grant, 1.0, NOW))[0]
         assert (await meter.snapshot(grant, NOW)).spent_usd == pytest.approx(9.5)
 
-    async def test_seed_failure_seeds_zero_and_never_overwrites(self, redis: Any) -> None:
-        grant = g.ProviderGrant.model_validate(_grant_dict())
+    async def test_seed_failure_fails_closed_and_writes_nothing(self, redis: Any) -> None:
+        grant = g.ProviderGrant.model_validate(_grant_dict(amount_usd=10.0, safety_margin_usd=0))
+        calls = 0
 
         async def broken(_grant: g.ProviderGrant) -> float:
+            nonlocal calls
+            calls += 1
             raise OSError("ledger unreachable")
 
         meter = g.GrantMeter(redis, seeder=broken)
+        with pytest.raises(g.GrantMeterUnseededError):
+            await meter.try_reserve(grant, 1.0, NOW)
+        assert await redis.exists(g._keys(grant.id)[0]) == 0  # never a $0 counter
+        assert (await meter.snapshot(grant, NOW)).spent_usd is None  # status "unknown"
+        # Within the retry window the ledger is not queried again.
+        with pytest.raises(g.GrantMeterUnseededError):
+            await meter.try_reserve(grant, 1.0, NOW)
+        assert calls == 1
+        # A new seeder (or the end of the window) retries; the real spend is used.
+
+        async def recovered(_grant: g.ProviderGrant) -> float:
+            return 9.5
+
+        meter.set_seeder(recovered)
+        assert not (await meter.try_reserve(grant, 1.0, NOW))[0]  # 9.5 + 1 > 10
+        assert (await meter.snapshot(grant, NOW)).spent_usd == pytest.approx(9.5)
+
+    @pytest.mark.parametrize(
+        "outcome", [TimeoutError(), ValueError("bad row"), float("nan"), float("inf")]
+    )
+    async def test_seed_timeout_or_garbage_fails_closed(self, redis: Any, outcome: Any) -> None:
+        grant = g.ProviderGrant.model_validate(_grant_dict())
+
+        async def seeder(_grant: g.ProviderGrant) -> float:
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return float(outcome)
+
+        meter = g.GrantMeter(redis, seeder=seeder)
+        assert await meter.ensure_seeded(grant, NOW) is False
+        assert await redis.exists(g._keys(grant.id)[0]) == 0
+
+    async def test_no_seeder_fails_closed(self, redis: Any) -> None:
+        grant = g.ProviderGrant.model_validate(_grant_dict())
+        meter = g.GrantMeter(redis)  # e.g. workers: no ledger in this process
+        with pytest.raises(g.GrantMeterUnseededError):
+            await meter.try_reserve(grant, 1.0, NOW)
+        assert await redis.exists(g._keys(grant.id)[0]) == 0
+
+    async def test_seeded_counter_is_never_overwritten(self, redis: Any) -> None:
+        grant = g.ProviderGrant.model_validate(_grant_dict())
+        meter = g.GrantMeter(redis, seeder=_empty_ledger)
         ok, rid = await meter.try_reserve(grant, 1.0, NOW)
         assert ok and rid
         await meter.settle(grant, rid, 1.0, NOW)
@@ -356,8 +406,41 @@ class TestPacer:
             return 50.0
 
         meter.set_seeder(late)
-        await meter.ensure_seeded(grant, NOW)
+        assert await meter.ensure_seeded(grant, NOW) is True
         assert (await meter.snapshot(grant, NOW)).spent_usd == pytest.approx(1.0)
+
+    async def test_redis_lost_cold_start_reseeds_from_ledger(self, redis: Any) -> None:
+        grant = g.ProviderGrant.model_validate(_grant_dict(amount_usd=10.0, safety_margin_usd=0))
+        ledger: list[float] = []  # what nexus-api records per settled call
+
+        async def from_ledger(_grant: g.ProviderGrant) -> float:
+            return sum(ledger)
+
+        meter = g.GrantMeter(redis, seeder=from_ledger)
+        for _ in range(4):
+            ok, rid = await meter.try_reserve(grant, 2.0, NOW)
+            assert ok and rid
+            await meter.settle(grant, rid, 2.0, NOW)
+            ledger.append(2.0)
+        await redis.flushall()  # Redis lost: every counter is gone
+        assert not (await meter.try_reserve(grant, 3.0, NOW))[0]  # 8 + 3 > 10, not 0 + 3
+        assert (await meter.try_reserve(grant, 2.0, NOW))[0]
+        assert (await meter.snapshot(grant, NOW)).spent_usd == pytest.approx(8.0)
+
+    async def test_guard_refuses_unseeded_grant_until_a_ledger_process_seeds(
+        self, redis: Any
+    ) -> None:
+        worker = _guard(redis, _grant_dict(), seeder=None)
+        d = await worker.reserve("anthropic", "madfam", None, _req())
+        assert not d.allowed and d.reason == "meter_unseeded"
+        [status] = await worker.statuses()
+        assert status.meter_ok is False and status.pace_status == "unknown"
+        # nexus-api (which has the ledger) refreshes status and seeds the counter.
+        api = _guard(redis, _grant_dict(), seeder=_empty_ledger)
+        [status] = await api.statuses()
+        assert status.meter_ok is True and status.spent_usd == 0.0
+        d = await worker.reserve("anthropic", "madfam", None, _req())
+        assert d.allowed and d.reason == "reserved"
 
 
 # ── Status math (C2) ─────────────────────────────────────────────────────

@@ -20,7 +20,8 @@ Three pieces:
   ``anthropic``) names providers that may ONLY be used under a valid,
   started, unexpired, unexhausted grant whose ``allowed_orgs`` contains the
   request's org. Anything else — no grant, wrong org, expired, ceiling,
-  invalid config, Redis down, cost model missing — makes the provider
+  invalid config, Redis down, spend unknown (a cold meter the ledger could
+  not seed), cost model missing — makes the provider
   unavailable for that call. The router then continues its normal fallback
   chain; the guard can only remove options, never add them.
 
@@ -87,6 +88,10 @@ CHARS_PER_TOKEN = 3
 BURN_WINDOW_SECONDS = 3600
 BURN_LOG_RETENTION_SECONDS = 7200
 _ERROR_LOG_INTERVAL_SECONDS = 60.0
+#: After a failed ledger seed, a meter waits this long before querying again
+#: (the grant stays unavailable meanwhile), so a down database is not hit, and
+#: guarded calls not stalled by the 5 s seed timeout, on every request.
+SEED_RETRY_SECONDS = 30.0
 
 #: Model-id prefixes per provider, used to recognise a caller-pinned model.
 PROVIDER_MODEL_PREFIXES: dict[str, tuple[str, ...]] = {
@@ -106,6 +111,14 @@ class ProviderGrantUnavailableError(RuntimeError):
     Raised instead of silently swapping the pinned model for another
     provider's. The message names the provider and the reason code; it never
     contains amounts or prompt content.
+    """
+
+
+class GrantMeterUnseededError(RuntimeError):
+    """The grant's Redis counter is absent and its spend could not be read.
+
+    A cold meter is never assumed to be at $0: the reservation is refused
+    (reason ``meter_unseeded``) until a process with the ledger seeds it.
     """
 
 
@@ -437,6 +450,7 @@ class GrantMeter:
     ) -> None:
         self._redis = redis
         self._seeder = seeder
+        self._seed_retry_at: dict[str, float] = {}
         self._ttl = max(1, int(reservation_ttl_seconds))
         self._reserve = redis.register_script(_RESERVE_LUA)
         self._settle = redis.register_script(_SETTLE_LUA)
@@ -449,36 +463,59 @@ class GrantMeter:
 
     def set_seeder(self, seeder: LedgerSeeder | None) -> None:
         self._seeder = seeder
+        self._seed_retry_at.clear()
 
-    async def ensure_seeded(self, grant: ProviderGrant, now: datetime) -> None:
+    async def ensure_seeded(self, grant: ProviderGrant, now: datetime) -> bool:
         """Seed ``spent`` from the ledger when the key is absent (cold start).
 
-        No seeder registered (the ledger is not reachable from this process,
-        e.g. workers) or a seeder failure seeds 0 and logs — it never blocks.
+        Returns True once the counter exists. Fails CLOSED: with no seeder in
+        this process (workers cannot reach the ledger), or when the ledger
+        read raises, times out or returns a non-finite total, nothing is
+        written and False is returned — the grant's spend is unknown, never
+        $0. A process that can read the ledger (nexus-api, the gateway) seeds
+        it; nexus-api's ``/metrics`` refresh does so for every declared grant.
         ``SET NX`` means a concurrent seeder never clobbers a live counter.
         """
         spent_key = _keys(grant.id)[0]
-        value = 0.0
-        source = "zero (no ledger seeder in this process)"
-        if self._seeder is not None:
-            try:
-                value = max(0.0, float(await asyncio.wait_for(self._seeder(grant), timeout=5.0)))
-                source = "ledger"
-            except Exception as exc:
-                value = 0.0
-                source = f"zero (ledger seed failed: {type(exc).__name__})"
+        if await self._redis.exists(spent_key):
+            return True
+        if self._seeder is None:
+            logger.debug("provider grants: grant %s is unseeded and this process has no "
+                         "ledger seeder", grant.id)
+            return False
+        if time.monotonic() < self._seed_retry_at.get(grant.id, 0.0):
+            return False
+        try:
+            value = float(await asyncio.wait_for(self._seeder(grant), timeout=5.0))
+            if not math.isfinite(value):
+                raise ValueError("ledger total is not a finite number")
+        except Exception as exc:
+            self._seed_retry_at[grant.id] = time.monotonic() + SEED_RETRY_SECONDS
+            logger.error(
+                "provider grants: cannot read grant %s spend from the ledger (%s) — the "
+                "grant stays unavailable until the ledger answers", grant.id,
+                type(exc).__name__,
+            )
+            return False
+        self._seed_retry_at.pop(grant.id, None)
         created = await self._redis.set(
-            spent_key, repr(value), nx=True, ex=_key_ttl(grant, now)
+            spent_key, repr(max(0.0, value)), nx=True, ex=_key_ttl(grant, now)
         )
         if created:
             logger.warning(
-                "provider grants: initialised meter for grant %s from %s", grant.id, source
+                "provider grants: initialised meter for grant %s from the ledger (%.6f USD)",
+                grant.id, max(0.0, value),
             )
+        return True
 
     async def try_reserve(
         self, grant: ProviderGrant, amount_usd: float, now: datetime
     ) -> tuple[bool, str | None]:
-        """Atomically reserve ``amount_usd``. Returns ``(allowed, reservation_id)``."""
+        """Atomically reserve ``amount_usd``. Returns ``(allowed, reservation_id)``.
+
+        Raises :class:`GrantMeterUnseededError` when the counter is absent and
+        cannot be seeded from the ledger.
+        """
         spent_key, resv_key, amt_key, _ = _keys(grant.id)
         reservation_id = uuid.uuid4().hex
         ts = now.timestamp()
@@ -496,7 +533,8 @@ class GrantMeter:
             )
             verdict = _to_str(result[0])
             if verdict == "seed":
-                await self.ensure_seeded(grant, now)
+                if not await self.ensure_seeded(grant, now):
+                    raise GrantMeterUnseededError(grant.id)
                 continue
             if verdict == "ok":
                 return True, reservation_id
@@ -524,9 +562,7 @@ class GrantMeter:
 
     async def snapshot(self, grant: ProviderGrant, now: datetime) -> MeterSnapshot:
         spent_key, resv_key, amt_key, burn_key = _keys(grant.id)
-        exists = await self._redis.exists(spent_key)
-        if not exists:
-            await self.ensure_seeded(grant, now)
+        await self.ensure_seeded(grant, now)  # unseeded ⇒ spent None ⇒ status "unknown"
         ts = now.timestamp()
         spent, reserved, burn = await self._read(
             keys=[spent_key, resv_key, amt_key, burn_key],
@@ -854,9 +890,13 @@ class GrantGuard:
             self._log_error("meter", "provider grants: no Redis meter (set REDIS_URL) — guarded "
                             "provider %s unavailable", provider_name)
             return GuardDecision(False, "meter_unavailable")
+        unseeded: str | None = None
         for grant in active:
             try:
                 ok, rid = await meter.try_reserve(grant, worst, now)
+            except GrantMeterUnseededError:
+                unseeded = unseeded or grant.id
+                continue
             except Exception as exc:
                 self._log_error("redis", "provider grants: Redis meter error (%s: %s) — guarded "
                                 "provider %s unavailable", type(exc).__name__,
@@ -869,6 +909,11 @@ class GrantGuard:
                     Reservation(self, grant, rid, worst, provider_name),
                     grant.id,
                 )
+        if unseeded is not None:
+            self._log_error("unseeded:" + provider_name, "provider grants: grant %s has no "
+                            "known spend (cold Redis, no ledger seed) — guarded provider %s "
+                            "unavailable", unseeded, provider_name)
+            return GuardDecision(False, "meter_unseeded", grant_id=unseeded)
         logger.warning(
             "provider grants: ceiling reached for %s (grants: %s) — provider unavailable",
             provider_name,
@@ -978,7 +1023,8 @@ def set_ledger_seeder(seeder: LedgerSeeder | None) -> None:
     """Register how this process reads settled grant spend from the ledger.
 
     nexus-api and the inference gateway own the database and register one at
-    startup; workers do not, and seed 0 (logged) on a cold Redis.
+    startup. Workers do not: on a cold Redis their guarded calls are refused
+    (``meter_unseeded``) until one of those processes seeds the counter.
     """
     global _ledger_seeder  # noqa: PLW0603
     _ledger_seeder = seeder

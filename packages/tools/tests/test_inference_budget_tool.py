@@ -30,6 +30,11 @@ C2_FIELDS = {
 }
 
 
+async def _empty_ledger(_grant: g.ProviderGrant) -> float:
+    """A ledger with no spend yet: the meter must be seeded explicitly (fail-closed)."""
+    return 0.0
+
+
 @pytest.fixture
 def guard() -> Iterator[g.GrantGuard]:
     book = g.parse_grants(
@@ -53,7 +58,9 @@ def guard() -> Iterator[g.GrantGuard]:
     guard = g.GrantGuard(
         config_loader=lambda: state,
         required=("anthropic",),
-        meter=g.GrantMeter(fakeredis.aioredis.FakeRedis(decode_responses=True)),
+        meter=g.GrantMeter(
+            fakeredis.aioredis.FakeRedis(decode_responses=True), seeder=_empty_ledger
+        ),
         now_fn=lambda: datetime(2030, 1, 1, 12, tzinfo=UTC),
     )
     g.set_default_guard(guard)
