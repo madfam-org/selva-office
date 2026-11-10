@@ -94,10 +94,10 @@ images:
 - digest: sha256:4aaa2b11255b54396beda527bf27c49390f5e7a2687bc3b14b34a25bdf64a0dc
   name: ghcr.io/madfam-org/selva-gateway
   newName: ghcr.io/madfam-org/selva-gateway
-- digest: sha256:37fed4903b66e0c0358297ff95818e95673cc85e8ba1dbe44d384552cee29092
+- digest: sha256:ecaa55e9dfe5669349ef2e35ce56f4e3692e338e561ad1e56df6ba1550153063
   name: ghcr.io/madfam-org/selva-inference-gateway
   newName: ghcr.io/madfam-org/selva-inference-gateway
-- digest: sha256:8402f9d2f39782d30971a791773d92e909d977d4fa93dd9b93456623288d2a68
+- digest: sha256:153746230aa093b236d880b8ccdf0a3bc521c35b9249c9d3beef20eaac8c9fc4
   name: ghcr.io/madfam-org/selva-nexus-api
   newName: ghcr.io/madfam-org/selva-nexus-api
 - digest: sha256:1547237c00caeaaad403f205022b498586b335dae9423ecc3814982deab009fc
