@@ -168,6 +168,15 @@ raise `safety_margin_usd` in the grant (Vault edit plus a sync; no restart).
 If the meter runs high, lower the margin to use the full balance. A job that
 reconciles against the provider's cost-report API is a planned follow-up.
 
+## Grants in the cost ledger
+
+Usage a grant covers is not cash. The cost-events sweep classifies each ledger
+row with the guard's own test (provider, window, org) and treats grant usage as
+a non-cash memo outside COGS (RFC 0050 ruling C13). A row of a grant-only
+provider that no declared grant covers is withheld as `funding_unknown`, never
+booked as paid. Editing or removing a grant changes how the sweep's lookback
+window is classified. See [COST_EVENTS.md](COST_EVENTS.md).
+
 ## Owner steps
 
 Production operations are Enclii-first (`AGENTS.md`): use the Enclii secret

@@ -52,6 +52,7 @@ resources:
 - pdb.yaml
 - hpa.yaml
 - backup-cronjob.yaml
+- cost-events-cronjob.yaml
 - keda-scaledobject.yaml
 - keda-trigger-auth.yaml
 - selva-secret-writer-sa.yaml
