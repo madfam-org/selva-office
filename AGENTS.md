@@ -294,11 +294,17 @@ async with tenant_session(org_id="org-abc") as db:
     # commit happens on context exit
 ```
 
-For genuine cross-tenant operator queries (reap-stale, fleet-wide
-reports, cross-org analytics), use `admin_session()` instead — it
-selects the BYPASSRLS connection pool (`database_admin_url` env var
-sets the BYPASSRLS-role connection string; falls back to main pool
-when unset for dev / SQLite test paths).
+For read-only platform queries across every org (fleet-wide reports,
+the `/metrics` DB gauges, the queue-stats in-flight count), use
+`tenant_session("platform")`: the strict policies admit that marker
+and the read stays in the RLS-enforced pool. Do NOT use
+`admin_session()` for reads: when `DATABASE_ADMIN_URL` is unset (as in
+production today) it falls back to the main pool with no org set and
+the FORCEd policies return zero rows. `admin_session()` (the
+BYPASSRLS pool, `database_admin_url`; falls back to the main pool when
+unset) remains only on the cross-tenant write paths (`reap-stale`,
+`notify-overdue-all`), which read zero rows in production until an
+owner ruling settles how they get their bypass.
 
 The 5 sites originally identified by the RLS Phase 1.5 audit
 (audit middleware, A2A bridge `_dispatch_a2a_task` +

@@ -453,6 +453,19 @@ jobs:
         env:
           ENVIRONMENT: development
 
+      # Read-only platform reads (/metrics DB gauges, queue-stats in-flight
+      # count) must see every org's rows under the strict, FORCEd RLS of
+      # migration 0028 through the 'platform' marker, not admin_session().
+      # Runs against this job's throwaway Postgres: the test creates and drops
+      # its own schema and non-bypass login role.
+      - name: Platform-marker reads under FORCEd RLS (real Postgres)
+        run: |
+          cd apps/nexus-api
+          uv run pytest tests/test_platform_rls_reads.py -q
+        env:
+          ENVIRONMENT: development
+          SELVA_RLS_TEST_DATABASE_URL: postgresql://selva:selva@localhost:5432/selva
+
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4

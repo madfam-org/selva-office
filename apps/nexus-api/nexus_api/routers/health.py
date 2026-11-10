@@ -256,10 +256,14 @@ async def queue_stats() -> dict[str, object]:
         try:
             from sqlalchemy import func, select
 
-            from ..database import admin_session
+            from ..database import tenant_session
             from ..models import SwarmTask
 
-            async with admin_session() as db:
+            # Every org's in-flight tasks: ``swarm_tasks`` is under the
+            # strict, FORCEd RLS of migration 0028, which admits the
+            # ``'platform'`` marker. Not ``admin_session()``: without
+            # DATABASE_ADMIN_URL it runs with no org set and counts 0.
+            async with tenant_session("platform") as db:
                 in_flight = await db.execute(
                     select(func.count())
                     .select_from(SwarmTask)
