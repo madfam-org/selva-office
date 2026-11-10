@@ -5,6 +5,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
+import nexus_api.cost_events.outbox  # noqa: F401 — cost_event_outbox (0043)
 import nexus_api.models  # noqa: F401 — register all models
 from nexus_api.config import get_settings
 from nexus_api.database import Base
