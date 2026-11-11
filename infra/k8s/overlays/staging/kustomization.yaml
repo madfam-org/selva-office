@@ -50,17 +50,17 @@ replicas:
 # digest below will be overwritten by the first staging deploy.
 images:
   - name: ghcr.io/madfam-org/selva-nexus-api
-    digest: sha256:7215e44ff0813efd1ca1395808c85ed49a6596a8e959e845ee3114546245f94e
+    digest: sha256:0b1789f220a63f2f18496eaab13f68c109d4b6ebe2e8ca792c7dab56cf7856c2
   - name: ghcr.io/madfam-org/selva-office-ui
-    digest: sha256:8e1d3dd4a600f2aa5a2d09137ad1fdf01cd4423cfcbd6018532c95db0dbd19d4
+    digest: sha256:b2e5a7e022ddf6202e150718907b2c2a496c2da29f83cf4d7b257dd581f8b770
   - name: ghcr.io/madfam-org/selva-colyseus
-    digest: sha256:e8ff39f2b355cf1eacfb4477acef51d4131a289c21bc834db67bc3eb2ee9d501
+    digest: sha256:fcc96a51175192f3ee10a1d668f7afef4cc20abd5ee38e6799e583f277ab2ad4
   - name: ghcr.io/madfam-org/selva-admin
-    digest: sha256:257f70de76a61b8dd89213e56bbc581957438d16630ffb98b36fed4c0e26321d
+    digest: sha256:308e5eebbf036f66cab83dd158fa7133086cee90f6f44f2a44d16ae67e5d12c0
   - name: ghcr.io/madfam-org/selva-gateway
-    digest: sha256:ea51904d496cb4b84dceb4822e7db987572400e11803374c96ae6aeff2647171
+    digest: sha256:d054ebe61f6b0da69f27152b762897e0ae11630913645de1715b59ce7f332b7f
   - name: ghcr.io/madfam-org/selva-workers
-    digest: sha256:0a7d328492f69b98a7aecf4fd3656911f29dcaf867770a8a2d973d667b4fb689
+    digest: sha256:cc87782c20d034194b2dcb5149514bb5657954487577e5da8ea26f0fb54f8c7a
 
 # Per-deployment strategic-merge-patches. Each file is a single-doc
 # patch with explicit `metadata.name` so kustomize's patch matcher
