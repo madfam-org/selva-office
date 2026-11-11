@@ -426,6 +426,18 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://selva:selva@localhost:5432/selva
           REDIS_URL: redis://localhost:6379
 
+      # The grant meter's cold-start seed must see every org's ledger rows
+      # under the strict, FORCEd RLS of migration 0028 (and fail closed when it
+      # cannot). Runs against this job's throwaway Postgres: the test creates
+      # and drops its own schema and non-bypass login role.
+      - name: Grant meter ledger seed under FORCEd RLS (real Postgres)
+        run: |
+          cd apps/nexus-api
+          uv run pytest tests/test_provider_grants_ledger_seed.py -q
+        env:
+          ENVIRONMENT: development
+          SELVA_RLS_TEST_DATABASE_URL: postgresql://selva:selva@localhost:5432/selva
+
       - name: Financial evidence and fiscal execution containment
         run: |
           uv run pytest \

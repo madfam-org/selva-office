@@ -120,7 +120,7 @@ the ceiling. Anything else makes the provider unavailable for that call:
 
 Reason codes: `no_grant`, `config_invalid`, `org_missing`, `org_not_allowed`,
 `not_started`, `expired`, `ceiling_reached`, `meter_unavailable`,
-`cost_model_unavailable`, and for extra accounts `not_grant_required` and
+`meter_unseeded`, `cost_model_unavailable`, and for extra accounts `not_grant_required` and
 `key_env_mismatch`. Config and Redis errors log at ERROR at most once a
 minute.
 
@@ -130,8 +130,16 @@ Metering: before each attempt the router atomically reserves the worst case
 overshoot. After the call it settles the actual USD from usage; on error it
 releases; on timeout or a stream with no usage it settles the worst case.
 Reservations expire on their own. A cold Redis seeds `spent` from the USD
-ledger (`compute_token_ledger`, provider + window) in nexus-api and the gateway;
-workers cannot reach the ledger and seed 0 (logged). The guard keeps one
+ledger (`compute_token_ledger`, provider + window, every org) in nexus-api and
+the gateway. The read runs in `tenant_session("platform")`, the marker the
+strict RLS policies honour, not `admin_session()`: without `DATABASE_ADMIN_URL`
+that falls back to the regular pool with no org set and FORCEd RLS hides every
+row. A cold meter never starts at $0 by assumption: when the ledger read fails,
+times out or returns a non-number, or the process has no ledger (workers),
+nothing is written and the grant is refused (`meter_unseeded`, status
+`unknown`) until a process with the ledger seeds it. nexus-api's `/metrics`
+refresh seeds every declared grant, so after a Redis loss workers wait at most
+one scrape. A failed seed is retried after 30 s. The guard keeps one
 Redis meter per running event loop: an asyncio Redis client is bound to the
 loop that created it, and workers run graph code in more than one loop. All
 meters share the same Redis keys, so the ceiling holds across them.

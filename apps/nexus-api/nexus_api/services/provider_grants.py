@@ -16,10 +16,16 @@ from sqlalchemy import func, select
 
 from madfam_inference import grants as grant_lib
 
-from ..database import admin_session
+from ..database import tenant_session
 from ..models import ComputeTokenLedger
 
 logger = logging.getLogger(__name__)
+
+#: The strict RLS policies (migration 0028) let this marker read every org's
+#: rows through the regular pool. ``admin_session()`` is NOT used: without
+#: ``DATABASE_ADMIN_URL`` it falls back to the regular pool with no org set,
+#: and the FORCEd policies then hide every row — the seed would read $0.
+_PLATFORM_RLS_MARKER = "platform"
 
 
 async def ledger_spent_usd(grant: grant_lib.ProviderGrant) -> float:
@@ -27,9 +33,11 @@ async def ledger_spent_usd(grant: grant_lib.ProviderGrant) -> float:
 
     Counts every org's spend on that provider — an over-count when the same
     provider is also used outside the grant, which errs on the safe side
-    (the ceiling is reached early, never late).
+    (the ceiling is reached early, never late). A database error, or a total
+    that is not a number, raises: the meter then refuses the grant instead of
+    starting from zero.
     """
-    async with admin_session() as db:
+    async with tenant_session(_PLATFORM_RLS_MARKER) as db:
         result = await db.execute(
             select(func.coalesce(func.sum(ComputeTokenLedger.cost_usd), 0))
             .where(ComputeTokenLedger.provider == grant.provider)
@@ -37,7 +45,9 @@ async def ledger_spent_usd(grant: grant_lib.ProviderGrant) -> float:
             .where(ComputeTokenLedger.created_at < grant.expires_at)
         )
         value = result.scalar_one()
-    return float(value if isinstance(value, Decimal | int | float) else 0)
+    if isinstance(value, bool) or not isinstance(value, Decimal | int | float):
+        raise TypeError(f"ledger total for grant {grant.id} is not a number")
+    return float(value)
 
 
 def register_ledger_seeder() -> None:
