@@ -1045,6 +1045,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/inference-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Inference Usage
+         * @description Inference usage of the caller's org in one civil month (America/Mexico_City).
+         *
+         *     Tokens by provider, model and caller class, the request count and the sum of
+         *     the rows' LIST-PRICE ESTIMATES in USD (not cash, not COGS). Funding is
+         *     ``unattributed``. An empty month answers ``status: "empty"`` with null
+         *     totals. ``org`` may only name the caller's own org (403 otherwise). The MCP
+         *     tool ``inference_usage`` serves this same read.
+         */
+        get: operations["inference_usage_api_v1_billing_inference_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/billing/tiers": {
         parameters: {
             query?: never;
@@ -5073,6 +5099,16 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** Completeness */
+        Completeness: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "partial" | "empty";
+            /** Gaps */
+            gaps?: ("month_open" | "unpriced_rows" | "no_rows")[];
+        };
         /** ConfidenceDashboard */
         ConfidenceDashboard: {
             /** Total Buckets */
@@ -5610,6 +5646,20 @@ export interface components {
             /** Sanitized Html */
             sanitized_html: string;
         };
+        /** Funding */
+        Funding: {
+            /**
+             * Status
+             * @default unattributed
+             * @constant
+             */
+            status: "unattributed";
+            /**
+             * Note
+             * @default The ledger records no funding source per call, so paid inference and inference covered by a provider credit grant cannot be told apart yet.
+             */
+            note: string;
+        };
         /**
          * GrantStatus
          * @description Grant status (contract C2). Amounts are private: platform-admin surfaces only.
@@ -5697,6 +5747,42 @@ export interface components {
             url: string;
             /** Tags */
             tags: string[];
+        };
+        /**
+         * InferenceUsageReport
+         * @description Inference usage of one org in one civil month, from the compute token ledger.
+         */
+        InferenceUsageReport: {
+            /** Org */
+            org: string;
+            period: components["schemas"]["UsagePeriod"];
+            /**
+             * Status
+             * @description 'empty' = no inference rows were recorded for this org in the period. That is not proof of zero usage, so totals are null, not 0.
+             * @enum {string}
+             */
+            status: "ok" | "empty";
+            /**
+             * Ledger Rows
+             * @description Inference rows found (a count, not usage).
+             */
+            ledger_rows: number;
+            /**
+             * Request Count
+             * @description Metered calls; null when empty.
+             */
+            request_count: number | null;
+            tokens: components["schemas"]["TokenTotals"];
+            /** By Line */
+            by_line: components["schemas"]["UsageLine"][];
+            /**
+             * List Price Estimate Usd
+             * @description Sum of the rows' list-price estimates, a decimal string in USD. Not cash, not COGS. null when no row was priced.
+             */
+            list_price_estimate_usd: string | null;
+            estimate: components["schemas"]["ListPriceEstimate"];
+            funding?: components["schemas"]["Funding"];
+            completeness: components["schemas"]["Completeness"];
         };
         /** InstallRequest */
         InstallRequest: {
@@ -5911,6 +5997,40 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             };
+        };
+        /** ListPriceEstimate */
+        ListPriceEstimate: {
+            /**
+             * Basis
+             * @default list_price_estimate
+             * @constant
+             */
+            basis: "list_price_estimate";
+            /**
+             * Currency
+             * @default USD
+             * @constant
+             */
+            currency: "USD";
+            /**
+             * Is Cash
+             * @default false
+             * @constant
+             */
+            is_cash: false;
+            price_table?: components["schemas"]["PriceTable"];
+            /** Priced Rows */
+            priced_rows: number;
+            /**
+             * Unpriced Rows
+             * @description Rows without a USD estimate (legacy rows, or no token split).
+             */
+            unpriced_rows: number;
+            /**
+             * Is Lower Bound
+             * @description True when some rows are unpriced: the sum leaves them out.
+             */
+            is_lower_bound: boolean;
         };
         /** ManifestVerifyResponse */
         ManifestVerifyResponse: {
@@ -6295,6 +6415,33 @@ export interface components {
             require_approval?: boolean | null;
             /** Enabled */
             enabled?: boolean | null;
+        };
+        /** PriceTable */
+        PriceTable: {
+            /**
+             * Source
+             * @default madfam_budget_gate.cost_model
+             * @constant
+             */
+            source: "madfam_budget_gate.cost_model";
+            /**
+             * Basis
+             * @default provider_public_list_prices
+             * @constant
+             */
+            basis: "provider_public_list_prices";
+            /**
+             * Priced At
+             * @description Each row was priced when it was written, with the table of that day.
+             * @default ledger_write_time
+             * @constant
+             */
+            priced_at: "ledger_write_time";
+            /**
+             * Version
+             * @description The price table carries no version or date; null = unknown.
+             */
+            version?: string | null;
         };
         /** ProbeRunReport */
         ProbeRunReport: {
@@ -7193,6 +7340,24 @@ export interface components {
             /** Total Tokens */
             total_tokens: number | null;
         };
+        /** TokenTotals */
+        TokenTotals: {
+            /**
+             * Total
+             * @description Input + output tokens as metered; null = unknown.
+             */
+            total: number | null;
+            /**
+             * Input
+             * @description Not recorded by the ledger (total only): unknown.
+             */
+            input?: null;
+            /**
+             * Output
+             * @description Not recorded by the ledger (total only): unknown.
+             */
+            output?: null;
+        };
         /** TrajectoryResponse */
         TrajectoryResponse: {
             /** Id */
@@ -7453,6 +7618,69 @@ export interface components {
             events: components["schemas"]["UnifiedAuditEvent"][];
             /** Next Cursor */
             next_cursor?: string | null;
+        };
+        /**
+         * UsageLine
+         * @description One (provider, model, caller class) group of ledger rows.
+         */
+        UsageLine: {
+            /**
+             * Provider
+             * @description null when the row did not record one.
+             */
+            provider: string | null;
+            /**
+             * Model
+             * @description null when the row did not record one.
+             */
+            model: string | null;
+            /**
+             * Caller Class
+             * @enum {string}
+             */
+            caller_class: "service_account" | "selva_worker" | "person" | "unrecorded";
+            /** Request Count */
+            request_count: number;
+            tokens: components["schemas"]["TokenTotals"];
+            /**
+             * List Price Estimate Usd
+             * @description Decimal string; null when no row in the group was priced.
+             */
+            list_price_estimate_usd: string | null;
+            /** Unpriced Rows */
+            unpriced_rows: number;
+        };
+        /** UsagePeriod */
+        UsagePeriod: {
+            /**
+             * Month
+             * @description The civil month asked for, YYYY-MM.
+             */
+            month: string;
+            /**
+             * Timezone
+             * @description Month bounds follow the cost ledger's period cut-off.
+             * @default America/Mexico_City
+             * @constant
+             */
+            timezone: "America/Mexico_City";
+            /**
+             * Start
+             * Format: date-time
+             * @description Inclusive start, RFC 3339 with offset.
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             * @description Exclusive end, RFC 3339 with offset.
+             */
+            end: string;
+            /**
+             * Month Closed
+             * @description False while the month is still running.
+             */
+            month_closed: boolean;
         };
         /** ValidateConsistencyResponse */
         ValidateConsistencyResponse: {
@@ -9320,6 +9548,40 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    inference_usage_api_v1_billing_inference_usage_get: {
+        parameters: {
+            query: {
+                /** @description Civil month, YYYY-MM. */
+                month: string;
+                /** @description Defaults to the caller's org. */
+                org?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InferenceUsageReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

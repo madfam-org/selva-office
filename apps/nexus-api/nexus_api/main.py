@@ -18,6 +18,7 @@ from .analytics import shutdown as shutdown_posthog
 from .config import get_settings
 from .database import engine
 from .logging_config import configure_logging
+from .mcp import router as mcp_router
 from .middleware.audit import AuditMiddleware
 from .middleware.csrf import CSRFMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
@@ -286,6 +287,8 @@ def create_app() -> FastAPI:
     app.include_router(infra_autoheal.router, prefix="/api/v1")
     # HITL Confidence (Sprint 1 observe-only) — decisions ledger + dashboard
     app.include_router(hitl_confidence.router, prefix="/api/v1")
+    # Native read-only COGS MCP (RFC 0051): POST /mcp, 404 unless SELVA_MCP_ENABLED.
+    app.include_router(mcp_router.router)
 
     # -- OpenAI-compatible inference proxy (ecosystem LLM gateway) -------------
     # The OpenAI-compatible /v1 inference proxy moved to its own deployable,

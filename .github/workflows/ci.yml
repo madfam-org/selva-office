@@ -563,6 +563,25 @@ jobs:
         env:
           ENVIRONMENT: development
 
+      # Native read-only COGS MCP (RFC 0051): switch, machine-token scope, org
+      # isolation, audit line without arguments, rate limit, and the coverage
+      # drift guard (a new billing/usage/provider route must be COVERED by a
+      # tool or EXEMPTED with a reason, or this step fails).
+      - name: native COGS MCP + coverage drift guard
+        run: |
+          cd apps/nexus-api
+          uv run pytest \
+            tests/test_mcp_endpoint.py \
+            tests/test_mcp_coverage.py \
+            tests/test_inference_usage_report.py \
+            --cov=nexus_api.mcp \
+            --cov=nexus_api.services.inference_usage_report \
+            --cov-report=term-missing \
+            --cov-fail-under=90 \
+            -q
+        env:
+          ENVIRONMENT: development
+
       - name: outbound governance (email + marketing) critical paths
         run: |
           cd packages/tools
