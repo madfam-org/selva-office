@@ -1,7 +1,8 @@
 """Admin endpoints for space management (kick, room config).
 
-All endpoints require the ``admin`` role from the JWT. In dev mode with auth
-bypass, the dummy user always has ``admin`` in its roles array.
+All endpoints act on the shared game server, so they require a platform
+administrator (``is_admin`` claim or the ``selva:admin`` application role).
+In dev mode with auth bypass, the dummy user is a platform administrator.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from selva_redis_pool import get_redis_pool
 
-from ..auth import get_current_user
+from ..auth import get_current_user, is_platform_admin
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +24,11 @@ router = APIRouter(tags=["admin"])
 
 
 def _require_admin(user: dict = Depends(get_current_user)) -> dict:  # noqa: B008
-    """Dependency that ensures the caller has the admin role."""
-    roles = user.get("roles") or []
-    if "admin" not in roles:
+    """Dependency that ensures the caller is a platform administrator."""
+    if not is_platform_admin(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required",
+            detail="Platform administrator access required",
         )
     return user
 

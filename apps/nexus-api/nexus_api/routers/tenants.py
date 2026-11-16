@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import get_current_user, require_non_guest, require_roles
+from ..auth import get_current_user, require_non_guest, require_org_admin
 from ..config import get_settings
 from ..database import get_db
 from ..models import Agent, Department, SwarmTask, TenantConfig
@@ -522,13 +522,14 @@ class SSOConfig(BaseModel):
 )
 async def configure_sso(
     body: SSOConfig,
-    user: dict[str, Any] = Depends(require_roles(["admin"])),  # noqa: B008
+    user: dict[str, Any] = Depends(require_org_admin),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict[str, str]:
     """Configure enterprise SSO connection for this tenant.
 
     Stores the Janua connection ID so that users in this org are redirected
-    to the correct IdP during authentication.  Requires admin role.
+    to the correct IdP during authentication.  Requires an administrator of
+    the caller's own organization (or a platform administrator).
     """
     org_id = user.get("org_id", "default")
     config = await _get_tenant_config(db, org_id)
@@ -606,12 +607,13 @@ async def get_branding(
 )
 async def update_branding(
     body: BrandingConfig,
-    user: dict[str, Any] = Depends(require_roles(["admin"])),  # noqa: B008
+    user: dict[str, Any] = Depends(require_org_admin),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """Update white-label branding for this tenant.
 
-    Only non-null fields in the request body are applied.  Requires admin role.
+    Only non-null fields in the request body are applied.  Requires an
+    administrator of the caller's own organization (or a platform administrator).
     """
     org_id = user.get("org_id", "default")
     config = await _get_tenant_config(db, org_id)
