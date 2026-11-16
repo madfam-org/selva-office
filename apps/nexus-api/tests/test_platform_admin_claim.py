@@ -133,7 +133,14 @@ class TestPredicates:
 
     @pytest.mark.parametrize(
         "roles",
-        [["admin"], ["superadmin"], ["platform"], ["platform_admin"], ["platform-admin"], ["Admin"]],
+        [
+            ["admin"],
+            ["superadmin"],
+            ["platform"],
+            ["platform_admin"],
+            ["platform-admin"],
+            ["Admin"],
+        ],
     )
     def test_custom_roles_named_like_admin_are_not_platform_admin(self, roles: list[str]) -> None:
         assert _auth_mod.is_platform_admin({"sub": "u", "roles": roles}) is False
