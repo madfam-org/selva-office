@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import CurrentUser, require_roles
+from ..auth import CurrentUser, is_platform_admin, require_roles
 from ..database import get_db
 from ..models import Schedule, ScheduledAction
 
@@ -145,12 +145,12 @@ async def cancel_schedule(
     user: CurrentUser = Depends(require_roles([])),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Cancel (delete) a schedule. Users may only cancel their own; admins may cancel any."""
+    """Cancel (delete) a schedule. Users cancel their own; platform admins may cancel any."""
     schedule = await db.get(Schedule, schedule_id)
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
     user_sub = user["sub"]
-    if schedule.user_id != user_sub and "admin" not in (user.get("roles") or []):
+    if schedule.user_id != user_sub and not is_platform_admin(user):
         raise HTTPException(status_code=403, detail="Cannot cancel another user's schedule")
 
     # Capture identifying fields BEFORE delete so the audit payload

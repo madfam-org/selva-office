@@ -37,7 +37,7 @@ from selva_permissions import (
     promote_if_eligible,
 )
 
-from ..auth import CurrentUser, require_roles
+from ..auth import CurrentUser, require_platform_admin
 from ..config import get_settings
 from ..database import get_db
 from ..models import HitlConfidence, HitlConfidenceTier, HitlDecision, HitlOutcome
@@ -337,7 +337,7 @@ async def list_confidence(
     org_id: str | None = Query(default=None),
     min_observed: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
-    _user: CurrentUser = Depends(require_roles(["admin"])),  # noqa: B008
+    _user: CurrentUser = Depends(require_platform_admin),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ConfidenceDashboard:
     """Admin dashboard over all buckets. Filterable, capped."""
@@ -387,7 +387,7 @@ async def list_decisions(
     action_category: str | None = Query(default=None),
     outcome: HitlOutcome | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
-    _user: CurrentUser = Depends(require_roles(["admin"])),  # noqa: B008
+    _user: CurrentUser = Depends(require_platform_admin),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> DecisionList:
     """Recent HITL decisions with filters. Observe-only; no mutation path."""

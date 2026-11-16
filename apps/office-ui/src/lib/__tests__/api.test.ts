@@ -105,6 +105,7 @@ describe('getSessionUser', () => {
       email: 'test@example.com',
       name: 'Test User',
       roles: ['admin'],
+      is_admin: false,
     });
   });
 
@@ -121,6 +122,7 @@ describe('getSessionUser', () => {
       email: '',
       name: undefined,
       roles: [],
+      is_admin: false,
     });
   });
 

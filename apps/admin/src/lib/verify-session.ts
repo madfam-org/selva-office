@@ -72,17 +72,29 @@ export function extractRoles(claims: JWTPayload): string[] {
   return [];
 }
 
+/** The platform organization's Janua org id (`PLATFORM_ORG_ID`); empty when unset. */
+export function platformOrgId(): string {
+  return (process.env.PLATFORM_ORG_ID ?? '').trim();
+}
+
 /**
  * Admin-session roles for a Janua access token's claims.
  *
- * Janua's `/userinfo` returns no roles, and the token's legacy `roles` claim
- * mixes in organization roles (`owner` / `admin` / `member`) from every org
- * the user belongs to, so a bare `admin` there must not open the console.
- * Only a Janua platform admin (`is_admin: true`) or an explicit
- * `selva:admin` application role does.
+ * Opens the console for a Janua platform admin (`is_admin: true`), or for the
+ * `selva:admin` application role held in the platform organization (the
+ * token's `org_id` equals `PLATFORM_ORG_ID`; unset means no organization
+ * qualifies). Role names in `roles` alone never do.
  */
 export function adminRolesFromJanuaClaims(claims: JWTPayload): string[] {
-  if (claims.is_admin === true || extractRoles(claims).includes(SELVA_ADMIN_APP_ROLE)) {
+  if (claims.is_admin === true) {
+    return [ADMIN_ROLE];
+  }
+  const platformOrg = platformOrgId();
+  if (
+    platformOrg !== '' &&
+    claims.org_id === platformOrg &&
+    extractRoles(claims).includes(SELVA_ADMIN_APP_ROLE)
+  ) {
     return [ADMIN_ROLE];
   }
   return [];

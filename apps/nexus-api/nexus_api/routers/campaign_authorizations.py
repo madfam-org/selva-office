@@ -20,7 +20,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from ..auth import require_role
+from ..auth import require_platform_admin
 from ..services import phynd_campaign_authorizations as bridge
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/campaigns/authorizations",
     tags=["Campaign Authorizations"],
-    dependencies=[Depends(require_role("admin"))],
+    dependencies=[Depends(require_platform_admin)],
 )
 
 
@@ -76,7 +76,7 @@ async def preview(authorization_id: str) -> dict[str, Any]:
 async def decide(
     authorization_id: str,
     body: DecideRequest,
-    user: dict[str, Any] = Depends(require_role("admin")),  # noqa: B008
+    user: dict[str, Any] = Depends(require_platform_admin),  # noqa: B008
 ) -> dict[str, Any]:
     note = (body.note or "").strip()
     if body.decision == "rejected" and not note:

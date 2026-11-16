@@ -23,7 +23,13 @@ from selva_permissions import is_audience_enforcement_enabled, resolve_audience
 from selva_redis_pool import get_redis_pool
 from selva_skills import SkillAudience, get_skill_registry
 
-from ..auth import delegatable_user_jwt, get_current_user, require_non_demo, require_non_guest
+from ..auth import (
+    delegatable_user_jwt,
+    get_current_user,
+    is_platform_admin,
+    require_non_demo,
+    require_non_guest,
+)
 from ..config import get_settings
 from ..database import get_db
 from ..idempotency import IdempotencyContext, get_idempotency_context
@@ -1938,13 +1944,12 @@ async def notify_overdue_tasks_all(
     """Emit overdue notifications across all tenants for worker/platform callers."""
     from ..database import admin_session
 
-    roles = user.get("roles", [])
-    if not any(r in _REAP_STALE_ALLOWED_ROLES for r in roles):
+    if not _is_cross_tenant_operator(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
-                "notify-overdue-all is a platform-only endpoint; caller must hold "
-                "service, worker, platform, or admin role"
+                "notify-overdue-all is a platform-only endpoint; caller must be "
+                "the service credential or a platform administrator"
             ),
         )
 
@@ -2393,12 +2398,16 @@ async def update_task_status(
 
 # Roles allowed to call the cross-tenant reap-stale endpoint. ``service``
 # and ``worker`` cover automated callers (cron jobs, ops tooling using the
-# worker shared-secret token); ``platform`` and ``admin`` cover human
-# operators. Any other authenticated caller (regular tactician, guest,
-# demo) is rejected with 403.
-_REAP_STALE_ALLOWED_ROLES: frozenset[str] = frozenset(
-    {"service", "worker", "platform", "admin"}
-)
+# worker shared-secret token); human operators must be platform
+# administrators (``is_platform_admin``). Any other authenticated caller
+# (organization admin, regular tactician, guest, demo) is rejected with 403.
+_REAP_STALE_ALLOWED_ROLES: frozenset[str] = frozenset({"service", "worker"})
+
+
+def _is_cross_tenant_operator(user: dict[str, Any]) -> bool:
+    """Service credential or platform administrator."""
+    roles = user.get("roles", [])
+    return is_platform_admin(user) or any(r in _REAP_STALE_ALLOWED_ROLES for r in roles)
 
 
 @router.post("/tasks/reap-stale")
@@ -2409,8 +2418,8 @@ async def reap_stale_tasks(
 
     This is a platform health endpoint that operators or a cron job call
     to clean up stuck tasks across **all tenants**. The role gate is the
-    access control: only callers carrying ``service``, ``worker``,
-    ``platform``, or ``admin`` roles may invoke it.
+    access control: only the service credential (``service`` / ``worker``)
+    or a platform administrator may invoke it.
 
     Tenancy bypass (Phase 1.5 -- migration 0028):
         Uses ``admin_session()`` which opens a session against the
@@ -2434,13 +2443,12 @@ async def reap_stale_tasks(
 
     from ..database import admin_session
 
-    roles = user.get("roles", [])
-    if not any(r in _REAP_STALE_ALLOWED_ROLES for r in roles):
+    if not _is_cross_tenant_operator(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
-                "reap-stale is a platform-only endpoint; caller must hold "
-                "service, worker, platform, or admin role"
+                "reap-stale is a platform-only endpoint; caller must be "
+                "the service credential or a platform administrator"
             ),
         )
 
