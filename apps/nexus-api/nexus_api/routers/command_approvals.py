@@ -27,7 +27,7 @@ from selva_permissions import (
     compute_signature,
 )
 
-from ..auth import CurrentUser, require_platform_admin_or_roles
+from ..auth import CurrentUser, require_platform_admin
 from ..database import get_db
 from ..models import ApprovalStatus
 from ..models import CommandApprovalRequest as ApprovalRequest
@@ -62,7 +62,7 @@ class ApprovalRequestResponse(BaseModel):
 
 @router.get("/pending", response_model=list[ApprovalRequestResponse])
 async def list_pending(
-    user: CurrentUser = Depends(require_platform_admin_or_roles(["enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[ApprovalRequestResponse]:
     """List all pending dangerous command approval requests."""
@@ -77,7 +77,7 @@ async def list_pending(
 @router.post("/{request_id}/approve", response_model=ApprovalRequestResponse)
 async def approve_command(
     request_id: str,
-    user: CurrentUser = Depends(require_platform_admin_or_roles(["enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ) -> ApprovalRequestResponse:
     """Approve a pending dangerous command."""
@@ -87,7 +87,7 @@ async def approve_command(
 @router.post("/{request_id}/deny", response_model=ApprovalRequestResponse)
 async def deny_command(
     request_id: str,
-    user: CurrentUser = Depends(require_platform_admin_or_roles(["enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ) -> ApprovalRequestResponse:
     """Deny a pending dangerous command."""

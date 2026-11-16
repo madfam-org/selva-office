@@ -56,10 +56,11 @@ _JANUA_LEEWAY_SECONDS = 30
 # absent; requiring them closes both gaps. `iss` was already enforced.
 _JANUA_REQUIRED_CLAIMS = ["exp", "iss", "aud"]
 
-# Janua application role that grants Selva platform administration. Janua only
-# publishes `<app>:<role>` strings under `roles` from an application-role grant
-# (organization role names of that shape are dropped), so this string is an
-# explicit grant. The admin console (`apps/admin`) honours the same role.
+# Janua application role that grants Selva platform administration when it is
+# held in the platform organization (`PLATFORM_ORG_ID`). Janua only publishes
+# `<app>:<role>` strings under `roles` from an application-role grant, and only
+# for the token's own `org_id`. The admin console (`apps/admin`) applies the
+# same rule.
 SELVA_ADMIN_APP_ROLE = "selva:admin"
 
 # Janua claim carrying the user's role in the organization named by `org_id`.
@@ -303,13 +304,18 @@ def _bearer_roles(value: Any) -> list[str]:
 def is_platform_admin(user: dict[str, Any]) -> bool:
     """Whether the caller is a Selva platform administrator.
 
-    True for the verified token's ``is_admin`` claim (exactly ``True``) or the
-    ``selva:admin`` application role. A bare role name such as ``admin`` is an
-    organization membership role in Janua tokens and never counts here.
+    True for the verified token's ``is_admin`` claim (exactly ``True``), or the
+    ``selva:admin`` application role held in the platform organization
+    (``org_id`` equal to ``PLATFORM_ORG_ID``; unset means no organization
+    qualifies). A bare role name such as ``admin`` never counts here.
     """
+    from selva_permissions import is_platform_audience
+
     if user.get("is_admin") is True:
         return True
-    return SELVA_ADMIN_APP_ROLE in (user.get("roles") or [])
+    return SELVA_ADMIN_APP_ROLE in (user.get("roles") or []) and is_platform_audience(
+        user.get("org_id")
+    )
 
 
 def is_org_admin(user: dict[str, Any]) -> bool:
@@ -334,26 +340,6 @@ async def require_platform_admin(
             detail="Platform administrator access required",
         )
     return user
-
-
-def require_platform_admin_or_roles(roles: list[str]):
-    """Dependency factory: a platform administrator, or ANY of ``roles``."""
-    _reject_admin_role_name(roles)
-
-    async def _checker(
-        user: dict[str, Any] = Depends(get_current_user),
-    ) -> dict[str, Any]:
-        if is_platform_admin(user):
-            return user
-        user_roles = user.get("roles", [])
-        if not any(r in user_roles for r in roles):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Platform administrator or one of roles {roles} is required",
-            )
-        return user
-
-    return _checker
 
 
 async def require_org_admin(

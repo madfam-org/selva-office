@@ -37,14 +37,20 @@ PLATFORM_ADMIN: dict[str, Any] = {
     "email": "platform-admin@example.com",
     "is_admin": True,
 }
+PLATFORM_ORG = "platform-org"
 SELVA_ADMIN: dict[str, Any] = {
     "sub": "selva-admin",
     "roles": ["member", "selva:admin"],
     "org_roles": ["member"],
-    "org_id": "tenant-a",
+    "org_id": PLATFORM_ORG,
     "email": "selva-admin@example.com",
     "is_admin": False,
 }
+
+
+@pytest.fixture(autouse=True)
+def _platform_org(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PLATFORM_ORG_ID", PLATFORM_ORG)
 
 
 def _settings() -> MagicMock:
@@ -125,8 +131,18 @@ class TestPredicates:
     def test_platform_admin_claim(self) -> None:
         assert _auth_mod.is_platform_admin(PLATFORM_ADMIN) is True
 
-    def test_selva_admin_application_role(self) -> None:
+    def test_selva_admin_application_role_in_platform_org(self) -> None:
         assert _auth_mod.is_platform_admin(SELVA_ADMIN) is True
+
+    def test_selva_admin_application_role_outside_platform_org(self) -> None:
+        assert _auth_mod.is_platform_admin({**SELVA_ADMIN, "org_id": "tenant-a"}) is False
+        assert _auth_mod.is_platform_admin({**SELVA_ADMIN, "org_id": None}) is False
+
+    def test_selva_admin_application_role_without_platform_org_configured(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("PLATFORM_ORG_ID", raising=False)
+        assert _auth_mod.is_platform_admin(SELVA_ADMIN) is False
 
     def test_organization_admin_is_not_platform_admin(self) -> None:
         assert _auth_mod.is_platform_admin(ORG_ADMIN) is False
@@ -178,14 +194,6 @@ class TestDependencies:
             await _auth_mod.require_org_admin(user=member)
         assert exc.value.status_code == 403
 
-    async def test_platform_admin_or_roles(self) -> None:
-        checker = _auth_mod.require_platform_admin_or_roles(["enterprise-cleanroom"])
-        cleanroom = {"sub": "c", "roles": ["enterprise-cleanroom"]}
-        assert await checker(user=cleanroom) is cleanroom
-        assert await checker(user=PLATFORM_ADMIN) is PLATFORM_ADMIN
-        with pytest.raises(HTTPException):
-            await checker(user=ORG_ADMIN)
-
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -212,6 +220,7 @@ PLATFORM_ROUTES = [
     ("POST", "/api/v1/checkpoints/run-1/plan/rollback", None),
     ("GET", "/api/v1/command-approvals/pending", None),
     ("GET", "/api/v1/trajectories", None),
+    ("GET", "/api/v1/checkpoints/run-1", None),
     ("POST", "/api/v1/swarms/tasks/reap-stale", None),
     ("POST", "/api/v1/approvals/bulk-expire", None),
 ]
@@ -229,6 +238,20 @@ class TestPlatformRoutes:
         finally:
             app.dependency_overrides.clear()
         assert resp.status_code == 403, (path, resp.text)
+
+    @pytest.mark.parametrize(
+        "path",
+        ["/api/v1/trajectories", "/api/v1/command-approvals/pending", "/api/v1/checkpoints/run-1"],
+    )
+    async def test_cleanroom_role_alone_is_refused(
+        self, client: httpx.AsyncClient, path: str
+    ) -> None:
+        app = _as_user({"sub": "c", "roles": ["enterprise-cleanroom"], "org_id": "tenant-a"})
+        try:
+            resp = await client.get(path, headers={"Authorization": "x"})
+        finally:
+            app.dependency_overrides.clear()
+        assert resp.status_code == 403
 
     @pytest.mark.parametrize("roles", [["superadmin"], ["platform"], ["platform_admin"]])
     async def test_custom_role_named_like_admin_is_refused(

@@ -63,10 +63,23 @@ describe('adminRolesFromJanuaClaims', () => {
   it.each([
     [{ is_admin: true }, ['admin']],
     [{ is_admin: true, roles: ['member'] }, ['admin']],
-    [{ roles: ['selva:admin'] }, ['admin']],
-    [{ roles: 'member,selva:admin' }, ['admin']],
   ])('grants the console for %j', (claims, expected) => {
     expect(adminRolesFromJanuaClaims(claims)).toEqual(expected);
+  });
+
+  it.each([
+    [{ roles: ['selva:admin'], org_id: 'platform-org' }, ['admin']],
+    [{ roles: 'member,selva:admin', org_id: 'platform-org' }, ['admin']],
+    [{ roles: ['selva:admin'], org_id: 'tenant-org' }, []],
+    [{ roles: ['selva:admin'] }, []],
+  ])('limits the selva:admin grant to the platform organization: %j', (claims, expected) => {
+    vi.stubEnv('PLATFORM_ORG_ID', 'platform-org');
+    expect(adminRolesFromJanuaClaims(claims as JWTPayload)).toEqual(expected);
+  });
+
+  it('refuses the selva:admin grant when no platform organization is configured', () => {
+    vi.stubEnv('PLATFORM_ORG_ID', '');
+    expect(adminRolesFromJanuaClaims({ roles: ['selva:admin'], org_id: 'any' })).toEqual([]);
   });
 
   it.each([

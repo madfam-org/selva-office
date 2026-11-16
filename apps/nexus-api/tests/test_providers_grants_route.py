@@ -82,10 +82,14 @@ class TestProviderGrantsRoute:
         assert grant["pace_status"] == "behind"
         assert grant["meter_ok"] is True
 
-    async def test_selva_admin_app_role_allowed(
-        self, client: httpx.AsyncClient, grant_guard: g.GrantGuard
+    async def test_selva_admin_app_role_in_platform_org_allowed(
+        self,
+        client: httpx.AsyncClient,
+        grant_guard: g.GrantGuard,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        app = _as_user({"sub": "u-1", "roles": ["selva:admin"], "org_id": "any-org"})
+        monkeypatch.setenv("PLATFORM_ORG_ID", "madfam")
+        app = _as_user({"sub": "u-1", "roles": ["selva:admin"], "org_id": "madfam"})
         try:
             resp = await client.get("/api/v1/providers/grants", headers={"Authorization": "x"})
         finally:
