@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,12 @@ from ..auth import get_current_user
 from ..config import get_settings
 from ..database import get_db
 from ..models import ComputeTokenLedger
+from ..schemas.inference_usage import InferenceUsageReport
+from ..services.inference_usage_report import (
+    MONTH_PATTERN,
+    InvalidMonthError,
+    build_inference_usage_report,
+)
 from ..tenant import TenantContext, get_tenant
 
 logger = logging.getLogger(__name__)
@@ -230,6 +236,32 @@ async def agent_hours_usage(
         "agent_hours": float(total_hours),
         "task_count": int(task_count),
     }
+
+
+@router.get("/inference-usage", response_model=InferenceUsageReport)
+async def inference_usage(
+    month: str = Query(..., pattern=MONTH_PATTERN, description="Civil month, YYYY-MM."),
+    org: str | None = Query(None, max_length=255, description="Defaults to the caller's org."),
+    db: AsyncSession = Depends(get_db),
+    tenant: TenantContext = Depends(get_tenant),  # noqa: B008
+) -> InferenceUsageReport:
+    """Inference usage of the caller's org in one civil month (America/Mexico_City).
+
+    Tokens by provider, model and caller class, the request count and the sum of
+    the rows' LIST-PRICE ESTIMATES in USD (not cash, not COGS). Funding is
+    ``unattributed``. An empty month answers ``status: "empty"`` with null
+    totals. ``org`` may only name the caller's own org (403 otherwise). The MCP
+    tool ``inference_usage`` serves this same read.
+    """
+    if org is not None and org != tenant.org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="org is outside the caller's organization",
+        )
+    try:
+        return await build_inference_usage_report(db, org_id=tenant.org_id, month=month)
+    except InvalidMonthError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
 
 
 @router.get("/tiers")

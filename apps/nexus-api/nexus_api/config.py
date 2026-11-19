@@ -212,6 +212,11 @@ class Settings(BaseSettings):
     # Inbound A2A task intake (/api/v1/a2a/tasks/*). Off until per-caller
     # metering lands; when on, callers still need a verified bearer token.
     a2a_inbound_enabled: bool = False
+    # Native read-only COGS MCP at POST /mcp (RFC 0051). Off until the owner
+    # turns it on; while off the route answers 404 before authentication.
+    selva_mcp_enabled: bool = False
+    # Tool calls per machine client per minute on /mcp (per process).
+    selva_mcp_rate_per_minute: int = 60
     rate_limit_per_minute: int = 60
     dispatch_rate_limit: int = 10
     dispatch_rate_window: int = 60
