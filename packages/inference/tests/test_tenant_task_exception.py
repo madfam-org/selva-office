@@ -312,7 +312,7 @@ class TestLoaderFailsClosed:
 
         book = load_tenant_policies(path)
         policy = _floor_intact(book)
-        assert policy.allowed_task_types == ["summarization", EXCEPTED_TASK]
+        assert policy.allowed_task_types == ["summarization", EXCEPTED_TASK, "crea-sim-training"]
         assert set(policy.task_exceptions) == {EXCEPTED_TASK}
         exception = policy.task_exceptions[EXCEPTED_TASK]
         assert exception.sensitivity_floor is Sensitivity.INTERNAL

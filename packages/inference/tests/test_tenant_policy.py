@@ -13,6 +13,7 @@ from madfam_inference.tenant_policy import (
     TenantPolicyBook,
     apply_floor,
     load_tenant_policies,
+    resolve_task_exception,
     sensitivity_rank,
 )
 from madfam_inference.types import Sensitivity
@@ -169,6 +170,58 @@ class TestLoadFromYaml:
         assert policy.sensitivity_floor is Sensitivity.RESTRICTED
         assert policy.rate_limit_per_minute is not None
         assert policy.daily_usd_budget is not None
+
+
+class TestTrainingTaskPolicy:
+    """The shipped entitlement permits training without a cloud exception."""
+
+    @pytest.fixture
+    def policy_book(self, tmp_path: Path) -> TenantPolicyBook:
+        import yaml
+
+        root = Path(__file__).resolve().parents[3]
+        manifest = root / "infra/k8s/production/tenant-policies.yaml"
+        embedded = yaml.safe_load(manifest.read_text())["data"]["tenant-policies.yaml"]
+        path = tmp_path / "training-policy.yaml"
+        path.write_text(embedded)
+        load_tenant_policies.cache_clear()
+        return load_tenant_policies(path)
+
+    def test_entitlement_keeps_limits_and_other_task_rules(
+        self, policy_book: TenantPolicyBook
+    ) -> None:
+        policy = policy_book.for_org(RESTRICTED_TENANT_ORG_ID)
+        assert policy is not None
+        assert policy.allowed_task_types == [
+            "summarization",
+            "family-feedback",
+            "crea-sim-training",
+        ]
+        assert "crea-sim-training-unreviewed" not in policy.allowed_task_types
+        assert policy.sensitivity_floor is Sensitivity.RESTRICTED
+        assert policy_book.max_tokens_for(policy) == 1500
+        assert policy_book.timeout_for(policy) == 40
+        assert policy.rate_limit_per_minute == 30
+        assert policy.daily_usd_budget == 2.0
+        assert set(policy.task_exceptions) == {"family-feedback"}
+        assert policy_book.for_org("unconfigured-training-org") is None
+        assert policy_book.max_tokens_for(None) == 4096
+        assert policy_book.timeout_for(None) == 45
+
+    @pytest.mark.parametrize("declared", list(Sensitivity))
+    @pytest.mark.parametrize("attestation", [None, "true", "false"])
+    def test_training_cannot_borrow_the_cloud_exception(
+        self, policy_book: TenantPolicyBook, declared: Sensitivity, attestation: str | None
+    ) -> None:
+        policy = policy_book.for_org(RESTRICTED_TENANT_ORG_ID)
+        assert policy is not None
+        assert (
+            resolve_task_exception(
+                policy, task_type="crea-sim-training", declared=declared, pseudonymized=attestation
+            )
+            is None
+        )
+        assert apply_floor(declared, policy.sensitivity_floor) is Sensitivity.RESTRICTED
 
 
 class TestRateLimiter:

@@ -154,10 +154,10 @@ class TestRestrictedTenantTaskTypes:
 
     Today neither is a ``TaskType`` member. These tests assert the outcome
     is correct BOTH ways — unmapped today, and mapped tomorrow — so that
-    adding either to the enum can never become a silent data leak.
+    adding any of them to the enum can never become a silent data leak.
     """
 
-    MAP_TASK_TYPES = ["summarization", "family-feedback"]
+    MAP_TASK_TYPES = ["summarization", "family-feedback", "crea-sim-training"]
 
     @pytest.mark.parametrize("task_type", MAP_TASK_TYPES)
     async def test_unmapped_map_task_type_routes_local(
