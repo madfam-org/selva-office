@@ -274,6 +274,20 @@ class Settings(BaseSettings):
     # Stripe handlers consult this map only in break-glass mode.
     stripe_price_to_tier_map: dict[str, str] = {}
 
+    # -- A2A v1.0.1-compatible surface (observability, additive) --------------
+    # Feature gate for the v1.0.1 A2A layer served ALONGSIDE the legacy 0.7.0
+    # surface (card at /.well-known/agent-card.json, JSON-RPC 2.0). OFF by
+    # default: when false the v1 router and the new well-known route are not
+    # mounted at all, so the surface is fully inert and the legacy
+    # /api/v1/a2a/* surface is the only A2A surface — zero behaviour change.
+    # Follows the same FEATURE_* pattern as feature_stripe_mxn_live etc.
+    feature_a2a_v1: bool = False
+    # When true (and feature_a2a_v1 is on), the v1 surface offers the SSE
+    # message/stream method and the agent card advertises
+    # capabilities.streaming=true. When false, message/stream returns a
+    # JSON-RPC error and the card advertises streaming=false.
+    a2a_v1_streaming: bool = False
+
     model_config = {
         "env_file": (str(_PROJECT_ROOT / ".env"), ".env"),
         "env_file_encoding": "utf-8",
