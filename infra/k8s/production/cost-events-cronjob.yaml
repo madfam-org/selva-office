@@ -1,0 +1,150 @@
+# Selva inference usage → Dhanam's cost ledger (RFC 0050, ruling C13).
+#
+# SUSPENDED and the emit flag OFF: merging this creates the CronJob object and
+# nothing runs. One sweep (`python -m nexus_api.cost_events`) rebuilds the last
+# 7 closed civil days of compute_token_ledger as cost.event.v1 events (source
+# `selva`, kind `inference`, basis `estimate`), syncs the cost_event_outbox
+# table and posts what is due to POST {DHANAM_API_URL}/v1/cost-events.
+# Design, classification and owner steps: docs/COST_EVENTS.md.
+#
+# To turn it on (owner, in this order — docs/COST_EVENTS.md § Turning it on):
+#   1. Janua client selva-dhanam-cost-events + Dhanam writer grant (source selva).
+#   2. The selva-dhanam-cost-events Secret (keys below) via its ExternalSecret.
+#   3. A dry run in a nexus-api pod: `python -m nexus_api.cost_events --dry-run`.
+#   4. SELVA_COST_EVENTS_EMIT_ENABLED "true" below, then `suspend: false`.
+#
+# The image is name-only: kustomize `images:` pins the same nexus-api digest as
+# the Deployment. The pod label is NOT nexus-api, so the nexus-api Service never
+# routes traffic to it (database access is by namespace label, not pod label).
+# concurrencyPolicy Forbid: two sweeps never race on the outbox.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nexus-api-cost-events
+  namespace: selva
+  labels:
+    app.kubernetes.io/name: nexus-api-cost-events
+    app.kubernetes.io/part-of: selva-office
+    app.kubernetes.io/component: cost-events
+spec:
+  suspend: true
+  schedule: "17 * * * *"  # hourly; only closed days are built
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0  # the next hourly run is the retry; the outbox keeps state
+      activeDeadlineSeconds: 900
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: nexus-api-cost-events
+            app.kubernetes.io/part-of: selva-office
+            app.kubernetes.io/component: cost-events
+        spec:
+          serviceAccountName: selva-sa
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            fsGroup: 1001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cost-events
+              image: ghcr.io/madfam-org/selva-nexus-api
+              workingDir: /app/apps/nexus-api
+              command: ["/app/.venv/bin/python", "-m", "nexus_api.cost_events"]
+              securityContext:
+                allowPrivilegeEscalation: false
+                privileged: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              envFrom:
+                # JANUA_ISSUER_URL, DHANAM_API_URL, PLATFORM_ORG_ID.
+                - configMapRef:
+                    name: selva-config
+              env:
+                - name: SELVA_COST_EVENTS_EMIT_ENABLED
+                  value: "false"
+                - name: SELVA_DHANAM_COST_EVENTS_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-dhanam-cost-events
+                      key: SELVA_DHANAM_COST_EVENTS_CLIENT_ID
+                      optional: true
+                - name: SELVA_DHANAM_COST_EVENTS_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-dhanam-cost-events
+                      key: SELVA_DHANAM_COST_EVENTS_CLIENT_SECRET
+                      optional: true
+                # The grant guard's own config, so grant-covered usage is
+                # classified as a non-cash memo, never as paid (C13). Must
+                # match nexus-api.yaml.
+                - name: PROVIDER_GRANTS_PATH
+                  value: "/etc/selva/provider-grants/provider-grants.json"
+                - name: PROVIDER_GRANTS_REQUIRED_FOR
+                  value: "anthropic,anthropic-ops"
+                # nexus_api.config.Settings refuses to start without these
+                # (same as migrate-job.yaml).
+                - name: ENVIRONMENT
+                  value: production
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-secrets
+                      key: database-url
+                - name: REDIS_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-secrets
+                      key: redis-url
+                - name: SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-secrets
+                      key: secret-key
+                - name: WORKER_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-secrets
+                      key: WORKER_API_TOKEN
+                - name: CONSENT_LEDGER_SIGNING_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-secrets
+                      key: CONSENT_LEDGER_SIGNING_SECRET
+                - name: COLYSEUS_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: selva-secrets
+                      key: colyseus-secret
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+                - name: provider-grants
+                  mountPath: /etc/selva/provider-grants
+                  readOnly: true
+          volumes:
+            - name: tmp
+              emptyDir: {}
+            - name: provider-grants
+              secret:
+                secretName: selva-provider-grants
+                optional: true
+                items:
+                  - key: provider-grants.json
+                    path: provider-grants.json
