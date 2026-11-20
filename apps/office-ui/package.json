@@ -23,11 +23,11 @@
     "js-yaml": "^4.3.2",
     "next": "^15.5.28",
     "phaser": "^3.87.0",
-    "posthog-js": "^1.438.24",
+    "posthog-js": "^1.450.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "simple-peer": "^9.11.1",
-    "zustand": "^5.0.16"
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@selva/config": "workspace:*",
@@ -39,7 +39,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.6.2",
     "jsdom": "^25.0.1",
-    "postcss": "^8.5.32",
+    "postcss": "^8.5.33",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
     "vite": "^7.3.7",
