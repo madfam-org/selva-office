@@ -72,6 +72,7 @@ constraint-dependencies = [
   "langgraph-sdk>=0.4.4",
   "langsmith>=0.8.18",
   "mako>=1.4.2",
+  "mcp>=1.30.0,<2",
   "multidict>=6.9.1",
   "pydantic-settings>=2.14.2",
   "pyjwt>=2.15.1",
