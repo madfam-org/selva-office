@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy import func, or_, select
 
-from .database import admin_session
+from .database import tenant_session
 from .models import DeploymentEvidenceRecord, SwarmTask, SwarmTaskOutbox
 
 logger = logging.getLogger(__name__)
@@ -129,8 +129,17 @@ def record_deployment_status_update(task: SwarmTask, evidence: dict[str, Any] | 
 
 
 async def _refresh_db_gauges() -> None:
+    """Platform-wide gauges: every org's rows, read under the platform RLS marker.
+
+    ``swarm_tasks`` and ``deployment_evidence_records`` carry the strict, FORCEd
+    policies of migrations 0028/0034, which admit the ``'platform'`` marker or the
+    row's own org. ``admin_session()`` is NOT used: without ``DATABASE_ADMIN_URL``
+    it falls back to the regular pool with no org set, the policies hide every
+    row, and the gauges read 0. A database error propagates (``/metrics`` fails
+    visibly) rather than publishing a fake zero.
+    """
     stale_before = datetime.now(UTC) - timedelta(minutes=10)
-    async with admin_session() as db:
+    async with tenant_session("platform") as db:
         depth_result = await db.execute(
             select(SwarmTaskOutbox.status, func.count(SwarmTaskOutbox.id))
             .where(SwarmTaskOutbox.status.in_(_OUTBOX_RETRYABLE_STATUSES))

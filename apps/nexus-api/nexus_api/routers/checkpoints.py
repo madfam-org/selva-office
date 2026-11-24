@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import CurrentUser, require_roles
+from ..auth import CurrentUser, require_platform_admin
 from ..checkpoints import CheckpointManager
 from ..database import get_db
 
@@ -42,7 +42,7 @@ class CheckpointState(BaseModel):
 @router.get("/{run_id}", response_model=list[CheckpointListItem])
 async def list_checkpoints(
     run_id: str,
-    user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[CheckpointListItem]:
     """List all phase checkpoints for an ACP run."""
@@ -55,7 +55,7 @@ async def list_checkpoints(
 async def get_checkpoint(
     run_id: str,
     phase: str,
-    user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ) -> CheckpointState:
     """Retrieve the state snapshot for a specific phase of a run."""
@@ -70,7 +70,7 @@ async def get_checkpoint(
 async def rollback_to_phase(
     run_id: str,
     phase: str,
-    user: CurrentUser = Depends(require_roles(["admin"])),
+    user: CurrentUser = Depends(require_platform_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """

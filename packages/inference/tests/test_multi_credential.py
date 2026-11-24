@@ -70,6 +70,11 @@ async def redis() -> AsyncIterator[fakeredis.aioredis.FakeRedis]:
     await client.aclose()
 
 
+async def _empty_ledger(_grant: g.ProviderGrant) -> float:
+    """A ledger with no spend yet: the meter must be seeded explicitly (fail-closed)."""
+    return 0.0
+
+
 def _guard(
     redis: Any,
     *grants: dict[str, Any],
@@ -80,7 +85,7 @@ def _guard(
     return g.GrantGuard(
         config_loader=lambda: st,
         required=required,
-        meter=g.GrantMeter(redis),
+        meter=g.GrantMeter(redis, seeder=_empty_ledger),
         platform_orgs={"madfam"},
         now_fn=lambda: now,
     )

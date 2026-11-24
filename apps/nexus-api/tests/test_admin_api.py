@@ -19,11 +19,32 @@ class TestAdminAuth:
             _require_admin({"sub": "u1", "roles": ["viewer"]})
         assert exc_info.value.status_code == 403
 
-    async def test_admin_passes(self) -> None:
+    async def test_platform_admin_passes(self) -> None:
         from nexus_api.routers.admin import _require_admin
 
-        user = _require_admin({"sub": "u1", "roles": ["admin"]})
+        user = _require_admin({"sub": "u1", "roles": [], "is_admin": True})
         assert user["sub"] == "u1"
+
+    async def test_selva_admin_app_role_in_platform_org_passes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from nexus_api.routers.admin import _require_admin
+
+        monkeypatch.setenv("PLATFORM_ORG_ID", "platform-org")
+        user = _require_admin({"sub": "u1", "roles": ["selva:admin"], "org_id": "platform-org"})
+        assert user["sub"] == "u1"
+        with pytest.raises(HTTPException):
+            _require_admin({"sub": "u1", "roles": ["selva:admin"], "org_id": "tenant-org"})
+
+    async def test_organization_admin_gets_403(self) -> None:
+        """A bare ``admin`` organization role does not open the game-server admin API."""
+        from nexus_api.routers.admin import _require_admin
+
+        with pytest.raises(HTTPException) as exc_info:
+            _require_admin(
+                {"sub": "u1", "roles": ["admin"], "org_roles": ["admin"], "org_id": "o1"}
+            )
+        assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio

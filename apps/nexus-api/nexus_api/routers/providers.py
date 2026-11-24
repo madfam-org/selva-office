@@ -33,13 +33,13 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from madfam_inference.grants import GrantStatus, get_default_guard, get_grant_statuses
 from selva_redis_pool import get_redis_pool
 
-from ..auth import CurrentUser, require_roles
+from ..auth import CurrentUser, require_platform_admin
 from ..config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ def classify_alert(balance_usd: float, source: str) -> str:
 
 @router.get("/balance", response_model=dict[str, ProviderBalance])
 async def get_provider_balances(
-    _user: CurrentUser = Depends(require_roles(["admin", "platform"])),
+    _user: CurrentUser = Depends(require_platform_admin),
 ) -> dict[str, ProviderBalance]:
     """Return the most recent cached balance for every known LLM provider.
 
@@ -185,21 +185,13 @@ async def get_provider_balances(
 
 
 def _require_platform_admin(
-    user: CurrentUser = Depends(require_roles(["admin", "platform"])),
+    user: CurrentUser = Depends(require_platform_admin),
 ) -> CurrentUser:
-    """Platform operators only: the ``platform`` role, or ``admin`` in the platform org.
+    """Platform administrators only (``auth.is_platform_admin``).
 
-    Grant amounts are MADFAM-private, so a tenant org's admin is refused.
+    Grant amounts are MADFAM-private, so an organization's admin is refused.
     """
-    from selva_permissions import is_platform_audience
-
-    roles = user.get("roles", [])
-    if "platform" in roles or is_platform_audience(user.get("org_id")):
-        return user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Provider credit grants are visible to platform administrators only",
-    )
+    return user
 
 
 class ProviderGrantsResponse(BaseModel):

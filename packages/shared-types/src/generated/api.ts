@@ -517,8 +517,8 @@ export interface paths {
          *     Mirrors the ``swarms.reap-stale`` reaper for approvals: any approval
          *     that has stayed in ``pending`` for more than ``older_than_hours``
          *     (default 24 h) is flipped to ``expired``. Same access-control gate
-         *     as ``reap-stale`` — only ``service`` / ``worker`` / ``platform`` /
-         *     ``admin`` roles may invoke it.
+         *     as ``reap-stale`` — only the service credential (``service`` /
+         *     ``worker``) or a platform administrator may invoke it.
          *
          *     Audit trail: a single ``approval.bulk_expired`` summary event is
          *     emitted (NOT one event per row — see PR description) carrying the
@@ -905,8 +905,8 @@ export interface paths {
          *
          *     This is a platform health endpoint that operators or a cron job call
          *     to clean up stuck tasks across **all tenants**. The role gate is the
-         *     access control: only callers carrying ``service``, ``worker``,
-         *     ``platform``, or ``admin`` roles may invoke it.
+         *     access control: only the service credential (``service`` / ``worker``)
+         *     or a platform administrator may invoke it.
          *
          *     Tenancy bypass (Phase 1.5 -- migration 0028):
          *         Uses ``admin_session()`` which opens a session against the
@@ -2966,7 +2966,8 @@ export interface paths {
          * @description Configure enterprise SSO connection for this tenant.
          *
          *     Stores the Janua connection ID so that users in this org are redirected
-         *     to the correct IdP during authentication.  Requires admin role.
+         *     to the correct IdP during authentication.  Requires an administrator of
+         *     the caller's own organization (or a platform administrator).
          */
         patch: operations["configure_sso_api_v1_tenants_me_sso_patch"];
         trace?: never;
@@ -2994,7 +2995,8 @@ export interface paths {
          * Update Branding
          * @description Update white-label branding for this tenant.
          *
-         *     Only non-null fields in the request body are applied.  Requires admin role.
+         *     Only non-null fields in the request body are applied.  Requires an
+         *     administrator of the caller's own organization (or a platform administrator).
          */
         patch: operations["update_branding_api_v1_tenants_me_branding_patch"];
         trace?: never;
@@ -3335,7 +3337,7 @@ export interface paths {
         post?: never;
         /**
          * Cancel Schedule
-         * @description Cancel (delete) a schedule. Users may only cancel their own; admins may cancel any.
+         * @description Cancel (delete) a schedule. Users cancel their own; platform admins may cancel any.
          */
         delete: operations["cancel_schedule_api_v1_schedules__schedule_id__delete"];
         options?: never;
@@ -6210,7 +6212,7 @@ export interface components {
                 [key: string]: unknown;
             }[];
             /** Error Rate */
-            error_rate: number;
+            error_rate: number | null;
             /** Trends */
             trends: {
                 [key: string]: components["schemas"]["TrendPoint"][];

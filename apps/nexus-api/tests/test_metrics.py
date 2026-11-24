@@ -343,6 +343,39 @@ class TestMetricsDashboard:
         # We seeded 2 error events out of 6 total events, so rate should be > 0
         assert data["error_rate"] > 0
 
+    async def test_error_rate_is_null_without_events(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """A rate over zero events is unknown, not a reassuring 0%."""
+        resp = await client.get("/api/v1/metrics/dashboard", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["error_rate"] is None
+
+    async def test_token_usage_leaves_out_rows_without_a_provider(
+        self,
+        client: httpx.AsyncClient,
+        auth_headers: dict[str, str],
+        db_session: AsyncSession,
+    ) -> None:
+        """Dispatch debits are compute-budget units, not inference tokens."""
+        await _seed_metrics_data(db_session)
+        db_session.add(
+            ComputeTokenLedger(
+                id=uuid.uuid4(),
+                action="dispatch_task",
+                amount=10,
+                org_id="dev-org",
+                created_at=_utcnow() - timedelta(minutes=5),
+            )
+        )
+        await db_session.commit()
+        resp = await client.get("/api/v1/metrics/dashboard", headers=auth_headers)
+        rows = resp.json()["cost_breakdown"]
+        assert {r["provider"] for r in rows} == {"openai", "anthropic"}
+        assert "unknown" not in {r["provider"] for r in rows}
+
     # -- 11. Response includes trends with tasks and errors arrays -------------
 
     async def test_response_includes_trends(

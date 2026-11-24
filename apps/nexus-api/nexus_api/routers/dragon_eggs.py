@@ -1,6 +1,6 @@
 """Dragon-egg REST API — Phase 1 admin-only social-account hatching.
 
-Phase 1 scope: ``admin@madfam.io`` (or ``superadmin`` role) only. The
+Phase 1 scope: ``admin@madfam.io`` (or a platform administrator) only. The
 authorization dependency is documented below; flipping to multi-tenant
 in Phase 2 is a one-line change to the dependency body.
 
@@ -32,7 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import CurrentUser, get_current_user
+from ..auth import CurrentUser, get_current_user, is_platform_admin
 from ..database import get_db
 from ..services import dragon_egg_service as egg_service
 
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/dragon-eggs", tags=["dragon-eggs"])
 
 
 # ---------------------------------------------------------------------------
-# Authorization — Phase 1: admin@madfam.io OR superadmin role
+# Authorization — Phase 1: admin@madfam.io OR platform administrator
 # ---------------------------------------------------------------------------
 
 
@@ -50,11 +50,10 @@ router = APIRouter(prefix="/dragon-eggs", tags=["dragon-eggs"])
 #: — the dependency is the one place to flip.
 _PHASE_1_ADMIN_EMAILS: frozenset[str] = frozenset({"admin@madfam.io"})
 
-#: Roles that bypass the email allowlist. The ``admin`` role is the
-#: dev-bypass role granted by ``auth.get_current_user`` when
-#: ``dev_auth_bypass=true`` (so local tests don't need a real Janua
-#: token); ``superadmin`` is the production bypass for ops.
-_PHASE_1_BYPASS_ROLES: frozenset[str] = frozenset({"admin", "superadmin"})
+# A platform administrator (``auth.is_platform_admin``: the ``is_admin``
+# claim or the ``selva:admin`` application role) bypasses the email
+# allowlist. The dev-bypass user of ``auth.get_current_user`` is one, so
+# local tests don't need a real Janua token.
 
 
 async def require_dragon_egg_admin(
@@ -62,8 +61,8 @@ async def require_dragon_egg_admin(
 ) -> CurrentUser:
     """FastAPI dependency that admits a caller to the dragon-egg surface.
 
-    Phase 1 rule: ``email == 'admin@madfam.io'`` OR a role in
-    ``_PHASE_1_BYPASS_ROLES`` (admin/superadmin).
+    Phase 1 rule: ``email == 'admin@madfam.io'`` OR a platform
+    administrator (``auth.is_platform_admin``).
 
     Phase 2 evolution path: replace this body with a check against
     ``tenant_configs.feature_flags`` (or a dedicated
@@ -74,11 +73,10 @@ async def require_dragon_egg_admin(
     Returns the current user dict on success; raises 403 otherwise.
     """
     email = (user.get("email") or "").lower().strip()
-    roles = set(user.get("roles") or [])
 
     if email in _PHASE_1_ADMIN_EMAILS:
         return user
-    if roles & _PHASE_1_BYPASS_ROLES:
+    if is_platform_admin(user):
         return user
 
     raise HTTPException(

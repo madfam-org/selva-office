@@ -4,11 +4,7 @@
  * useIsMadfamAdmin — default-deny admin gate for the Atrium.
  *
  * Reads the Janua session cookie (decoded by `getSessionUser`) and
- * returns `true` IFF either:
- *   - claims.email === 'admin@madfam.io', or
- *   - claims.role === 'superadmin' (singular — some IdPs use this), or
- *   - claims.roles contains 'superadmin' (plural — Janua's canonical
- *     shape).
+ * returns `true` IFF the claims carry `is_admin: true`.
  *
  * Any deviation — missing token, malformed token, parse failure,
  * unknown claim shape — resolves to `false`. There is no SSR fallback

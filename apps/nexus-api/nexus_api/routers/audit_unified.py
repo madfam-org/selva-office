@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import get_current_user
+from ..auth import get_current_user, is_platform_admin
 from ..database import get_db
 from ..models import (
     ConfigmapAuditLog,
@@ -286,8 +286,9 @@ def _parse_cursor(cursor: str | None) -> datetime | None:
 
 
 def _is_admin_or_service(user: dict[str, Any]) -> bool:
+    """Platform administrator, or the internal service credential."""
     roles = user.get("roles") or []
-    return "admin" in roles or "service" in roles
+    return is_platform_admin(user) or "service" in roles
 
 
 # ---------------------------------------------------------------------------

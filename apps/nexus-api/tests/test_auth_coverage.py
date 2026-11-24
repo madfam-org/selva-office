@@ -215,6 +215,7 @@ class TestGetCurrentUserBranches:
         assert user["sub"] == "dev-user-00000000"
         assert user["org_id"] == "dev-org"
         assert "admin" in user["roles"]
+        assert user["is_admin"] is True
 
     @pytest.mark.asyncio
     async def test_jwt_branch_sets_org_id_var_from_payload(self) -> None:
@@ -297,30 +298,37 @@ class TestGetCurrentUserBranches:
 @pytest.mark.asyncio
 class TestRoleCheckers:
     async def test_require_role_passes(self) -> None:
-        checker = _auth_mod.require_role("admin")
-        user = {"sub": "u", "roles": ["admin", "tactician"]}
+        checker = _auth_mod.require_role("enterprise-cleanroom")
+        user = {"sub": "u", "roles": ["enterprise-cleanroom", "tactician"]}
         assert await checker(user=user) is user
 
     async def test_require_role_rejects_missing_role(self) -> None:
-        checker = _auth_mod.require_role("admin")
+        checker = _auth_mod.require_role("enterprise-cleanroom")
         with pytest.raises(HTTPException) as exc:
             await checker(user={"sub": "u", "roles": ["tactician"]})
         assert exc.value.status_code == 403
-        assert "admin" in exc.value.detail
+        assert "enterprise-cleanroom" in exc.value.detail
 
     async def test_require_role_rejects_missing_roles_list(self) -> None:
         """user dict with no ``roles`` key still rejected."""
-        checker = _auth_mod.require_role("admin")
+        checker = _auth_mod.require_role("enterprise-cleanroom")
         with pytest.raises(HTTPException):
             await checker(user={"sub": "u"})
 
+    async def test_role_gates_refuse_the_bare_admin_name(self) -> None:
+        """Administration is gated by the claim helpers, never a role-name gate."""
+        with pytest.raises(ValueError):
+            _auth_mod.require_role("admin")
+        with pytest.raises(ValueError):
+            _auth_mod.require_roles(["admin", "enterprise-cleanroom"])
+
     async def test_require_roles_passes_on_any_match(self) -> None:
-        checker = _auth_mod.require_roles(["admin", "enterprise-cleanroom"])
+        checker = _auth_mod.require_roles(["tactician", "enterprise-cleanroom"])
         user = {"sub": "u", "roles": ["enterprise-cleanroom"]}
         assert await checker(user=user) is user
 
     async def test_require_roles_rejects_when_none_match(self) -> None:
-        checker = _auth_mod.require_roles(["admin", "enterprise-cleanroom"])
+        checker = _auth_mod.require_roles(["guest-reviewer", "enterprise-cleanroom"])
         with pytest.raises(HTTPException) as exc:
             await checker(user={"sub": "u", "roles": ["tactician"]})
         assert exc.value.status_code == 403

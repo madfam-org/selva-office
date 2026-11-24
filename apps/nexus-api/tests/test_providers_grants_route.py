@@ -14,6 +14,11 @@ import pytest
 from madfam_inference import grants as g
 
 
+async def _empty_ledger(_grant: g.ProviderGrant) -> float:
+    """A ledger with no spend yet: the meter must be seeded explicitly (fail-closed)."""
+    return 0.0
+
+
 @pytest.fixture
 def grant_guard() -> Iterator[g.GrantGuard]:
     book = g.parse_grants(
@@ -37,7 +42,9 @@ def grant_guard() -> Iterator[g.GrantGuard]:
     guard = g.GrantGuard(
         config_loader=lambda: state,
         required=("anthropic",),
-        meter=g.GrantMeter(fakeredis.aioredis.FakeRedis(decode_responses=True)),
+        meter=g.GrantMeter(
+            fakeredis.aioredis.FakeRedis(decode_responses=True), seeder=_empty_ledger
+        ),
         now_fn=lambda: datetime(2030, 1, 1, 12, tzinfo=UTC),
     )
     g.set_default_guard(guard)
@@ -58,10 +65,10 @@ def _as_user(user: dict[str, Any]) -> Any:
 
 @pytest.mark.asyncio
 class TestProviderGrantsRoute:
-    async def test_platform_role_sees_c2_fields(
+    async def test_platform_admin_claim_sees_c2_fields(
         self, client: httpx.AsyncClient, grant_guard: g.GrantGuard
     ) -> None:
-        app = _as_user({"sub": "u-1", "roles": ["platform"], "org_id": "any-org"})
+        app = _as_user({"sub": "u-1", "roles": [], "org_id": "any-org", "is_admin": True})
         try:
             resp = await client.get("/api/v1/providers/grants", headers={"Authorization": "x"})
         finally:
@@ -75,19 +82,53 @@ class TestProviderGrantsRoute:
         assert grant["pace_status"] == "behind"
         assert grant["meter_ok"] is True
 
-    async def test_admin_in_platform_org_allowed(
+    async def test_selva_admin_app_role_in_platform_org_allowed(
         self,
         client: httpx.AsyncClient,
         grant_guard: g.GrantGuard,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setenv("PLATFORM_ORG_ID", "madfam")
-        app = _as_user({"sub": "u-1", "roles": ["admin"], "org_id": "madfam"})
+        app = _as_user({"sub": "u-1", "roles": ["selva:admin"], "org_id": "madfam"})
         try:
             resp = await client.get("/api/v1/providers/grants", headers={"Authorization": "x"})
         finally:
             app.dependency_overrides.clear()
         assert resp.status_code == 200
+
+    async def test_organization_admin_of_platform_org_refused(
+        self,
+        client: httpx.AsyncClient,
+        grant_guard: g.GrantGuard,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An organization role is not platform administration, whatever the org."""
+        monkeypatch.setenv("PLATFORM_ORG_ID", "madfam")
+        app = _as_user(
+            {
+                "sub": "u-1",
+                "roles": ["admin"],
+                "org_roles": ["admin"],
+                "org_id": "madfam",
+                "is_admin": False,
+            }
+        )
+        try:
+            resp = await client.get("/api/v1/providers/grants", headers={"Authorization": "x"})
+        finally:
+            app.dependency_overrides.clear()
+        assert resp.status_code == 403
+
+    @pytest.mark.parametrize("roles", [["platform"], ["superadmin"], ["platform_admin"]])
+    async def test_custom_role_named_like_admin_refused(
+        self, client: httpx.AsyncClient, grant_guard: g.GrantGuard, roles: list[str]
+    ) -> None:
+        app = _as_user({"sub": "u-1", "roles": roles, "org_id": "any-org"})
+        try:
+            resp = await client.get("/api/v1/providers/grants", headers={"Authorization": "x"})
+        finally:
+            app.dependency_overrides.clear()
+        assert resp.status_code == 403
 
     async def test_tenant_admin_refused(
         self,

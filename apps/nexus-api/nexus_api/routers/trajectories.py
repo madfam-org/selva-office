@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from selva_workflows.trajectory import TrajectoryExporter
 
-from ..auth import CurrentUser, require_roles
+from ..auth import CurrentUser, require_platform_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/trajectories", tags=["Trajectories"])
@@ -39,7 +39,7 @@ class BatchExportRequest(BaseModel):
 
 @router.get("", response_model=list[str])
 async def list_trajectories(
-    user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
 ) -> list[str]:
     """List all exportable ACP run IDs."""
     return _exporter.list_exportable_runs()
@@ -48,7 +48,7 @@ async def list_trajectories(
 @router.get("/{run_id}", response_model=TrajectoryResponse)
 async def get_trajectory(
     run_id: str,
-    user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
 ) -> TrajectoryResponse:
     """Return a single ShareGPT-format trajectory for *run_id*."""
     traj = _exporter.build_sharegpt(run_id)
@@ -60,7 +60,7 @@ async def get_trajectory(
 @router.post("/batch")
 async def export_batch(
     req: BatchExportRequest,
-    user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
+    user: CurrentUser = Depends(require_platform_admin),
 ) -> StreamingResponse:
     """
     Export multiple trajectories as a JSONL file download.

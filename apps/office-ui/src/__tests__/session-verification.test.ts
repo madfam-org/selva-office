@@ -230,9 +230,9 @@ describe('platform admin predicate', () => {
     expect(isPlatformAdminClaims({ roles: ['owner', 'admin'], email: 'someone@example.com' })).toBe(false);
   });
 
-  it('accepts superadmin, the MADFAM admin email, or Janua is_admin', () => {
-    expect(isPlatformAdminClaims({ roles: ['superadmin'] })).toBe(true);
-    expect(isPlatformAdminClaims({ email: 'admin@madfam.io' })).toBe(true);
+  it('accepts only Janua is_admin exactly true', () => {
+    expect(isPlatformAdminClaims({ roles: ['superadmin'] })).toBe(false);
+    expect(isPlatformAdminClaims({ email: 'admin@example.com' })).toBe(false);
     expect(isPlatformAdminClaims({ is_admin: true })).toBe(true);
     expect(isPlatformAdminClaims({ is_admin: 'true' })).toBe(false);
   });
@@ -250,12 +250,12 @@ describe('bundlesAccess', () => {
   it('returns forbidden for verified non-operators, including organization admins and guests', async () => {
     expect(await bundlesAccess(await token({ claims: { roles: ['member'] } }))).toBe('forbidden');
     expect(await bundlesAccess(await token({ claims: { roles: ['admin'] } }))).toBe('forbidden');
+    expect(await bundlesAccess(await token({ claims: { roles: ['superadmin'] } }))).toBe('forbidden');
     expect(await bundlesAccess(await guestToken())).toBe('forbidden');
   });
 
   it('returns ok for verified platform operators', async () => {
     expect(await bundlesAccess(await token({ claims: { is_admin: true } }))).toBe('ok');
-    expect(await bundlesAccess(await token({ claims: { roles: ['superadmin'] } }))).toBe('ok');
   });
 });
 

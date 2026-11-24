@@ -73,3 +73,18 @@ export function timeAgo(input: TimeInput): string {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
+
+/**
+ * Format a duration in seconds for compact display: `42s`, `12m 5s`,
+ * `1h 2m`. Returns an empty string for a negative or non-finite input.
+ */
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '';
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  const rest = s % 60;
+  return rest > 0 ? `${m}m ${rest}s` : `${m}m`;
+}

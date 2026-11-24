@@ -39,7 +39,13 @@ export async function apiFetch(
  * Parse the JWT session cookie to extract user claims.
  * Returns null if no valid cookie exists.
  */
-export function getSessionUser(): { sub: string; email: string; name?: string; roles: string[] } | null {
+export function getSessionUser(): {
+  sub: string;
+  email: string;
+  name?: string;
+  roles: string[];
+  is_admin?: boolean;
+} | null {
   const token = getSessionToken();
   if (!token) return null;
 
@@ -56,6 +62,7 @@ export function getSessionUser(): { sub: string; email: string; name?: string; r
       email: payload.email ?? '',
       name: payload.name,
       roles: payload.roles ?? [],
+      is_admin: payload.is_admin === true,
     };
   } catch {
     return null;

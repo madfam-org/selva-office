@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..auth import require_roles
+from ..auth import require_platform_admin
 from ..database import get_db
 from ..models import ConsentLedgerSigningKey
 from .events import emit_event_db
@@ -118,9 +118,7 @@ class PromoteKeyResponse(BaseModel):
 async def promote_signing_key(
     body: PromoteKeyRequest,
     request: Request,
-    user: dict[str, Any] = Depends(  # noqa: B008
-        require_roles(["admin", "platform"])
-    ),
+    user: dict[str, Any] = Depends(require_platform_admin),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> PromoteKeyResponse:
     """Promote a new HMAC key for the consent ledger (atomic rotation).

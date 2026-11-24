@@ -56,6 +56,23 @@ _JANUA_LEEWAY_SECONDS = 30
 # absent; requiring them closes both gaps. `iss` was already enforced.
 _JANUA_REQUIRED_CLAIMS = ["exp", "iss", "aud"]
 
+# Janua application role that grants Selva platform administration when it is
+# held in the platform organization (`PLATFORM_ORG_ID`). Janua only publishes
+# `<app>:<role>` strings under `roles` from an application-role grant, and only
+# for the token's own `org_id`. The admin console (`apps/admin`) applies the
+# same rule.
+SELVA_ADMIN_APP_ROLE = "selva:admin"
+
+# Janua claim carrying the user's role in the organization named by `org_id`.
+ORG_ROLES_CLAIM = "madfam_org_roles"
+
+# Organization role that administers the token's own organization.
+ORG_ADMIN_ROLE = "admin"
+
+# Role names that belong to the internal service credential (the worker shared
+# secret below). They are never read from a bearer token's `roles` claim.
+_SERVICE_CREDENTIAL_ROLES = frozenset({"service", "worker", "platform"})
+
 
 class _UnknownKeyIdError(InvalidTokenError):
     """The token's ``kid`` is not in the JWKS (possibly a key rotation)."""
@@ -218,6 +235,8 @@ async def get_current_user(
             "roles": ["admin", "tactician", "enterprise-cleanroom"],
             "org_id": "dev-org",
             "email": "dev@selva.local",
+            "is_admin": True,
+            "org_roles": ["admin"],
         }
 
     # Reject hardcoded dev token in production
@@ -247,6 +266,8 @@ async def get_current_user(
             "roles": ["service", "worker"],
             "org_id": tenant_org,
             "email": "worker@selva.internal",
+            "is_admin": False,
+            "org_roles": [],
         }
 
     payload = await verify_jwt(credentials.credentials, settings)
@@ -256,10 +277,97 @@ async def get_current_user(
 
     return {
         "sub": payload.get("sub"),
-        "roles": payload.get("roles", []),
+        "roles": _bearer_roles(payload.get("roles", [])),
         "org_id": payload.get("org_id"),
         "email": payload.get("email"),
+        # Platform administrator: only the verified `is_admin` claim, exactly True.
+        "is_admin": payload.get("is_admin") is True,
+        # The user's role in the organization named by `org_id`.
+        "org_roles": _string_list(payload.get(ORG_ROLES_CLAIM)),
     }
+
+
+def _string_list(value: Any) -> list[str]:
+    """A claim value as a list of strings (a bare string becomes one item)."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list | tuple):
+        return [item for item in value if isinstance(item, str)]
+    return []
+
+
+def _bearer_roles(value: Any) -> list[str]:
+    """The `roles` claim of a bearer token, without service-credential role names."""
+    return [role for role in _string_list(value) if role not in _SERVICE_CREDENTIAL_ROLES]
+
+
+def is_platform_admin(user: dict[str, Any]) -> bool:
+    """Whether the caller is a Selva platform administrator.
+
+    True for the verified token's ``is_admin`` claim (exactly ``True``), or the
+    ``selva:admin`` application role held in the platform organization
+    (``org_id`` equal to ``PLATFORM_ORG_ID``; unset means no organization
+    qualifies). A bare role name such as ``admin`` never counts here.
+    """
+    from selva_permissions import is_platform_audience
+
+    if user.get("is_admin") is True:
+        return True
+    return SELVA_ADMIN_APP_ROLE in (user.get("roles") or []) and is_platform_audience(
+        user.get("org_id")
+    )
+
+
+def is_org_admin(user: dict[str, Any]) -> bool:
+    """Whether the caller administers the organization named by its own ``org_id``.
+
+    Reads the role Janua stamps for that organization (``madfam_org_roles``),
+    not the ``roles`` list, which merges roles from every organization the user
+    belongs to.
+    """
+    if not user.get("org_id"):
+        return False
+    return ORG_ADMIN_ROLE in (user.get("org_roles") or [])
+
+
+async def require_platform_admin(
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Dependency for platform-level administration routes."""
+    if not is_platform_admin(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform administrator access required",
+        )
+    return user
+
+
+async def require_org_admin(
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Dependency for actions on the caller's OWN organization (``org_id``).
+
+    Admits an administrator of that organization, or a platform administrator.
+    Routes using it must act only on ``user["org_id"]``.
+    """
+    if is_platform_admin(user) or is_org_admin(user):
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Organization administrator access required",
+    )
+
+
+def _reject_admin_role_name(roles: list[str]) -> None:
+    """Refuse to build a role gate on the bare ``admin`` name.
+
+    Use ``require_platform_admin`` or ``require_org_admin`` instead.
+    """
+    if ORG_ADMIN_ROLE in roles:
+        raise ValueError(
+            "Gate admin access with require_platform_admin or require_org_admin, "
+            "not a bare role name"
+        )
 
 
 def require_role(role: str):
@@ -267,9 +375,12 @@ def require_role(role: str):
 
     Usage::
 
-        @router.post("/admin-only", dependencies=[Depends(require_role("admin"))])
-        async def admin_endpoint(): ...
+        @router.post("/cleanroom", dependencies=[Depends(require_role("enterprise-cleanroom"))])
+        async def cleanroom_endpoint(): ...
+
+    For administration use ``require_platform_admin`` or ``require_org_admin``.
     """
+    _reject_admin_role_name([role])
 
     async def _role_checker(
         user: dict[str, Any] = Depends(get_current_user),
@@ -380,11 +491,14 @@ def require_roles(roles: list[str]):
 
     Usage::
 
-        @router.get("/admin-or-cleanroom")
+        @router.get("/cleanroom")
         async def endpoint(
-            user: CurrentUser = Depends(require_roles(["admin", "enterprise-cleanroom"])),
+            user: CurrentUser = Depends(require_roles(["enterprise-cleanroom"])),
         ): ...
+
+    For administration use ``require_platform_admin`` or ``require_org_admin``.
     """
+    _reject_admin_role_name(roles)
 
     async def _roles_checker(
         user: dict[str, Any] = Depends(get_current_user),

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from selva_redis_pool import get_redis_pool
 
 from ..approval_notifier import notify_approval_decision
-from ..auth import get_current_user, require_non_guest, verify_jwt
+from ..auth import get_current_user, is_platform_admin, require_non_guest, verify_jwt
 from ..config import get_settings
 from ..database import get_db, tenant_session
 from ..idempotency import IdempotencyContext, get_idempotency_context
@@ -459,12 +459,10 @@ async def deny_request(
 # Roles allowed to call the cross-tenant bulk-expire endpoint. Mirrors
 # the ``swarms.reap-stale`` access control list: ``service`` and
 # ``worker`` cover automated callers (cron jobs, ops tooling using the
-# worker shared-secret token); ``platform`` and ``admin`` cover human
-# operators. Any other authenticated caller (regular tactician, guest,
-# demo) is rejected with 403.
-_BULK_EXPIRE_ALLOWED_ROLES: frozenset[str] = frozenset(
-    {"service", "worker", "platform", "admin"}
-)
+# worker shared-secret token); human operators must be platform
+# administrators (``is_platform_admin``). Any other authenticated caller
+# (organization admin, regular tactician, guest, demo) is rejected with 403.
+_BULK_EXPIRE_ALLOWED_ROLES: frozenset[str] = frozenset({"service", "worker"})
 
 
 class BulkExpireResponse(BaseModel):
@@ -484,8 +482,8 @@ async def bulk_expire(
     Mirrors the ``swarms.reap-stale`` reaper for approvals: any approval
     that has stayed in ``pending`` for more than ``older_than_hours``
     (default 24 h) is flipped to ``expired``. Same access-control gate
-    as ``reap-stale`` — only ``service`` / ``worker`` / ``platform`` /
-    ``admin`` roles may invoke it.
+    as ``reap-stale`` — only the service credential (``service`` /
+    ``worker``) or a platform administrator may invoke it.
 
     Audit trail: a single ``approval.bulk_expired`` summary event is
     emitted (NOT one event per row — see PR description) carrying the
@@ -498,12 +496,12 @@ async def bulk_expire(
     from datetime import timedelta
 
     roles = user.get("roles", [])
-    if not any(r in _BULK_EXPIRE_ALLOWED_ROLES for r in roles):
+    if not (is_platform_admin(user) or any(r in _BULK_EXPIRE_ALLOWED_ROLES for r in roles)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
-                "bulk-expire is a platform-only endpoint; caller must hold "
-                "service, worker, platform, or admin role"
+                "bulk-expire is a platform-only endpoint; caller must be "
+                "the service credential or a platform administrator"
             ),
         )
 
