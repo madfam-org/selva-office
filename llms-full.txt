@@ -116,3 +116,27 @@ Staging workers KEDA is pinned to 1 replica (`patch-keda-staging.yaml`) because
   for the platform org from `data/credit-investment/backlog.yaml`.
 - Human docs: `docs/PROVIDER_CREDIT_GRANTS.md`, `docs/CREDIT_AUTOPILOT.md`,
   `docs/TOOL_HITL_INVENTORY.md`.
+
+## Native COGS MCP (RFC 0051)
+
+- Route: `POST https://api.selva.town/mcp` in nexus-api (`apps/nexus-api/nexus_api/mcp/`),
+  Streamable HTTP, JSON-RPC 2.0, stateless (`initialize`, `ping`, `tools/list`,
+  `tools/call`; notifications 202; batches refused; GET 405).
+- Switch `SELVA_MCP_ENABLED` (default false, 404 while off). Owner-run.
+- Auth: Janua `client_credentials` token verified by `auth.verify_jwt` (audience
+  `selva-office`), scope `selva-cogs:read`, `org_id` claim required. Persons, the
+  worker shared secret and browser origins are refused.
+- Tool `inference_usage(org, month)` (title `inference.usage`), backed by
+  `GET /api/v1/billing/inference-usage?month=YYYY-MM[&org=]` and
+  `services/inference_usage_report.py`. Rows: ledger actions `inference_proxy` and
+  `inference`. Output: period bounds (America/Mexico_City), request count, total
+  tokens (input/output `null`: not recorded), lines by provider / model / caller class
+  (`service_account`, `selva_worker`, `person`, `unrecorded`; never identities),
+  `list_price_estimate_usd` (decimal string, USD list-price estimate, not cash, not
+  COGS), `estimate` (price table source, version `null`, priced/unpriced rows),
+  `funding: unattributed`, `completeness` (`complete` / `partial` / `empty` with gaps
+  `month_open`, `unpriced_rows`, `no_rows`).
+- Coverage contract: `nexus_api/mcp/coverage.py`; drift guard
+  `tests/test_mcp_coverage.py` (CI step «native COGS MCP + coverage drift guard»).
+- Audit: logger `selva.mcp.audit`, one JSON line per tool call with `args_sha256`,
+  never the arguments. Rate limit `SELVA_MCP_RATE_PER_MINUTE` per client, per process.

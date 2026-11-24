@@ -83,6 +83,38 @@ and email templates).
 Regenerate or repair these files with
 `internal-devops/scripts/sync-agent-docs.py` from the labspace ecosystem.
 
+## Native COGS MCP (RFC 0051)
+
+Selva serves its cost-ledger data to agents at `POST https://api.selva.town/mcp`
+(nexus-api, `apps/nexus-api/nexus_api/mcp/`). Streamable HTTP, JSON-RPC 2.0,
+stateless, read-only.
+
+- **Switch:** `SELVA_MCP_ENABLED`, default `false`. While off the route answers 404
+  before authentication. Only the owner turns it on; agents never do.
+- **Callers:** Janua machine tokens only (`client_credentials`, `sub` =
+  `service-account:<client>`), audience = Selva's API audience (`JANUA_CLIENT_ID`,
+  `selva-office`), scope `selva-cogs:read`, client bound to a Janua organization
+  (`org_id` claim). People's tokens, the worker shared secret and browser `Origin`
+  headers are refused.
+- **Tool:** `inference_usage(org, month)` (title `inference.usage`). It serves
+  `GET /api/v1/billing/inference-usage?month=YYYY-MM`: same service function
+  (`services/inference_usage_report.py`), same org scoping, same RLS session. `org`
+  may only name the token's own org. Months are civil months in
+  `America/Mexico_City`.
+- **Wording:** `list_price_estimate_usd` is a list-price ESTIMATE in USD from the
+  public price table in `madfam_budget_gate.cost_model`. It is not cash and not
+  COGS, and it is never converted. `funding` is `unattributed`. The ledger stores
+  total tokens only, so input/output are `null`. An empty month answers
+  `status: "empty"` with `null` totals, never zeros.
+- **Coverage contract:** `nexus_api/mcp/coverage.py` lists every route under
+  `/api/v1/billing`, `/metrics`, `/convergence` and `/providers` as COVERED or
+  EXEMPTED with a reason. `tests/test_mcp_coverage.py` fails on a new route that is
+  neither. Add the decision in the same PR as the route.
+- **Audit and limits:** one line per `tools/call` on logger `selva.mcp.audit`
+  (`client`, `tool`, `outcome`, `latency_ms`, `args_sha256`; never the arguments),
+  Prometheus counter `selva_mcp_tool_calls_total{tool,outcome}`, and a per-client
+  limit `SELVA_MCP_RATE_PER_MINUTE` (default 60, per process).
+
 ---
 
 ## Legacy CLAUDE.md guidance imported on 2026-05-13
