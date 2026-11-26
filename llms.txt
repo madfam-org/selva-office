@@ -20,6 +20,11 @@ Compact LLM context index for this repository.
 - `docs/LOAD_TEST_2026-Q2.md` — k6 calibration Runs 1–4b.
 - `llms-full.txt` — full context map and durable operating contract.
 
+## Commercial pipeline state (2026-11-26)
+
+- `/pricing` reads Dhanam's catalogue (developer / team / business); checkout goes by federation and no purchase through it has been observed. No visitor analytics runs on `selva.town`.
+- `infra/pricing/selva-tiers.json` holds hourly packs and daily limits only. Detail: `AGENTS.md` → «Commercial pipeline state (2026-11-26)»; cross-repo source: the private internal-devops audit `audits/2026-11-26-business-pipeline/README.md`.
+
 ## Campaign orchestration (Phase 2 — shipped)
 
 - `POST /api/v1/campaigns/import-tulana-pack` — Tulana SKU import + optional dispatch.
