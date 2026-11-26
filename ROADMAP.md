@@ -569,7 +569,7 @@ Lead with Karafiel compliance for Mexican SMBs:
 - `[x]` CFDI 4.0 tools (generate, stamp, status, blacklist check)
 - `[x]` RFC validation
 - `[x]` Billing graph (6-node monthly close)
-- `[ ]` Karafiel public pricing page ($499 MXN/mo)
+- `[x]` Karafiel public pricing page, prices read from Dhanam's catalogue (from MX$1,507 per month, IVA included, 2026-11-26)
 - `[ ]` 10+ paying customers on Karafiel compliance
 - `[ ]` Referral flywheel active (PhyndCRM funnel → Dhanam rewards)
 

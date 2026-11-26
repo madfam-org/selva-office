@@ -132,9 +132,35 @@ stateless, read-only.
 
 ## Pricing & PMF Anchoring
 
-- **Public `/pricing` (2026-10-11)**: renders from Dhanam's public catalog (`GET https://api.dhan.am/v1/billing/catalog/selva`, read server-side in `apps/office-ui/src/lib/selva-catalog.ts`, 5-min cache), showing MXN/month with IVA included (`Math.ceil(net × 1.16)`, Dhanam's rule). No price is typed into this repo. "Choose" sends the catalog tier slug (`developer` / `team` / `business`) to `POST /api/v1/billing/checkout`. Three tier vocabularies still coexist (pricing JSON starter/professional/enterprise, catalog developer/team/business, registry maker/studio/enterprise); `services/checkout_tiers.py` bridges the first two.
-- **Pricing source-of-truth**: `infra/pricing/selva-tiers.json` (canonical, schema-validated against `infra/pricing/schema.json`). Derived from `internal-devops/decisions/2026-04-25-tulana-ecosystem-pricing.md` (the human-readable upstream). Selva tiers (Tulana v0.1, MXN/hr): Maker Pack 85 / Studio Pack 170 / Enterprise Pack 255 — confidence **medium**. Dhanam subscription daily limits (starter=1000, professional=5000, enterprise=25000) ship in the same JSON. The Python loader is `apps/nexus-api/nexus_api/billing_tiers.py`; the CI drift gate is `apps/nexus-api/tests/test_pricing_codification.py` (asserts loader + JSON + CLAUDE.md + emergency fallback all agree). Adjacent ecosystem bundles (Founder/Operator/Flywheel, USD/mo) are still in `apps/office-ui/src/app/bundles/page.tsx:60-117` — TS-side codification follow-up tracked in ROADMAP.
+- **Public `/pricing` (2026-10-11)**: renders from Dhanam's public catalog (`GET https://api.dhan.am/v1/billing/catalog/selva`, read server-side in `apps/office-ui/src/lib/selva-catalog.ts`, 5-min cache), showing MXN/month with IVA included (`Math.ceil(net × 1.16)`, Dhanam's rule). No price is typed into this repo. "Choose" sends the catalog tier slug (`developer` / `team` / `business`) to `POST /api/v1/billing/checkout`. Two tier vocabularies remain (2026-11-26): the pricing JSON's starter/professional/enterprise and the catalogue's developer/team/business, which the ecosystem product registry now follows; `services/checkout_tiers.py` bridges the two. Maker / Studio / Enterprise survive only as the names of the hourly packs below.
+- **Hourly packs and daily limits**: `infra/pricing/selva-tiers.json` (schema-validated against `infra/pricing/schema.json`) holds the hourly pack rates and daily limits only. Subscription prices are published by Dhanam's catalogue and are not typed in this repo (2026-11-26; see the `/pricing` line above). Derived from `internal-devops/decisions/2026-04-25-tulana-ecosystem-pricing.md` (the human-readable upstream). Selva tiers (Tulana v0.1, MXN/hr): Maker Pack 85 / Studio Pack 170 / Enterprise Pack 255 — confidence **medium**. Dhanam subscription daily limits (starter=1000, professional=5000, enterprise=25000) ship in the same JSON. The Python loader is `apps/nexus-api/nexus_api/billing_tiers.py`; the CI drift gate is `apps/nexus-api/tests/test_pricing_codification.py` (asserts loader + JSON + CLAUDE.md + emergency fallback all agree). Adjacent ecosystem bundles (Founder/Operator/Flywheel, USD/mo) are still in `apps/office-ui/src/app/bundles/page.tsx:60-117` — TS-side codification follow-up tracked in ROADMAP.
 - **PMF measurement**: per RFC 0013, NPS + Sean Ellis + retention via `@madfam/pmf-widget` → Tulana `/v1/pmf/*` endpoints. Composite PMF Score informs price moves + sunset decisions.
+
+## Commercial pipeline state (2026-11-26)
+
+What is true for Selva at each stage of the business pipeline on 2026-11-26.
+The cross-repo source is the audit record in the private `internal-devops`
+repository:
+[`audits/2026-11-26-business-pipeline/README.md`](https://github.com/madfam-org/internal-devops/blob/main/audits/2026-11-26-business-pipeline/README.md)
+(private; not readable from this public repository).
+
+- **Discovery.** `selva.town` answers 200 and serves `robots.txt`, a sitemap
+  and `llms.txt` (crawl rules in `apps/office-ui/src/lib/seo/crawl.ts`). The
+  site is English only (`lang="en"`), carries no Offer JSON-LD, and runs no
+  visitor analytics: no PostHog key reaches the page.
+- **Conversion and sales.** `/pricing` reads Dhanam's catalogue, where all three
+  tiers (developer, team, business) are marked purchasable («Pricing & PMF
+  Anchoring» above). "Choose" goes through Selva's own checkout route
+  (`POST /api/v1/billing/checkout`), which reaches Dhanam by federation; no
+  purchase through that path has been observed, and whether its credentials
+  are provisioned in production is not verified. `selva.town/precios`
+  redirects to sign-in rather than to the pricing page.
+- **Fulfillment, customer success, virality.** The audit did not examine
+  Selva's post-purchase path and found no support, service-level or proof
+  claim in this repository's top-level documents.
+- **Ecosystem roadmap rows.** The Karafiel pricing row in
+  [`ROADMAP.md` → Phase F2](ROADMAP.md#phase-f2-compliance-wedge-gtm-wave-1--program-phases-45) is done; the other Phase F2 rows
+  (paying customers, referral flywheel) remain open.
 
 ## Patterns Added in v2.3.0 (operator must know)
 
